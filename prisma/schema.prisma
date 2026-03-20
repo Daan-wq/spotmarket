@@ -1,0 +1,459 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ─────────────────────────────────────────
+// USERS & IDENTITY
+// ─────────────────────────────────────────
+
+model User {
+  id         String   @id @default(cuid())
+  supabaseId String   @unique
+  email      String   @unique
+  role       UserRole
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  creatorProfile   CreatorProfile?
+  businessProfile  BusinessProfile?
+  sentMessages     Message[]       @relation("SentMessages")
+  receivedMessages Message[]       @relation("ReceivedMessages")
+  auditLogs        AuditLog[]
+
+  @@index([supabaseId])
+  @@index([role])
+}
+
+enum UserRole {
+  admin
+  business
+  creator
+  user
+}
+
+model CreatorProfile {
+  id             String   @id @default(cuid())
+  userId         String   @unique
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  displayName    String
+  bio            String?
+  avatarUrl      String?
+  walletAddress  String?
+  primaryGeo     String   @default("US")
+  totalFollowers Int      @default(0)
+  engagementRate Decimal  @default(0) @db.Decimal(5, 2)
+  isVerified     Boolean  @default(false)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  socialAccounts SocialAccount[]
+  applications   CampaignApplication[]
+
+  @@index([primaryGeo])
+  @@index([engagementRate])
+  @@index([totalFollowers])
+}
+
+model BusinessProfile {
+  id          String   @id @default(cuid())
+  userId      String   @unique
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  companyName String
+  website     String?
+  isApproved  Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  campaigns Campaign[]
+}
+
+// ─────────────────────────────────────────
+// SOCIAL ACCOUNTS
+// ─────────────────────────────────────────
+
+model SocialAccount {
+  id               String         @id @default(cuid())
+  creatorProfileId String
+  creatorProfile   CreatorProfile @relation(fields: [creatorProfileId], references: [id], onDelete: Cascade)
+  platform         SocialPlatform
+  platformUserId   String
+  platformUsername String
+  accessToken      String
+  accessTokenIv    String
+  tokenExpiresAt   DateTime
+  followerCount    Int            @default(0)
+  engagementRate   Decimal        @default(0) @db.Decimal(5, 2)
+  audienceGeo      Json?
+  lastSyncedAt     DateTime?
+  isActive         Boolean        @default(true)
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
+
+  posts CampaignPost[]
+
+  @@unique([creatorProfileId, platform])
+  @@index([platform])
+  @@index([tokenExpiresAt])
+}
+
+enum SocialPlatform {
+  instagram
+  tiktok
+}
+
+// ─────────────────────────────────────────
+// CAMPAIGNS
+// ─────────────────────────────────────────
+
+model Campaign {
+  id                String          @id @default(cuid())
+  businessProfileId String
+  businessProfile   BusinessProfile @relation(fields: [businessProfileId], references: [id])
+  name              String
+  description       String?
+  contentGuidelines String?         @db.Text
+  referralLink      String
+  targetGeo         String[]
+  minFollowers      Int
+  minEngagementRate Decimal         @db.Decimal(5, 2)
+  totalBudget       Decimal         @db.Decimal(12, 2)
+  creatorCpv        Decimal         @db.Decimal(8, 6)
+  adminMargin       Decimal         @db.Decimal(8, 6)
+  businessCpv       Decimal         @db.Decimal(8, 6)
+  deadline          DateTime
+  status            CampaignStatus  @default(draft)
+  briefAssetUrl     String?
+  createdAt         DateTime        @default(now())
+  updatedAt         DateTime        @updatedAt
+
+  applications CampaignApplication[]
+  messages     Message[]
+  report       CampaignReport?
+
+  @@index([status])
+  @@index([deadline])
+  @@index([businessProfileId])
+}
+
+enum CampaignStatus {
+  draft
+  active
+  paused
+  completed
+  cancelled
+}
+
+model CampaignApplication {
+  id                 String            @id @default(cuid())
+  campaignId         String
+  campaign           Campaign          @relation(fields: [campaignId], references: [id])
+  creatorProfileId   String
+  creatorProfile     CreatorProfile    @relation(fields: [creatorProfileId], references: [id])
+  status             ApplicationStatus @default(pending)
+  appliedAt          DateTime          @default(now())
+  reviewedAt         DateTime?
+  reviewNotes        String?
+  followerSnapshot   Int?
+  engagementSnapshot Decimal?          @db.Decimal(5, 2)
+  updatedAt          DateTime          @updatedAt
+
+  posts   CampaignPost[]
+  payouts Payout[]
+
+  @@unique([campaignId, creatorProfileId])
+  @@index([status])
+  @@index([campaignId])
+  @@index([creatorProfileId])
+}
+
+enum ApplicationStatus {
+  pending
+  approved
+  rejected
+  active
+  completed
+  disputed
+}
+
+// ─────────────────────────────────────────
+// POSTS & VIEW TRACKING
+// ─────────────────────────────────────────
+
+model CampaignPost {
+  id              String              @id @default(cuid())
+  applicationId   String
+  application     CampaignApplication @relation(fields: [applicationId], references: [id])
+  socialAccountId String
+  socialAccount   SocialAccount       @relation(fields: [socialAccountId], references: [id])
+  postUrl         String
+  platformPostId  String
+  platform        SocialPlatform
+  submittedAt     DateTime            @default(now())
+  approvedAt      DateTime?
+  isApproved      Boolean             @default(true)
+  isFraudSuspect  Boolean             @default(false)
+  fraudFlags      Json?
+
+  snapshots ViewSnapshot[]
+
+  @@index([applicationId])
+  @@index([platformPostId])
+  @@index([platform])
+}
+
+model ViewSnapshot {
+  id            String       @id @default(cuid())
+  postId        String
+  post          CampaignPost @relation(fields: [postId], references: [id])
+  viewsCount    Int
+  likesCount    Int
+  commentsCount Int
+  reach         Int?
+  impressions   Int?
+  capturedAt    DateTime     @default(now())
+
+  @@index([postId, capturedAt])
+  @@index([capturedAt])
+}
+
+// ─────────────────────────────────────────
+// MESSAGING
+// ─────────────────────────────────────────
+
+model Message {
+  id          String   @id @default(cuid())
+  campaignId  String
+  campaign    Campaign @relation(fields: [campaignId], references: [id])
+  senderId    String
+  sender      User     @relation("SentMessages", fields: [senderId], references: [id])
+  recipientId String
+  recipient   User     @relation("ReceivedMessages", fields: [recipientId], references: [id])
+  content     String   @db.Text
+  readAt      DateTime?
+  createdAt   DateTime @default(now())
+
+  @@index([campaignId, createdAt])
+  @@index([senderId])
+  @@index([recipientId])
+}
+
+// ─────────────────────────────────────────
+// PAYOUTS
+// ─────────────────────────────────────────
+
+model Payout {
+  id               String              @id @default(cuid())
+  applicationId    String
+  application      CampaignApplication @relation(fields: [applicationId], references: [id])
+  creatorProfileId String
+  amount           Decimal             @db.Decimal(12, 6)
+  currency         String              @default("USD")
+  walletAddress    String
+  type             PayoutType
+  status           PayoutStatus        @default(pending)
+  txHash           String?
+  coinbaseChargeId String?
+  verifiedViews    Int?
+  initiatedAt      DateTime?
+  confirmedAt      DateTime?
+  createdAt        DateTime            @default(now())
+  updatedAt        DateTime            @updatedAt
+
+  @@index([applicationId])
+  @@index([status])
+  @@index([creatorProfileId])
+}
+
+enum PayoutType {
+  upfront
+  final
+}
+
+enum PayoutStatus {
+  pending
+  processing
+  sent
+  confirmed
+  failed
+  disputed
+}
+
+// ─────────────────────────────────────────
+// REPORTING
+// ─────────────────────────────────────────
+
+model CampaignReport {
+  id           String   @id @default(cuid())
+  campaignId   String   @unique
+  campaign     Campaign @relation(fields: [campaignId], references: [id])
+  totalViews   BigInt
+  totalPayout  Decimal  @db.Decimal(12, 2)
+  adminRevenue Decimal  @db.Decimal(12, 2)
+  creatorCount Int
+  generatedAt  DateTime @default(now())
+  dataJson     Json
+
+  @@index([generatedAt])
+}
+
+// ─────────────────────────────────────────
+// AUDIT LOG
+// ─────────────────────────────────────────
+
+model AuditLog {
+  id         String   @id @default(cuid())
+  userId     String
+  user       User     @relation(fields: [userId], references: [id])
+  action     String
+  entityType String
+  entityId   String
+  metadata   Json?
+  createdAt  DateTime @default(now())
+
+  @@index([userId, createdAt])
+  @@index([entityType, entityId])
+}
+
+// ─────────────────────────────────────────
+// INTERNAL OPS (AdFlow)
+// ─────────────────────────────────────────
+
+model Client {
+  id                   String   @id @default(cuid())
+  name                 String
+  contactName          String?
+  email                String?
+  phone                String?
+  company              String?
+  communicationChannel String   @default("whatsapp")
+  communicationHandle  String?
+  country              String?
+  notes                String?  @db.Text
+  status               String   @default("active")
+  totalSpent           Decimal  @default(0) @db.Decimal(12, 2)
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+
+  internalCampaigns InternalCampaign[]
+  payments          OpsPayment[]
+
+  @@index([status])
+  @@index([createdAt])
+}
+
+model InstagramPage {
+  id                   String   @id @default(cuid())
+  handle               String   @unique
+  niche                String?
+  followerCount        Int      @default(0)
+  avgEngagementRate    Decimal  @default(0) @db.Decimal(5, 2)
+  avgCpm               Decimal  @default(0) @db.Decimal(8, 2)
+  reliabilityScore     Int      @default(5)
+  communicationChannel String   @default("instagram")
+  communicationHandle  String?
+  contactName          String?
+  country              String?
+  notes                String?  @db.Text
+  status               String   @default("active")
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+
+  internalCampaignPages InternalCampaignPage[]
+  payments              OpsPayment[]
+
+  @@index([status])
+  @@index([niche])
+  @@index([followerCount])
+}
+
+model InternalCampaign {
+  id            String   @id @default(cuid())
+  clientId      String
+  client        Client   @relation(fields: [clientId], references: [id])
+  name          String
+  status        String   @default("draft")
+  clientPays    Decimal  @db.Decimal(12, 2)
+  totalPageCost Decimal  @default(0) @db.Decimal(12, 2)
+  adContentUrl  String?
+  adCaption     String?  @db.Text
+  adLink        String?
+  startDate     DateTime?
+  endDate       DateTime?
+  notes         String?  @db.Text
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  campaignPages InternalCampaignPage[]
+  payments      OpsPayment[]
+
+  @@index([status])
+  @@index([clientId])
+  @@index([startDate])
+}
+
+model InternalCampaignPage {
+  id                 String           @id @default(cuid())
+  internalCampaignId String
+  internalCampaign   InternalCampaign @relation(fields: [internalCampaignId], references: [id], onDelete: Cascade)
+  pageId             String
+  page               InstagramPage    @relation(fields: [pageId], references: [id])
+  cost               Decimal          @db.Decimal(10, 2)
+  status             String           @default("pending")
+  scheduledDate      DateTime?
+  postedAt           DateTime?
+  reach              Int?
+  impressions        Int?
+  screenshotUrl      String?
+  createdAt          DateTime         @default(now())
+
+  @@unique([internalCampaignId, pageId])
+  @@index([internalCampaignId])
+  @@index([pageId])
+}
+
+model PaymentNetwork {
+  id           String   @id @default(cuid())
+  platform     String
+  accountLabel String
+  currency     String   @default("USD")
+  balance      Decimal  @default(0) @db.Decimal(12, 2)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  payments OpsPayment[]
+
+  @@index([platform])
+}
+
+// Separate from creator Payouts — this tracks admin's business payments in/out
+model OpsPayment {
+  id                 String            @id @default(cuid())
+  direction          String            // "in" | "out"
+  clientId           String?
+  client             Client?           @relation(fields: [clientId], references: [id])
+  pageId             String?
+  page               InstagramPage?    @relation(fields: [pageId], references: [id])
+  internalCampaignId String?
+  internalCampaign   InternalCampaign? @relation(fields: [internalCampaignId], references: [id])
+  paymentNetworkId   String?
+  paymentNetwork     PaymentNetwork?   @relation(fields: [paymentNetworkId], references: [id])
+  amount             Decimal           @db.Decimal(12, 2)
+  currency           String            @default("USD")
+  status             String            @default("pending")
+  dueDate            DateTime?
+  paidAt             DateTime?
+  notes              String?           @db.Text
+  createdAt          DateTime          @default(now())
+  updatedAt          DateTime          @updatedAt
+
+  @@index([direction])
+  @@index([status])
+  @@index([clientId])
+  @@index([pageId])
+  @@index([internalCampaignId])
+  @@index([createdAt])
+}

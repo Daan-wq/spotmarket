@@ -1,0 +1,51 @@
+import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { prisma } from "@/lib/prisma";
+import { redirect } from "next/navigation";
+import { OnboardingForm } from "./onboarding-form";
+
+export default async function OnboardingPage() {
+  const supabase = await createSupabaseServerClient();
+  const { data: { user } } = await supabase.auth.getUser();
+
+  if (!user) redirect("/sign-in");
+  if (user.user_metadata?.role === "admin") redirect("/admin");
+
+  const dbUser = await prisma.user.findUnique({ where: { supabaseId: user.id } });
+  if (dbUser) redirect("/dashboard");
+
+  return (
+    <div className="min-h-screen flex">
+      {/* Left panel */}
+      <div
+        className="hidden lg:flex lg:w-2/5 flex-col justify-between p-10"
+        style={{ background: "#0b0f1a" }}
+      >
+        <span className="text-white font-semibold text-base tracking-tight">Spotmarket</span>
+        <div>
+          <p className="text-2xl font-semibold text-white leading-snug mb-3">
+            Almost there. Let&apos;s set up your account.
+          </p>
+          <p className="text-sm" style={{ color: "#64748b" }}>
+            Just one step before you can start browsing campaigns and tracking earnings.
+          </p>
+        </div>
+        <p className="text-xs" style={{ color: "#334155" }}>
+          © {new Date().getFullYear()} Spotmarket
+        </p>
+      </div>
+
+      {/* Right panel */}
+      <div className="flex-1 flex items-center justify-center px-6 py-12 bg-white">
+        <div className="w-full max-w-sm">
+          <h1 className="text-2xl font-semibold mb-1" style={{ color: "#0f172a" }}>
+            Welcome to Spotmarket
+          </h1>
+          <p className="text-sm mb-8" style={{ color: "#64748b" }}>
+            Tell us what to call you.
+          </p>
+          <OnboardingForm />
+        </div>
+      </div>
+    </div>
+  );
+}
