@@ -22,5 +22,8 @@ export async function GET() {
   const state = Buffer.from(authUser.id).toString("base64url");
   const authUrl = await getInstagramAuthUrl(state);
 
+  console.log("[instagram-oauth] redirect_uri:", `${process.env.NEXT_PUBLIC_APP_URL}/api/auth/instagram/callback`);
+  console.log("[instagram-oauth] full authUrl:", authUrl);
+
   return NextResponse.redirect(authUrl);
 }
