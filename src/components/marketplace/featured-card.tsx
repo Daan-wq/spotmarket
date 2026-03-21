@@ -1,10 +1,10 @@
 "use client";
 
-import { type MockCampaign } from "@/data/mock-campaigns";
+import { type CampaignCardData } from "@/types/campaign-card";
 
 type FeaturedCardProps = {
-  campaign: MockCampaign;
-  onApply: (campaign: MockCampaign) => void;
+  campaign: CampaignCardData;
+  onApply: (campaign: CampaignCardData) => void;
 };
 
 export function FeaturedCard({ campaign, onApply }: FeaturedCardProps) {
@@ -38,7 +38,6 @@ export function FeaturedCard({ campaign, onApply }: FeaturedCardProps) {
             </div>
             <div>
               <p className="text-xs font-semibold text-white">{campaign.company}</p>
-              <p className="text-xs" style={{ color: "#9ca3af" }}>{campaign.category}</p>
             </div>
           </div>
           <span

@@ -61,6 +61,8 @@ export async function POST(
   > = {};
 
   for (const post of posts) {
+    if (!post.application.creatorProfile || !post.application.creatorProfileId) continue;
+
     const creatorProfileId = post.application.creatorProfileId;
     const walletAddress = post.application.creatorProfile.walletAddress;
     const snaps = post.snapshots;
@@ -170,7 +172,6 @@ export async function GET(
 
   const user = await prisma.user.findUnique({
     where: { supabaseId: authUser.id },
-    include: { businessProfile: { select: { id: true } } },
   });
   if (!user) return NextResponse.json({ error: "User not found" }, { status: 404 });
 
@@ -183,8 +184,7 @@ export async function GET(
   if (!campaign) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
   const isAdmin = user.role === "admin";
-  const isOwner = user.businessProfile?.id === campaign.businessProfileId;
-  if (!isAdmin && !isOwner) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  if (!isAdmin) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
   return NextResponse.json(campaign.report ?? null);
 }

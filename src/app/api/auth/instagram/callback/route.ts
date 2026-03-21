@@ -7,18 +7,84 @@ import {
   getMediaInsights,
   computeEngagementRate,
 } from "@/lib/instagram";
+import { createSupabaseServerClient } from "@/lib/supabase/server";
 
 export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
   const code = searchParams.get("code");
-  const state = searchParams.get("state");
+  const state = searchParams.get("state") ?? "";
   const error = searchParams.get("error");
 
   const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
 
-  if (error) return NextResponse.redirect(`${appUrl}/creator/profile?error=instagram_denied`);
-  if (!code || !state) return NextResponse.redirect(`${appUrl}/creator/profile?error=missing_params`);
+  if (error || !code) {
+    return NextResponse.redirect(`${appUrl}/sign-in?error=ig_denied`);
+  }
 
+  // ─────────────────────────────────────────
+  // NETWORK MEMBER JOIN FLOW
+  // ─────────────────────────────────────────
+  if (state.startsWith("join:")) {
+    const inviteCode = state.replace("join:", "");
+    const network = await prisma.networkProfile.findUnique({
+      where: { inviteCode },
+    });
+
+    if (!network) {
+      return NextResponse.redirect(`${appUrl}/`);
+    }
+
+    try {
+      const { accessToken, expiresIn } = await exchangeCodeForToken(code);
+      if (!accessToken) throw new Error("No access token in exchange response");
+
+      const { ciphertext, iv } = encrypt(accessToken);
+      const profile = await getInstagramProfile(accessToken);
+
+      const tokenExpiresAt = new Date(Date.now() + expiresIn * 1000);
+
+      // Retrieve name and email from sessionStorage (passed from join page)
+      // In production, pass these via state or session
+      const displayName = state.includes("displayName")
+        ? decodeURIComponent(state.split("displayName:")[1]?.split("|")[0] ?? "")
+        : undefined;
+
+      await prisma.networkMember.upsert({
+        where: { igUserId: profile.id },
+        create: {
+          networkId: network.id,
+          igUserId: profile.id,
+          igUsername: profile.username,
+          igAccessToken: ciphertext,
+          igAccessTokenIv: iv,
+          igTokenExpiry: tokenExpiresAt,
+          igFollowerCount: profile.followerCount ?? 0,
+          igIsConnected: true,
+          displayName: displayName || undefined,
+        },
+        update: {
+          networkId: network.id,
+          igUsername: profile.username,
+          igAccessToken: ciphertext,
+          igAccessTokenIv: iv,
+          igTokenExpiry: tokenExpiresAt,
+          igFollowerCount: profile.followerCount ?? 0,
+          igIsConnected: true,
+          displayName: displayName || undefined,
+        },
+      });
+
+      return NextResponse.redirect(`${appUrl}/join/${inviteCode}/success`);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      console.error("Network member Instagram OAuth callback error:", msg);
+      return NextResponse.redirect(`${appUrl}/sign-in?error=token_exchange_failed`);
+    }
+  }
+
+  // ─────────────────────────────────────────
+  // REGULAR CREATOR OAUTH FLOW
+  // ─────────────────────────────────────────
   let supabaseId: string;
   try {
     supabaseId = Buffer.from(state, "base64url").toString("utf8");
@@ -37,9 +103,9 @@ export async function GET(req: Request) {
 
   try {
     const { accessToken, expiresIn } = await exchangeCodeForToken(code);
-    // Diagnostic: log token prefix to identify token type (IGQV = Instagram, EAA = Facebook)
     console.log("Token prefix:", accessToken?.slice(0, 6), "| expiresIn:", expiresIn);
     if (!accessToken) throw new Error(`No access token in exchange response`);
+
     const { ciphertext, iv } = encrypt(accessToken);
     const profile = await getInstagramProfile(accessToken);
     const insights = await getMediaInsights(profile.id, accessToken, 20);
@@ -95,7 +161,6 @@ export async function GET(req: Request) {
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
     console.error("Instagram OAuth callback error:", msg);
-    // Include token prefix in detail to identify token type without exposing full token
     return NextResponse.redirect(`${appUrl}/profile?error=token_exchange_failed&detail=${encodeURIComponent(msg)}`);
   }
 }

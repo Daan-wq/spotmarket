@@ -9,7 +9,7 @@ const META_BASE = "https://api.instagram.com";
 export async function getInstagramAuthUrl(state: string): Promise<string> {
   const params = new URLSearchParams({
     client_id: process.env.INSTAGRAM_APP_ID!,
-    redirect_uri: process.env.INSTAGRAM_REDIRECT_URI!,
+    redirect_uri: `${process.env.NEXT_PUBLIC_APP_URL}/api/auth/instagram/callback`,
     scope: "instagram_business_basic",
     response_type: "code",
     state,
@@ -28,7 +28,7 @@ export async function exchangeCodeForToken(
       client_id: process.env.INSTAGRAM_APP_ID!,
       client_secret: process.env.INSTAGRAM_APP_SECRET!,
       grant_type: "authorization_code",
-      redirect_uri: process.env.INSTAGRAM_REDIRECT_URI!,
+      redirect_uri: `${process.env.NEXT_PUBLIC_APP_URL}/api/auth/instagram/callback`,
       code,
     }),
   });

@@ -19,9 +19,9 @@ model User {
   updatedAt  DateTime @updatedAt
 
   creatorProfile   CreatorProfile?
-  businessProfile  BusinessProfile?
-  sentMessages     Message[]       @relation("SentMessages")
-  receivedMessages Message[]       @relation("ReceivedMessages")
+  networkProfile   NetworkProfile?
+  sentMessages     Message[]        @relation("SentMessages")
+  receivedMessages Message[]        @relation("ReceivedMessages")
   auditLogs        AuditLog[]
 
   @@index([supabaseId])
@@ -30,45 +30,98 @@ model User {
 
 enum UserRole {
   admin
-  business
   creator
+  network
   user
 }
 
 model CreatorProfile {
-  id             String   @id @default(cuid())
-  userId         String   @unique
-  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  displayName    String
-  bio            String?
-  avatarUrl      String?
-  walletAddress  String?
-  primaryGeo     String   @default("US")
-  totalFollowers Int      @default(0)
-  engagementRate Decimal  @default(0) @db.Decimal(5, 2)
-  isVerified     Boolean  @default(false)
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
+  id              String   @id @default(cuid())
+  userId          String   @unique
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  displayName     String
+  bio             String?
+  avatarUrl       String?
+  walletAddress   String?
+  stripeAccountId String?
+  primaryGeo      String   @default("US")
+  totalFollowers  Int      @default(0)
+  engagementRate  Decimal  @default(0) @db.Decimal(5, 2)
+  isVerified      Boolean  @default(false)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
 
   socialAccounts SocialAccount[]
   applications   CampaignApplication[]
+  payouts        Payout[]
+  networkMember  NetworkMember?
 
   @@index([primaryGeo])
   @@index([engagementRate])
   @@index([totalFollowers])
 }
 
-model BusinessProfile {
-  id          String   @id @default(cuid())
-  userId      String   @unique
-  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  companyName String
-  website     String?
-  isApproved  Boolean  @default(false)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
 
-  campaigns Campaign[]
+model NetworkProfile {
+  id              String   @id @default(cuid())
+  userId          String   @unique
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  companyName     String
+  contactName     String
+  website         String?
+  description     String?
+  networkSize     Int?
+  inviteCode      String   @unique
+  walletAddress   String?
+  stripeAccountId String?
+  isApproved      Boolean  @default(false)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  members      NetworkMember[]
+  applications CampaignApplication[]
+  payouts      Payout[]
+
+  @@index([inviteCode])
+  @@index([isApproved])
+}
+
+model NetworkMember {
+  id               String          @id @default(cuid())
+  networkId        String
+  network          NetworkProfile  @relation(fields: [networkId], references: [id], onDelete: Cascade)
+  displayName      String?
+  email            String?
+  igUserId         String?         @unique
+  igUsername       String?
+  igAccessToken    String?
+  igAccessTokenIv  String?
+  igTokenExpiry    DateTime?
+  igFollowerCount  Int?
+  igIsConnected    Boolean         @default(false)
+  creatorProfileId String?         @unique
+  creatorProfile   CreatorProfile? @relation(fields: [creatorProfileId], references: [id])
+  isActive         Boolean         @default(true)
+  joinedAt         DateTime        @default(now())
+
+  posts       CampaignPost[]
+  assignments NetworkMemberAssignment[]
+
+  @@index([networkId])
+  @@index([igUserId])
+}
+
+model NetworkMemberAssignment {
+  id            String              @id @default(cuid())
+  applicationId String
+  application   CampaignApplication @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  memberId      String
+  member        NetworkMember       @relation(fields: [memberId], references: [id], onDelete: Cascade)
+  assignedAt    DateTime            @default(now())
+
+  @@unique([applicationId, memberId])
+  @@index([applicationId])
+  @@index([memberId])
 }
 
 // ─────────────────────────────────────────
@@ -110,25 +163,44 @@ enum SocialPlatform {
 // ─────────────────────────────────────────
 
 model Campaign {
-  id                String          @id @default(cuid())
-  businessProfileId String
-  businessProfile   BusinessProfile @relation(fields: [businessProfileId], references: [id])
-  name              String
+  id   String @id @default(cuid())
+  name String
+  platform          Platform        @default(INSTAGRAM)
   description       String?
   contentGuidelines String?         @db.Text
-  referralLink      String
+  referralLink      String?
   targetGeo         String[]
-  minFollowers      Int
-  minEngagementRate Decimal         @db.Decimal(5, 2)
+  minFollowers      Int             @default(0)
+  minEngagementRate Decimal         @default(0) @db.Decimal(5, 2)
   totalBudget       Decimal         @db.Decimal(12, 2)
   creatorCpv        Decimal         @db.Decimal(8, 6)
   adminMargin       Decimal         @db.Decimal(8, 6)
   businessCpv       Decimal         @db.Decimal(8, 6)
+  goalViews         BigInt?
   deadline          DateTime
+  startsAt          DateTime?
   status            CampaignStatus  @default(draft)
   briefAssetUrl     String?
-  createdAt         DateTime        @default(now())
-  updatedAt         DateTime        @updatedAt
+
+  // Block 2: Instant claim
+  maxSlots         Int?
+  claimedSlots     Int     @default(0)
+  requiresApproval Boolean @default(false)
+
+  // Brief fields
+  targetCountry         String?
+  targetCountryPercent  Int?
+  targetMinAge18Percent Int?
+  targetMalePercent     Int?
+  contentType           String?
+  requirements          String?
+  otherNotes            String?
+  bannerUrl             String?
+  contentAssetUrls      String[]
+  guidelinesUrl         String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   applications CampaignApplication[]
   messages     Message[]
@@ -136,7 +208,6 @@ model Campaign {
 
   @@index([status])
   @@index([deadline])
-  @@index([businessProfileId])
 }
 
 enum CampaignStatus {
@@ -147,27 +218,43 @@ enum CampaignStatus {
   cancelled
 }
 
+enum Platform {
+  INSTAGRAM
+  TIKTOK
+  BOTH
+}
+
 model CampaignApplication {
   id                 String            @id @default(cuid())
   campaignId         String
   campaign           Campaign          @relation(fields: [campaignId], references: [id])
-  creatorProfileId   String
-  creatorProfile     CreatorProfile    @relation(fields: [creatorProfileId], references: [id])
+  creatorProfileId   String?
+  creatorProfile     CreatorProfile?   @relation(fields: [creatorProfileId], references: [id])
+  networkId          String?
+  network            NetworkProfile?   @relation(fields: [networkId], references: [id])
   status             ApplicationStatus @default(pending)
+  claimType          ClaimType         @default(INSTANT)
   appliedAt          DateTime          @default(now())
   reviewedAt         DateTime?
   reviewNotes        String?
   followerSnapshot   Int?
   engagementSnapshot Decimal?          @db.Decimal(5, 2)
-  updatedAt          DateTime          @updatedAt
 
-  posts   CampaignPost[]
-  payouts Payout[]
+  // Block 3: Earnings
+  earnedAmount       Int       @default(0)
+  paidAmount         Int       @default(0)
+  lastEarningsCalcAt DateTime?
 
-  @@unique([campaignId, creatorProfileId])
+  updatedAt DateTime @updatedAt
+
+  posts           CampaignPost[]
+  payouts         Payout[]
+  assignedMembers NetworkMemberAssignment[]
+
   @@index([status])
   @@index([campaignId])
   @@index([creatorProfileId])
+  @@index([networkId])
 }
 
 enum ApplicationStatus {
@@ -179,6 +266,11 @@ enum ApplicationStatus {
   disputed
 }
 
+enum ClaimType {
+  INSTANT
+  APPLICATION
+}
+
 // ─────────────────────────────────────────
 // POSTS & VIEW TRACKING
 // ─────────────────────────────────────────
@@ -187,22 +279,36 @@ model CampaignPost {
   id              String              @id @default(cuid())
   applicationId   String
   application     CampaignApplication @relation(fields: [applicationId], references: [id])
-  socialAccountId String
-  socialAccount   SocialAccount       @relation(fields: [socialAccountId], references: [id])
+  socialAccountId String?
+  socialAccount   SocialAccount?      @relation(fields: [socialAccountId], references: [id])
+  networkMemberId String?
+  networkMember   NetworkMember?      @relation(fields: [networkMemberId], references: [id])
   postUrl         String
   platformPostId  String
   platform        SocialPlatform
+  status          PostStatus          @default(submitted)
   submittedAt     DateTime            @default(now())
   approvedAt      DateTime?
-  isApproved      Boolean             @default(true)
+  isApproved      Boolean             @default(false)
   isFraudSuspect  Boolean             @default(false)
   fraudFlags      Json?
+  autoApproveAt   DateTime?
+  isAutoApproved  Boolean             @default(false)
+  verifiedViews   Int                 @default(0)
 
   snapshots ViewSnapshot[]
 
   @@index([applicationId])
   @@index([platformPostId])
   @@index([platform])
+  @@index([status])
+  @@index([autoApproveAt])
+}
+
+enum PostStatus {
+  submitted
+  approved
+  rejected
 }
 
 model ViewSnapshot {
@@ -225,16 +331,16 @@ model ViewSnapshot {
 // ─────────────────────────────────────────
 
 model Message {
-  id          String   @id @default(cuid())
+  id          String    @id @default(cuid())
   campaignId  String
-  campaign    Campaign @relation(fields: [campaignId], references: [id])
+  campaign    Campaign  @relation(fields: [campaignId], references: [id])
   senderId    String
-  sender      User     @relation("SentMessages", fields: [senderId], references: [id])
+  sender      User      @relation("SentMessages", fields: [senderId], references: [id])
   recipientId String
-  recipient   User     @relation("ReceivedMessages", fields: [recipientId], references: [id])
-  content     String   @db.Text
+  recipient   User      @relation("ReceivedMessages", fields: [recipientId], references: [id])
+  content     String    @db.Text
   readAt      DateTime?
-  createdAt   DateTime @default(now())
+  createdAt   DateTime  @default(now())
 
   @@index([campaignId, createdAt])
   @@index([senderId])
@@ -246,26 +352,36 @@ model Message {
 // ─────────────────────────────────────────
 
 model Payout {
-  id               String              @id @default(cuid())
-  applicationId    String
-  application      CampaignApplication @relation(fields: [applicationId], references: [id])
-  creatorProfileId String
-  amount           Decimal             @db.Decimal(12, 6)
-  currency         String              @default("USD")
-  walletAddress    String
-  type             PayoutType
-  status           PayoutStatus        @default(pending)
+  id               String               @id @default(cuid())
+  creatorProfileId String?
+  creatorProfile   CreatorProfile?      @relation(fields: [creatorProfileId], references: [id])
+  networkId        String?
+  network          NetworkProfile?      @relation(fields: [networkId], references: [id])
+  applicationId    String?
+  application      CampaignApplication? @relation(fields: [applicationId], references: [id])
+  amount           Decimal              @db.Decimal(12, 6)
+  currency         String               @default("USD")
+  status           PayoutStatus         @default(pending)
+  type             PayoutType           @default(final)
+  paymentMethod    PaymentMethod?
+  walletAddress    String?
   txHash           String?
   coinbaseChargeId String?
+  stripeTransferId String?
+  periodStart      DateTime?
+  periodEnd        DateTime?
+  applicationIds   String[]
   verifiedViews    Int?
   initiatedAt      DateTime?
   confirmedAt      DateTime?
-  createdAt        DateTime            @default(now())
-  updatedAt        DateTime            @updatedAt
+  processedAt      DateTime?
+  createdAt        DateTime             @default(now())
+  updatedAt        DateTime             @updatedAt
 
   @@index([applicationId])
   @@index([status])
   @@index([creatorProfileId])
+  @@index([networkId])
 }
 
 enum PayoutType {
@@ -280,6 +396,11 @@ enum PayoutStatus {
   confirmed
   failed
   disputed
+}
+
+enum PaymentMethod {
+  CRYPTO
+  STRIPE
 }
 
 // ─────────────────────────────────────────
@@ -319,7 +440,7 @@ model AuditLog {
 }
 
 // ─────────────────────────────────────────
-// INTERNAL OPS (AdFlow)
+// INTERNAL OPS
 // ─────────────────────────────────────────
 
 model Client {
@@ -371,21 +492,21 @@ model InstagramPage {
 }
 
 model InternalCampaign {
-  id            String   @id @default(cuid())
+  id            String    @id @default(cuid())
   clientId      String
-  client        Client   @relation(fields: [clientId], references: [id])
+  client        Client    @relation(fields: [clientId], references: [id])
   name          String
-  status        String   @default("draft")
-  clientPays    Decimal  @db.Decimal(12, 2)
-  totalPageCost Decimal  @default(0) @db.Decimal(12, 2)
+  status        String    @default("draft")
+  clientPays    Decimal   @db.Decimal(12, 2)
+  totalPageCost Decimal   @default(0) @db.Decimal(12, 2)
   adContentUrl  String?
-  adCaption     String?  @db.Text
+  adCaption     String?   @db.Text
   adLink        String?
   startDate     DateTime?
   endDate       DateTime?
-  notes         String?  @db.Text
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  notes         String?   @db.Text
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
 
   campaignPages InternalCampaignPage[]
   payments      OpsPayment[]
@@ -429,10 +550,9 @@ model PaymentNetwork {
   @@index([platform])
 }
 
-// Separate from creator Payouts — this tracks admin's business payments in/out
 model OpsPayment {
   id                 String            @id @default(cuid())
-  direction          String            // "in" | "out"
+  direction          String
   clientId           String?
   client             Client?           @relation(fields: [clientId], references: [id])
   pageId             String?

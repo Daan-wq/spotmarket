@@ -15,7 +15,6 @@ export async function GET(
   const user = await prisma.user.findUnique({
     where: { supabaseId: authUser.id },
     include: {
-      businessProfile: { select: { id: true } },
       creatorProfile: { select: { id: true } },
     },
   });
@@ -25,7 +24,6 @@ export async function GET(
   if (!campaign) return NextResponse.json({ error: "Campaign not found" }, { status: 404 });
 
   const isAdmin = user.role === "admin";
-  const isOwner = user.businessProfile?.id === campaign.businessProfileId;
 
   let isApprovedCreator = false;
   if (user.role === "creator" && user.creatorProfile) {
@@ -39,7 +37,7 @@ export async function GET(
     isApprovedCreator = !!app;
   }
 
-  if (!isAdmin && !isOwner && !isApprovedCreator) {
+  if (!isAdmin && !isApprovedCreator) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 

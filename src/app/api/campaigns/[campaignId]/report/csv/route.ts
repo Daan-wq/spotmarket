@@ -45,6 +45,8 @@ export async function GET(
   ];
 
   for (const app of campaign.applications) {
+    if (!app.creatorProfile) continue;
+
     const creatorData = reportData.creators.find(
       (c) => c.creatorProfileId === app.creatorProfileId
     );

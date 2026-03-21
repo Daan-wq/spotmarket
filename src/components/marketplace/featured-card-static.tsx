@@ -1,7 +1,7 @@
-import { type MockCampaign } from "@/data/mock-campaigns";
+import { type CampaignCardData } from "@/types/campaign-card";
 
 type FeaturedCardStaticProps = {
-  campaign: MockCampaign;
+  campaign: CampaignCardData;
   applyHref: string;
   applyLabel: string;
 };
@@ -30,7 +30,6 @@ export function FeaturedCardStatic({ campaign, applyHref, applyLabel }: Featured
             </div>
             <div>
               <p className="text-xs font-semibold text-white">{campaign.company}</p>
-              <p className="text-xs" style={{ color: "#9ca3af" }}>{campaign.category}</p>
             </div>
           </div>
           <span

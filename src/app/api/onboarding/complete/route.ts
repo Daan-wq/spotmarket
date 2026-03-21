@@ -18,25 +18,19 @@ export async function POST(req: Request) {
 
   const admin = createSupabaseAdminClient();
   await admin.auth.admin.updateUserById(authUser.id, {
-    user_metadata: { role: UserRole.user },
+    user_metadata: { role: UserRole.creator },
   });
 
   const user = await prisma.user.upsert({
     where: { supabaseId: authUser.id },
-    update: { role: UserRole.user },
-    create: { supabaseId: authUser.id, email: authUser.email ?? "", role: UserRole.user },
-    include: { creatorProfile: true, businessProfile: true },
+    update: { role: UserRole.creator },
+    create: { supabaseId: authUser.id, email: authUser.email ?? "", role: UserRole.creator },
+    include: { creatorProfile: true },
   });
 
   if (!user.creatorProfile) {
     await prisma.creatorProfile.create({
       data: { userId: user.id, displayName },
-    });
-  }
-
-  if (!user.businessProfile) {
-    await prisma.businessProfile.create({
-      data: { userId: user.id, companyName: displayName },
     });
   }
 

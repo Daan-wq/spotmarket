@@ -33,9 +33,7 @@ export default async function ApplicationsPage() {
         include: {
           applications: {
             include: {
-              campaign: {
-                include: { businessProfile: { select: { companyName: true } } },
-              },
+              campaign: true,
             },
             orderBy: { appliedAt: "desc" },
           },
@@ -99,10 +97,10 @@ export default async function ApplicationsPage() {
                     className="w-7 h-7 rounded-md flex items-center justify-center text-xs font-bold text-white shrink-0"
                     style={{ background: "#111827" }}
                   >
-                    {app.campaign.businessProfile?.companyName?.slice(0, 2).toUpperCase() ?? "??"}
+                    CA
                   </div>
                   <p className="text-sm font-medium" style={{ color: "#111827" }}>
-                    {app.campaign.businessProfile?.companyName ?? "Brand"}
+                    Campaign
                   </p>
                 </div>
                 <p className="text-sm truncate" style={{ color: "#374151" }}>{app.campaign.name}</p>

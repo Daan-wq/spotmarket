@@ -4,6 +4,17 @@ import Link from "next/link";
 import { ApplicationReviewTable } from "./application-review-table";
 import { CampaignStatusToggle } from "./campaign-status-toggle";
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function toPlain<T>(data: T): T {
+  return JSON.parse(
+    JSON.stringify(data, (_k, v) => {
+      if (typeof v === "bigint") return Number(v);
+      if (v !== null && typeof v === "object" && typeof v.toFixed === "function") return Number(v);
+      return v;
+    })
+  );
+}
+
 export default async function AdminCampaignDetailPage({
   params,
 }: {
@@ -14,7 +25,6 @@ export default async function AdminCampaignDetailPage({
   const campaign = await prisma.campaign.findUnique({
     where: { id: campaignId },
     include: {
-      businessProfile: { select: { companyName: true } },
       applications: {
         include: {
           creatorProfile: {
@@ -41,21 +51,22 @@ export default async function AdminCampaignDetailPage({
 
   if (!campaign) notFound();
 
-  const pending = campaign.applications.filter((a) => a.status === "pending");
-  const approved = campaign.applications.filter((a) =>
+  const c = toPlain(campaign);
+
+  const pending = c.applications.filter((a) => a.status === "pending");
+  const approved = c.applications.filter((a) =>
     ["approved", "active", "completed"].includes(a.status)
   );
-  const rejected = campaign.applications.filter((a) => a.status === "rejected");
+  const rejected = c.applications.filter((a) => a.status === "rejected");
 
   const details = [
-    { label: "Target Geo",      value: campaign.targetGeo.join(", ") },
-    { label: "Creator CPV",     value: `$${campaign.creatorCpv.toString()}/view` },
-    { label: "Total Budget",    value: `$${campaign.totalBudget.toString()}` },
-    { label: "Deadline",        value: new Date(campaign.deadline).toLocaleDateString() },
-    { label: "Min Followers",   value: campaign.minFollowers.toLocaleString() },
-    { label: "Min Engagement",  value: `${campaign.minEngagementRate.toString()}%` },
-    { label: "Admin Margin",    value: `$${campaign.adminMargin.toString()}/view` },
-    { label: "Referral Link",   value: campaign.referralLink.substring(0, 30) + "…" },
+    { label: "Target Geo",     value: c.targetGeo.join(", ") },
+    { label: "Creator rate",   value: `$${(Number(c.creatorCpv) * 1_000_000).toFixed(2)}/1M views` },
+    { label: "Total Budget",   value: `$${c.totalBudget}` },
+    { label: "Deadline",       value: new Date(c.deadline).toLocaleDateString() },
+    { label: "Min Engagement", value: `${c.minEngagementRate}%` },
+    { label: "Your margin",    value: `$${(Number(c.adminMargin) * 1_000_000).toFixed(2)}/1M views` },
+    { label: "Referral Link",  value: c.referralLink ? c.referralLink.substring(0, 30) + "…" : "—" },
   ];
 
   return (
@@ -66,10 +77,9 @@ export default async function AdminCampaignDetailPage({
           <Link href="/admin/campaigns" className="text-sm hover:underline" style={{ color: "#94a3b8" }}>
             ← Campaigns
           </Link>
-          <h1 className="text-2xl font-semibold mt-2" style={{ color: "#0f172a" }}>{campaign.name}</h1>
-          <p className="text-sm mt-1" style={{ color: "#64748b" }}>{campaign.businessProfile.companyName}</p>
+          <h1 className="text-2xl font-semibold mt-2" style={{ color: "#0f172a" }}>{c.name}</h1>
         </div>
-        <CampaignStatusToggle campaignId={campaign.id} currentStatus={campaign.status} />
+        <CampaignStatusToggle campaignId={c.id} currentStatus={c.status} />
       </div>
 
       {/* Details grid */}
@@ -96,11 +106,12 @@ export default async function AdminCampaignDetailPage({
           </p>
           <p className="text-sm" style={{ color: "#94a3b8" }}>
             Rejected ({rejected.length})
+
           </p>
         </div>
         <ApplicationReviewTable
-          applications={campaign.applications}
-          campaignId={campaign.id}
+          applications={c.applications.filter((app) => app.creatorProfile !== null) as Parameters<typeof ApplicationReviewTable>[0]["applications"]}
+          campaignId={c.id}
         />
       </div>
     </div>

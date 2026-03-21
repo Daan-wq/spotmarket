@@ -81,7 +81,7 @@ export default async function AdminCampaignReportPage({
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-50">
-                {campaign.applications.map((app) => {
+                {campaign.applications.filter((app) => app.creatorProfile !== null).map((app) => {
                   const reportData = campaign.report?.dataJson as {
                     creators: { creatorProfileId: string; verifiedViews: number; earnings: number }[];
                   } | null;
@@ -94,10 +94,10 @@ export default async function AdminCampaignReportPage({
                   return (
                     <tr key={app.id}>
                       <td className="px-6 py-3">
-                        <p className="font-medium text-gray-900">{app.creatorProfile.displayName}</p>
-                        {app.creatorProfile.walletAddress && (
+                        <p className="font-medium text-gray-900">{app.creatorProfile!.displayName}</p>
+                        {app.creatorProfile!.walletAddress && (
                           <p className="text-xs text-gray-400 font-mono">
-                            {app.creatorProfile.walletAddress.substring(0, 10)}…
+                            {app.creatorProfile!.walletAddress.substring(0, 10)}…
                           </p>
                         )}
                       </td>

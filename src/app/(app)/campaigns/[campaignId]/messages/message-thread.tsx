@@ -8,7 +8,6 @@ interface MessageSender {
   supabaseId: string;
   role: string;
   creatorProfile?: { displayName: string } | null;
-  businessProfile?: { companyName: string } | null;
 }
 
 interface Message {
@@ -21,8 +20,7 @@ interface Message {
 
 function getSenderName(sender: MessageSender): string {
   if (sender.creatorProfile) return sender.creatorProfile.displayName;
-  if (sender.businessProfile) return sender.businessProfile.companyName;
-  return "Admin";
+  return sender.role === "admin" ? "Admin" : "User";
 }
 
 interface MessageThreadProps {
@@ -75,7 +73,7 @@ export function MessageThread({
       content: input.trim(),
       senderId: currentUserId,
       createdAt: new Date().toISOString(),
-      sender: { id: currentUserId, supabaseId: "", role: "user", creatorProfile: null, businessProfile: null },
+      sender: { id: currentUserId, supabaseId: "", role: "user", creatorProfile: null },
     };
     setMessages((prev) => [...prev, optimistic]);
     const text = input.trim();

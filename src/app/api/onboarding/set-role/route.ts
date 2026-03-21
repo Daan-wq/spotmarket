@@ -4,7 +4,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { UserRole } from "@prisma/client";
 
-const ALLOWED_ROLES: UserRole[] = [UserRole.creator, UserRole.business];
+const ALLOWED_ROLES: UserRole[] = [UserRole.creator, UserRole.network];
 
 export async function POST(req: Request) {
   const supabase = await createSupabaseServerClient();
@@ -27,18 +27,12 @@ export async function POST(req: Request) {
     where: { supabaseId: authUser.id },
     update: { role },
     create: { supabaseId: authUser.id, email: authUser.email ?? "", role },
-    include: { creatorProfile: true, businessProfile: true },
+    include: { creatorProfile: true },
   });
 
   if (role === UserRole.creator && !user.creatorProfile) {
     await prisma.creatorProfile.create({
       data: { userId: user.id, displayName: "New Creator" },
-    });
-  }
-
-  if (role === UserRole.business && !user.businessProfile) {
-    await prisma.businessProfile.create({
-      data: { userId: user.id, companyName: "My Company" },
     });
   }
 

@@ -17,7 +17,6 @@ export async function POST(
 
   const user = await prisma.user.findUnique({
     where: { supabaseId: authUser.id },
-    include: { businessProfile: { select: { id: true } } },
   });
   if (!user) return NextResponse.json({ error: "User not found" }, { status: 404 });
 
@@ -25,8 +24,7 @@ export async function POST(
   if (!campaign) return NextResponse.json({ error: "Campaign not found" }, { status: 404 });
 
   const isAdmin = user.role === "admin";
-  const isOwner = user.businessProfile?.id === campaign.businessProfileId;
-  if (!isAdmin && !isOwner) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  if (!isAdmin) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
   const body = await req.json();
   const parsed = inviteSchema.safeParse(body);
@@ -40,8 +38,8 @@ export async function POST(
   });
   if (!creatorProfile) return NextResponse.json({ error: "Creator not found" }, { status: 404 });
 
-  const existing = await prisma.campaignApplication.findUnique({
-    where: { campaignId_creatorProfileId: { campaignId, creatorProfileId: parsed.data.creatorProfileId } },
+  const existing = await prisma.campaignApplication.findFirst({
+    where: { campaignId, creatorProfileId: parsed.data.creatorProfileId },
   });
 
   if (existing && ["approved", "active", "completed"].includes(existing.status)) {

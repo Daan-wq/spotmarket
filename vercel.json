@@ -7,6 +7,14 @@
     {
       "path": "/api/cron/refresh-tokens",
       "schedule": "0 9 * * 1"
+    },
+    {
+      "path": "/api/cron/auto-approve",
+      "schedule": "0 9 * * *"
+    },
+    {
+      "path": "/api/cron/weekly-payouts",
+      "schedule": "0 0 * * 1"
     }
   ]
 }

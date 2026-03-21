@@ -55,17 +55,19 @@ async function getCampaignAnalytics(campaignId: string) {
   const creatorCpv = parseFloat(campaign.creatorCpv.toString());
   const adminMarginCpv = parseFloat(campaign.adminMargin.toString());
 
-  const postBreakdown = posts.map((p: typeof posts[number]) => {
-    const latestViews = p.snapshots[0]?.viewsCount ?? 0;
-    return {
-      id: p.id,
-      postUrl: p.postUrl,
-      creatorName: p.application.creatorProfile.displayName,
-      views: latestViews,
-      creatorEarnings: latestViews * creatorCpv,
-      platformRevenue: latestViews * adminMarginCpv,
-    };
-  });
+  const postBreakdown = posts
+    .filter((p) => p.application.creatorProfile !== null)
+    .map((p: typeof posts[number]) => {
+      const latestViews = p.snapshots[0]?.viewsCount ?? 0;
+      return {
+        id: p.id,
+        postUrl: p.postUrl,
+        creatorName: p.application.creatorProfile!.displayName,
+        views: latestViews,
+        creatorEarnings: latestViews * creatorCpv,
+        platformRevenue: latestViews * adminMarginCpv,
+      };
+    });
 
   const totalCreatorEarnings = postBreakdown.reduce((s: number, p: { creatorEarnings: number }) => s + p.creatorEarnings, 0);
   const totalPlatformRevenue = postBreakdown.reduce((s: number, p: { platformRevenue: number }) => s + p.platformRevenue, 0);

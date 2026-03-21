@@ -63,7 +63,6 @@ export async function PATCH(
 
   const user = await prisma.user.findUnique({
     where: { supabaseId: authUser.id },
-    include: { businessProfile: { select: { id: true } } },
   });
   if (!user) return NextResponse.json({ error: "User not found" }, { status: 404 });
 
@@ -71,8 +70,7 @@ export async function PATCH(
   if (!campaign) return NextResponse.json({ error: "Campaign not found" }, { status: 404 });
 
   const isAdmin = user.role === "admin";
-  const isOwner = user.businessProfile?.id === campaign.businessProfileId;
-  if (!isAdmin && !isOwner) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  if (!isAdmin) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
   const body = await req.json();
   const parsed = patchSchema.safeParse(body);
@@ -95,6 +93,10 @@ export async function PATCH(
     return NextResponse.json({ error: "Application not found" }, { status: 404 });
   }
 
+  if (!application.creatorProfile) {
+    return NextResponse.json({ error: "Creator profile not found" }, { status: 404 });
+  }
+
   const igAccount = application.creatorProfile.socialAccounts[0];
 
   const updated = await prisma.campaignApplication.update({
@@ -110,7 +112,7 @@ export async function PATCH(
     },
   });
 
-  const creatorUserId = application.creatorProfile.user.supabaseId;
+  const creatorUserId = application.creatorProfile!.user.supabaseId;
   try {
     await broadcast(
       realtimeChannel.userNotifications(creatorUserId),
@@ -123,7 +125,7 @@ export async function PATCH(
     console.error("Realtime broadcast failed:", err);
   }
 
-  const creatorEmail = application.creatorProfile.user.email;
+  const creatorEmail = application.creatorProfile!.user.email;
   const resend = getResend();
   if (creatorEmail && resend) {
     const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";

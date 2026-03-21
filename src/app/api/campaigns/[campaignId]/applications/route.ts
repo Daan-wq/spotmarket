@@ -14,18 +14,17 @@ export async function GET(
 
   const user = await prisma.user.findUnique({
     where: { supabaseId: authUser.id },
-    include: { creatorProfile: { select: { id: true } }, businessProfile: { select: { id: true } } },
+    include: { creatorProfile: { select: { id: true } } },
   });
   if (!user) return NextResponse.json({ error: "User not found" }, { status: 404 });
 
-  const campaign = await prisma.campaign.findUnique({ where: { id: campaignId }, select: { businessProfileId: true } });
+  const campaign = await prisma.campaign.findUnique({ where: { id: campaignId } });
   if (!campaign) return NextResponse.json({ error: "Campaign not found" }, { status: 404 });
 
   const isAdmin = user.role === "admin";
-  const isOwner = user.businessProfile?.id === campaign.businessProfileId;
 
   let where: object = { campaignId };
-  if (!isAdmin && !isOwner) {
+  if (!isAdmin) {
     if (!user.creatorProfile) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     where = { campaignId, creatorProfileId: user.creatorProfile.id };
   }
@@ -69,8 +68,8 @@ export async function POST(
   if (!campaign || campaign.status !== "active") return NextResponse.json({ error: "Campaign is not accepting applications" }, { status: 400 });
   if (new Date() > campaign.deadline) return NextResponse.json({ error: "Campaign deadline has passed" }, { status: 400 });
 
-  const existing = await prisma.campaignApplication.findUnique({
-    where: { campaignId_creatorProfileId: { campaignId, creatorProfileId: user.creatorProfile.id } },
+  const existing = await prisma.campaignApplication.findFirst({
+    where: { campaignId, creatorProfileId: user.creatorProfile.id },
   });
   if (existing) return NextResponse.json({ error: "Already applied to this campaign" }, { status: 409 });
 

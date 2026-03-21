@@ -2,16 +2,15 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { type MockCampaign } from "@/data/mock-campaigns";
+import { type CampaignCardData } from "@/types/campaign-card";
 
 type DealCardProps = {
-  campaign: MockCampaign;
-  isMock: boolean;
+  campaign: CampaignCardData;
   creatorProfileId?: string;
   applicationStatus?: string;
 };
 
-export function DealCard({ campaign, isMock, applicationStatus }: DealCardProps) {
+export function DealCard({ campaign, applicationStatus }: DealCardProps) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
 
@@ -25,7 +24,6 @@ export function DealCard({ campaign, isMock, applicationStatus }: DealCardProps)
   };
 
   async function handleApply() {
-    if (isMock) return;
     setLoading(true);
     try {
       const res = await fetch(`/api/campaigns/${campaign.id}/applications`, { method: "POST" });
@@ -49,53 +47,29 @@ export function DealCard({ campaign, isMock, applicationStatus }: DealCardProps)
       }}
     >
       {/* Brand row */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2.5">
-          <div
-            className="w-8 h-8 rounded-lg flex items-center justify-center text-xs font-bold text-white shrink-0"
-            style={{ background: "#111827" }}
-          >
-            {campaign.companyInitial}
-          </div>
-          <p className="text-sm font-semibold" style={{ color: "#111827" }}>{campaign.company}</p>
+      <div className="flex items-center gap-2.5">
+        <div
+          className="w-8 h-8 rounded-lg flex items-center justify-center text-xs font-bold text-white shrink-0"
+          style={{ background: "#111827" }}
+        >
+          {campaign.companyInitial}
         </div>
-        {isMock && (
-          <span className="text-xs" style={{ color: "#9ca3af" }}>Preview</span>
-        )}
+        <p className="text-sm font-semibold" style={{ color: "#111827" }}>{campaign.company}</p>
       </div>
 
-      {/* Campaign name */}
-      <p className="text-sm font-medium leading-snug" style={{ color: "#374151" }}>
-        {campaign.name}
-      </p>
+      <p className="text-sm font-medium leading-snug" style={{ color: "#374151" }}>{campaign.name}</p>
 
-      {/* Budget + countdown */}
       <div className="flex items-baseline gap-3">
         <span className="text-xl font-bold tracking-tight" style={{ color: "#111827" }}>
           {campaign.currency}{(campaign.totalBudget / 1000).toFixed(0)}K
         </span>
-        <span className="text-xs" style={{ color: "#9ca3af" }}>
-          {campaign.daysLeft}d left
-        </span>
+        <span className="text-xs" style={{ color: "#9ca3af" }}>{campaign.daysLeft}d left</span>
       </div>
 
-      {/* Footer */}
       <div className="flex items-center justify-between mt-auto pt-1" style={{ borderTop: "1px solid #f3f4f6" }}>
         <span className="text-xs" style={{ color: "#9ca3af" }}>Paid Per View</span>
-
-        {isMock ? (
-          <a
-            href="/api/auth/instagram"
-            className="text-xs font-semibold px-3 py-1.5 rounded-lg transition-opacity"
-            style={{ background: "#111827", color: "#ffffff" }}
-          >
-            Connect
-          </a>
-        ) : applicationStatus && statusConfig[applicationStatus] ? (
-          <span
-            className="text-xs font-semibold px-2.5 py-1 rounded-full"
-            style={statusConfig[applicationStatus]}
-          >
+        {applicationStatus && statusConfig[applicationStatus] ? (
+          <span className="text-xs font-semibold px-2.5 py-1 rounded-full" style={statusConfig[applicationStatus]}>
             {statusConfig[applicationStatus].label}
           </span>
         ) : (

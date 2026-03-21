@@ -4,18 +4,39 @@ import { prisma } from "@/lib/prisma";
 import { z } from "zod";
 
 const createCampaignSchema = z.object({
+  // Section 1
   name: z.string().min(1).max(200),
+  platform: z.enum(["INSTAGRAM", "TIKTOK", "BOTH"]).optional().default("INSTAGRAM"),
+  contentType: z.string().max(100).optional(),
   description: z.string().max(2000).optional(),
   contentGuidelines: z.string().max(5000).optional(),
-  referralLink: z.string().url("Must be a valid URL"),
-  targetGeo: z.array(z.string().length(2)).min(1, "At least one geo required"),
-  minFollowers: z.number().int().min(0),
-  minEngagementRate: z.number().min(0).max(100),
+  requirements: z.string().max(2000).optional(),
+  otherNotes: z.string().max(2000).optional(),
+
+  // Section 2
+  targetCountry: z.string().length(2).optional(),
+  targetCountryPercent: z.number().int().min(0).max(100).optional(),
+  targetMinAge18Percent: z.number().int().min(0).max(100).optional(),
+  targetMalePercent: z.number().int().min(0).max(100).optional(),
+  minEngagementRate: z.number().min(0).max(100).optional().default(0),
+
+  // Section 3 — budget/goals via CPM
   totalBudget: z.number().positive(),
-  creatorCpv: z.number().positive(),
-  adminMargin: z.number().min(0),
+  goalViews: z.number().int().positive().optional(),
+  adminMarginPerM: z.number().min(0).optional().default(0),
+
+  // Section 4
   deadline: z.string().datetime(),
+  startsAt: z.string().datetime().optional(),
+  referralLink: z.string().optional().refine((v) => !v || /^https?:\/\//.test(v), "Referral link must start with https://"),
+  bannerUrl: z.string().optional().refine((v) => !v || /^https?:\/\//.test(v), "Must be a valid URL"),
+  contentAssetUrls: z.array(z.string().url()).optional().default([]),
+
+  // Keep for backwards compat / direct slots config
   briefAssetUrl: z.string().url().optional(),
+  maxSlots: z.number().int().positive().optional(),
+  requiresApproval: z.boolean().optional().default(false),
+  guidelinesUrl: z.string().optional().refine((v) => !v || /^https?:\/\//.test(v), "Must be a valid URL"),
 });
 
 export async function GET(req: Request) {
@@ -27,7 +48,6 @@ export async function GET(req: Request) {
     where: { supabaseId: authUser.id },
     include: {
       creatorProfile: { select: { id: true, totalFollowers: true, engagementRate: true, primaryGeo: true } },
-      businessProfile: { select: { id: true } },
     },
   });
   if (!user) return NextResponse.json({ error: "User not found" }, { status: 404 });
@@ -40,13 +60,10 @@ export async function GET(req: Request) {
 
   let where: object = {};
 
-  if (user.role === "business" && user.businessProfile) {
-    where = { businessProfileId: user.businessProfile.id };
-  } else if (user.role === "creator" && user.creatorProfile) {
+  if (user.role === "creator" && user.creatorProfile) {
     const cp = user.creatorProfile;
     where = {
       status: "active",
-      minFollowers: { lte: cp.totalFollowers },
       minEngagementRate: { lte: cp.engagementRate },
       targetGeo: { has: cp.primaryGeo },
     };
@@ -58,7 +75,6 @@ export async function GET(req: Request) {
     prisma.campaign.findMany({
       where,
       include: {
-        businessProfile: { select: { companyName: true } },
         _count: { select: { applications: true } },
       },
       orderBy: { createdAt: "desc" },
@@ -68,7 +84,10 @@ export async function GET(req: Request) {
     prisma.campaign.count({ where }),
   ]);
 
-  return NextResponse.json({ campaigns, total, page, limit });
+  // Serialize BigInt fields for JSON
+  const serialized = campaigns.map((c) => ({ ...c, goalViews: c.goalViews ? Number(c.goalViews) : null }));
+
+  return NextResponse.json({ campaigns: serialized, total, page, limit });
 }
 
 export async function POST(req: Request) {
@@ -78,15 +97,10 @@ export async function POST(req: Request) {
 
   const user = await prisma.user.findUnique({
     where: { supabaseId: authUser.id },
-    include: { businessProfile: { select: { id: true } } },
   });
 
-  if (!user || (user.role !== "admin" && user.role !== "business")) {
+  if (!user || user.role !== "admin") {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-  }
-
-  if (!user.businessProfile) {
-    return NextResponse.json({ error: "Business profile required" }, { status: 400 });
   }
 
   const body = await req.json();
@@ -96,24 +110,61 @@ export async function POST(req: Request) {
   }
 
   const d = parsed.data;
-  const campaign = await prisma.campaign.create({
-    data: {
-      businessProfileId: user.businessProfile.id,
-      name: d.name,
-      description: d.description,
-      contentGuidelines: d.contentGuidelines,
-      referralLink: d.referralLink,
-      targetGeo: d.targetGeo.map((g) => g.toUpperCase()),
-      minFollowers: d.minFollowers,
-      minEngagementRate: d.minEngagementRate,
-      totalBudget: d.totalBudget,
-      creatorCpv: d.creatorCpv,
-      adminMargin: d.adminMargin,
-      businessCpv: d.creatorCpv + d.adminMargin,
-      deadline: new Date(d.deadline),
-      briefAssetUrl: d.briefAssetUrl,
-    },
-  });
 
-  return NextResponse.json(campaign, { status: 201 });
+  // Compute CPV values from CPM inputs
+  const adminMarginCpv = d.adminMarginPerM / 1_000_000;
+  const businessCpv = d.goalViews ? d.totalBudget / d.goalViews : adminMarginCpv;
+  const creatorCpv = businessCpv - adminMarginCpv;
+
+  if (creatorCpv < 0) {
+    return NextResponse.json({ error: "Admin margin is too high — creator CPM would be negative" }, { status: 400 });
+  }
+
+  // Derive targetGeo from targetCountry for creator matching
+  const targetGeo = d.targetCountry ? [d.targetCountry.toUpperCase()] : [];
+
+  let campaign;
+  try {
+    campaign = await prisma.campaign.create({
+      data: {
+        name: d.name,
+        platform: d.platform,
+        contentType: d.contentType,
+        description: d.description,
+        contentGuidelines: d.contentGuidelines,
+        requirements: d.requirements,
+        otherNotes: d.otherNotes,
+        referralLink: d.referralLink || null,
+        targetGeo,
+        minFollowers: 0,
+        minEngagementRate: d.minEngagementRate,
+        totalBudget: d.totalBudget,
+        creatorCpv,
+        adminMargin: adminMarginCpv,
+        businessCpv,
+        goalViews: d.goalViews ? BigInt(d.goalViews) : null,
+        deadline: new Date(d.deadline),
+        startsAt: d.startsAt ? new Date(d.startsAt) : null,
+        briefAssetUrl: d.briefAssetUrl,
+        maxSlots: d.maxSlots,
+        requiresApproval: d.requiresApproval,
+        targetCountry: d.targetCountry,
+        targetCountryPercent: d.targetCountryPercent,
+        targetMinAge18Percent: d.targetMinAge18Percent,
+        targetMalePercent: d.targetMalePercent,
+        bannerUrl: d.bannerUrl,
+        contentAssetUrls: d.contentAssetUrls,
+        guidelinesUrl: d.guidelinesUrl,
+      },
+    });
+  } catch (err) {
+    console.error("[POST /api/campaigns]", err);
+    const message = err instanceof Error ? err.message : "Database error";
+    return NextResponse.json({ error: message }, { status: 500 });
+  }
+
+  const payload = JSON.parse(
+    JSON.stringify(campaign, (_key, value) => (typeof value === "bigint" ? Number(value) : value))
+  );
+  return NextResponse.json(payload, { status: 201 });
 }

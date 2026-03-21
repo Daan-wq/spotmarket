@@ -75,7 +75,7 @@ export default async function CampaignPostsPage({
       </div>
       <h1 className="text-xl font-bold text-gray-900 mb-1">{application.campaign.name}</h1>
       <p className="text-sm text-gray-500 mb-6">
-        CPV: ${creatorCpv.toFixed(4)} · Status: {application.status}
+        ${(creatorCpv * 1_000_000).toFixed(0)}/1M views · Status: {application.status}
       </p>
 
       <div className="grid grid-cols-2 gap-4 mb-6">

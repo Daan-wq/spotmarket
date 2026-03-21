@@ -1,5 +1,8 @@
 import { prisma } from "@/lib/prisma";
 import { PayoutActionsRow } from "./payout-actions-row";
+import { PageHeader } from "@/components/admin/page-header";
+import { StatCards } from "@/components/admin/stat-cards";
+import { EmptyState } from "@/components/admin/empty-state";
 
 export default async function AdminPayoutsPage() {
   const payouts = await prisma.payout.findMany({
@@ -7,9 +10,7 @@ export default async function AdminPayoutsPage() {
       application: {
         include: {
           campaign: { select: { name: true } },
-          creatorProfile: {
-            select: { displayName: true, walletAddress: true },
-          },
+          creatorProfile: { select: { displayName: true, walletAddress: true } },
         },
       },
     },
@@ -20,14 +21,36 @@ export default async function AdminPayoutsPage() {
   const processing = payouts.filter((p) => p.status === "processing" || p.status === "sent");
   const done = payouts.filter((p) => p.status === "confirmed" || p.status === "failed");
 
-  const totalPending = pending.reduce((sum, p) => sum + parseFloat(p.amount.toString()), 0);
+  const now = new Date();
+  const paidThisMonth = payouts
+    .filter((p) => {
+      const d = new Date(p.createdAt);
+      return (
+        p.status === "confirmed" &&
+        d.getMonth() === now.getMonth() &&
+        d.getFullYear() === now.getFullYear()
+      );
+    })
+    .reduce((sum, p) => sum + parseFloat(p.amount.toString()), 0);
 
-  const Section = ({ title, items, readonly = false }: { title: string; items: typeof payouts; readonly?: boolean }) => (
-    <div className="rounded-xl overflow-hidden mb-4" style={{ border: "1px solid #e2e8f0" }}>
-      <div className="px-5 py-3" style={{ borderBottom: "1px solid #f1f5f9", background: "#ffffff" }}>
-        <p className="text-sm font-medium" style={{ color: "#0f172a" }}>{title}</p>
+  const totalPaid = payouts
+    .filter((p) => p.status === "confirmed")
+    .reduce((sum, p) => sum + parseFloat(p.amount.toString()), 0);
+
+  const Section = ({
+    title,
+    items,
+    readonly = false,
+  }: {
+    title: string;
+    items: typeof payouts;
+    readonly?: boolean;
+  }) => (
+    <div className="rounded-lg overflow-hidden mb-4 border border-gray-200">
+      <div className="px-5 py-3 border-b border-gray-100 bg-white">
+        <p className="text-[13px] font-medium text-gray-900">{title}</p>
       </div>
-      <div style={{ background: "#ffffff" }}>
+      <div className="bg-white">
         {items.map((p) => (
           <PayoutActionsRow key={p.id} payout={p as any} readonly={readonly} />
         ))}
@@ -37,20 +60,27 @@ export default async function AdminPayoutsPage() {
 
   return (
     <div className="p-8 max-w-5xl">
-      <div className="mb-8 flex items-end justify-between">
-        <div>
-          <h1 className="text-2xl font-semibold" style={{ color: "#0f172a" }}>Payouts</h1>
-          <p className="text-sm mt-1" style={{ color: "#64748b" }}>Manage creator payouts.</p>
-        </div>
-        <div className="text-right">
-          <p className="text-xs mb-0.5" style={{ color: "#94a3b8" }}>Pending total</p>
-          <p className="text-xl font-semibold" style={{ color: "#0f172a" }}>${totalPending.toFixed(2)}</p>
-        </div>
-      </div>
+      <PageHeader title="Payouts" subtitle="Review and process creator payouts" />
+      <StatCards
+        stats={[
+          { label: "Pending review", value: pending.length },
+          { label: "Processing", value: processing.length },
+          { label: "Paid this month", value: `$${paidThisMonth.toFixed(2)}` },
+          { label: "Total paid", value: `$${totalPaid.toFixed(2)}` },
+        ]}
+      />
 
       {payouts.length === 0 ? (
-        <div className="rounded-xl px-6 py-16 text-center" style={{ border: "1px solid #e2e8f0", background: "#ffffff" }}>
-          <p className="text-sm" style={{ color: "#94a3b8" }}>No payouts yet.</p>
+        <div className="bg-white rounded-lg border border-gray-200">
+          <EmptyState
+            icon={
+              <svg width="20" height="20" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M21 12a2.25 2.25 0 0 0-2.25-2.25H15a3 3 0 1 1-6 0H5.25A2.25 2.25 0 0 0 3 12m18 0v6a2.25 2.25 0 0 1-2.25 2.25H5.25A2.25 2.25 0 0 1 3 18v-6m18 0V9M3 12V9m18 0a2.25 2.25 0 0 0-2.25-2.25H5.25A2.25 2.25 0 0 0 3 9m18 0V6a2.25 2.25 0 0 0-2.25-2.25H5.25A2.25 2.25 0 0 0 3 6v3" />
+              </svg>
+            }
+            title="No payouts yet"
+            description="Payouts are generated automatically each week based on verified views. They'll appear here for your review."
+          />
         </div>
       ) : (
         <>

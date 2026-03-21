@@ -10,12 +10,12 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   if (!user) redirect("/sign-in");
   if (user.user_metadata?.role === "admin") redirect("/admin");
 
-  // Redirect business users to their dedicated dashboard
+  // Redirect network users to their dedicated dashboard
   const dbUser = await prisma.user.findUnique({
     where: { supabaseId: user.id },
     select: { role: true },
   });
-  if (dbUser?.role === "business") redirect("/business");
+  if (dbUser?.role === "network") redirect("/network/dashboard");
 
   return (
     <div className="flex h-screen" style={{ background: "#f9fafb" }}>

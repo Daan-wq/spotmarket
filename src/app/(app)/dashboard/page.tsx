@@ -1,12 +1,11 @@
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { prisma } from "@/lib/prisma";
 import { redirect } from "next/navigation";
-import { MOCK_CAMPAIGNS } from "@/data/mock-campaigns";
 import { StatCard } from "@/components/dashboard/stat-card";
 import { DealCard } from "@/components/dashboard/deal-card";
 import { ApplicationRow } from "@/components/dashboard/application-row";
 import { TopHeader } from "@/components/dashboard/top-header";
-import type { MockCampaign } from "@/data/mock-campaigns";
+import type { CampaignCardData } from "@/types/campaign-card";
 
 function timeAgo(date: Date): string {
   const diff = Date.now() - date.getTime();
@@ -30,7 +29,7 @@ export default async function DashboardPage() {
           socialAccounts: true,
           applications: {
             include: {
-              campaign: { include: { businessProfile: { select: { companyName: true } } } },
+              campaign: true,
               payouts: { where: { status: { in: ["confirmed", "sent"] } } },
               posts: { include: { snapshots: { orderBy: { capturedAt: "desc" }, take: 1 } } },
             },
@@ -39,22 +38,15 @@ export default async function DashboardPage() {
           },
         },
       },
-      businessProfile: {
-        include: { campaigns: { orderBy: { createdAt: "desc" }, take: 4 } },
-      },
     },
   });
 
   const creatorProfile = user?.creatorProfile;
   const hasInstagram = creatorProfile?.socialAccounts.some(a => a.platform === "instagram");
 
-  // Real campaigns from DB
-  const realCampaigns = await prisma.campaign.findMany({
+  const campaigns = await prisma.campaign.findMany({
     where: { status: "active" },
-    include: {
-      businessProfile: { select: { companyName: true } },
-      _count: { select: { applications: true } },
-    },
+    include: { _count: { select: { applications: true } } },
     orderBy: { createdAt: "desc" },
     take: 4,
   });
@@ -63,30 +55,22 @@ export default async function DashboardPage() {
     creatorProfile?.applications.map(a => [a.campaignId, a.status]) ?? []
   );
 
-  const useMock = realCampaigns.length === 0;
+  const campaignCards: CampaignCardData[] = campaigns.map(c => ({
+    id: c.id,
+    name: c.name,
+    company: "Campaign",
+    companyInitial: c.name.slice(0, 2).toUpperCase(),
+    description: c.description ?? "",
+    totalBudget: Number(c.totalBudget),
+    currency: "€",
+    cpvLabel: `~$${(Number(c.creatorCpv) * 1_000_000).toFixed(0)}/1M views`,
+    geo: c.targetGeo,
+    daysLeft: Math.max(0, Math.ceil((c.deadline.getTime() - Date.now()) / 86400000)),
+    applicants: c._count.applications,
+    maxApplicants: c.maxSlots ?? 100,
+    minFollowers: c.minFollowers,
+  }));
 
-  const displayCampaigns: MockCampaign[] = useMock
-    ? MOCK_CAMPAIGNS.filter(c => !c.featured).slice(0, 4)
-    : realCampaigns.map(c => ({
-        id: c.id,
-        name: c.name,
-        company: c.businessProfile.companyName,
-        companyInitial: c.businessProfile.companyName.slice(0, 2).toUpperCase(),
-        description: c.description ?? "",
-        category: "Lifestyle" as const,
-        totalBudget: Number(c.totalBudget ?? 0),
-        currency: "€",
-        cpvLabel: `~€${c.creatorCpv?.toString() ?? "0"}/view`,
-        geo: c.targetGeo,
-        deadline: c.deadline.toISOString(),
-        daysLeft: Math.max(0, Math.ceil((c.deadline.getTime() - Date.now()) / 86400000)),
-        applicants: c._count.applications,
-        maxApplicants: 100,
-        featured: false,
-        minFollowers: c.minFollowers,
-      }));
-
-  // Stat calculations
   const followers = creatorProfile?.totalFollowers ?? 0;
   const engagementRate = Number(creatorProfile?.engagementRate ?? 0);
 
@@ -98,25 +82,14 @@ export default async function DashboardPage() {
     return sum + app.posts.reduce((s, post) => s + (post.snapshots[0]?.viewsCount ?? 0), 0);
   }, 0);
 
-  // Applications for right panel — real or mock
-  const mockApplications = [
-    { brandInitial: "NK", brandName: "Nike",     campaignName: "Air Max Launch",   status: "approved", budget: "€25K", timeAgo: "3h ago" },
-    { brandInitial: "SP", brandName: "Spotify",  campaignName: "Wrapped Campaign", status: "pending",  budget: "€20K", timeAgo: "1d ago" },
-    { brandInitial: "SS", brandName: "Samsung",  campaignName: "Galaxy S Series",  status: "draft",    budget: "€28K", timeAgo: "2d ago" },
-    { brandInitial: "LO", brandName: "L'Oréal",  campaignName: "Summer Glow",      status: "rejected", budget: "€9.5K","timeAgo": "3d ago" },
-  ];
-
-  const realApplications = (creatorProfile?.applications ?? []).map(app => ({
-    brandInitial: app.campaign.businessProfile?.companyName?.slice(0, 2).toUpperCase() ?? "??",
-    brandName: app.campaign.businessProfile?.companyName ?? "Brand",
+  const applications = (creatorProfile?.applications ?? []).map(app => ({
+    brandInitial: app.campaign.name.slice(0, 2).toUpperCase(),
+    brandName: app.campaign.name,
     campaignName: app.campaign.name,
     status: app.status,
     budget: "—",
     timeAgo: timeAgo(new Date(app.appliedAt)),
   }));
-
-  const displayApplications = realApplications.length > 0 ? realApplications : mockApplications;
-  const showMockApps = realApplications.length === 0;
 
   return (
     <div className="flex flex-col h-full" style={{ background: "#f9fafb" }}>
@@ -127,7 +100,6 @@ export default async function DashboardPage() {
       />
 
       <div className="flex-1 overflow-auto p-6">
-        {/* Instagram banner */}
         {!hasInstagram && (
           <div
             className="mb-6 flex items-center justify-between px-4 py-3 rounded-lg"
@@ -142,7 +114,6 @@ export default async function DashboardPage() {
           </div>
         )}
 
-        {/* Stat cards */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
           <StatCard
             label="Total Followers"
@@ -166,29 +137,29 @@ export default async function DashboardPage() {
           />
         </div>
 
-        {/* Main two-column area */}
         <div className="flex gap-6 items-start">
-          {/* Left: Brand Campaigns */}
+          {/* Left: Campaigns */}
           <div className="flex-1 min-w-0">
             <div className="flex items-center justify-between mb-4">
-              <h2 className="text-sm font-semibold" style={{ color: "#111827" }}>
-                Brand Campaigns Available
-              </h2>
-              <a href="/campaigns" className="text-xs font-medium" style={{ color: "#6b7280" }}>
-                View all →
-              </a>
+              <h2 className="text-sm font-semibold" style={{ color: "#111827" }}>Brand Campaigns Available</h2>
+              <a href="/campaigns" className="text-xs font-medium" style={{ color: "#6b7280" }}>View all →</a>
             </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              {displayCampaigns.map(campaign => (
-                <DealCard
-                  key={campaign.id}
-                  campaign={campaign}
-                  isMock={useMock}
-                  creatorProfileId={creatorProfile?.id}
-                  applicationStatus={appliedMap.get(campaign.id)}
-                />
-              ))}
-            </div>
+            {campaignCards.length === 0 ? (
+              <div className="rounded-xl px-6 py-10 text-center" style={{ border: "1px solid #e5e7eb" }}>
+                <p className="text-sm" style={{ color: "#9ca3af" }}>No active campaigns right now.</p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                {campaignCards.map(campaign => (
+                  <DealCard
+                    key={campaign.id}
+                    campaign={campaign}
+                    creatorProfileId={creatorProfile?.id}
+                    applicationStatus={appliedMap.get(campaign.id)}
+                  />
+                ))}
+              </div>
+            )}
           </div>
 
           {/* Right: Applications */}
@@ -196,18 +167,12 @@ export default async function DashboardPage() {
             className="w-72 shrink-0 rounded-xl overflow-hidden"
             style={{ background: "#ffffff", border: "1px solid #e5e7eb" }}
           >
-            <div
-              className="px-4 py-3 flex items-center justify-between"
-              style={{ borderBottom: "1px solid #f3f4f6" }}
-            >
+            <div className="px-4 py-3 flex items-center justify-between" style={{ borderBottom: "1px solid #f3f4f6" }}>
               <h2 className="text-sm font-semibold" style={{ color: "#111827" }}>Your Applications</h2>
-              {showMockApps && (
-                <span className="text-xs" style={{ color: "#9ca3af" }}>Preview</span>
-              )}
             </div>
 
             <div className="px-4">
-              {displayApplications.length === 0 ? (
+              {applications.length === 0 ? (
                 <div className="py-8 text-center">
                   <p className="text-sm" style={{ color: "#9ca3af" }}>No applications yet.</p>
                   <a href="/campaigns" className="text-sm font-medium mt-1 inline-block" style={{ color: "#111827" }}>
@@ -215,13 +180,13 @@ export default async function DashboardPage() {
                   </a>
                 </div>
               ) : (
-                displayApplications.map((app, i) => (
+                applications.map((app, i) => (
                   <ApplicationRow key={i} {...app} />
                 ))
               )}
             </div>
 
-            {displayApplications.length > 0 && (
+            {applications.length > 0 && (
               <div className="px-4 py-3" style={{ borderTop: "1px solid #f3f4f6" }}>
                 <a href="/applications" className="text-xs font-medium" style={{ color: "#6b7280" }}>
                   View all applications →

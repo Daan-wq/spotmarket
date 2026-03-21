@@ -3,6 +3,12 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { z } from "zod";
 
+function serialize<T>(data: T): T {
+  return JSON.parse(
+    JSON.stringify(data, (_key, value) => (typeof value === "bigint" ? Number(value) : value))
+  );
+}
+
 const patchSchema = z.object({
   name: z.string().min(1).max(200).optional(),
   description: z.string().max(2000).optional(),
@@ -14,14 +20,12 @@ const patchSchema = z.object({
 async function getAuthorizedUser(supabaseId: string, campaignId: string) {
   const user = await prisma.user.findUnique({
     where: { supabaseId },
-    include: { businessProfile: { select: { id: true } } },
   });
   if (!user) return null;
   const campaign = await prisma.campaign.findUnique({ where: { id: campaignId } });
   if (!campaign) return null;
   const isAdmin = user.role === "admin";
-  const isOwner = user.businessProfile?.id === campaign.businessProfileId;
-  if (!isAdmin && !isOwner) return null;
+  if (!isAdmin) return null;
   return { user, campaign };
 }
 
@@ -36,10 +40,10 @@ export async function GET(
   const { campaignId } = await params;
   const campaign = await prisma.campaign.findUnique({
     where: { id: campaignId },
-    include: { businessProfile: { select: { companyName: true } }, _count: { select: { applications: true } }, report: true },
+    include: { _count: { select: { applications: true } }, report: true },
   });
   if (!campaign) return NextResponse.json({ error: "Not found" }, { status: 404 });
-  return NextResponse.json(campaign);
+  return NextResponse.json(serialize(campaign));
 }
 
 export async function PATCH(
@@ -61,11 +65,17 @@ export async function PATCH(
   }
 
   const { deadline, ...rest } = parsed.data;
-  const updated = await prisma.campaign.update({
-    where: { id: campaignId },
-    data: { ...rest, ...(deadline && { deadline: new Date(deadline) }) },
-  });
-  return NextResponse.json(updated);
+  try {
+    const updated = await prisma.campaign.update({
+      where: { id: campaignId },
+      data: { ...rest, ...(deadline && { deadline: new Date(deadline) }) },
+    });
+    return NextResponse.json(serialize(updated));
+  } catch (err) {
+    console.error("[PATCH /api/campaigns]", err);
+    const message = err instanceof Error ? err.message : "Database error";
+    return NextResponse.json({ error: message }, { status: 500 });
+  }
 }
 
 export async function DELETE(

@@ -32,11 +32,6 @@ export default async function CampaignMessagesPage({
 
   const campaign = await prisma.campaign.findUnique({
     where: { id: campaignId },
-    include: {
-      businessProfile: {
-        include: { user: { select: { id: true } } },
-      },
-    },
   });
   if (!campaign) notFound();
 
@@ -49,7 +44,6 @@ export default async function CampaignMessagesPage({
           supabaseId: true,
           role: true,
           creatorProfile: { select: { displayName: true } },
-          businessProfile: { select: { companyName: true } },
         },
       },
     },
@@ -57,13 +51,18 @@ export default async function CampaignMessagesPage({
     take: 100,
   });
 
-  const businessUserId = campaign.businessProfile.user.id;
+  // Get campaign creator (admin) for messages
+  const campaign_creator = await prisma.user.findFirst({
+    where: { role: "admin" },
+    select: { id: true },
+  });
+  const businessUserId = campaign_creator?.id || "";
 
   return (
     <div className="flex flex-col h-screen">
       <div className="px-6 py-4 border-b border-gray-200 bg-white">
         <h1 className="font-semibold text-gray-900">{campaign.name}</h1>
-        <p className="text-xs text-gray-500">{campaign.businessProfile.companyName}</p>
+        <p className="text-xs text-gray-500">Campaign</p>
       </div>
       <MessageThread
         campaignId={campaignId}

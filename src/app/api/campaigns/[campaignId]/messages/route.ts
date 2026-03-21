@@ -12,15 +12,10 @@ const sendMessageSchema = z.object({
 async function canAccessCampaignMessages(campaignId: string, supabaseId: string) {
   const user = await prisma.user.findUnique({
     where: { supabaseId },
-    include: { creatorProfile: { select: { id: true } }, businessProfile: { select: { id: true } } },
+    include: { creatorProfile: { select: { id: true } } },
   });
   if (!user) return { allowed: false };
   if (user.role === "admin") return { allowed: true, dbUserId: user.id };
-
-  const campaign = await prisma.campaign.findUnique({ where: { id: campaignId }, select: { businessProfileId: true } });
-  if (!campaign) return { allowed: false };
-
-  if (user.businessProfile?.id === campaign.businessProfileId) return { allowed: true, dbUserId: user.id };
 
   if (user.creatorProfile) {
     const application = await prisma.campaignApplication.findFirst({
@@ -54,7 +49,6 @@ export async function GET(
         select: {
           supabaseId: true, role: true,
           creatorProfile: { select: { displayName: true } },
-          businessProfile: { select: { companyName: true } },
         },
       },
     },
@@ -93,7 +87,6 @@ export async function POST(
         select: {
           supabaseId: true, role: true,
           creatorProfile: { select: { displayName: true } },
-          businessProfile: { select: { companyName: true } },
         },
       },
     },

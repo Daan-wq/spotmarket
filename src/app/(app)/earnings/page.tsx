@@ -146,7 +146,7 @@ export default async function EarningsPage() {
                           {app.campaign.name}
                         </p>
                         <p className="text-xs mt-0.5" style={{ color: "#94a3b8" }}>
-                          {views.toLocaleString()} views · ${cpv.toFixed(4)}/view
+                          {views.toLocaleString()} views · ${(cpv * 1_000_000).toFixed(0)}/1M views
                         </p>
                       </div>
                     </div>

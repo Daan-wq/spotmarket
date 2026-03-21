@@ -2,16 +2,15 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { type MockCampaign } from "@/data/mock-campaigns";
+import { type CampaignCardData } from "@/types/campaign-card";
 
 type Props = {
-  campaign: MockCampaign;
-  isMock: boolean;
+  campaign: CampaignCardData;
   creatorProfileId?: string;
   applicationStatus?: string;
 };
 
-export function CampaignCardAuth({ campaign, isMock, applicationStatus }: Props) {
+export function CampaignCardAuth({ campaign, applicationStatus }: Props) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const progress = Math.round((campaign.applicants / campaign.maxApplicants) * 100);
@@ -19,7 +18,6 @@ export function CampaignCardAuth({ campaign, isMock, applicationStatus }: Props)
   const isFull = progress >= 90;
 
   async function handleApply() {
-    if (isMock) return;
     setLoading(true);
     try {
       const res = await fetch(`/api/campaigns/${campaign.id}/applications`, { method: "POST" });
@@ -41,10 +39,7 @@ export function CampaignCardAuth({ campaign, isMock, applicationStatus }: Props)
   return (
     <div
       className="rounded-xl flex flex-col transition-all duration-150"
-      style={{
-        background: "#ffffff",
-        border: "1px solid #e5e7eb",
-      }}
+      style={{ background: "#ffffff", border: "1px solid #e5e7eb" }}
       onMouseEnter={e => {
         (e.currentTarget as HTMLElement).style.borderColor = "#d1d5db";
         (e.currentTarget as HTMLElement).style.boxShadow = "0 4px 12px rgba(0,0,0,0.06)";
@@ -55,10 +50,7 @@ export function CampaignCardAuth({ campaign, isMock, applicationStatus }: Props)
       }}
     >
       {/* Header */}
-      <div
-        className="px-4 pt-4 pb-3 flex items-center justify-between"
-        style={{ borderBottom: "1px solid #f3f4f6" }}
-      >
+      <div className="px-4 pt-4 pb-3 flex items-center justify-between" style={{ borderBottom: "1px solid #f3f4f6" }}>
         <div className="flex items-center gap-2.5">
           <div
             className="w-8 h-8 rounded-lg flex items-center justify-center text-xs font-bold text-white shrink-0"
@@ -66,24 +58,15 @@ export function CampaignCardAuth({ campaign, isMock, applicationStatus }: Props)
           >
             {campaign.companyInitial}
           </div>
-          <div>
-            <p className="text-xs font-semibold" style={{ color: "#111827" }}>{campaign.company}</p>
-            <p className="text-xs" style={{ color: "#9ca3af" }}>{campaign.category}</p>
-          </div>
+          <p className="text-xs font-semibold" style={{ color: "#111827" }}>{campaign.company}</p>
         </div>
-
         <div className="flex items-center gap-1.5">
-          {isMock && (
-            <span className="text-xs font-medium px-2 py-0.5 rounded-full" style={{ background: "#f3f4f6", color: "#6b7280" }}>
-              Preview
-            </span>
-          )}
-          {!isMock && isFull && (
+          {isFull && (
             <span className="text-xs font-medium px-2 py-0.5 rounded-full" style={{ background: "#fef2f2", color: "#b91c1c" }}>
               Almost full
             </span>
           )}
-          {!isMock && isUrgent && !isFull && (
+          {isUrgent && !isFull && (
             <span className="text-xs font-medium px-2 py-0.5 rounded-full" style={{ background: "#fffbeb", color: "#92400e" }}>
               Ending soon
             </span>
@@ -93,12 +76,8 @@ export function CampaignCardAuth({ campaign, isMock, applicationStatus }: Props)
 
       {/* Body */}
       <div className="flex flex-col flex-1 px-4 py-4">
-        <h3 className="text-sm font-semibold mb-1 leading-snug" style={{ color: "#111827" }}>
-          {campaign.name}
-        </h3>
-        <p className="text-xs leading-relaxed mb-4 line-clamp-2" style={{ color: "#6b7280" }}>
-          {campaign.description}
-        </p>
+        <h3 className="text-sm font-semibold mb-1 leading-snug" style={{ color: "#111827" }}>{campaign.name}</h3>
+        <p className="text-xs leading-relaxed mb-4 line-clamp-2" style={{ color: "#6b7280" }}>{campaign.description}</p>
 
         <div className="mb-4">
           <p className="text-2xl font-bold tracking-tight" style={{ color: "#111827" }}>
@@ -126,25 +105,11 @@ export function CampaignCardAuth({ campaign, isMock, applicationStatus }: Props)
             <span>{progress}%</span>
           </div>
           <div className="h-1 rounded-full overflow-hidden" style={{ background: "#f3f4f6" }}>
-            <div
-              className="h-full rounded-full"
-              style={{ width: `${progress}%`, background: isFull ? "#ef4444" : "#111827" }}
-            />
+            <div className="h-full rounded-full" style={{ width: `${progress}%`, background: isFull ? "#ef4444" : "#111827" }} />
           </div>
         </div>
 
-        {/* CTA */}
-        {isMock ? (
-          <a
-            href="/api/auth/instagram"
-            className="mt-auto w-full py-2.5 rounded-lg text-sm font-semibold text-center transition-opacity cursor-pointer"
-            style={{ background: "#f9fafb", color: "#374151", border: "1px solid #e5e7eb" }}
-            onMouseEnter={e => (e.currentTarget.style.borderColor = "#d1d5db")}
-            onMouseLeave={e => (e.currentTarget.style.borderColor = "#e5e7eb")}
-          >
-            Connect Instagram to Apply
-          </a>
-        ) : applicationStatus && statusConfig[applicationStatus] ? (
+        {applicationStatus && statusConfig[applicationStatus] ? (
           <span
             className="mt-auto w-full py-2.5 rounded-lg text-sm font-semibold text-center"
             style={{ background: statusConfig[applicationStatus].bg, color: statusConfig[applicationStatus].text }}
