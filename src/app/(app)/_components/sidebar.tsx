@@ -24,6 +24,16 @@ const NAV = [
     ),
   },
   {
+    href: "/pages",
+    label: "My Pages",
+    icon: (
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <rect width="6" height="10" x="3" y="3" rx="1"/><rect width="6" height="10" x="15" y="3" rx="1"/>
+        <path d="M3 17c0-1 .9-2 2-2h14c1.1 0 2 .9 2 2v2a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-2z"/>
+      </svg>
+    ),
+  },
+  {
     href: "/applications",
     label: "Applications",
     icon: (
