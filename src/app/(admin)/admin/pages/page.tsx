@@ -73,6 +73,7 @@ export default async function AdminPagesPage({
         select: {
           id: true,
           displayName: true,
+          topCountry: true,
           user: { select: { email: true } },
         },
       },
@@ -153,7 +154,9 @@ export default async function AdminPagesPage({
                     : page.followerCount}
                 </td>
                 <td className="px-4 py-3 text-gray-900">{Number(page.engagementRate).toFixed(1)}%</td>
-                <td className="px-4 py-3 text-gray-600">—</td>
+                <td className="px-4 py-3 text-gray-600">
+                  {page.creatorProfile?.topCountry || "—"}
+                </td>
                 <td className="px-4 py-3 text-gray-900">{page._count.campaignApplicationPages}</td>
                 <td className="px-4 py-3 text-gray-900">€{(page.totalEarnings / 100).toFixed(2)}</td>
                 <td className="px-4 py-3">
