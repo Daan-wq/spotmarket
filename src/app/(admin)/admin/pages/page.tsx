@@ -31,6 +31,12 @@ export default async function AdminPagesPage({
       gte?: number;
       lte?: number;
     };
+    creatorProfile?: {
+      topCountry?: {
+        equals: string;
+        mode: "insensitive";
+      };
+    };
   }
 
   const where: WhereClause = {};
@@ -50,6 +56,14 @@ export default async function AdminPagesPage({
     where.followerCount = {};
     if (filters.followerMin) where.followerCount.gte = parseInt(filters.followerMin);
     if (filters.followerMax) where.followerCount.lte = parseInt(filters.followerMax);
+  }
+  if (filters.country) {
+    where.creatorProfile = {
+      topCountry: {
+        equals: filters.country.toUpperCase(),
+        mode: "insensitive",
+      },
+    };
   }
 
   const pages = await prisma.socialAccount.findMany({

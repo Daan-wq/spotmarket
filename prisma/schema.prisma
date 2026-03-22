@@ -197,6 +197,8 @@ model SocialAccount {
   @@index([platform])
   @@index([tokenExpiresAt])
   @@index([creatorProfileId])
+  @@index([isActive])
+  @@index([niche])
 }
 
 enum SocialPlatform {
