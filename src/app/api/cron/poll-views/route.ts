@@ -148,6 +148,9 @@ export async function GET(req: Request) {
         });
       }
 
+      if (!appPage) {
+        console.warn(`[poll-views] No CampaignApplicationPage found for post ${post.id} (applicationId=${post.applicationId}, socialAccountId=${post.socialAccountId})`);
+      }
       if (appPage) {
         const cpv = Number(post.application.campaign.creatorCpv);
         const deltaEarned = Math.floor(deltaViews * cpv * 100); // cents
@@ -229,14 +232,13 @@ export async function GET(req: Request) {
 
   // Recompute SocialAccount.totalEarnings for each affected account
   for (const accountId of updatedAccountIds) {
-    const appPages = await prisma.campaignApplicationPage.findMany({
+    const result = await prisma.campaignApplicationPage.aggregate({
       where: { socialAccountId: accountId },
-      select: { earnedAmount: true },
+      _sum: { earnedAmount: true },
     });
-    const total = appPages.reduce((s, p) => s + p.earnedAmount, 0);
     await prisma.socialAccount.update({
       where: { id: accountId },
-      data: { totalEarnings: total },
+      data: { totalEarnings: result._sum.earnedAmount ?? 0 },
     });
   }
 
