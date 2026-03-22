@@ -62,25 +62,27 @@ export async function GET(req: Request) {
     },
     include: {
       socialAccount: {
-        select: { accessToken: true, accessTokenIv: true, platform: true },
+        select: { accessToken: true, accessTokenIv: true, platform: true, id: true },
       },
       networkMember: {
         select: { igAccessToken: true, igAccessTokenIv: true },
       },
       application: {
         include: {
-          campaign: { select: { creatorCpv: true } },
+          campaign: { select: { creatorCpv: true, id: true, name: true } },
         },
       },
       snapshots: {
         orderBy: { capturedAt: "desc" },
         take: 8,
       },
+      campaignAppPage: true,
     },
   });
 
   let snapshotsWritten = 0;
   let fraudFlagged = 0;
+  const updatedAccountIds = new Set<string>();
 
   for (const post of posts) {
     // Resolve token — from SocialAccount (creator) or NetworkMember
@@ -126,6 +128,42 @@ export async function GET(req: Request) {
       where: { id: post.id },
       data: { verifiedViews: metrics.views },
     });
+
+    // Track delta views and update CampaignApplicationPage
+    const prevViews = post.snapshots[0]?.viewsCount ?? 0;
+    const deltaViews = Math.max(0, metrics.views - prevViews);
+
+    if (deltaViews > 0 && post.socialAccountId) {
+      let appPage = post.campaignAppPage;
+
+      // Option B: Legacy posts without campaignAppPageId — look up via unique constraint
+      if (!appPage && post.applicationId) {
+        appPage = await prisma.campaignApplicationPage.findUnique({
+          where: {
+            applicationId_socialAccountId: {
+              applicationId: post.applicationId,
+              socialAccountId: post.socialAccountId,
+            },
+          },
+        });
+      }
+
+      if (appPage) {
+        const cpv = Number(post.application.campaign.creatorCpv);
+        const deltaEarned = Math.floor(deltaViews * cpv * 100); // cents
+
+        await prisma.campaignApplicationPage.update({
+          where: { id: appPage.id },
+          data: {
+            totalViews: { increment: deltaViews },
+            totalReach: { increment: 0 },
+            earnedAmount: { increment: deltaEarned },
+          },
+        });
+
+        updatedAccountIds.add(post.socialAccountId);
+      }
+    }
 
     // Fraud detection
     const sortedSnapshots = [...post.snapshots].sort(
@@ -186,6 +224,19 @@ export async function GET(req: Request) {
     await prisma.campaignApplication.update({
       where: { id: applicationId },
       data: { earnedAmount, lastEarningsCalcAt: new Date() },
+    });
+  }
+
+  // Recompute SocialAccount.totalEarnings for each affected account
+  for (const accountId of updatedAccountIds) {
+    const appPages = await prisma.campaignApplicationPage.findMany({
+      where: { socialAccountId: accountId },
+      select: { earnedAmount: true },
+    });
+    const total = appPages.reduce((s, p) => s + p.earnedAmount, 0);
+    await prisma.socialAccount.update({
+      where: { id: accountId },
+      data: { totalEarnings: total },
     });
   }
 
