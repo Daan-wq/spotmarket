@@ -66,5 +66,5 @@ export function getPageMatchResult(page: SocialAccount, campaign: Campaign): Pag
     });
   }
 
-  return { page, checks, allPassed: checks.length > 0 && checks.every(c => c.pass) };
+  return { page, checks, allPassed: checks.length === 0 || checks.every(c => c.pass) };
 }

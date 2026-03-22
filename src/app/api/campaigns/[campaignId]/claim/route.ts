@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { z } from "zod";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { prisma } from "@/lib/prisma";
 
@@ -25,6 +26,10 @@ export async function GET(_req: Request, { params }: { params: Promise<{ campaig
   return NextResponse.json({ campaign, pages });
 }
 
+const claimBodySchema = z.object({
+  selectedPageIds: z.array(z.string()).min(1),
+});
+
 export async function POST(req: Request, { params }: { params: Promise<{ campaignId: string }> }) {
   const supabase = await createSupabaseServerClient();
   const { data: { user: authUser } } = await supabase.auth.getUser();
@@ -32,18 +37,19 @@ export async function POST(req: Request, { params }: { params: Promise<{ campaig
 
   const { campaignId } = await params;
 
-  let body: { selectedPageIds: string[] };
+  let body: unknown;
   try {
     body = await req.json();
   } catch {
     return NextResponse.json({ error: "Invalid request body" }, { status: 400 });
   }
 
-  const { selectedPageIds } = body;
-
-  if (!selectedPageIds?.length) {
-    return NextResponse.json({ error: "Select at least one page" }, { status: 400 });
+  const parseResult = claimBodySchema.safeParse(body);
+  if (!parseResult.success) {
+    return NextResponse.json({ error: "Invalid request body", details: parseResult.error.issues }, { status: 400 });
   }
+
+  const { selectedPageIds } = parseResult.data;
 
   const dbUser = await prisma.user.findUnique({
     where: { supabaseId: authUser.id },

@@ -17,6 +17,9 @@ export function PagePickerModal({ campaign, pages, onSubmit, onCancel }: PagePic
 
   const results = pages.map(p => getPageMatchResult(p, campaign));
 
+  // Auto-select qualifying pages on modal open only.
+  // Intentionally omits `results` from deps — re-running on prop changes would
+  // reset user selections mid-interaction, which would be confusing.
   useEffect(() => {
     const autoSelected = results.filter(r => r.allPassed).map(r => r.page.id);
     setSelected(new Set(autoSelected));
