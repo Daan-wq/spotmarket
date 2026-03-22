@@ -196,6 +196,7 @@ model SocialAccount {
   @@unique([platformUserId])
   @@index([platform])
   @@index([tokenExpiresAt])
+  @@index([creatorProfileId])
 }
 
 enum SocialPlatform {
@@ -367,6 +368,7 @@ model CampaignPost {
   @@index([platform])
   @@index([status])
   @@index([autoApproveAt])
+  @@index([campaignAppPageId])
 }
 
 enum PostStatus {
