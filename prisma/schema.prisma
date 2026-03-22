@@ -20,8 +20,8 @@ model User {
 
   creatorProfile   CreatorProfile?
   networkProfile   NetworkProfile?
-  sentMessages     Message[]        @relation("SentMessages")
-  receivedMessages Message[]        @relation("ReceivedMessages")
+  sentMessages     Message[]       @relation("SentMessages")
+  receivedMessages Message[]       @relation("ReceivedMessages")
   auditLogs        AuditLog[]
 
   @@index([supabaseId])
@@ -36,20 +36,26 @@ enum UserRole {
 }
 
 model CreatorProfile {
-  id              String   @id @default(cuid())
-  userId          String   @unique
-  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  displayName     String
-  bio             String?
-  avatarUrl       String?
-  walletAddress   String?
-  stripeAccountId String?
-  primaryGeo      String   @default("US")
-  totalFollowers  Int      @default(0)
-  engagementRate  Decimal  @default(0) @db.Decimal(5, 2)
-  isVerified      Boolean  @default(false)
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  id                 String   @id @default(cuid())
+  userId             String   @unique
+  user               User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  displayName        String
+  bio                String?
+  avatarUrl          String?
+  walletAddress      String?
+  stripeAccountId    String?
+  primaryGeo         String   @default("US")
+  totalFollowers     Int      @default(0)
+  engagementRate     Decimal  @default(0) @db.Decimal(5, 2)
+  isVerified         Boolean  @default(false)
+  // Computed from best connected social account — used for campaign matching queries
+  topCountry         String?
+  topCountryPercent  Float?
+  malePercent        Float?
+  age18PlusPercent   Float?
+  bestEngagementRate Float?
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
 
   socialAccounts SocialAccount[]
   applications   CampaignApplication[]
@@ -59,8 +65,10 @@ model CreatorProfile {
   @@index([primaryGeo])
   @@index([engagementRate])
   @@index([totalFollowers])
+  @@index([topCountry])
+  @@index([malePercent])
+  @@index([age18PlusPercent])
 }
-
 
 model NetworkProfile {
   id              String   @id @default(cuid())
@@ -146,9 +154,46 @@ model SocialAccount {
   createdAt        DateTime       @default(now())
   updatedAt        DateTime       @updatedAt
 
-  posts CampaignPost[]
+  // Expanded Instagram profile fields
+  igName          String?
+  igBio           String?
+  igProfilePicUrl String?
+  igFollowsCount  Int?
+  igWebsite       String?
 
-  @@unique([creatorProfileId, platform])
+  // igDemographics structure:
+  // {
+  //   countries: { "US": 174, "NL": 12, "DE": 8 },
+  //   genders: { "male": 131, "female": 72, "unknown": 15 },
+  //   ages: { "13-17": 22, "18-24": 65, "25-34": 78, "35-44": 33, "45-54": 12, "55-64": 5, "65+": 3 },
+  //   cities: { "New York": 45, "Los Angeles": 32 }
+  // }
+  igDemographics Json?
+
+  // igMediaCache structure:
+  // [{ id, caption, media_type, media_product_type, permalink, timestamp, like_count, comments_count, thumbnail_url }]
+  igMediaCache Json?
+
+  // 30-day account insights
+  ig30DayReach        Int?
+  ig30DayViews        Int?
+  ig30DayEngaged      Int?
+  ig30DayInteractions Int?
+
+  // Refresh tracking
+  igDemographicsUpdatedAt DateTime?
+  igInsightsUpdatedAt     DateTime?
+
+  niche              String?
+  displayLabel       String?
+  activeCampaigns    Int     @default(0)
+  completedCampaigns Int     @default(0)
+  totalEarnings      Int     @default(0)
+
+  posts                    CampaignPost[]
+  campaignApplicationPages CampaignApplicationPage[]
+
+  @@unique([platformUserId])
   @@index([platform])
   @@index([tokenExpiresAt])
 }
@@ -163,23 +208,23 @@ enum SocialPlatform {
 // ─────────────────────────────────────────
 
 model Campaign {
-  id   String @id @default(cuid())
-  name String
-  platform          Platform        @default(INSTAGRAM)
+  id                String         @id @default(cuid())
+  name              String
+  platform          Platform       @default(INSTAGRAM)
   description       String?
-  contentGuidelines String?         @db.Text
+  contentGuidelines String?        @db.Text
   referralLink      String?
   targetGeo         String[]
-  minFollowers      Int             @default(0)
-  minEngagementRate Decimal         @default(0) @db.Decimal(5, 2)
-  totalBudget       Decimal         @db.Decimal(12, 2)
-  creatorCpv        Decimal         @db.Decimal(8, 6)
-  adminMargin       Decimal         @db.Decimal(8, 6)
-  businessCpv       Decimal         @db.Decimal(8, 6)
+  minFollowers      Int            @default(0)
+  minEngagementRate Decimal        @default(0) @db.Decimal(5, 2)
+  totalBudget       Decimal        @db.Decimal(12, 2)
+  creatorCpv        Decimal        @db.Decimal(8, 6)
+  adminMargin       Decimal        @db.Decimal(8, 6)
+  businessCpv       Decimal        @db.Decimal(8, 6)
   goalViews         BigInt?
   deadline          DateTime
   startsAt          DateTime?
-  status            CampaignStatus  @default(draft)
+  status            CampaignStatus @default(draft)
   briefAssetUrl     String?
 
   // Block 2: Instant claim
@@ -247,14 +292,31 @@ model CampaignApplication {
 
   updatedAt DateTime @updatedAt
 
-  posts           CampaignPost[]
-  payouts         Payout[]
-  assignedMembers NetworkMemberAssignment[]
+  posts                    CampaignPost[]
+  payouts                  Payout[]
+  assignedMembers          NetworkMemberAssignment[]
+  campaignApplicationPages CampaignApplicationPage[]
 
   @@index([status])
   @@index([campaignId])
   @@index([creatorProfileId])
   @@index([networkId])
+}
+
+model CampaignApplicationPage {
+  id              String              @id @default(cuid())
+  applicationId   String
+  application     CampaignApplication @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  socialAccountId String
+  socialAccount   SocialAccount       @relation(fields: [socialAccountId], references: [id], onDelete: Cascade)
+  totalViews      Int                 @default(0)
+  totalReach      Int                 @default(0)
+  earnedAmount    Int                 @default(0)
+  posts           CampaignPost[]
+
+  @@unique([applicationId, socialAccountId])
+  @@index([applicationId])
+  @@index([socialAccountId])
 }
 
 enum ApplicationStatus {
@@ -276,25 +338,27 @@ enum ClaimType {
 // ─────────────────────────────────────────
 
 model CampaignPost {
-  id              String              @id @default(cuid())
-  applicationId   String
-  application     CampaignApplication @relation(fields: [applicationId], references: [id])
-  socialAccountId String?
-  socialAccount   SocialAccount?      @relation(fields: [socialAccountId], references: [id])
-  networkMemberId String?
-  networkMember   NetworkMember?      @relation(fields: [networkMemberId], references: [id])
-  postUrl         String
-  platformPostId  String
-  platform        SocialPlatform
-  status          PostStatus          @default(submitted)
-  submittedAt     DateTime            @default(now())
-  approvedAt      DateTime?
-  isApproved      Boolean             @default(false)
-  isFraudSuspect  Boolean             @default(false)
-  fraudFlags      Json?
-  autoApproveAt   DateTime?
-  isAutoApproved  Boolean             @default(false)
-  verifiedViews   Int                 @default(0)
+  id                String                   @id @default(cuid())
+  applicationId     String
+  application       CampaignApplication      @relation(fields: [applicationId], references: [id])
+  socialAccountId   String?
+  socialAccount     SocialAccount?           @relation(fields: [socialAccountId], references: [id])
+  networkMemberId   String?
+  networkMember     NetworkMember?           @relation(fields: [networkMemberId], references: [id])
+  postUrl           String
+  platformPostId    String
+  platform          SocialPlatform
+  status            PostStatus               @default(submitted)
+  submittedAt       DateTime                 @default(now())
+  approvedAt        DateTime?
+  isApproved        Boolean                  @default(false)
+  isFraudSuspect    Boolean                  @default(false)
+  fraudFlags        Json?
+  autoApproveAt     DateTime?
+  isAutoApproved    Boolean                  @default(false)
+  verifiedViews     Int                      @default(0)
+  campaignAppPageId String?
+  campaignAppPage   CampaignApplicationPage? @relation(fields: [campaignAppPageId], references: [id])
 
   snapshots ViewSnapshot[]
 
