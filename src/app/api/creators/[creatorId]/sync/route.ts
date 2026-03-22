@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { decrypt } from "@/lib/crypto";
 import { getInstagramProfile, getMediaInsights, computeEngagementRate } from "@/lib/instagram";
+import { updateCreatorAggregateStats } from "@/lib/creator-stats";
 
 export async function POST(
   _req: Request,
@@ -35,13 +36,15 @@ export async function POST(
         const engagementRate = computeEngagementRate(insights, profile.followerCount);
 
         await prisma.socialAccount.update({ where: { id: account.id }, data: { followerCount: profile.followerCount, engagementRate, lastSyncedAt: new Date() } });
-        await prisma.creatorProfile.update({ where: { id: creatorId }, data: { totalFollowers: profile.followerCount, engagementRate } });
         results.instagram = "synced";
       }
     } catch (err) {
       results[account.platform] = `error: ${err instanceof Error ? err.message : "unknown"}`;
     }
   }
+
+  // Recalculate aggregate stats across all accounts
+  await updateCreatorAggregateStats(creatorId);
 
   return NextResponse.json({ results, syncedAt: new Date().toISOString() });
 }

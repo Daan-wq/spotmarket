@@ -7,7 +7,7 @@ import {
   getMediaInsights,
   computeEngagementRate,
 } from "@/lib/instagram";
-import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { updateCreatorAggregateStats } from "@/lib/creator-stats";
 
 export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
@@ -103,7 +103,6 @@ export async function GET(req: Request) {
 
   try {
     const { accessToken, expiresIn } = await exchangeCodeForToken(code);
-    console.log("Token prefix:", accessToken?.slice(0, 6), "| expiresIn:", expiresIn);
     if (!accessToken) throw new Error(`No access token in exchange response`);
 
     const { ciphertext, iv } = encrypt(accessToken);
@@ -113,22 +112,18 @@ export async function GET(req: Request) {
     const tokenExpiresAt = new Date(Date.now() + expiresIn * 1000);
 
     await prisma.socialAccount.upsert({
-      where: {
-        creatorProfileId_platform: {
-          creatorProfileId: user.creatorProfile.id,
-          platform: "instagram",
-        },
-      },
+      where: { platformUserId: profile.id },
       update: {
-        platformUserId: profile.id,
-        platformUsername: profile.username,
         accessToken: ciphertext,
         accessTokenIv: iv,
         tokenExpiresAt,
         followerCount: profile.followerCount,
         engagementRate,
-        lastSyncedAt: new Date(),
+        platformUsername: profile.username,
+        igName: profile.name ?? null,
+        igProfilePicUrl: profile.profilePictureUrl ?? null,
         isActive: true,
+        lastSyncedAt: new Date(),
       },
       create: {
         creatorProfileId: user.creatorProfile.id,
@@ -140,24 +135,27 @@ export async function GET(req: Request) {
         tokenExpiresAt,
         followerCount: profile.followerCount,
         engagementRate,
+        igName: profile.name ?? null,
+        igProfilePicUrl: profile.profilePictureUrl ?? null,
+        isActive: true,
         lastSyncedAt: new Date(),
       },
     });
 
-    await prisma.creatorProfile.update({
-      where: { id: user.creatorProfile.id },
-      data: {
-        totalFollowers: profile.followerCount,
-        engagementRate,
-        avatarUrl: profile.profilePictureUrl || undefined,
-        displayName:
-          user.creatorProfile.displayName === "New Creator"
-            ? profile.name || profile.username
-            : user.creatorProfile.displayName,
-      },
-    });
+    await updateCreatorAggregateStats(user.creatorProfile.id);
 
-    return NextResponse.redirect(`${appUrl}/creator/profile?success=instagram_connected`);
+    // Update displayName if still set to default
+    if (user.creatorProfile.displayName === "New Creator") {
+      await prisma.creatorProfile.update({
+        where: { id: user.creatorProfile.id },
+        data: {
+          displayName: profile.name || profile.username,
+          avatarUrl: profile.profilePictureUrl || undefined,
+        },
+      });
+    }
+
+    return NextResponse.redirect(`${appUrl}/pages?success=instagram_connected`);
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
     console.error("Instagram OAuth callback error:", msg);
