@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { prisma } from "@/lib/prisma";
 
-export async function POST(_req: Request, { params }: { params: Promise<{ campaignId: string }> }) {
+export async function GET(_req: Request, { params }: { params: Promise<{ campaignId: string }> }) {
   const supabase = await createSupabaseServerClient();
   const { data: { user: authUser } } = await supabase.auth.getUser();
   if (!authUser) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -11,11 +11,43 @@ export async function POST(_req: Request, { params }: { params: Promise<{ campai
 
   const dbUser = await prisma.user.findUnique({
     where: { supabaseId: authUser.id },
-    include: {
-      creatorProfile: {
-        include: { socialAccounts: { where: { isActive: true } } },
-      },
-    },
+    include: { creatorProfile: true },
+  });
+  if (!dbUser?.creatorProfile) return NextResponse.json({ error: "No creator profile" }, { status: 403 });
+
+  const campaign = await prisma.campaign.findUnique({ where: { id: campaignId } });
+  if (!campaign) return NextResponse.json({ error: "Campaign not found" }, { status: 404 });
+
+  const pages = await prisma.socialAccount.findMany({
+    where: { creatorProfileId: dbUser.creatorProfile.id, isActive: true },
+  });
+
+  return NextResponse.json({ campaign, pages });
+}
+
+export async function POST(req: Request, { params }: { params: Promise<{ campaignId: string }> }) {
+  const supabase = await createSupabaseServerClient();
+  const { data: { user: authUser } } = await supabase.auth.getUser();
+  if (!authUser) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+  const { campaignId } = await params;
+
+  let body: { selectedPageIds: string[] };
+  try {
+    body = await req.json();
+  } catch {
+    return NextResponse.json({ error: "Invalid request body" }, { status: 400 });
+  }
+
+  const { selectedPageIds } = body;
+
+  if (!selectedPageIds?.length) {
+    return NextResponse.json({ error: "Select at least one page" }, { status: 400 });
+  }
+
+  const dbUser = await prisma.user.findUnique({
+    where: { supabaseId: authUser.id },
+    include: { creatorProfile: true },
   });
   if (!dbUser?.creatorProfile) return NextResponse.json({ error: "No creator profile" }, { status: 403 });
 
@@ -24,24 +56,26 @@ export async function POST(_req: Request, { params }: { params: Promise<{ campai
   const campaign = await prisma.campaign.findUnique({ where: { id: campaignId, status: "active" } });
   if (!campaign) return NextResponse.json({ error: "Campaign not found" }, { status: 404 });
 
-  if (cp.totalFollowers < campaign.minFollowers) {
-    return NextResponse.json({ error: `Minimum ${campaign.minFollowers} followers required` }, { status: 400 });
+  // Verify pages belong to this creator and are active
+  const pages = await prisma.socialAccount.findMany({
+    where: { id: { in: selectedPageIds }, creatorProfileId: cp.id, isActive: true },
+  });
+  if (pages.length !== selectedPageIds.length) {
+    return NextResponse.json({ error: "Invalid or inactive pages selected" }, { status: 400 });
   }
-  if (Number(cp.engagementRate) < Number(campaign.minEngagementRate)) {
-    return NextResponse.json({ error: "Engagement rate too low" }, { status: 400 });
-  }
-  if (campaign.targetGeo.length > 0 && !campaign.targetGeo.includes(cp.primaryGeo)) {
-    return NextResponse.json({ error: "Geo not matching campaign target" }, { status: 400 });
-  }
+
+  // Check slots
   if (campaign.maxSlots != null && campaign.claimedSlots >= campaign.maxSlots) {
     return NextResponse.json({ error: "No slots available" }, { status: 409 });
   }
 
+  // Check existing application
   const existing = await prisma.campaignApplication.findFirst({
     where: { campaignId, creatorProfileId: cp.id },
   });
   if (existing) return NextResponse.json({ error: "Already applied" }, { status: 409 });
 
+  // Create application with pages in a transaction
   const [application] = await prisma.$transaction([
     prisma.campaignApplication.create({
       data: {
@@ -49,13 +83,24 @@ export async function POST(_req: Request, { params }: { params: Promise<{ campai
         creatorProfileId: cp.id,
         status: campaign.requiresApproval ? "pending" : "approved",
         claimType: campaign.requiresApproval ? "APPLICATION" : "INSTANT",
-        followerSnapshot: cp.totalFollowers,
-        engagementSnapshot: cp.engagementRate,
+        followerSnapshot: pages.reduce((sum, p) => sum + p.followerCount, 0),
+        engagementSnapshot: pages.length > 0
+          ? pages.reduce((sum, p) => sum + Number(p.engagementRate), 0) / pages.length
+          : 0,
+        campaignApplicationPages: {
+          createMany: {
+            data: selectedPageIds.map(socialAccountId => ({ socialAccountId })),
+          },
+        },
       },
     }),
     prisma.campaign.update({
       where: { id: campaignId },
       data: { claimedSlots: { increment: 1 } },
+    }),
+    prisma.socialAccount.updateMany({
+      where: { id: { in: selectedPageIds } },
+      data: { activeCampaigns: { increment: 1 } },
     }),
   ]);
 

@@ -3,6 +3,8 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { ApplicationStatus } from "@prisma/client";
+import { PagePickerModal } from "@/components/marketplace/page-picker-modal";
+import type { SocialAccount, Campaign } from "@prisma/client";
 
 interface CampaignApplyButtonProps {
   campaignId: string;
@@ -35,6 +37,8 @@ export function CampaignApplyButton({
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [showModal, setShowModal] = useState(false);
+  const [modalData, setModalData] = useState<{ campaign: Campaign; pages: SocialAccount[] } | null>(null);
 
   if (applicationStatus) {
     return (
@@ -44,37 +48,74 @@ export function CampaignApplyButton({
     );
   }
 
-  async function handleApply() {
+  async function handleClaimClick() {
     setLoading(true);
     setError(null);
 
     try {
-      const res = await fetch(`/api/campaigns/${campaignId}/applications`, {
+      const res = await fetch(`/api/campaigns/${campaignId}/claim`);
+
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.error ?? "Failed to load campaign");
+      }
+
+      const data = await res.json();
+      setModalData(data);
+      setShowModal(true);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Something went wrong");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function handleModalSubmit(selectedPageIds: string[]) {
+    setError(null);
+
+    try {
+      const res = await fetch(`/api/campaigns/${campaignId}/claim`, {
         method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ selectedPageIds }),
       });
 
       if (!res.ok) {
         const data = await res.json();
-        throw new Error(data.error ?? "Failed to apply");
+        throw new Error(data.error ?? "Failed to claim campaign");
       }
 
+      setShowModal(false);
+      setModalData(null);
       router.refresh();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Something went wrong");
-      setLoading(false);
     }
   }
 
   return (
     <div>
       <button
-        onClick={handleApply}
+        onClick={handleClaimClick}
         disabled={loading}
         className="text-sm px-4 py-2 bg-blue-600 text-white rounded-lg font-medium disabled:opacity-50 hover:bg-blue-700 transition-colors"
       >
-        {loading ? "Applying..." : "Apply"}
+        {loading ? "Loading..." : "Claim"}
       </button>
       {error && <p className="text-xs text-red-600 mt-1 text-right">{error}</p>}
+
+      {showModal && modalData && (
+        <PagePickerModal
+          campaign={modalData.campaign}
+          pages={modalData.pages}
+          onSubmit={handleModalSubmit}
+          onCancel={() => {
+            setShowModal(false);
+            setModalData(null);
+            setError(null);
+          }}
+        />
+      )}
     </div>
   );
 }
