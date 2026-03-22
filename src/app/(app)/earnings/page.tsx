@@ -22,6 +22,21 @@ export default async function EarningsPage() {
               posts: { include: { snapshots: { orderBy: { capturedAt: "desc" }, take: 1 } } },
             },
           },
+          socialAccounts: {
+            where: { isActive: true },
+            orderBy: { followerCount: "desc" },
+            include: {
+              campaignApplicationPages: {
+                include: {
+                  application: {
+                    include: {
+                      campaign: { select: { name: true, creatorCpv: true, status: true } },
+                    },
+                  },
+                },
+              },
+            },
+          },
         },
       },
     },
@@ -62,6 +77,25 @@ export default async function EarningsPage() {
         views,
       };
     });
+
+  // Build per-page breakdown
+  const pages = user?.creatorProfile?.socialAccounts ?? [];
+
+  const pageBreakdown = pages.map(page => {
+    const earned = page.campaignApplicationPages.reduce((s, ap) => s + ap.earnedAmount, 0);
+    const views = page.campaignApplicationPages.reduce((s, ap) => s + ap.totalViews, 0);
+    return {
+      page,
+      campaigns: page.campaignApplicationPages.length,
+      totalViews: views,
+      earned,
+      status: page.activeCampaigns > 0 ? "Active" : "Idle",
+    };
+  });
+
+  const grandTotalEarned = pageBreakdown.reduce((s, row) => s + row.earned, 0);
+  const grandTotalViews = pageBreakdown.reduce((s, row) => s + row.totalViews, 0);
+  const grandTotalCampaigns = pageBreakdown.reduce((s, row) => s + row.campaigns, 0);
 
   return (
     <div className="flex flex-col h-full" style={{ background: "#f9fafb" }}>
@@ -167,6 +201,69 @@ export default async function EarningsPage() {
             </div>
           )}
         </div>
+
+        {/* Per-page breakdown */}
+        <section className="mt-6">
+          <h2 className="text-lg font-semibold text-gray-900 mb-3">Earnings by Page</h2>
+          <div className="rounded-lg border border-gray-200 bg-white overflow-hidden">
+            <table className="w-full text-sm">
+              <thead className="bg-gray-50">
+                <tr>
+                  {["Page", "Campaigns", "Total Views", "Earned", "Status"].map(h => (
+                    <th key={h} className="px-4 py-3 text-left text-xs font-semibold text-gray-600">{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {pageBreakdown.map(row => (
+                  <tr key={row.page.id} className="border-t border-gray-100">
+                    <td className="px-4 py-3">
+                      <a href={`/pages/${row.page.id}`} className="text-blue-600 hover:underline">
+                        @{row.page.platformUsername}
+                      </a>
+                    </td>
+                    <td className="px-4 py-3 text-gray-700">{row.campaigns}</td>
+                    <td className="px-4 py-3 text-gray-700">
+                      {row.totalViews >= 1000000
+                        ? `${(row.totalViews / 1000000).toFixed(1)}M`
+                        : row.totalViews >= 1000
+                        ? `${(row.totalViews / 1000).toFixed(0)}K`
+                        : row.totalViews.toString()}
+                    </td>
+                    <td className="px-4 py-3 text-gray-700">€{(row.earned / 100).toFixed(2)}</td>
+                    <td className="px-4 py-3">
+                      <span className={`text-xs px-2 py-0.5 rounded-full ${
+                        row.status === "Active"
+                          ? "bg-green-100 text-green-700"
+                          : "bg-gray-100 text-gray-600"
+                      }`}>
+                        {row.status}
+                      </span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+              {pageBreakdown.length > 1 && (
+                <tfoot className="border-t-2 border-gray-200 bg-gray-50 font-semibold">
+                  <tr>
+                    <td className="px-4 py-3 text-gray-900">Total</td>
+                    <td className="px-4 py-3 text-gray-900">{grandTotalCampaigns}</td>
+                    <td className="px-4 py-3 text-gray-900">
+                      {grandTotalViews >= 1000000
+                        ? `${(grandTotalViews / 1000000).toFixed(1)}M`
+                        : `${(grandTotalViews / 1000).toFixed(0)}K`}
+                    </td>
+                    <td className="px-4 py-3 text-gray-900">€{(grandTotalEarned / 100).toFixed(2)}</td>
+                    <td className="px-4 py-3"></td>
+                  </tr>
+                </tfoot>
+              )}
+            </table>
+            {pageBreakdown.length === 0 && (
+              <p className="text-center py-8 text-gray-400 text-sm">No pages connected yet.</p>
+            )}
+          </div>
+        </section>
       </div>
     </div>
   );
