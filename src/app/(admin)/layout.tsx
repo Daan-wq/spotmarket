@@ -19,6 +19,7 @@ const NAV = [
     label: "NETWORK",
     items: [
       { href: "/admin/pages", label: "Pages" },
+      { href: "/admin/ops-pages", label: "Internal Ops Pages" },
       { href: "/admin/creators", label: "Creators" },
       { href: "/admin/networks", label: "Networks" },
     ],

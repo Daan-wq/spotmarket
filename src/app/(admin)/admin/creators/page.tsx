@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import Link from "next/link";
 import { PageHeader } from "@/components/admin/page-header";
 import { StatCards } from "@/components/admin/stat-cards";
 import { EmptyState } from "@/components/admin/empty-state";
@@ -72,8 +73,9 @@ export default async function AdminCreatorsPage() {
               const tt = c.socialAccounts.find((a) => a.platform === "tiktok");
               const main = ig ?? tt;
               return (
-                <div
+                <Link
                   key={c.id}
+                  href={`/admin/creators/${c.id}`}
                   className="grid grid-cols-[1fr_1fr_auto_auto_auto_auto_auto] gap-4 items-center px-5 py-3 hover:bg-gray-50"
                   style={{ borderTop: i > 0 ? "1px solid #f8fafc" : undefined }}
                 >
@@ -88,12 +90,12 @@ export default async function AdminCreatorsPage() {
                   <p className="text-[14px] text-gray-900 whitespace-nowrap">{c.engagementRate.toString()}%</p>
                   <p className="text-[14px] text-gray-500 whitespace-nowrap">{c.primaryGeo}</p>
                   <p className="text-[14px] text-gray-500 whitespace-nowrap text-center">{c._count.applications}</p>
-                  <form action={`/api/creators/${c.id}/sync`} method="POST">
+                  <form action={`/api/creators/${c.id}/sync`} method="POST" onClick={(e) => e.stopPropagation()}>
                     <button type="submit" className="text-xs text-indigo-600 hover:underline whitespace-nowrap">
                       Sync stats
                     </button>
                   </form>
-                </div>
+                </Link>
               );
             })}
           </div>

@@ -1,0 +1,131 @@
+import { prisma } from "@/lib/prisma";
+import { notFound } from "next/navigation";
+import Link from "next/link";
+import Image from "next/image";
+import { ProfileStatsRow } from "@/components/creator/ProfileStatsRow";
+import { AudienceDemographics } from "@/components/creator/AudienceDemographics";
+import { RecentPostsGrid } from "@/components/creator/RecentPostsGrid";
+import { CampaignMatchCard } from "@/components/creator/CampaignMatchCard";
+import { RefreshButton } from "@/components/creator/RefreshButton";
+import type { IgDemographics, IgMediaItem } from "@/types/instagram";
+
+export default async function AdminCreatorDetailPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ id: string }>;
+  searchParams: Promise<{ campaignId?: string }>;
+}) {
+  const { id } = await params;
+  const { campaignId } = await searchParams;
+
+  const [creator, campaign] = await Promise.all([
+    prisma.creatorProfile.findUnique({
+      where: { id },
+      include: {
+        user: { select: { email: true } },
+        socialAccounts: { where: { isActive: true } },
+        _count: { select: { applications: true } },
+      },
+    }),
+    campaignId ? prisma.campaign.findUnique({ where: { id: campaignId } }) : Promise.resolve(null),
+  ]);
+
+  if (!creator) notFound();
+
+  const igAccount = creator.socialAccounts.find((a) => a.platform === "instagram");
+  const demographics = (igAccount?.igDemographics as IgDemographics | null) ?? null;
+  const mediaCache = (igAccount?.igMediaCache as IgMediaItem[] | null) ?? null;
+
+  return (
+    <div className="p-8 max-w-3xl space-y-6">
+      <div className="flex items-center gap-2">
+        <Link href="/admin/creators" className="text-sm text-gray-400 hover:text-gray-600">
+          ← Creators
+        </Link>
+        {campaign && (
+          <>
+            <span className="text-gray-300">/</span>
+            <span className="text-sm text-gray-400">{campaign.name}</span>
+          </>
+        )}
+      </div>
+
+      <div className="rounded-xl border border-gray-200 bg-white p-5">
+        <div className="flex items-start justify-between gap-4">
+          <div className="flex items-center gap-4">
+            {igAccount?.igProfilePicUrl || creator.avatarUrl ? (
+              <Image
+                src={(igAccount?.igProfilePicUrl ?? creator.avatarUrl) as string}
+                alt={creator.displayName}
+                width={56}
+                height={56}
+                unoptimized
+                className="rounded-full object-cover shrink-0"
+              />
+            ) : (
+              <div className="w-14 h-14 rounded-full bg-gradient-to-br from-purple-400 to-pink-400 flex items-center justify-center text-white font-bold text-lg shrink-0">
+                {creator.displayName?.[0]?.toUpperCase() ?? "?"}
+              </div>
+            )}
+            <div>
+              <p className="text-base font-semibold text-gray-900">{creator.displayName}</p>
+              {igAccount && <p className="text-sm text-gray-500">@{igAccount.platformUsername}</p>}
+              <p className="text-xs text-gray-400">{creator.user.email}</p>
+              {igAccount?.igBio && (
+                <p className="text-xs text-gray-400 mt-1 max-w-xs line-clamp-2">{igAccount.igBio}</p>
+              )}
+            </div>
+          </div>
+          <div className="flex flex-col items-end gap-2 shrink-0">
+            <RefreshButton creatorId={creator.id} />
+            {igAccount?.lastSyncedAt && (
+              <span className="text-[11px] text-gray-300">
+                Synced {new Date(igAccount.lastSyncedAt).toLocaleDateString()}
+              </span>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {igAccount && (
+        <ProfileStatsRow
+          followerCount={creator.totalFollowers}
+          engagementRate={Number(creator.engagementRate).toFixed(2)}
+          topGeo={creator.topCountry ?? creator.primaryGeo}
+          reach30d={igAccount.ig30DayReach}
+          views30d={igAccount.ig30DayViews}
+        />
+      )}
+
+      {campaign && <CampaignMatchCard profile={creator} campaign={campaign} />}
+
+      <AudienceDemographics
+        demographics={demographics}
+        followerCount={creator.totalFollowers}
+        updatedAt={igAccount?.igDemographicsUpdatedAt}
+      />
+
+      <RecentPostsGrid mediaCache={mediaCache} />
+
+      <div className="rounded-xl border border-gray-200 bg-white p-4 grid grid-cols-2 gap-3 text-sm">
+        <div>
+          <p className="text-xs text-gray-400">Campaigns</p>
+          <p className="font-medium text-gray-900">{creator._count.applications}</p>
+        </div>
+        <div>
+          <p className="text-xs text-gray-400">Verified</p>
+          <p className="font-medium text-gray-900">{creator.isVerified ? "Yes" : "No"}</p>
+        </div>
+        <div>
+          <p className="text-xs text-gray-400">Primary Geo</p>
+          <p className="font-medium text-gray-900">{creator.primaryGeo}</p>
+        </div>
+        <div>
+          <p className="text-xs text-gray-400">Joined</p>
+          <p className="font-medium text-gray-900">{new Date(creator.createdAt).toLocaleDateString()}</p>
+        </div>
+      </div>
+    </div>
+  );
+}

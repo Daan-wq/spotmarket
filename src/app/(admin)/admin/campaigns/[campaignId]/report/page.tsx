@@ -30,8 +30,6 @@ export default async function AdminCampaignReportPage({
 
   if (!campaign) notFound();
 
-  const creatorCpv = parseFloat(campaign.creatorCpv.toString());
-
   return (
     <div className="p-8 max-w-5xl mx-auto">
       <div className="flex items-center gap-2 mb-2">

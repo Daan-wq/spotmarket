@@ -4,7 +4,6 @@ import Link from "next/link";
 import { ApplicationReviewTable } from "./application-review-table";
 import { CampaignStatusToggle } from "./campaign-status-toggle";
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 function toPlain<T>(data: T): T {
   return JSON.parse(
     JSON.stringify(data, (_k, v) => {

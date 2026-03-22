@@ -3,6 +3,70 @@ import { PayoutActionsRow } from "./payout-actions-row";
 import { PageHeader } from "@/components/admin/page-header";
 import { StatCards } from "@/components/admin/stat-cards";
 import { EmptyState } from "@/components/admin/empty-state";
+import { Payout, PayoutStatus, PayoutType } from "@prisma/client";
+
+interface PayoutWithApplication extends Payout {
+  application: {
+    campaign: { name: string };
+    creatorProfile: { displayName: string; walletAddress: string | null } | null;
+  } | null;
+}
+
+interface PayoutRowComponent {
+  id: string;
+  amount: string | number;
+  currency: string;
+  walletAddress: string;
+  type: PayoutType;
+  status: PayoutStatus;
+  txHash: string | null;
+  verifiedViews: number | null;
+  createdAt: string;
+  application: {
+    campaign: { name: string };
+    creatorProfile: { displayName: string; walletAddress: string | null };
+  };
+}
+
+function transformPayout(payout: PayoutWithApplication): PayoutRowComponent | null {
+  if (!payout.application) return null;
+  return {
+    id: payout.id,
+    amount: Number(payout.amount),
+    currency: payout.currency,
+    walletAddress: payout.walletAddress || "",
+    type: payout.type,
+    status: payout.status,
+    txHash: payout.txHash,
+    verifiedViews: payout.verifiedViews,
+    createdAt: payout.createdAt.toISOString(),
+    application: payout.application as PayoutRowComponent['application'],
+  };
+}
+
+interface SectionProps {
+  title: string;
+  items: PayoutWithApplication[];
+  readonly?: boolean;
+}
+
+function Section({ title, items, readonly = false }: SectionProps) {
+  return (
+    <div className="rounded-lg overflow-hidden mb-4 border border-gray-200">
+      <div className="px-5 py-3 border-b border-gray-100 bg-white">
+        <p className="text-[13px] font-medium text-gray-900">{title}</p>
+      </div>
+      <div className="bg-white">
+        {items
+          .map((p) => ({ payout: transformPayout(p), id: p.id }))
+          .filter((item) => item.payout !== null)
+          .map(({ payout, id }) => (
+            <PayoutActionsRow key={id} payout={payout!} readonly={readonly} />
+          ))}
+      </div>
+    </div>
+  );
+}
 
 export default async function AdminPayoutsPage() {
   const payouts = await prisma.payout.findMany({
@@ -36,27 +100,6 @@ export default async function AdminPayoutsPage() {
   const totalPaid = payouts
     .filter((p) => p.status === "confirmed")
     .reduce((sum, p) => sum + parseFloat(p.amount.toString()), 0);
-
-  const Section = ({
-    title,
-    items,
-    readonly = false,
-  }: {
-    title: string;
-    items: typeof payouts;
-    readonly?: boolean;
-  }) => (
-    <div className="rounded-lg overflow-hidden mb-4 border border-gray-200">
-      <div className="px-5 py-3 border-b border-gray-100 bg-white">
-        <p className="text-[13px] font-medium text-gray-900">{title}</p>
-      </div>
-      <div className="bg-white">
-        {items.map((p) => (
-          <PayoutActionsRow key={p.id} payout={p as any} readonly={readonly} />
-        ))}
-      </div>
-    </div>
-  );
 
   return (
     <div className="p-8 max-w-5xl">
