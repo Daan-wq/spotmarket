@@ -111,6 +111,15 @@ export async function GET(req: Request) {
     const engagementRate = computeEngagementRate(insights, profile.followerCount);
     const tokenExpiresAt = new Date(Date.now() + expiresIn * 1000);
 
+    // Prevent account hijacking: verify this page isn't already claimed by a different creator
+    const existingAccount = await prisma.socialAccount.findUnique({
+      where: { platformUserId: profile.id },
+      select: { creatorProfileId: true },
+    });
+    if (existingAccount && existingAccount.creatorProfileId !== user.creatorProfile.id) {
+      return NextResponse.redirect(`${appUrl}/pages?error=account_already_claimed`);
+    }
+
     await prisma.socialAccount.upsert({
       where: { platformUserId: profile.id },
       update: {

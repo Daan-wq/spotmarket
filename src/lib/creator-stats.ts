@@ -10,7 +10,13 @@ export async function updateCreatorAggregateStats(creatorProfileId: string) {
   if (accounts.length === 0) {
     await prisma.creatorProfile.update({
       where: { id: creatorProfileId },
-      data: { totalFollowers: 0 },
+      data: {
+        totalFollowers: 0,
+        topCountry: null,
+        topCountryPercent: null,
+        malePercent: null,
+        age18PlusPercent: null,
+      },
     });
     return;
   }

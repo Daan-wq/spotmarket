@@ -36,10 +36,10 @@ export async function POST(
         const engagementRate = computeEngagementRate(insights, profile.followerCount);
 
         await prisma.socialAccount.update({ where: { id: account.id }, data: { followerCount: profile.followerCount, engagementRate, lastSyncedAt: new Date() } });
-        results.instagram = "synced";
+        results[`${account.platform}:${account.platformUsername}`] = "synced";
       }
     } catch (err) {
-      results[account.platform] = `error: ${err instanceof Error ? err.message : "unknown"}`;
+      results[`${account.platform}:${account.platformUsername}`] = `error: ${err instanceof Error ? err.message : "unknown"}`;
     }
   }
 
