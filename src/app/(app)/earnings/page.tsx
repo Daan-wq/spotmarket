@@ -89,7 +89,7 @@ export default async function EarningsPage() {
       campaigns: page.campaignApplicationPages.length,
       totalViews: views,
       earned,
-      status: page.activeCampaigns > 0 ? "Active" : "Idle",
+      status: page.campaignApplicationPages.some(ap => ap.application.campaign.status === "active") ? "Active" : "Idle",
     };
   });
 
