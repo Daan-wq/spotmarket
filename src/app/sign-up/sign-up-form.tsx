@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import { useRouter, useSearchParams } from "next/navigation";
+import { Logo } from "@/components/shared/logo";
 import Link from "next/link";
 
 export function SignUpForm() {
@@ -36,9 +37,8 @@ export function SignUpForm() {
     <div className="min-h-screen flex items-center justify-center px-4" style={{ background: "#0a0a0a" }}>
       <div className="w-full max-w-sm">
         <div className="text-center mb-8">
-          <Link href="/" className="inline-flex items-center gap-2">
-            <div className="w-7 h-7 rounded-md flex items-center justify-center text-xs font-bold" style={{ background: "#ffffff", color: "var(--text-primary)" }}>C</div>
-            <span className="text-white font-semibold text-sm">ClipProfit</span>
+          <Link href="/" className="inline-block">
+            <Logo variant="dark" size="sm" />
           </Link>
         </div>
         <div className="rounded-xl p-8" style={{ background: "#111111", border: "1px solid rgba(255,255,255,0.07)" }}>

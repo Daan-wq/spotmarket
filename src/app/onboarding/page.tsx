@@ -2,6 +2,7 @@ import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { prisma } from "@/lib/prisma";
 import { redirect } from "next/navigation";
 import { Suspense } from "react";
+import { Logo } from "@/components/shared/logo";
 import { OnboardingForm } from "./onboarding-form";
 
 export default async function OnboardingPage() {
@@ -21,7 +22,7 @@ export default async function OnboardingPage() {
         className="hidden lg:flex lg:w-2/5 flex-col justify-between p-10"
         style={{ background: "var(--dark-panel)" }}
       >
-        <span className="text-white font-semibold text-base tracking-tight">ClipProfit</span>
+        <Logo variant="dark" size="sm" />
         <div>
           <p className="text-2xl font-semibold text-white leading-snug mb-3">
             Almost there. Let&apos;s set up your account.

@@ -2,6 +2,7 @@
 
 import { usePathname } from "next/navigation";
 import Link from "next/link";
+import { Logo } from "@/components/shared/logo";
 
 const NAV = [
   {
@@ -70,20 +71,8 @@ export function AdminSidebar({ initials, email }: AdminSidebarProps) {
     >
       {/* Logo */}
       <div className="px-4 py-5" style={{ borderBottom: "1px solid var(--muted)" }}>
-        <div className="flex items-center gap-2">
-          <div
-            className="w-7 h-7 rounded-md flex items-center justify-center text-white text-xs font-semibold"
-            style={{ background: "var(--accent)" }}
-          >
-            €
-          </div>
-          <div>
-            <p className="text-sm font-semibold leading-none" style={{ color: "var(--text-primary)" }}>
-              €lipProfit
-            </p>
-            <p className="text-[11px] mt-0.5" style={{ color: "var(--text-muted)" }}>Admin</p>
-          </div>
-        </div>
+        <Logo variant="light" size="sm" />
+        <p className="text-[11px] mt-1" style={{ color: "var(--text-muted)" }}>Admin</p>
       </div>
 
       {/* Nav */}

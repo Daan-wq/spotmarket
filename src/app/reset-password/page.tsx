@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
+import { Logo } from "@/components/shared/logo";
 import Link from "next/link";
 
 function EyeIcon({ open }: { open: boolean }) {
@@ -58,9 +59,8 @@ export default function ResetPasswordPage() {
     <div className="min-h-screen flex items-center justify-center px-4" style={{ background: "var(--dark-bg)" }}>
       <div className="w-full max-w-sm">
         <div className="text-center mb-8">
-          <Link href="/" className="inline-flex items-center gap-2">
-            <div className="w-7 h-7 rounded-md flex items-center justify-center text-xs font-bold" style={{ background: "var(--bg-elevated)", color: "var(--text-primary)" }}>C</div>
-            <span className="text-white font-semibold text-sm">ClipProfit</span>
+          <Link href="/" className="inline-block">
+            <Logo variant="dark" size="sm" />
           </Link>
         </div>
 

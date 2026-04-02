@@ -2,6 +2,7 @@
 
 import { usePathname } from "next/navigation";
 import Link from "next/link";
+import { Logo } from "@/components/shared/logo";
 
 const NAV = [
   {
@@ -58,10 +59,7 @@ export function NetworkSidebar() {
       style={{ background: "var(--sidebar-bg)", borderRight: "1px solid var(--sidebar-border)" }}
     >
       <div className="px-4 py-5" style={{ borderBottom: "1px solid var(--sidebar-border)" }}>
-        <div className="flex items-center gap-1.5">
-          <span className="text-base font-bold" style={{ color: "var(--accent)" }}>€</span>
-          <span className="text-white font-semibold text-sm">lipProfit</span>
-        </div>
+        <Logo variant="dark" size="sm" />
         <p className="text-xs mt-1" style={{ color: "var(--sidebar-item)" }}>Network</p>
       </div>
 
