@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 
 const inputClass = "w-full px-3 py-2 rounded-lg text-sm outline-none";
-const inputStyle = { border: "1px solid #e2e8f0", background: "#f8fafc", color: "#0f172a" };
+const inputStyle = { border: "1px solid var(--border)", background: "var(--bg-card)", color: "var(--text-primary)" };
 
 export default function NewPagePage() {
   const router = useRouter();
@@ -55,12 +55,12 @@ export default function NewPagePage() {
 
   return (
     <div className="p-8 max-w-2xl">
-      <h1 className="text-2xl font-semibold mb-8" style={{ color: "#0f172a" }}>Add Instagram Page</h1>
+      <h1 className="text-2xl font-semibold mb-8" style={{ color: "var(--text-primary)" }}>Add Instagram Page</h1>
 
       <form onSubmit={handleSubmit} className="space-y-5">
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <label className="block text-xs font-medium mb-1" style={{ color: "#374151" }}>Handle *</label>
+            <label className="block text-xs font-medium mb-1" style={{ color: "var(--card-foreground)" }}>Handle *</label>
             <input
               className={inputClass}
               style={inputStyle}
@@ -71,7 +71,7 @@ export default function NewPagePage() {
             />
           </div>
           <div>
-            <label className="block text-xs font-medium mb-1" style={{ color: "#374151" }}>Niche</label>
+            <label className="block text-xs font-medium mb-1" style={{ color: "var(--card-foreground)" }}>Niche</label>
             <input
               className={inputClass}
               style={inputStyle}
@@ -84,7 +84,7 @@ export default function NewPagePage() {
 
         <div className="grid grid-cols-3 gap-4">
           <div>
-            <label className="block text-xs font-medium mb-1" style={{ color: "#374151" }}>Followers</label>
+            <label className="block text-xs font-medium mb-1" style={{ color: "var(--card-foreground)" }}>Followers</label>
             <input
               type="number"
               className={inputClass}
@@ -95,7 +95,7 @@ export default function NewPagePage() {
             />
           </div>
           <div>
-            <label className="block text-xs font-medium mb-1" style={{ color: "#374151" }}>Engagement %</label>
+            <label className="block text-xs font-medium mb-1" style={{ color: "var(--card-foreground)" }}>Engagement %</label>
             <input
               type="number"
               step="0.1"
@@ -107,7 +107,7 @@ export default function NewPagePage() {
             />
           </div>
           <div>
-            <label className="block text-xs font-medium mb-1" style={{ color: "#374151" }}>Avg CPM ($)</label>
+            <label className="block text-xs font-medium mb-1" style={{ color: "var(--card-foreground)" }}>Avg CPM ($)</label>
             <input
               type="number"
               step="0.01"
@@ -122,7 +122,7 @@ export default function NewPagePage() {
 
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <label className="block text-xs font-medium mb-1" style={{ color: "#374151" }}>
+            <label className="block text-xs font-medium mb-1" style={{ color: "var(--card-foreground)" }}>
               Reliability Score (1-10)
             </label>
             <input
@@ -136,7 +136,7 @@ export default function NewPagePage() {
             />
           </div>
           <div>
-            <label className="block text-xs font-medium mb-1" style={{ color: "#374151" }}>Country</label>
+            <label className="block text-xs font-medium mb-1" style={{ color: "var(--card-foreground)" }}>Country</label>
             <input
               className={inputClass}
               style={inputStyle}
@@ -149,7 +149,7 @@ export default function NewPagePage() {
 
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <label className="block text-xs font-medium mb-1" style={{ color: "#374151" }}>Contact via</label>
+            <label className="block text-xs font-medium mb-1" style={{ color: "var(--card-foreground)" }}>Contact via</label>
             <select
               className={inputClass}
               style={inputStyle}
@@ -162,7 +162,7 @@ export default function NewPagePage() {
             </select>
           </div>
           <div>
-            <label className="block text-xs font-medium mb-1" style={{ color: "#374151" }}>Handle / Number</label>
+            <label className="block text-xs font-medium mb-1" style={{ color: "var(--card-foreground)" }}>Handle / Number</label>
             <input
               className={inputClass}
               style={inputStyle}
@@ -174,7 +174,7 @@ export default function NewPagePage() {
         </div>
 
         <div>
-          <label className="block text-xs font-medium mb-1" style={{ color: "#374151" }}>Contact Name</label>
+          <label className="block text-xs font-medium mb-1" style={{ color: "var(--card-foreground)" }}>Contact Name</label>
           <input
             className={inputClass}
             style={inputStyle}
@@ -184,7 +184,7 @@ export default function NewPagePage() {
         </div>
 
         <div>
-          <label className="block text-xs font-medium mb-1" style={{ color: "#374151" }}>Notes</label>
+          <label className="block text-xs font-medium mb-1" style={{ color: "var(--card-foreground)" }}>Notes</label>
           <textarea
             className={inputClass}
             style={{ ...inputStyle, minHeight: 80, resize: "vertical" }}
@@ -193,14 +193,14 @@ export default function NewPagePage() {
           />
         </div>
 
-        {error && <p className="text-sm" style={{ color: "#b91c1c" }}>{error}</p>}
+        {error && <p className="text-sm" style={{ color: "var(--error)" }}>{error}</p>}
 
         <div className="flex gap-3">
           <button
             type="submit"
             disabled={loading}
             className="px-5 py-2 rounded-lg text-sm font-medium text-white"
-            style={{ background: "#4f46e5", opacity: loading ? 0.7 : 1 }}
+            style={{ background: "var(--accent)", opacity: loading ? 0.7 : 1 }}
           >
             {loading ? "Saving…" : "Add Page"}
           </button>
@@ -208,7 +208,7 @@ export default function NewPagePage() {
             type="button"
             onClick={() => router.back()}
             className="px-5 py-2 rounded-lg text-sm font-medium"
-            style={{ background: "#f3f4f6", color: "#374151" }}
+            style={{ background: "var(--bg-secondary)", color: "var(--card-foreground)" }}
           >
             Cancel
           </button>

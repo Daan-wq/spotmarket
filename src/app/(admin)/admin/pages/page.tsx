@@ -2,6 +2,7 @@ import { prisma } from "@/lib/prisma";
 import { redirect } from "next/navigation";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import Link from "next/link";
+import { Niche } from "@prisma/client";
 
 interface SearchParams {
   platform?: string;
@@ -25,7 +26,7 @@ export default async function AdminPagesPage({
 
   interface WhereClause {
     platform?: "instagram" | "tiktok";
-    niche?: string;
+    niche?: Niche;
     isActive?: boolean;
     followerCount?: {
       gte?: number;
@@ -44,8 +45,8 @@ export default async function AdminPagesPage({
   if (filters.platform) {
     where.platform = filters.platform as "instagram" | "tiktok";
   }
-  if (filters.niche) {
-    where.niche = filters.niche;
+  if (filters.niche && Object.values(Niche).includes(filters.niche as Niche)) {
+    where.niche = filters.niche as Niche;
   }
   if (filters.status === "disconnected") {
     where.isActive = false;

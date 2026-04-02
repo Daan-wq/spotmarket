@@ -18,8 +18,8 @@ export function AdminNavLink({ href, label }: AdminNavLinkProps) {
       className="flex items-center px-[10px] py-[7px] rounded-md text-[13px] transition-colors hover:bg-gray-50"
       style={
         isActive
-          ? { background: "#ffffff", color: "#534AB7", fontWeight: 500, border: "0.5px solid #e5e7eb" }
-          : { color: "#64748b" }
+          ? { background: "var(--bg-elevated)", color: "var(--accent)", fontWeight: 500, border: "0.5px solid var(--border)" }
+          : { color: "var(--text-secondary)" }
       }
     >
       {label}

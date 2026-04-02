@@ -15,6 +15,26 @@
     {
       "path": "/api/cron/weekly-payouts",
       "schedule": "0 0 * * 1"
+    },
+    {
+      "path": "/api/cron/refresh-demographics",
+      "schedule": "0 2 * * 0"
+    },
+    {
+      "path": "/api/cron/sync-account-insights",
+      "schedule": "0 2 * * *"
+    },
+    {
+      "path": "/api/cron/sync-media-insights",
+      "schedule": "0 3 * * *"
+    },
+    {
+      "path": "/api/cron/autopost-scheduler",
+      "schedule": "0 0 * * *"
+    },
+    {
+      "path": "/api/cron/autopost-auto-approve",
+      "schedule": "0 6 * * *"
     }
   ]
 }

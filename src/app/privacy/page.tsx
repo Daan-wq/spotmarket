@@ -1,4 +1,4 @@
-export const metadata = { title: "Privacy Policy – Spotmarket" };
+export const metadata = { title: "Privacy Policy – ClipProfit" };
 
 export default function PrivacyPage() {
   return (
@@ -13,7 +13,7 @@ export default function PrivacyPage() {
 
       <section className="mb-6">
         <h2 className="font-semibold text-gray-900 mb-2">2. How we use it</h2>
-        <p>We use your data solely to operate the Spotmarket platform — matching creators with brand campaigns, calculating earnings, and processing payouts. We do not sell your data to third parties.</p>
+        <p>We use your data solely to operate the ClipProfit platform — matching creators with brand campaigns, calculating earnings, and processing payouts. We do not sell your data to third parties.</p>
       </section>
 
       <section className="mb-6">
@@ -33,7 +33,7 @@ export default function PrivacyPage() {
 
       <section className="mb-6">
         <h2 className="font-semibold text-gray-900 mb-2">6. Contact</h2>
-        <p>For privacy-related questions, contact us at <a href="mailto:hello@spotmarket.app" className="text-indigo-600 hover:underline">hello@spotmarket.app</a>.</p>
+        <p>For privacy-related questions, contact us at <a href="mailto:hello@clipprofit.com" className="text-indigo-600 hover:underline">hello@clipprofit.com</a>.</p>
       </section>
     </main>
   );

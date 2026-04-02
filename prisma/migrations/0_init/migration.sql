@@ -1,0 +1,3 @@
+-- Baseline migration: existing database schema before agency-modules
+-- This file is intentionally empty. The database already contains all tables
+-- created via prisma db push. This file serves as a baseline marker only.

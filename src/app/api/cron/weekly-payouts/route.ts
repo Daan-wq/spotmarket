@@ -1,11 +1,11 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { verifyCron } from "@/lib/cron-auth";
 
 const MIN_PAYOUT_CENTS = 1000; // €10
 
 export async function GET(req: Request) {
-  const authHeader = req.headers.get("authorization");
-  if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
+  if (!verifyCron(req)) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
@@ -87,5 +87,60 @@ export async function GET(req: Request) {
     payoutsCreated++;
   }
 
-  return NextResponse.json({ ok: true, payoutsCreated });
+  // Referral earnings: 10% of admin revenue per campaign for the campaign owner's referrer
+  const completedCampaigns = await prisma.campaign.findMany({
+    where: {
+      status: { in: ["active", "completed"] },
+      createdByUserId: { not: null },
+    },
+    include: {
+      report: { select: { adminRevenue: true } },
+      createdBy: { select: { id: true, referredBy: true } },
+    },
+  });
+
+  let referralPayoutsCreated = 0;
+
+  for (const campaign of completedCampaigns) {
+    const adminRevenue = campaign.report ? Number(campaign.report.adminRevenue) : 0;
+    if (adminRevenue <= 0) continue;
+
+    const referralCode = campaign.createdBy?.referredBy;
+    if (!referralCode) continue;
+
+    const referrer = await prisma.user.findUnique({ where: { referralCode } });
+    if (!referrer) continue;
+
+    const referralAmount = adminRevenue * 0.1;
+
+    // Check if we already paid referral for this campaign this period
+    const existingPayout = await prisma.referralPayout.findFirst({
+      where: {
+        referrerId: referrer.id,
+        campaignApplicationId: campaign.id, // reused as campaignId reference
+        createdAt: { gte: lastMonday },
+      },
+    });
+    if (existingPayout) continue;
+
+    await prisma.$transaction([
+      prisma.user.update({
+        where: { id: referrer.id },
+        data: { referralEarnings: { increment: referralAmount } },
+      }),
+      prisma.referralPayout.create({
+        data: {
+          referrerId: referrer.id,
+          referredUserId: campaign.createdBy!.id,
+          campaignApplicationId: campaign.id, // stores campaign id for audit
+          amount: referralAmount,
+          status: "pending",
+        },
+      }),
+    ]);
+
+    referralPayoutsCreated++;
+  }
+
+  return NextResponse.json({ ok: true, payoutsCreated, referralPayoutsCreated });
 }

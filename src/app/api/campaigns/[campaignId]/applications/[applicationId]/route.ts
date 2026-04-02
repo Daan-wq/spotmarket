@@ -132,7 +132,7 @@ export async function PATCH(
     try {
       if (parsed.data.status === "approved") {
         await resend.emails.send({
-          from: "Spotmarket <noreply@spotmarket.io>",
+          from: "ClipProfit <noreply@clipprofit.com>",
           to: creatorEmail,
           subject: `You've been approved for: ${campaign.name}`,
           html: `
@@ -144,7 +144,7 @@ export async function PATCH(
         });
       } else if (parsed.data.status === "rejected") {
         await resend.emails.send({
-          from: "Spotmarket <noreply@spotmarket.io>",
+          from: "ClipProfit <noreply@clipprofit.com>",
           to: creatorEmail,
           subject: `Application update for: ${campaign.name}`,
           html: `
@@ -161,8 +161,9 @@ export async function PATCH(
   }
 
   if (parsed.data.status === "approved" && campaign.status === "active") {
-    const creatorProfile = application.creatorProfile as any;
-    if (creatorProfile.walletAddress) {
+    const creatorProfile = application.creatorProfile as Record<string, unknown>;
+    const walletAddress = creatorProfile?.walletAddress as string | undefined;
+    if (walletAddress) {
       const estimatedViews = parseFloat(campaign.totalBudget.toString()) / parseFloat(campaign.businessCpv.toString());
       const upfrontAmount = estimatedViews * parseFloat(campaign.creatorCpv.toString()) * 0.2;
 
@@ -171,7 +172,7 @@ export async function PATCH(
           applicationId,
           creatorProfileId: application.creatorProfileId,
           amount: upfrontAmount,
-          walletAddress: creatorProfile.walletAddress,
+          walletAddress,
           type: "upfront",
           status: "pending",
         },

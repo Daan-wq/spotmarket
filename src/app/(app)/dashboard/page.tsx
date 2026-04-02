@@ -46,10 +46,32 @@ export default async function DashboardPage() {
 
   const campaigns = await prisma.campaign.findMany({
     where: { status: "active" },
-    include: { _count: { select: { applications: true } } },
+    include: {
+      _count: { select: { applications: true } },
+      createdBy: {
+        select: {
+          id: true,
+          creatorProfile: { select: { displayName: true, avatarUrl: true } },
+          email: true,
+        },
+      },
+    },
     orderBy: { createdAt: "desc" },
     take: 4,
   });
+
+  // Campaigns launched by this user
+  const ownedCampaigns = user?.id ? await prisma.campaign.findMany({
+    where: { createdByUserId: user.id },
+    orderBy: { createdAt: "desc" },
+    take: 10,
+    select: {
+      id: true, name: true, status: true, totalBudget: true,
+      depositTxHash: true, rejectReason: true, createdAt: true,
+      goalViews: true,
+      _count: { select: { applications: true } },
+    },
+  }) : [];
 
   const appliedMap = new Map(
     creatorProfile?.applications.map(a => [a.campaignId, a.status]) ?? []
@@ -58,7 +80,7 @@ export default async function DashboardPage() {
   const campaignCards: CampaignCardData[] = campaigns.map(c => ({
     id: c.id,
     name: c.name,
-    company: "Campaign",
+    company: c.createdBy?.creatorProfile?.displayName ?? c.createdBy?.email?.split("@")[0] ?? "Campaign",
     companyInitial: c.name.slice(0, 2).toUpperCase(),
     description: c.description ?? "",
     totalBudget: Number(c.totalBudget),
@@ -69,6 +91,14 @@ export default async function DashboardPage() {
     applicants: c._count.applications,
     maxApplicants: c.maxSlots ?? 100,
     minFollowers: c.minFollowers,
+    goalViews: c.goalViews ? Number(c.goalViews) : null,
+    currentViews: 0,
+    remainingBudget: Number(c.totalBudget),
+    launchedBy: c.createdBy ? {
+      id: c.createdBy.id,
+      name: c.createdBy.creatorProfile?.displayName ?? c.createdBy.email.split("@")[0],
+      avatarUrl: c.createdBy.creatorProfile?.avatarUrl ?? null,
+    } : null,
   }));
 
   const followers = creatorProfile?.totalFollowers ?? 0;
@@ -92,23 +122,24 @@ export default async function DashboardPage() {
   }));
 
   return (
-    <div className="flex flex-col h-full" style={{ background: "#f9fafb" }}>
+    <div className="flex flex-col h-full" style={{ background: "var(--bg-primary)" }}>
       <TopHeader
         title="Dashboard"
         displayName={creatorProfile?.displayName ?? undefined}
         followers={followers > 0 ? followers : undefined}
+        userId={authUser.id}
       />
 
       <div className="flex-1 overflow-auto p-6">
         {!hasInstagram && (
           <div
             className="mb-6 flex items-center justify-between px-4 py-3 rounded-lg"
-            style={{ background: "#fffbeb", border: "1px solid #fde68a" }}
+            style={{ background: "var(--warning-bg)", border: "1px solid #fde68a" }}
           >
-            <p className="text-sm" style={{ color: "#92400e" }}>
+            <p className="text-sm" style={{ color: "var(--warning-text)" }}>
               Connect Instagram to unlock real campaign matching and earnings tracking.
             </p>
-            <a href="/api/auth/instagram" className="text-sm font-semibold ml-4 shrink-0" style={{ color: "#92400e" }}>
+            <a href="/api/auth/instagram" className="text-sm font-semibold ml-4 shrink-0" style={{ color: "var(--warning-text)" }}>
               Connect →
             </a>
           </div>
@@ -137,16 +168,78 @@ export default async function DashboardPage() {
           />
         </div>
 
+        {/* My Launched Campaigns */}
+        {ownedCampaigns.length > 0 && (
+          <div className="mb-8">
+            <div className="flex items-center justify-between mb-3">
+              <h2 className="text-sm font-semibold" style={{ color: "var(--text-primary)" }}>My Campaigns</h2>
+              <a href="/launch" className="text-xs font-medium px-3 py-1.5 rounded-lg" style={{ background: "var(--accent)", color: "#fff" }}>
+                + New campaign
+              </a>
+            </div>
+            <div className="space-y-2">
+              {ownedCampaigns.map((c) => {
+                const statusConfig: Record<string, { label: string; color: string; bg: string }> = {
+                  pending_payment: { label: "Awaiting payment", color: "#92400e", bg: "#fffbeb" },
+                  pending_review:  { label: "Under review",     color: "#1e40af", bg: "#eff6ff" },
+                  active:          { label: "Active",            color: "#065f46", bg: "#ecfdf5" },
+                  paused:          { label: "Paused",            color: "#374151", bg: "#f3f4f6" },
+                  completed:       { label: "Completed",         color: "#374151", bg: "#f3f4f6" },
+                  cancelled:       { label: "Rejected",          color: "#991b1b", bg: "#fef2f2" },
+                };
+                const cfg = statusConfig[c.status] ?? { label: c.status, color: "#374151", bg: "#f3f4f6" };
+                return (
+                  <div key={c.id} className="flex items-center justify-between px-4 py-3 rounded-xl" style={{ background: "var(--bg-elevated)", border: "1px solid var(--border)" }}>
+                    <div className="flex items-center gap-3 min-w-0">
+                      <span className="text-xs font-semibold px-2 py-0.5 rounded-full shrink-0" style={{ color: cfg.color, background: cfg.bg }}>
+                        {cfg.label}
+                      </span>
+                      <span className="text-sm font-medium truncate" style={{ color: "var(--text-primary)" }}>{c.name}</span>
+                      <span className="text-xs shrink-0" style={{ color: "var(--text-muted)" }}>${Number(c.totalBudget).toLocaleString()} USDT</span>
+                    </div>
+                    <div className="flex items-center gap-2 shrink-0 ml-3">
+                      {c.status === "pending_payment" && (
+                        <a href={`/launch/${c.id}/payment`} className="text-xs font-medium px-2.5 py-1 rounded-lg text-white" style={{ background: "var(--accent)" }}>
+                          Pay now
+                        </a>
+                      )}
+                      {c.rejectReason && (
+                        <span className="text-xs text-red-600 max-w-[160px] truncate" title={c.rejectReason}>
+                          {c.rejectReason}
+                        </span>
+                      )}
+                      {(c.status === "active" || c.status === "completed") && (
+                        <a href={`/admin/campaigns/${c.id}`} className="text-xs" style={{ color: "var(--text-secondary)" }}>
+                          View →
+                        </a>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {ownedCampaigns.length === 0 && (
+          <div className="mb-8 flex items-center justify-between px-4 py-3 rounded-xl" style={{ border: "1px dashed var(--border)" }}>
+            <p className="text-sm" style={{ color: "var(--text-muted)" }}>Want to run your own campaign?</p>
+            <a href="/launch" className="text-xs font-semibold px-3 py-1.5 rounded-lg text-white shrink-0 ml-4" style={{ background: "var(--accent)" }}>
+              Launch campaign
+            </a>
+          </div>
+        )}
+
         <div className="flex gap-6 items-start">
           {/* Left: Campaigns */}
           <div className="flex-1 min-w-0">
             <div className="flex items-center justify-between mb-4">
-              <h2 className="text-sm font-semibold" style={{ color: "#111827" }}>Brand Campaigns Available</h2>
-              <a href="/campaigns" className="text-xs font-medium" style={{ color: "#6b7280" }}>View all →</a>
+              <h2 className="text-sm font-semibold" style={{ color: "var(--text-primary)" }}>Brand Campaigns Available</h2>
+              <a href="/campaigns" className="text-xs font-medium" style={{ color: "var(--text-secondary)" }}>View all →</a>
             </div>
             {campaignCards.length === 0 ? (
-              <div className="rounded-xl px-6 py-10 text-center" style={{ border: "1px solid #e5e7eb" }}>
-                <p className="text-sm" style={{ color: "#9ca3af" }}>No active campaigns right now.</p>
+              <div className="rounded-xl px-6 py-10 text-center" style={{ border: "1px solid var(--border)" }}>
+                <p className="text-sm" style={{ color: "var(--text-muted)" }}>No active campaigns right now.</p>
               </div>
             ) : (
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -165,17 +258,17 @@ export default async function DashboardPage() {
           {/* Right: Applications */}
           <div
             className="w-72 shrink-0 rounded-xl overflow-hidden"
-            style={{ background: "#ffffff", border: "1px solid #e5e7eb" }}
+            style={{ background: "var(--bg-elevated)", border: "1px solid var(--border)" }}
           >
-            <div className="px-4 py-3 flex items-center justify-between" style={{ borderBottom: "1px solid #f3f4f6" }}>
-              <h2 className="text-sm font-semibold" style={{ color: "#111827" }}>Your Applications</h2>
+            <div className="px-4 py-3 flex items-center justify-between" style={{ borderBottom: "1px solid var(--bg-secondary)" }}>
+              <h2 className="text-sm font-semibold" style={{ color: "var(--text-primary)" }}>Your Applications</h2>
             </div>
 
             <div className="px-4">
               {applications.length === 0 ? (
                 <div className="py-8 text-center">
-                  <p className="text-sm" style={{ color: "#9ca3af" }}>No applications yet.</p>
-                  <a href="/campaigns" className="text-sm font-medium mt-1 inline-block" style={{ color: "#111827" }}>
+                  <p className="text-sm" style={{ color: "var(--text-muted)" }}>No applications yet.</p>
+                  <a href="/campaigns" className="text-sm font-medium mt-1 inline-block" style={{ color: "var(--text-primary)" }}>
                     Browse campaigns →
                   </a>
                 </div>
@@ -187,8 +280,8 @@ export default async function DashboardPage() {
             </div>
 
             {applications.length > 0 && (
-              <div className="px-4 py-3" style={{ borderTop: "1px solid #f3f4f6" }}>
-                <a href="/applications" className="text-xs font-medium" style={{ color: "#6b7280" }}>
+              <div className="px-4 py-3" style={{ borderTop: "1px solid var(--bg-secondary)" }}>
+                <a href="/applications" className="text-xs font-medium" style={{ color: "var(--text-secondary)" }}>
                   View all applications →
                 </a>
               </div>

@@ -34,16 +34,6 @@ const NAV = [
     ),
   },
   {
-    href: "/applications",
-    label: "Applications",
-    icon: (
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/>
-        <line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/>
-      </svg>
-    ),
-  },
-  {
     href: "/earnings",
     label: "Earnings",
     icon: (
@@ -53,11 +43,30 @@ const NAV = [
     ),
   },
   {
-    href: "/payouts",
-    label: "Payouts",
+    href: "/dashboard/autopost",
+    label: "AutoPost",
     icon: (
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-        <rect width="20" height="14" x="2" y="5" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/>
+        <path d="M13 2L3 14h9l-1 10 10-12h-9l1-10z"/>
+      </svg>
+    ),
+  },
+  {
+    href: "/launch",
+    label: "Launch Campaign",
+    icon: (
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M12 5v14"/><path d="M5 12l7-7 7 7"/>
+      </svg>
+    ),
+  },
+  {
+    href: "/referral",
+    label: "Referral",
+    icon: (
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/>
+        <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>
       </svg>
     ),
   },
@@ -83,18 +92,13 @@ export function Sidebar() {
   return (
     <aside
       className="w-52 flex flex-col h-screen sticky top-0 shrink-0"
-      style={{ background: "#0a0a0a", borderRight: "1px solid #1f2937" }}
+      style={{ background: "var(--sidebar-bg)", borderRight: "1px solid var(--sidebar-border)" }}
     >
       {/* Logo */}
-      <div className="px-4 py-5" style={{ borderBottom: "1px solid #1f2937" }}>
-        <div className="flex items-center gap-2">
-          <div
-            className="w-6 h-6 rounded-md flex items-center justify-center text-xs font-bold"
-            style={{ background: "#ffffff", color: "#0a0a0a" }}
-          >
-            S
-          </div>
-          <span className="text-white font-semibold text-sm">Spotmarket</span>
+      <div className="px-4 py-5" style={{ borderBottom: "1px solid var(--sidebar-border)" }}>
+        <div className="flex items-center gap-1.5">
+          <span className="text-base font-bold" style={{ color: "var(--accent)" }}>€</span>
+          <span className="text-white font-semibold text-sm">lipProfit</span>
         </div>
       </div>
 
@@ -106,20 +110,20 @@ export function Sidebar() {
             <Link
               key={href}
               href={href}
-              className="flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-medium transition-colors"
+              className="flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-250"
               style={{
-                color: active ? "#ffffff" : "#6b7280",
-                background: active ? "#1f2937" : "transparent",
+                color: active ? "var(--sidebar-active-text)" : "var(--sidebar-item)",
+                background: active ? "var(--sidebar-active-bg)" : "transparent",
               }}
               onMouseEnter={e => {
                 if (!active) {
-                  (e.currentTarget as HTMLElement).style.color = "#d1d5db";
-                  (e.currentTarget as HTMLElement).style.background = "#111827";
+                  (e.currentTarget as HTMLElement).style.color = "var(--sidebar-item-hover)";
+                  (e.currentTarget as HTMLElement).style.background = "var(--sidebar-hover-bg)";
                 }
               }}
               onMouseLeave={e => {
                 if (!active) {
-                  (e.currentTarget as HTMLElement).style.color = "#6b7280";
+                  (e.currentTarget as HTMLElement).style.color = "var(--sidebar-item)";
                   (e.currentTarget as HTMLElement).style.background = "transparent";
                 }
               }}
@@ -131,19 +135,45 @@ export function Sidebar() {
         })}
       </nav>
 
-      {/* Sign out */}
-      <div className="px-3 py-4" style={{ borderTop: "1px solid #1f2937" }}>
+      {/* Settings + Sign out */}
+      <div className="px-3 py-4 space-y-0.5" style={{ borderTop: "1px solid var(--sidebar-border)" }}>
+        <Link
+          href="/settings"
+          title="Settings"
+          className="flex items-center justify-center w-9 h-9 rounded-lg transition-all duration-250"
+          style={{
+            color: pathname === "/settings" ? "var(--sidebar-active-text)" : "var(--sidebar-item)",
+            background: pathname === "/settings" ? "var(--sidebar-active-bg)" : "transparent",
+          }}
+          onMouseEnter={e => {
+            if (pathname !== "/settings") {
+              (e.currentTarget as HTMLElement).style.color = "var(--sidebar-item-hover)";
+              (e.currentTarget as HTMLElement).style.background = "var(--sidebar-hover-bg)";
+            }
+          }}
+          onMouseLeave={e => {
+            if (pathname !== "/settings") {
+              (e.currentTarget as HTMLElement).style.color = "var(--sidebar-item)";
+              (e.currentTarget as HTMLElement).style.background = "transparent";
+            }
+          }}
+        >
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/>
+            <circle cx="12" cy="12" r="3"/>
+          </svg>
+        </Link>
         <form action="/api/auth/signout" method="POST">
           <button
             type="submit"
-            className="flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-medium w-full transition-colors cursor-pointer"
-            style={{ color: "#4b5563" }}
+            className="flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-medium w-full transition-all duration-250 cursor-pointer"
+            style={{ color: "var(--sidebar-item)" }}
             onMouseEnter={e => {
-              (e.currentTarget as HTMLElement).style.color = "#9ca3af";
-              (e.currentTarget as HTMLElement).style.background = "#111827";
+              (e.currentTarget as HTMLElement).style.color = "var(--sidebar-item-hover)";
+              (e.currentTarget as HTMLElement).style.background = "var(--sidebar-hover-bg)";
             }}
             onMouseLeave={e => {
-              (e.currentTarget as HTMLElement).style.color = "#4b5563";
+              (e.currentTarget as HTMLElement).style.color = "var(--sidebar-item)";
               (e.currentTarget as HTMLElement).style.background = "transparent";
             }}
           >

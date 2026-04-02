@@ -6,10 +6,15 @@ export const REALTIME_EVENTS = {
   NEW_MESSAGE: "message:new",
   FRAUD_ALERT: "fraud:alert",
   CAMPAIGN_COMPLETED: "campaign:completed",
+  CAMPAIGN_BUDGET_EXHAUSTED: "campaign:budget_exhausted",
+  CAMPAIGN_VIEWS_UPDATED: "campaign:views_updated",
+  POST_REVIEWED: "post:reviewed",
+  POST_COMMENT_ADDED: "post:comment_added",
 } as const;
 
 export const realtimeChannel = {
   campaign: (campaignId: string) => `campaign-${campaignId}`,
+  post: (postId: string) => `post-${postId}`,
   userNotifications: (supabaseId: string) => `user-notifications-${supabaseId}`,
   adminAlerts: () => "admin-alerts",
 };

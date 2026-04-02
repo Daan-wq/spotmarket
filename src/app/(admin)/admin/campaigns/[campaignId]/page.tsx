@@ -41,6 +41,14 @@ export default async function AdminCampaignDetailPage({
               },
             },
           },
+          posts: {
+            orderBy: { submittedAt: "desc" },
+            select: {
+              id: true, postUrl: true, status: true, submittedAt: true,
+              verifiedViews: true, brandDeclineReason: true, adminDeclineReason: true,
+              brandReviewedAt: true, sourceType: true,
+            },
+          },
         },
         orderBy: { appliedAt: "desc" },
       },
@@ -73,37 +81,37 @@ export default async function AdminCampaignDetailPage({
       {/* Header */}
       <div className="mb-8 flex items-start justify-between">
         <div>
-          <Link href="/admin/campaigns" className="text-sm hover:underline" style={{ color: "#94a3b8" }}>
+          <Link href="/admin/campaigns" className="text-sm hover:underline" style={{ color: "var(--text-muted)" }}>
             ← Campaigns
           </Link>
-          <h1 className="text-2xl font-semibold mt-2" style={{ color: "#0f172a" }}>{c.name}</h1>
+          <h1 className="text-2xl font-semibold mt-2" style={{ color: "var(--text-primary)" }}>{c.name}</h1>
         </div>
         <CampaignStatusToggle campaignId={c.id} currentStatus={c.status} />
       </div>
 
       {/* Details grid */}
-      <div className="grid grid-cols-4 gap-px rounded-xl overflow-hidden mb-8" style={{ background: "#e2e8f0" }}>
+      <div className="grid grid-cols-4 gap-px rounded-xl overflow-hidden mb-8" style={{ background: "var(--border)" }}>
         {details.map(({ label, value }) => (
-          <div key={label} className="px-4 py-4" style={{ background: "#ffffff" }}>
-            <p className="text-xs mb-1" style={{ color: "#94a3b8" }}>{label}</p>
-            <p className="text-sm font-medium truncate" style={{ color: "#0f172a" }}>{value}</p>
+          <div key={label} className="px-4 py-4" style={{ background: "var(--bg-elevated)" }}>
+            <p className="text-xs mb-1" style={{ color: "var(--text-muted)" }}>{label}</p>
+            <p className="text-sm font-medium truncate" style={{ color: "var(--text-primary)" }}>{value}</p>
           </div>
         ))}
       </div>
 
       {/* Applications */}
-      <div className="rounded-xl overflow-hidden" style={{ border: "1px solid #e2e8f0" }}>
+      <div className="rounded-xl overflow-hidden" style={{ border: "1px solid var(--border)" }}>
         <div
           className="px-5 py-3 flex items-center gap-6"
-          style={{ borderBottom: "1px solid #f1f5f9", background: "#ffffff" }}
+          style={{ borderBottom: "1px solid var(--border)", background: "var(--bg-elevated)" }}
         >
-          <p className="text-sm font-medium" style={{ color: "#0f172a" }}>
+          <p className="text-sm font-medium" style={{ color: "var(--text-primary)" }}>
             Pending ({pending.length})
           </p>
-          <p className="text-sm" style={{ color: "#94a3b8" }}>
+          <p className="text-sm" style={{ color: "var(--text-muted)" }}>
             Approved ({approved.length})
           </p>
-          <p className="text-sm" style={{ color: "#94a3b8" }}>
+          <p className="text-sm" style={{ color: "var(--text-muted)" }}>
             Rejected ({rejected.length})
 
           </p>

@@ -3,6 +3,21 @@ import { prisma } from "@/lib/prisma";
 import { redirect, notFound } from "next/navigation";
 import { MessageThread } from "./message-thread";
 
+interface MessageSender {
+  id: string;
+  supabaseId: string;
+  role: string;
+  creatorProfile?: { displayName: string } | null;
+}
+
+interface Message {
+  id: string;
+  content: string;
+  senderId: string;
+  createdAt: string;
+  sender: MessageSender;
+}
+
 export default async function CampaignMessagesPage({
   params,
 }: {
@@ -68,7 +83,13 @@ export default async function CampaignMessagesPage({
         campaignId={campaignId}
         currentUserId={user.id}
         recipientId={businessUserId}
-        initialMessages={messages as any}
+        initialMessages={messages.map((m) => ({
+          ...m,
+          createdAt:
+            typeof m.createdAt === "string"
+              ? m.createdAt
+              : m.createdAt.toISOString(),
+        }))}
       />
     </div>
   );

@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 
 const inputClass = "w-full px-3 py-2 rounded-lg text-sm outline-none";
-const inputStyle = { border: "1px solid #e2e8f0", background: "#f8fafc", color: "#0f172a" };
+const inputStyle = { border: "1px solid var(--border)", background: "var(--bg-primary)", color: "var(--text-primary)" };
 
 interface Client { id: string; name: string }
 interface Page { id: string; handle: string }
@@ -73,12 +73,12 @@ export default function NewPaymentPage() {
 
   return (
     <div className="p-8 max-w-2xl">
-      <h1 className="text-2xl font-semibold mb-8" style={{ color: "#0f172a" }}>Log Payment</h1>
+      <h1 className="text-2xl font-semibold mb-8" style={{ color: "var(--text-primary)" }}>Log Payment</h1>
 
       <form onSubmit={handleSubmit} className="space-y-5">
         <div className="grid grid-cols-3 gap-4">
           <div>
-            <label className="block text-xs font-medium mb-1" style={{ color: "#374151" }}>Direction *</label>
+            <label className="block text-xs font-medium mb-1" style={{ color: "var(--card-foreground)" }}>Direction *</label>
             <select
               className={inputClass}
               style={inputStyle}
@@ -90,7 +90,7 @@ export default function NewPaymentPage() {
             </select>
           </div>
           <div>
-            <label className="block text-xs font-medium mb-1" style={{ color: "#374151" }}>Amount *</label>
+            <label className="block text-xs font-medium mb-1" style={{ color: "var(--card-foreground)" }}>Amount *</label>
             <input
               type="number"
               step="0.01"
@@ -194,14 +194,14 @@ export default function NewPaymentPage() {
           />
         </div>
 
-        {error && <p className="text-sm" style={{ color: "#b91c1c" }}>{error}</p>}
+        {error && <p className="text-sm" style={{ color: "var(--error-text)" }}>{error}</p>}
 
         <div className="flex gap-3">
           <button
             type="submit"
             disabled={loading}
             className="px-5 py-2 rounded-lg text-sm font-medium text-white"
-            style={{ background: "#4f46e5", opacity: loading ? 0.7 : 1 }}
+            style={{ background: "var(--accent)", opacity: loading ? 0.7 : 1 }}
           >
             {loading ? "Saving…" : "Log Payment"}
           </button>
@@ -209,7 +209,7 @@ export default function NewPaymentPage() {
             type="button"
             onClick={() => router.back()}
             className="px-5 py-2 rounded-lg text-sm font-medium"
-            style={{ background: "#f3f4f6", color: "#374151" }}
+            style={{ background: "var(--bg-secondary)", color: "var(--card-foreground)" }}
           >
             Cancel
           </button>

@@ -7,6 +7,7 @@ const patchSchema = z.object({
   displayName: z.string().min(1).max(100).optional(),
   bio: z.string().max(500).optional(),
   walletAddress: z.string().regex(/^0x[a-fA-F0-9]{40}$/, "Invalid Ethereum address").or(z.literal("")).optional(),
+  tronsAddress: z.string().regex(/^T[1-9A-HJ-NP-Z]{33}$/, "Invalid Tron address").or(z.literal("")).optional(),
   primaryGeo: z.string().length(2).toUpperCase().optional(),
 });
 
@@ -54,10 +55,14 @@ export async function PATCH(
     return NextResponse.json({ error: parsed.error.issues[0]?.message ?? "Invalid input" }, { status: 400 });
   }
 
-  const { walletAddress, ...rest } = parsed.data;
+  const { walletAddress, tronsAddress, ...rest } = parsed.data;
   const updated = await prisma.creatorProfile.update({
     where: { id: creatorId },
-    data: { ...rest, ...(walletAddress !== undefined && { walletAddress: walletAddress === "" ? null : walletAddress }) },
+    data: {
+      ...rest,
+      ...(walletAddress !== undefined && { walletAddress: walletAddress === "" ? null : walletAddress }),
+      ...(tronsAddress !== undefined && { tronsAddress: tronsAddress === "" ? null : tronsAddress }),
+    },
   });
   return NextResponse.json(updated);
 }

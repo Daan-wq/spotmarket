@@ -6,7 +6,7 @@ import { createSupabaseServerClient } from "@/lib/supabase/server";
 
 export async function updatePageSettings(
   pageId: string,
-  data: { niche?: string; displayLabel?: string }
+  data: { niche?: import("@prisma/client").Niche; displayLabel?: string }
 ) {
   const supabase = await createSupabaseServerClient();
   const { data: { user: authUser } } = await supabase.auth.getUser();

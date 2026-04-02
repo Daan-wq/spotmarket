@@ -10,11 +10,19 @@ interface MessageSender {
   creatorProfile?: { displayName: string } | null;
 }
 
+interface MessagePost {
+  id: string;
+  postUrl: string;
+  status: string;
+}
+
 interface Message {
   id: string;
   content: string;
   senderId: string;
   createdAt: string;
+  type?: string;
+  post?: MessagePost | null;
   sender: MessageSender;
 }
 
@@ -112,14 +120,56 @@ export function MessageThread({
         )}
         {messages.map((msg) => {
           const isOwn = msg.senderId === currentUserId;
+          const isDecline = msg.type === "DECLINE_NOTICE";
+          const isPostFeedback = msg.type === "POST_FEEDBACK";
+
           return (
             <div key={msg.id} className={`flex gap-2 ${isOwn ? "flex-row-reverse" : "flex-row"}`}>
-              <div className={`max-w-[70%] rounded-2xl px-4 py-2 ${isOwn ? "bg-blue-600 text-white rounded-tr-sm" : "bg-gray-100 text-gray-900 rounded-tl-sm"}`}>
-                {!isOwn && (
-                  <p className="text-xs font-semibold mb-1 text-gray-500">{getSenderName(msg.sender)}</p>
+              <div
+                className={`max-w-[70%] rounded-2xl px-4 py-2 ${
+                  isDecline
+                    ? "bg-red-50 text-red-900 border border-red-200 rounded-tl-sm"
+                    : isOwn
+                      ? "bg-blue-600 text-white rounded-tr-sm"
+                      : "bg-gray-100 text-gray-900 rounded-tl-sm"
+                }`}
+              >
+                {/* Type badge */}
+                {msg.type && msg.type !== "GENERAL" && (
+                  <span
+                    className="text-xs font-medium px-1.5 py-0.5 rounded mb-1 inline-block"
+                    style={{
+                      background: isDecline ? "#fecaca" : "#dbeafe",
+                      color: isDecline ? "#991b1b" : "#1d4ed8",
+                    }}
+                  >
+                    {isDecline ? "Decline Notice" : "Post Feedback"}
+                  </span>
                 )}
+
+                {!isOwn && (
+                  <p className={`text-xs font-semibold mb-1 ${isDecline ? "text-red-500" : "text-gray-500"}`}>
+                    {getSenderName(msg.sender)}
+                  </p>
+                )}
+
                 <p className="text-sm whitespace-pre-wrap">{msg.content}</p>
-                <p className={`text-xs mt-1 ${isOwn ? "text-blue-200" : "text-gray-400"}`}>
+
+                {/* Linked post reference */}
+                {msg.post && (
+                  <a
+                    href={msg.post.postUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className={`text-xs mt-1 inline-flex items-center gap-1 hover:underline ${
+                      isOwn ? "text-blue-200" : isDecline ? "text-red-500" : "text-blue-500"
+                    }`}
+                  >
+                    View linked post →
+                  </a>
+                )}
+
+                <p className={`text-xs mt-1 ${isOwn ? "text-blue-200" : isDecline ? "text-red-400" : "text-gray-400"}`}>
                   {new Date(msg.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
                 </p>
               </div>

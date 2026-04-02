@@ -42,7 +42,10 @@ export function MessageButton({ channel, handle, prefill }: MessageButtonProps) 
       target="_blank"
       rel="noopener noreferrer"
       className="inline-flex items-center gap-1 px-2 py-1 rounded text-xs font-medium transition-colors"
-      style={{ background: "#f3f4f6", color: "#374151" }}
+      style={{
+        background: "var(--bg-secondary)",
+        color: "var(--text-secondary)",
+      }}
       title={`Message via ${channel}`}
     >
       <span>{CHANNEL_ICONS[channel]}</span>

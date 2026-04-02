@@ -76,22 +76,22 @@ export function PayoutActionsRow({
   const colors = statusStyle[payout.status];
 
   return (
-    <div className="px-5 py-5" style={{ borderTop: "1px solid #f8fafc" }}>
+    <div className="px-5 py-5" style={{ borderTop: "1px solid var(--border)" }}>
       <div className="flex items-start justify-between gap-4">
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 mb-1">
-            <p className="text-sm font-medium" style={{ color: "#0f172a" }}>
+            <p className="text-sm font-medium" style={{ color: "var(--text-primary)" }}>
               {payout.application.creatorProfile.displayName}
             </p>
             <span className="text-xs px-2 py-0.5 rounded-full font-medium" style={colors}>
               {payout.status}
             </span>
-            <span className="text-xs px-2 py-0.5 rounded-full font-medium" style={{ backgroundColor: "#f1f5f9", color: "#475569" }}>
+            <span className="text-xs px-2 py-0.5 rounded-full font-medium" style={{ backgroundColor: "var(--bg-card)", color: "var(--card-foreground)" }}>
               {payout.type}
             </span>
           </div>
 
-          <p className="text-xs mb-2" style={{ color: "#94a3b8" }}>
+          <p className="text-xs mb-2" style={{ color: "var(--text-muted)" }}>
             {payout.application.campaign.name}
           </p>
 
@@ -99,21 +99,21 @@ export function PayoutActionsRow({
           <div className="flex items-center gap-2 mb-3">
             <code
               className="text-xs px-2 py-1 rounded font-mono truncate max-w-xs"
-              style={{ background: "#f8fafc", color: "#64748b", border: "1px solid #e2e8f0" }}
+              style={{ background: "var(--bg-primary)", color: "var(--text-secondary)", border: "1px solid var(--border)" }}
             >
               {payout.walletAddress}
             </code>
             <button
               onClick={copyWallet}
               className="text-xs font-medium shrink-0 hover:underline"
-              style={{ color: "#4f46e5" }}
+              style={{ color: "var(--accent)" }}
             >
               {copied ? "Copied!" : "Copy"}
             </button>
           </div>
 
           {payout.txHash && (
-            <p className="text-xs font-mono mb-3" style={{ color: "#94a3b8" }}>
+            <p className="text-xs font-mono mb-3" style={{ color: "var(--text-muted)" }}>
               tx: {payout.txHash}
             </p>
           )}
@@ -129,17 +129,17 @@ export function PayoutActionsRow({
                     onChange={(e) => setTxHash(e.target.value)}
                     placeholder="Paste transaction hash..."
                     className="flex-1 px-3 py-1.5 rounded-lg text-xs font-mono outline-none transition-all"
-                    style={{ border: "1px solid #e2e8f0", background: "#f8fafc", color: "#0f172a" }}
-                    onFocus={(e) => { e.currentTarget.style.borderColor = "#4f46e5"; e.currentTarget.style.boxShadow = "0 0 0 3px #eef2ff"; }}
-                    onBlur={(e) => { e.currentTarget.style.borderColor = "#e2e8f0"; e.currentTarget.style.boxShadow = "none"; }}
+                    style={{ border: "1px solid var(--border)", background: "var(--bg-primary)", color: "var(--text-primary)" }}
+                    onFocus={(e) => { e.currentTarget.style.borderColor = "var(--accent)"; e.currentTarget.style.boxShadow = "0 0 0 3px var(--accent-bg)"; }}
+                    onBlur={(e) => { e.currentTarget.style.borderColor = "var(--border)"; e.currentTarget.style.boxShadow = "none"; }}
                   />
                   <button
                     onClick={markSent}
                     disabled={loading}
                     className="px-3 py-1.5 rounded-lg text-xs font-medium text-white transition-colors disabled:opacity-50 shrink-0"
-                    style={{ background: "#4f46e5" }}
-                    onMouseEnter={(e) => { if (!loading) (e.currentTarget as HTMLElement).style.background = "#4338ca"; }}
-                    onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = "#4f46e5"; }}
+                    style={{ background: "var(--accent)" }}
+                    onMouseEnter={(e) => { if (!loading) (e.currentTarget as HTMLElement).style.background = "var(--accent-hover)"; }}
+                    onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = "var(--accent)"; }}
                   >
                     {loading ? "…" : "Mark Sent"}
                   </button>
@@ -162,12 +162,12 @@ export function PayoutActionsRow({
         </div>
 
         <div className="text-right shrink-0">
-          <p className="text-lg font-semibold" style={{ color: "#0f172a" }}>
+          <p className="text-lg font-semibold" style={{ color: "var(--text-primary)" }}>
             ${parseFloat(payout.amount.toString()).toFixed(4)}
           </p>
-          <p className="text-xs" style={{ color: "#94a3b8" }}>{payout.currency}</p>
+          <p className="text-xs" style={{ color: "var(--text-muted)" }}>{payout.currency}</p>
           {payout.verifiedViews && (
-            <p className="text-xs mt-1" style={{ color: "#94a3b8" }}>
+            <p className="text-xs mt-1" style={{ color: "var(--text-muted)" }}>
               {payout.verifiedViews.toLocaleString()} views
             </p>
           )}

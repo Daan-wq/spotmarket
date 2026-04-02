@@ -21,11 +21,12 @@ const GEO_OPTIONS = [
 ];
 
 const WALLET_REGEX = /^0x[a-fA-F0-9]{40}$/;
+const TRON_REGEX = /^T[1-9A-HJ-NP-Z]{33}$/;
 
 const inputStyle = {
-  border: "1px solid #e2e8f0",
-  background: "#f8fafc",
-  color: "#0f172a",
+  border: "1px solid var(--border)",
+  background: "var(--bg-primary)",
+  color: "var(--text-primary)",
 };
 
 interface ProfileFormProps {
@@ -34,6 +35,7 @@ interface ProfileFormProps {
     displayName: string;
     bio: string;
     walletAddress: string;
+    tronsAddress: string;
     primaryGeo: string;
   };
 }
@@ -48,7 +50,10 @@ export function ProfileForm({ profileId, initialData }: ProfileFormProps) {
   function validate(): string | null {
     if (!form.displayName.trim()) return "Display name is required";
     if (form.walletAddress && !WALLET_REGEX.test(form.walletAddress)) {
-      return "Wallet address must be a valid Ethereum address (0x...)";
+      return "EVM wallet address must be a valid Ethereum address (0x...)";
+    }
+    if (form.tronsAddress && !TRON_REGEX.test(form.tronsAddress)) {
+      return "Tron wallet must start with T and be 34 characters";
     }
     return null;
   }
@@ -86,13 +91,13 @@ export function ProfileForm({ profileId, initialData }: ProfileFormProps) {
   }
 
   return (
-    <div className="rounded-xl overflow-hidden" style={{ border: "1px solid #e2e8f0" }}>
-      <div className="px-5 py-3" style={{ borderBottom: "1px solid #f1f5f9", background: "#ffffff" }}>
-        <p className="text-sm font-medium" style={{ color: "#0f172a" }}>Profile Details</p>
+    <div className="rounded-xl overflow-hidden" style={{ border: "1px solid var(--border)" }}>
+      <div className="px-5 py-3" style={{ borderBottom: "1px solid var(--border)", background: "var(--bg-elevated)" }}>
+        <p className="text-sm font-medium" style={{ color: "var(--text-primary)" }}>Profile Details</p>
       </div>
-      <div className="px-5 py-5 space-y-4" style={{ background: "#ffffff" }}>
+      <div className="px-5 py-5 space-y-4" style={{ background: "var(--bg-elevated)" }}>
         <div>
-          <label className="block text-sm font-medium mb-1.5" style={{ color: "#374151" }}>
+          <label className="block text-sm font-medium mb-1.5" style={{ color: "var(--card-foreground)" }}>
             Display Name
           </label>
           <input
@@ -102,13 +107,13 @@ export function ProfileForm({ profileId, initialData }: ProfileFormProps) {
             placeholder="Your name or page name"
             className="w-full px-3 py-2.5 rounded-lg text-sm outline-none transition-all"
             style={inputStyle}
-            onFocus={(e) => { e.currentTarget.style.borderColor = "#4f46e5"; e.currentTarget.style.boxShadow = "0 0 0 3px #eef2ff"; }}
-            onBlur={(e) => { e.currentTarget.style.borderColor = "#e2e8f0"; e.currentTarget.style.boxShadow = "none"; }}
+            onFocus={(e) => { e.currentTarget.style.borderColor = "var(--accent)"; e.currentTarget.style.boxShadow = "0 0 0 3px var(--accent-bg)"; }}
+            onBlur={(e) => { e.currentTarget.style.borderColor = "var(--border)"; e.currentTarget.style.boxShadow = "none"; }}
           />
         </div>
 
         <div>
-          <label className="block text-sm font-medium mb-1.5" style={{ color: "#374151" }}>
+          <label className="block text-sm font-medium mb-1.5" style={{ color: "var(--card-foreground)" }}>
             Bio
           </label>
           <textarea
@@ -118,13 +123,13 @@ export function ProfileForm({ profileId, initialData }: ProfileFormProps) {
             placeholder="Tell businesses about your page and audience"
             className="w-full px-3 py-2.5 rounded-lg text-sm outline-none transition-all resize-none"
             style={inputStyle}
-            onFocus={(e) => { e.currentTarget.style.borderColor = "#4f46e5"; e.currentTarget.style.boxShadow = "0 0 0 3px #eef2ff"; }}
-            onBlur={(e) => { e.currentTarget.style.borderColor = "#e2e8f0"; e.currentTarget.style.boxShadow = "none"; }}
+            onFocus={(e) => { e.currentTarget.style.borderColor = "var(--accent)"; e.currentTarget.style.boxShadow = "0 0 0 3px var(--accent-bg)"; }}
+            onBlur={(e) => { e.currentTarget.style.borderColor = "var(--border)"; e.currentTarget.style.boxShadow = "none"; }}
           />
         </div>
 
         <div>
-          <label className="block text-sm font-medium mb-1.5" style={{ color: "#374151" }}>
+          <label className="block text-sm font-medium mb-1.5" style={{ color: "var(--card-foreground)" }}>
             Primary Audience Geo
           </label>
           <select
@@ -132,19 +137,19 @@ export function ProfileForm({ profileId, initialData }: ProfileFormProps) {
             onChange={(e) => setForm({ ...form, primaryGeo: e.target.value })}
             className="w-full px-3 py-2.5 rounded-lg text-sm outline-none transition-all"
             style={inputStyle}
-            onFocus={(e) => { e.currentTarget.style.borderColor = "#4f46e5"; e.currentTarget.style.boxShadow = "0 0 0 3px #eef2ff"; }}
-            onBlur={(e) => { e.currentTarget.style.borderColor = "#e2e8f0"; e.currentTarget.style.boxShadow = "none"; }}
+            onFocus={(e) => { e.currentTarget.style.borderColor = "var(--accent)"; e.currentTarget.style.boxShadow = "0 0 0 3px var(--accent-bg)"; }}
+            onBlur={(e) => { e.currentTarget.style.borderColor = "var(--border)"; e.currentTarget.style.boxShadow = "none"; }}
           >
             {GEO_OPTIONS.map((g) => (
               <option key={g.code} value={g.code}>{g.label} ({g.code})</option>
             ))}
           </select>
-          <p className="text-xs mt-1" style={{ color: "#94a3b8" }}>The country where most of your audience is located</p>
+          <p className="text-xs mt-1" style={{ color: "var(--text-muted)" }}>The country where most of your audience is located</p>
         </div>
 
         <div>
-          <label className="block text-sm font-medium mb-1.5" style={{ color: "#374151" }}>
-            Crypto Wallet Address <span style={{ color: "#94a3b8", fontWeight: 400 }}>(for payouts)</span>
+          <label className="block text-sm font-medium mb-1.5" style={{ color: "var(--card-foreground)" }}>
+            Crypto Wallet Address <span style={{ color: "var(--text-muted)", fontWeight: 400 }}>(for payouts)</span>
           </label>
           <input
             type="text"
@@ -153,10 +158,31 @@ export function ProfileForm({ profileId, initialData }: ProfileFormProps) {
             placeholder="0x..."
             className="w-full px-3 py-2.5 rounded-lg text-sm font-mono outline-none transition-all"
             style={inputStyle}
-            onFocus={(e) => { e.currentTarget.style.borderColor = "#4f46e5"; e.currentTarget.style.boxShadow = "0 0 0 3px #eef2ff"; }}
-            onBlur={(e) => { e.currentTarget.style.borderColor = "#e2e8f0"; e.currentTarget.style.boxShadow = "none"; }}
+            onFocus={(e) => { e.currentTarget.style.borderColor = "var(--accent)"; e.currentTarget.style.boxShadow = "0 0 0 3px var(--accent-bg)"; }}
+            onBlur={(e) => { e.currentTarget.style.borderColor = "var(--border)"; e.currentTarget.style.boxShadow = "none"; }}
           />
-          <p className="text-xs mt-1" style={{ color: "#94a3b8" }}>EVM-compatible wallet (Ethereum, Polygon, etc.). Required to receive payouts.</p>
+          <p className="text-xs mt-1" style={{ color: "var(--text-muted)" }}>EVM-compatible wallet (Ethereum, Polygon, etc.). Required to receive creator payouts.</p>
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium mb-1.5" style={{ color: "var(--card-foreground)" }}>
+            USDT Wallet (TRC-20 / Tron){" "}
+            <span style={{ color: "var(--text-muted)", fontWeight: 400 }}>(for campaign deposits &amp; refunds)</span>
+          </label>
+          <input
+            type="text"
+            value={form.tronsAddress}
+            onChange={(e) => setForm({ ...form, tronsAddress: e.target.value.trim() })}
+            placeholder="Txxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+            className="w-full px-3 py-2.5 rounded-lg text-sm font-mono outline-none transition-all"
+            style={{
+              ...inputStyle,
+              borderColor: form.tronsAddress && !TRON_REGEX.test(form.tronsAddress) ? "#f87171" : undefined,
+            }}
+            onFocus={(e) => { e.currentTarget.style.borderColor = "var(--accent)"; e.currentTarget.style.boxShadow = "0 0 0 3px var(--accent-bg)"; }}
+            onBlur={(e) => { e.currentTarget.style.borderColor = form.tronsAddress && !TRON_REGEX.test(form.tronsAddress) ? "#f87171" : "var(--border)"; e.currentTarget.style.boxShadow = "none"; }}
+          />
+          <p className="text-xs mt-1" style={{ color: "var(--text-muted)" }}>Required to launch campaigns. Unspent campaign budget is refunded here.</p>
         </div>
 
         {error && (
@@ -174,9 +200,9 @@ export function ProfileForm({ profileId, initialData }: ProfileFormProps) {
           onClick={handleSave}
           disabled={saving}
           className="w-full py-2.5 rounded-lg text-sm font-medium text-white transition-colors disabled:opacity-50"
-          style={{ background: "#4f46e5" }}
-          onMouseEnter={(e) => { if (!saving) (e.currentTarget as HTMLElement).style.background = "#4338ca"; }}
-          onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = "#4f46e5"; }}
+          style={{ background: "var(--accent)" }}
+          onMouseEnter={(e) => { if (!saving) (e.currentTarget as HTMLElement).style.background = "var(--accent-hover)"; }}
+          onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = "var(--accent)"; }}
         >
           {saving ? "Saving…" : "Save Profile"}
         </button>

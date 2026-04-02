@@ -2,32 +2,71 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { decrypt } from "@/lib/crypto";
 import { broadcast, realtimeChannel, REALTIME_EVENTS } from "@/lib/realtime";
+import { verifyCron } from "@/lib/cron-auth";
+import type { IgMediaItem } from "@/types/instagram";
 
 const FRAUD_SPIKE_MULTIPLIER = 3;
 
+interface FullInsights {
+  views: number;
+  likes: number;
+  comments: number;
+  reach: number;
+  savedCount: number | null;
+  sharesCount: number | null;
+  avgWatchTimeMs: number | null;
+  totalWatchTimeMs: number | null;
+  profileVisits: number | null;
+  followsFromPost: number | null;
+}
+
+/**
+ * Fetch per-media insights using v25.0 non-deprecated metrics.
+ * isReel=true adds ig_reels_avg_watch_time and ig_reels_video_view_total_time.
+ */
 async function fetchInstagramInsights(
   accessToken: string,
-  mediaId: string
-): Promise<{ views: number; likes: number; comments: number; reach: number } | null> {
+  mediaId: string,
+  isReel = false
+): Promise<FullInsights | null> {
   try {
-    const fields = "like_count,comments_count,insights.metric(impressions,reach,video_views)";
-    const url = `https://graph.instagram.com/${mediaId}?fields=${encodeURIComponent(fields)}&access_token=${accessToken}`;
-    const res = await fetch(url);
+    const GRAPH = "https://graph.instagram.com/v25.0";
+
+    // views = unified v25.0 metric (replaces deprecated video_views + impressions)
+    const baseMetrics = "views,reach,saved,shares,profile_visits,follows";
+    const metricList = isReel
+      ? `${baseMetrics},ig_reels_avg_watch_time,ig_reels_video_view_total_time`
+      : baseMetrics;
+
+    const fields = `like_count,comments_count,insights.metric(${metricList})`;
+    const url = `${GRAPH}/${mediaId}?fields=${encodeURIComponent(fields)}&access_token=${accessToken}`;
+    let res = await fetch(url);
+
+    // Reel-specific metrics may fail for non-Reel posts — retry without them
+    if (!res.ok && isReel) {
+      const fallbackFields = `like_count,comments_count,insights.metric(${baseMetrics})`;
+      res = await fetch(`${GRAPH}/${mediaId}?fields=${encodeURIComponent(fallbackFields)}&access_token=${accessToken}`);
+    }
+
     if (!res.ok) return null;
     const data = await res.json();
 
     const insights: Record<string, number> = {};
-    if (data.insights?.data) {
-      for (const metric of data.insights.data as { name: string; values: { value: number }[] }[]) {
-        insights[metric.name] = metric.values?.[0]?.value ?? 0;
-      }
+    for (const metric of (data.insights?.data ?? []) as { name: string; values: { value: number }[] }[]) {
+      insights[metric.name] = metric.values?.[0]?.value ?? 0;
     }
 
     return {
-      views: insights["video_views"] ?? insights["impressions"] ?? 0,
+      views: insights["views"] ?? 0,
       likes: data.like_count ?? 0,
       comments: data.comments_count ?? 0,
       reach: insights["reach"] ?? 0,
+      savedCount: "saved" in insights ? insights["saved"] : null,
+      sharesCount: "shares" in insights ? insights["shares"] : null,
+      avgWatchTimeMs: "ig_reels_avg_watch_time" in insights ? insights["ig_reels_avg_watch_time"] : null,
+      totalWatchTimeMs: "ig_reels_video_view_total_time" in insights ? insights["ig_reels_video_view_total_time"] : null,
+      profileVisits: "profile_visits" in insights ? insights["profile_visits"] : null,
+      followsFromPost: "follows" in insights ? insights["follows"] : null,
     };
   } catch {
     return null;
@@ -46,8 +85,7 @@ function compute24hRollingAvg(snapshots: { viewsCount: number; capturedAt: Date 
 }
 
 export async function GET(req: Request) {
-  const authHeader = req.headers.get("authorization");
-  if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
+  if (!verifyCron(req)) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
@@ -62,7 +100,7 @@ export async function GET(req: Request) {
     },
     include: {
       socialAccount: {
-        select: { accessToken: true, accessTokenIv: true, platform: true, id: true },
+        select: { accessToken: true, accessTokenIv: true, platform: true, id: true, igMediaCache: true },
       },
       networkMember: {
         select: { igAccessToken: true, igAccessTokenIv: true },
@@ -105,9 +143,14 @@ export async function GET(req: Request) {
 
     if (!plainToken) continue;
 
-    let metrics: { views: number; likes: number; comments: number; reach: number } | null = null;
+    // Detect if post is a Reel via igMediaCache for correct metric set
+    const mediaCache = (post.socialAccount?.igMediaCache as IgMediaItem[] | null) ?? [];
+    const cacheItem = mediaCache.find((m) => m.id === post.platformPostId);
+    const isReel = cacheItem?.media_product_type === "REELS" || cacheItem?.media_type === "VIDEO";
+
+    let metrics: FullInsights | null = null;
     if (platform === "instagram") {
-      metrics = await fetchInstagramInsights(plainToken, post.platformPostId);
+      metrics = await fetchInstagramInsights(plainToken, post.platformPostId, isReel);
     }
     if (!metrics) continue;
 
@@ -118,6 +161,12 @@ export async function GET(req: Request) {
         likesCount: metrics.likes,
         commentsCount: metrics.comments,
         reach: metrics.reach,
+        savedCount: metrics.savedCount,
+        sharesCount: metrics.sharesCount,
+        avgWatchTimeMs: metrics.avgWatchTimeMs,
+        totalWatchTimeMs: metrics.totalWatchTimeMs,
+        profileVisits: metrics.profileVisits,
+        followsFromPost: metrics.followsFromPost,
         capturedAt: new Date(),
       },
     });
@@ -242,10 +291,79 @@ export async function GET(req: Request) {
     });
   }
 
+  // Budget exhaustion check — auto-pause campaigns that exceeded budget or goal views
+  const campaignIds = [...new Set(posts.map((p) => p.application.campaign.id))];
+  let campaignsPaused = 0;
+
+  for (const campaignId of campaignIds) {
+    const campaign = await prisma.campaign.findUnique({
+      where: { id: campaignId },
+      select: { id: true, status: true, totalBudget: true, businessCpv: true, goalViews: true, name: true },
+    });
+    if (!campaign || campaign.status !== "active") continue;
+
+    const agg = await prisma.campaignApplicationPage.aggregate({
+      where: { application: { campaignId } },
+      _sum: { totalViews: true },
+    });
+    const totalViews = agg._sum.totalViews ?? 0;
+    const totalSpend = totalViews * Number(campaign.businessCpv);
+    const totalBudget = Number(campaign.totalBudget);
+    const goalViews = campaign.goalViews ? Number(campaign.goalViews) : null;
+
+    // 2% buffer to avoid race condition pausing
+    const budgetExhausted = totalBudget > 0 && totalSpend >= totalBudget * 0.98;
+    const viewsExhausted = goalViews !== null && goalViews > 0 && totalViews >= goalViews;
+
+    if (budgetExhausted || viewsExhausted) {
+      await prisma.campaign.update({
+        where: { id: campaignId },
+        data: { status: "paused" },
+      });
+      campaignsPaused++;
+
+      try {
+        await broadcast(
+          realtimeChannel.campaign(campaignId),
+          REALTIME_EVENTS.CAMPAIGN_BUDGET_EXHAUSTED,
+          {
+            campaignId,
+            campaignName: campaign.name,
+            totalSpend: Math.round(totalSpend * 100) / 100,
+            totalBudget,
+            totalViews,
+            goalViews,
+            reason: budgetExhausted ? "budget" : "views",
+          }
+        );
+      } catch (err) {
+        console.error("Realtime budget exhaustion broadcast failed:", err);
+      }
+    } else {
+      // Broadcast live view update for active campaigns
+      const percentUsed = goalViews && goalViews > 0
+        ? Math.round((totalViews / goalViews) * 100)
+        : totalBudget > 0
+          ? Math.round((totalSpend / totalBudget) * 100)
+          : 0;
+
+      try {
+        await broadcast(
+          realtimeChannel.campaign(campaignId),
+          REALTIME_EVENTS.CAMPAIGN_VIEWS_UPDATED,
+          { campaignId, totalViews, totalSpend: Math.round(totalSpend * 100) / 100, percentUsed }
+        );
+      } catch {
+        // Non-critical — view updates are best-effort
+      }
+    }
+  }
+
   return NextResponse.json({
     ok: true,
     postsProcessed: posts.length,
     snapshotsWritten,
     fraudFlagged,
+    campaignsPaused,
   });
 }

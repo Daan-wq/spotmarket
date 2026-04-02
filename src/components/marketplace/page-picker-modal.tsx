@@ -53,14 +53,14 @@ export function PagePickerModal({ campaign, pages, onSubmit, onCancel }: PagePic
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-xl max-w-xl w-full max-h-[90vh] flex flex-col shadow-2xl">
+      <div className="rounded-xl max-w-xl w-full max-h-[90vh] flex flex-col shadow-2xl" style={{ backgroundColor: "var(--bg-elevated)" }}>
         {/* Header */}
-        <div className="p-6 border-b border-gray-200">
-          <h2 className="text-lg font-semibold text-gray-900">
+        <div className="p-6" style={{ borderBottom: "1px solid var(--border)" }}>
+          <h2 className="text-lg font-semibold" style={{ color: "var(--text-primary)" }}>
             Select pages for &ldquo;{campaign.name}&rdquo;
           </h2>
           {reqSummary && (
-            <p className="text-sm text-gray-500 mt-1">Requirements: {reqSummary}</p>
+            <p className="text-sm mt-1" style={{ color: "var(--text-muted)" }}>Requirements: {reqSummary}</p>
           )}
         </div>
 
@@ -75,22 +75,25 @@ export function PagePickerModal({ campaign, pages, onSubmit, onCancel }: PagePic
             />
           ))}
           {results.length === 0 && (
-            <p className="text-center text-gray-400 py-8">No pages connected. Connect a page first.</p>
+            <p className="text-center py-8" style={{ color: "var(--text-muted)" }}>No pages connected. Connect a page first.</p>
           )}
         </div>
 
         {/* Footer */}
-        <div className="p-4 border-t border-gray-200 flex gap-3 justify-end bg-gray-50 rounded-b-xl">
+        <div className="p-4 flex gap-3 justify-end rounded-b-xl" style={{ borderTop: "1px solid var(--border)", backgroundColor: "var(--bg-secondary)" }}>
           <button
             onClick={onCancel}
-            className="px-4 py-2 text-sm text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-100"
+            className="px-4 py-2 text-sm rounded-lg" style={{ color: "var(--text-primary)", borderColor: "var(--border)", borderWidth: "1px", backgroundColor: "transparent" }}
           >
             Cancel
           </button>
           <button
             onClick={handleSubmit}
             disabled={selected.size === 0 || submitting}
-            className="px-4 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
+            className="px-4 py-2 text-sm text-white rounded-lg disabled:opacity-50"
+            style={{ backgroundColor: "var(--accent)" }}
+            onMouseEnter={e => { if (!submitting && selected.size > 0) (e.currentTarget.style.backgroundColor = "var(--accent-hover)"); }}
+            onMouseLeave={e => (e.currentTarget.style.backgroundColor = "var(--accent)")}
           >
             {submitting ? "Claiming..." : `Claim with ${selected.size} page${selected.size !== 1 ? "s" : ""} →`}
           </button>
@@ -112,11 +115,13 @@ function PagePickerCard({
   const { page, allPassed, checks } = result;
   return (
     <div
-      className={`border-2 rounded-lg p-4 transition ${
-        allPassed
-          ? "border-green-300 bg-green-50 cursor-pointer"
-          : "border-gray-200 bg-gray-50 opacity-60 cursor-not-allowed"
-      }`}
+      className="border-2 rounded-lg p-4 transition"
+      style={{
+        borderColor: allPassed ? "var(--success)" : "var(--border)",
+        backgroundColor: allPassed ? "var(--success-bg)" : "var(--bg-secondary)",
+        opacity: allPassed ? 1 : 0.6,
+        cursor: allPassed ? "pointer" : "not-allowed",
+      }}
       onClick={allPassed ? onToggle : undefined}
     >
       <div className="flex items-start gap-3">
@@ -125,13 +130,13 @@ function PagePickerCard({
             {page.igProfilePicUrl ? (
               <Image src={page.igProfilePicUrl} alt="" width={28} height={28} className="rounded-full" />
             ) : (
-              <div className="w-7 h-7 rounded-full bg-gray-300 flex items-center justify-center text-xs text-gray-600">
+              <div className="w-7 h-7 rounded-full flex items-center justify-center text-xs" style={{ backgroundColor: "var(--muted)", color: "var(--text-secondary)" }}>
                 {page.platformUsername?.[0]?.toUpperCase()}
               </div>
             )}
-            <p className="font-semibold text-sm text-gray-900">@{page.platformUsername}</p>
+            <p className="font-semibold text-sm" style={{ color: "var(--text-primary)" }}>@{page.platformUsername}</p>
           </div>
-          <p className="text-xs text-gray-500 mb-2">
+          <p className="text-xs mb-2" style={{ color: "var(--text-muted)" }}>
             {page.followerCount.toLocaleString()} followers · {Number(page.engagementRate).toFixed(1)}% eng
           </p>
           <div className="space-y-0.5">
@@ -139,7 +144,7 @@ function PagePickerCard({
               <CheckRow key={i} check={check} />
             ))}
             {checks.length === 0 && (
-              <p className="text-xs text-green-600">No specific requirements</p>
+              <p className="text-xs" style={{ color: "var(--success)" }}>No specific requirements</p>
             )}
           </div>
         </div>
@@ -148,7 +153,8 @@ function PagePickerCard({
           checked={isSelected}
           onChange={onToggle}
           disabled={!allPassed}
-          className="mt-1 w-4 h-4 accent-blue-600"
+          className="mt-1 w-4 h-4"
+          style={{ accentColor: "var(--accent)" }}
           onClick={e => e.stopPropagation()}
         />
       </div>
@@ -159,10 +165,10 @@ function PagePickerCard({
 function CheckRow({ check }: { check: MatchCheck }) {
   return (
     <div className="flex items-center gap-1 text-xs">
-      <span className={check.pass ? "text-green-600" : "text-red-500"}>
+      <span style={{ color: check.pass ? "var(--success)" : "var(--error)" }}>
         {check.pass ? "✓" : "✗"}
       </span>
-      <span className={check.pass ? "text-gray-600" : "text-red-500"}>
+      <span style={{ color: check.pass ? "var(--text-secondary)" : "var(--error)" }}>
         {check.label}: {check.actual ?? "—"}{typeof check.actual === "number" && check.label !== "Followers" ? "%" : ""}
         {!check.pass && check.required !== null && ` (need ${check.required}${check.label !== "Followers" ? "%" : ""})`}
       </span>

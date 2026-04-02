@@ -8,8 +8,18 @@ import {
   computeEngagementRate,
 } from "@/lib/instagram";
 import { updateCreatorAggregateStats } from "@/lib/creator-stats";
+import { rateLimit, AUTH_LIMIT, getClientIp } from "@/lib/rate-limit";
 
 export async function GET(req: Request) {
+  const ip = getClientIp(req);
+  const { success, headers: rlHeaders } = rateLimit(`auth_cb_${ip}`, AUTH_LIMIT);
+  if (!success) {
+    return NextResponse.json(
+      { error: "Too many requests" },
+      { status: 429, headers: rlHeaders },
+    );
+  }
+
   const { searchParams } = new URL(req.url);
   const code = searchParams.get("code");
   const state = searchParams.get("state") ?? "";

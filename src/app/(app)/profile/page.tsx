@@ -1,3 +1,4 @@
+import Image from "next/image";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { prisma } from "@/lib/prisma";
 import { redirect } from "next/navigation";
@@ -9,7 +10,9 @@ export default async function ProfilePage({
   searchParams: Promise<{ success?: string; error?: string; detail?: string }>;
 }) {
   const supabase = await createSupabaseServerClient();
-  const { data: { user: authUser } } = await supabase.auth.getUser();
+  const {
+    data: { user: authUser },
+  } = await supabase.auth.getUser();
   if (!authUser) redirect("/sign-in");
 
   const params = await searchParams;
@@ -18,140 +21,203 @@ export default async function ProfilePage({
     where: { supabaseId: authUser.id },
     include: {
       creatorProfile: {
-        include: { socialAccounts: true },
+        include: {
+          applications: {
+            include: {
+              campaign: { select: { id: true, name: true } },
+              payouts: { where: { status: { in: ["confirmed", "sent"] } }, select: { amount: true } },
+              posts: { include: { snapshots: { orderBy: { capturedAt: "desc" }, take: 1, select: { viewsCount: true } } } },
+            },
+            orderBy: { appliedAt: "desc" },
+          },
+        },
       },
+      _count: { select: { followers: true, following: true } },
     },
   });
 
   const profile = user?.creatorProfile;
-  const instagramAccount = profile?.socialAccounts.find((a) => a.platform === "instagram" && a.isActive);
-  const tiktokAccount = profile?.socialAccounts.find((a) => a.platform === "tiktok" && a.isActive);
+  const initials = (profile?.displayName ?? authUser.email ?? "?")[0].toUpperCase();
+
+  // Stats
+  const [launchedCampaigns, reviews] = await Promise.all([
+    prisma.campaign.findMany({
+      where: { createdByUserId: user?.id },
+      select: { id: true, name: true, status: true, totalBudget: true, createdAt: true, _count: { select: { applications: true } } },
+      orderBy: { createdAt: "desc" },
+    }),
+    prisma.review.findMany({
+      where: { revieweeId: user?.id ?? "" },
+      include: {
+        reviewer: { select: { id: true, creatorProfile: { select: { displayName: true, avatarUrl: true } } } },
+        campaign: { select: { id: true, name: true } },
+      },
+      orderBy: { createdAt: "desc" },
+    }),
+  ]);
+
+  const totalEarned = (profile?.applications ?? []).reduce((sum, app) =>
+    sum + app.payouts.reduce((s, p) => s + Number(p.amount), 0), 0
+  );
+  const totalViews = (profile?.applications ?? []).reduce((sum, app) =>
+    sum + app.posts.reduce((s, p) => s + (p.snapshots[0]?.viewsCount ?? 0), 0), 0
+  );
+  const totalAdSpend = launchedCampaigns.reduce((sum, c) => sum + Number(c.totalBudget), 0);
+  const avgRating = reviews.length ? reviews.reduce((s, r) => s + r.rating, 0) / reviews.length : null;
 
   return (
-    <div className="p-8 max-w-2xl">
-      <div className="mb-8">
-        <h1 className="text-2xl font-semibold" style={{ color: "#0f172a" }}>Profile</h1>
-        <p className="text-sm mt-1" style={{ color: "#64748b" }}>Manage your public profile and connected accounts.</p>
+    <div className="p-8 max-w-3xl space-y-6">
+      <div>
+        <h1 className="text-2xl font-semibold text-gray-900">Profile</h1>
+        <p className="text-sm mt-1 text-gray-500">Manage your account identity and payout settings.</p>
       </div>
 
       {params.success === "instagram_connected" && (
-        <div
-          className="mb-6 px-4 py-3 rounded-lg"
-          style={{ borderLeft: "3px solid #16a34a", background: "#f0fdf4" }}
-        >
-          <p className="text-sm" style={{ color: "#15803d" }}>
-            Instagram connected successfully. Your stats have been synced.
-          </p>
+        <div className="px-4 py-3 rounded-lg border-l-[3px] border-green-500 bg-green-50">
+          <p className="text-sm text-green-700">Instagram connected successfully. Your stats have been synced.</p>
         </div>
       )}
       {params.error && (
-        <div
-          className="mb-6 px-4 py-3 rounded-lg"
-          style={{ borderLeft: "3px solid #dc2626", background: "#fef2f2" }}
-        >
-          <p className="text-sm" style={{ color: "#b91c1c" }}>
+        <div className="px-4 py-3 rounded-lg border-l-[3px] border-red-500 bg-red-50">
+          <p className="text-sm text-red-700">
             {params.error === "instagram_denied"
               ? "Instagram connection was cancelled."
-              : params.error === "token_exchange_failed"
-              ? "Failed to connect Instagram. Please try again."
-              : "Something went wrong. Please try again."}
+              : "Failed to connect Instagram. Please try again."}
           </p>
           {params.detail && (
-            <p className="text-xs mt-1 font-mono" style={{ color: "#b91c1c", opacity: 0.8 }}>
-              {params.detail}
-            </p>
+            <p className="text-xs mt-1 font-mono text-red-700 opacity-80">{params.detail}</p>
           )}
         </div>
       )}
 
-      {/* Connected accounts */}
-      <div className="rounded-xl overflow-hidden mb-6" style={{ border: "1px solid #e2e8f0" }}>
-        <div className="px-5 py-3" style={{ borderBottom: "1px solid #f1f5f9", background: "#ffffff" }}>
-          <p className="text-sm font-medium" style={{ color: "#0f172a" }}>Connected Accounts</p>
-        </div>
-        <div style={{ background: "#ffffff" }}>
-          {/* Instagram */}
-          <div
-            className="flex items-center justify-between px-5 py-4"
-            style={{ borderBottom: "1px solid #f8fafc" }}
-          >
-            <div className="flex items-center gap-3">
-              <div
-                className="w-9 h-9 rounded-full flex items-center justify-center text-white text-xs font-bold shrink-0"
-                style={{ background: "linear-gradient(135deg, #a855f7, #ec4899)" }}
-              >
-                IG
-              </div>
-              <div>
-                {instagramAccount ? (
-                  <>
-                    <p className="text-sm font-medium" style={{ color: "#0f172a" }}>@{instagramAccount.platformUsername}</p>
-                    <p className="text-xs mt-0.5" style={{ color: "#94a3b8" }}>
-                      {instagramAccount.followerCount.toLocaleString()} followers · {instagramAccount.engagementRate.toString()}% engagement
-                    </p>
-                  </>
-                ) : (
-                  <p className="text-sm" style={{ color: "#64748b" }}>Instagram not connected</p>
-                )}
-              </div>
-            </div>
-            {instagramAccount ? (
-              <a href="/api/auth/instagram" className="text-xs hover:underline" style={{ color: "#94a3b8" }}>Reconnect</a>
-            ) : (
-              <a
-                href="/api/auth/instagram"
-                className="text-xs font-medium px-3 py-1.5 rounded-lg text-white transition-colors"
-                style={{ background: "#4f46e5" }}
-              >
-                Connect
-              </a>
-            )}
+      {/* Identity card */}
+      <div className="rounded-xl border border-gray-200 bg-white p-5 flex items-center gap-4">
+        {profile?.avatarUrl ? (
+          <Image
+            src={profile.avatarUrl}
+            alt={profile.displayName ?? "Avatar"}
+            width={56}
+            height={56}
+            className="w-14 h-14 rounded-full object-cover shrink-0"
+          />
+        ) : (
+          <div className="w-14 h-14 rounded-full bg-gradient-to-br from-purple-400 to-pink-400 flex items-center justify-center text-white font-bold text-lg shrink-0">
+            {initials}
           </div>
-
-          {/* TikTok */}
-          <div className="flex items-center justify-between px-5 py-4">
-            <div className="flex items-center gap-3">
-              <div
-                className="w-9 h-9 rounded-full flex items-center justify-center text-white text-xs font-bold shrink-0"
-                style={{ background: "#000000" }}
-              >
-                TT
-              </div>
-              <div>
-                {tiktokAccount ? (
-                  <>
-                    <p className="text-sm font-medium" style={{ color: "#0f172a" }}>@{tiktokAccount.platformUsername}</p>
-                    <p className="text-xs mt-0.5" style={{ color: "#94a3b8" }}>
-                      {tiktokAccount.followerCount.toLocaleString()} followers · {tiktokAccount.engagementRate.toString()}% engagement
-                    </p>
-                  </>
-                ) : (
-                  <p className="text-sm" style={{ color: "#64748b" }}>TikTok not connected</p>
-                )}
-              </div>
-            </div>
-            {!tiktokAccount && <span className="text-xs italic" style={{ color: "#94a3b8" }}>Coming soon</span>}
+        )}
+        <div className="flex-1 min-w-0">
+          <p className="text-base font-semibold text-gray-900">{profile?.displayName ?? "—"}</p>
+          <p className="text-sm text-gray-500">{authUser.email}</p>
+          <div className="flex items-center gap-3 mt-1">
+            <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-purple-100 text-purple-700 capitalize">
+              {user?.role ?? "creator"}
+            </span>
+            {avgRating && (
+              <span className="text-xs text-amber-500 font-medium">
+                {"★".repeat(Math.round(avgRating))}{"☆".repeat(5 - Math.round(avgRating))}
+                <span className="ml-1 text-gray-400">{avgRating.toFixed(1)} ({reviews.length} review{reviews.length !== 1 ? "s" : ""})</span>
+              </span>
+            )}
+            <span className="text-xs text-gray-400">{user?._count.followers ?? 0} followers · {user?._count.following ?? 0} following</span>
           </div>
         </div>
       </div>
 
-      {/* Stats */}
-      {instagramAccount && profile && (
-        <div className="grid grid-cols-3 gap-px rounded-xl overflow-hidden mb-6" style={{ background: "#e2e8f0" }}>
-          {[
-            { value: profile.totalFollowers.toLocaleString(), label: "Total Followers" },
-            { value: `${profile.engagementRate.toString()}%`, label: "Engagement Rate" },
-            { value: profile.primaryGeo, label: "Primary Geo" },
-          ].map(({ value, label }) => (
-            <div key={label} className="px-5 py-4" style={{ background: "#ffffff" }}>
-              <p className="text-xl font-semibold" style={{ color: "#0f172a" }}>{value}</p>
-              <p className="text-xs mt-0.5" style={{ color: "#64748b" }}>{label}</p>
-            </div>
-          ))}
+      {/* Stats grid */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        {[
+          { label: "Total Earned", value: totalEarned > 0 ? `$${totalEarned.toFixed(2)}` : "—", sub: "from campaigns" },
+          { label: "Total Views", value: totalViews >= 1000 ? `${(totalViews / 1000).toFixed(1)}K` : totalViews > 0 ? String(totalViews) : "—", sub: "generated" },
+          { label: "Campaigns Hosted", value: String((profile?.applications ?? []).length), sub: "as creator" },
+          { label: "Campaigns Launched", value: String(launchedCampaigns.length), sub: `$${totalAdSpend.toLocaleString()} total spend` },
+        ].map(s => (
+          <div key={s.label} className="rounded-xl border border-gray-200 bg-white p-4">
+            <p className="text-2xl font-bold text-gray-900">{s.value}</p>
+            <p className="text-xs text-gray-500 mt-0.5 font-medium">{s.label}</p>
+            <p className="text-xs text-gray-400 mt-0.5">{s.sub}</p>
+          </div>
+        ))}
+      </div>
+
+      {/* Launched campaigns */}
+      {launchedCampaigns.length > 0 && (
+        <div className="rounded-xl border border-gray-200 bg-white overflow-hidden">
+          <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
+            <h2 className="text-sm font-semibold text-gray-900">Launched Campaigns</h2>
+          </div>
+          <div className="divide-y divide-gray-50">
+            {launchedCampaigns.map(c => (
+              <div key={c.id} className="px-5 py-3 flex items-center justify-between gap-4">
+                <div className="min-w-0">
+                  <p className="text-sm font-medium text-gray-900 truncate">{c.name}</p>
+                  <p className="text-xs text-gray-400">{c._count.applications} applicants · ${Number(c.totalBudget).toLocaleString()} budget</p>
+                </div>
+                <span className={`text-xs px-2 py-0.5 rounded-full capitalize font-medium shrink-0 ${
+                  c.status === "active" ? "bg-green-50 text-green-700" :
+                  c.status === "completed" ? "bg-gray-100 text-gray-500" :
+                  c.status === "pending_review" || c.status === "pending_payment" ? "bg-amber-50 text-amber-700" :
+                  "bg-gray-100 text-gray-500"
+                }`}>
+                  {c.status.replace("_", " ")}
+                </span>
+              </div>
+            ))}
+          </div>
         </div>
       )}
 
-      {/* Profile form */}
+      {/* Creator history */}
+      {(profile?.applications ?? []).length > 0 && (
+        <div className="rounded-xl border border-gray-200 bg-white overflow-hidden">
+          <div className="px-5 py-4 border-b border-gray-100">
+            <h2 className="text-sm font-semibold text-gray-900">Creator History</h2>
+          </div>
+          <div className="divide-y divide-gray-50">
+            {(profile?.applications ?? []).map(app => {
+              const views = app.posts.reduce((s, p) => s + (p.snapshots[0]?.viewsCount ?? 0), 0);
+              const earned = app.payouts.reduce((s, p) => s + Number(p.amount), 0);
+              return (
+                <div key={app.id} className="px-5 py-3 flex items-center justify-between gap-4">
+                  <p className="text-sm font-medium text-gray-900 truncate">{app.campaign.name}</p>
+                  <div className="flex items-center gap-3 shrink-0 text-xs text-gray-400">
+                    {views > 0 && <span>{views.toLocaleString()} views</span>}
+                    {earned > 0 && <span className="text-green-600 font-medium">${earned.toFixed(2)}</span>}
+                    <span className={`px-2 py-0.5 rounded-full capitalize ${
+                      app.status === "completed" ? "bg-gray-100 text-gray-500" :
+                      app.status === "active" || app.status === "approved" ? "bg-green-50 text-green-700" :
+                      "bg-amber-50 text-amber-700"
+                    }`}>{app.status}</span>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* Reviews received */}
+      {reviews.length > 0 && (
+        <div className="rounded-xl border border-gray-200 bg-white overflow-hidden">
+          <div className="px-5 py-4 border-b border-gray-100">
+            <h2 className="text-sm font-semibold text-gray-900">Reviews Received</h2>
+          </div>
+          <div className="divide-y divide-gray-50">
+            {reviews.map(r => (
+              <div key={r.id} className="px-5 py-4">
+                <div className="flex items-start justify-between gap-2 mb-1">
+                  <p className="text-sm font-medium text-gray-900">
+                    {r.reviewer.creatorProfile?.displayName ?? "Anonymous"}
+                  </p>
+                  <span className="text-sm text-amber-500">{"★".repeat(r.rating)}{"☆".repeat(5 - r.rating)}</span>
+                </div>
+                {r.text && <p className="text-sm text-gray-600 leading-relaxed">{r.text}</p>}
+                <p className="text-xs text-gray-400 mt-1">{r.campaign.name} · {new Date(r.createdAt).toLocaleDateString()}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       {profile && (
         <ProfileForm
           profileId={profile.id}
@@ -159,6 +225,7 @@ export default async function ProfilePage({
             displayName: profile.displayName,
             bio: profile.bio ?? "",
             walletAddress: profile.walletAddress ?? "",
+            tronsAddress: profile.tronsAddress ?? "",
             primaryGeo: profile.primaryGeo,
           }}
         />

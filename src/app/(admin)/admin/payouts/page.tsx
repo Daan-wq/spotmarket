@@ -52,11 +52,11 @@ interface SectionProps {
 
 function Section({ title, items, readonly = false }: SectionProps) {
   return (
-    <div className="rounded-lg overflow-hidden mb-4 border border-gray-200">
-      <div className="px-5 py-3 border-b border-gray-100 bg-white">
-        <p className="text-[13px] font-medium text-gray-900">{title}</p>
+    <div className="rounded-lg overflow-hidden mb-4 border" style={{ borderColor: 'var(--border)' }}>
+      <div className="px-5 py-3" style={{ borderBottomColor: 'var(--border)', borderBottomWidth: '1px', background: 'var(--bg-elevated)' }}>
+        <p className="text-[13px] font-medium" style={{ color: 'var(--text-primary)' }}>{title}</p>
       </div>
-      <div className="bg-white">
+      <div style={{ background: 'var(--bg-elevated)' }}>
         {items
           .map((p) => ({ payout: transformPayout(p), id: p.id }))
           .filter((item) => item.payout !== null)

@@ -6,14 +6,14 @@ import { MessageButton } from "@/components/admin/message-button";
 type Channel = "whatsapp" | "telegram" | "instagram" | "email" | "signal";
 
 const statusStyle: Record<string, { bg: string; color: string }> = {
-  draft:     { bg: "#f3f4f6", color: "#6b7280" },
-  confirmed: { bg: "#eff6ff", color: "#1d4ed8" },
-  scheduled: { bg: "#f5f3ff", color: "#7c3aed" },
-  live:      { bg: "#f0fdf4", color: "#15803d" },
-  completed: { bg: "#f0fdf4", color: "#15803d" },
-  cancelled: { bg: "#fef2f2", color: "#b91c1c" },
-  pending:   { bg: "#f3f4f6", color: "#6b7280" },
-  posted:    { bg: "#f0fdf4", color: "#15803d" },
+  draft:     { bg: "var(--bg-secondary)", color: "var(--text-secondary)" },
+  confirmed: { bg: "var(--accent-bg)", color: "var(--accent)" },
+  scheduled: { bg: "var(--accent-bg)", color: "var(--accent)" },
+  live:      { bg: "var(--success-bg)", color: "var(--success)" },
+  completed: { bg: "var(--success-bg)", color: "var(--success)" },
+  cancelled: { bg: "var(--error-bg)", color: "var(--error-text)" },
+  pending:   { bg: "var(--bg-secondary)", color: "var(--text-secondary)" },
+  posted:    { bg: "var(--success-bg)", color: "var(--success)" },
 };
 
 export default async function AdminInternalCampaignDetailPage({
@@ -49,7 +49,7 @@ export default async function AdminInternalCampaignDetailPage({
 
   return (
     <div className="p-8 max-w-5xl">
-      <Link href="/admin/internal-campaigns" className="text-sm mb-4 inline-block" style={{ color: "#6b7280" }}>
+      <Link href="/admin/internal-campaigns" className="text-sm mb-4 inline-block" style={{ color: "var(--text-secondary)" }}>
         ← Back to Campaigns
       </Link>
 
@@ -57,7 +57,7 @@ export default async function AdminInternalCampaignDetailPage({
       <div className="flex items-start justify-between mb-8">
         <div>
           <div className="flex items-center gap-3">
-            <h1 className="text-2xl font-semibold" style={{ color: "#0f172a" }}>{campaign.name}</h1>
+            <h1 className="text-2xl font-semibold" style={{ color: "var(--text-primary)" }}>{campaign.name}</h1>
             <span
               className="text-xs px-2.5 py-0.5 rounded-full font-medium"
               style={{ background: s.bg, color: s.color }}
@@ -65,7 +65,7 @@ export default async function AdminInternalCampaignDetailPage({
               {campaign.status}
             </span>
           </div>
-          <p className="text-sm mt-0.5" style={{ color: "#64748b" }}>
+          <p className="text-sm mt-0.5" style={{ color: "var(--text-secondary)" }}>
             Client: {campaign.client.name}
             {campaign.startDate && ` · ${new Date(campaign.startDate).toLocaleDateString("en-GB")}`}
             {campaign.endDate && ` → ${new Date(campaign.endDate).toLocaleDateString("en-GB")}`}
@@ -74,46 +74,46 @@ export default async function AdminInternalCampaignDetailPage({
         <Link
           href={`/admin/internal-campaigns/${id}/edit`}
           className="text-sm px-3 py-1.5 rounded-lg"
-          style={{ background: "#f3f4f6", color: "#374151" }}
+          style={{ background: "var(--bg-secondary)", color: "var(--card-foreground)" }}
         >
           Edit
         </Link>
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-4 gap-px rounded-xl overflow-hidden mb-8" style={{ background: "#e2e8f0" }}>
-        <div className="px-5 py-4" style={{ background: "#ffffff" }}>
-          <p className="text-2xl font-semibold" style={{ color: "#4f46e5" }}>
+      <div className="grid grid-cols-4 gap-px rounded-xl overflow-hidden mb-8" style={{ background: "var(--border)" }}>
+        <div className="px-5 py-4" style={{ background: "var(--bg-elevated)" }}>
+          <p className="text-2xl font-semibold" style={{ color: "var(--accent)" }}>
             ${Number(campaign.clientPays).toFixed(2)}
           </p>
-          <p className="text-xs mt-1" style={{ color: "#64748b" }}>Client Pays</p>
+          <p className="text-xs mt-1" style={{ color: "var(--text-secondary)" }}>Client Pays</p>
         </div>
-        <div className="px-5 py-4" style={{ background: "#ffffff" }}>
-          <p className="text-2xl font-semibold" style={{ color: "#0f172a" }}>
+        <div className="px-5 py-4" style={{ background: "var(--bg-elevated)" }}>
+          <p className="text-2xl font-semibold" style={{ color: "var(--text-primary)" }}>
             ${Number(campaign.totalPageCost).toFixed(2)}
           </p>
-          <p className="text-xs mt-1" style={{ color: "#64748b" }}>Total Page Cost</p>
+          <p className="text-xs mt-1" style={{ color: "var(--text-secondary)" }}>Total Page Cost</p>
         </div>
-        <div className="px-5 py-4" style={{ background: "#ffffff" }}>
-          <p className="text-2xl font-semibold" style={{ color: margin >= 0 ? "#16a34a" : "#dc2626" }}>
+        <div className="px-5 py-4" style={{ background: "var(--bg-elevated)" }}>
+          <p className="text-2xl font-semibold" style={{ color: margin >= 0 ? "var(--success)" : "var(--error-text)" }}>
             ${margin.toFixed(2)}
           </p>
-          <p className="text-xs mt-1" style={{ color: "#64748b" }}>Margin</p>
+          <p className="text-xs mt-1" style={{ color: "var(--text-secondary)" }}>Margin</p>
         </div>
-        <div className="px-5 py-4" style={{ background: "#ffffff" }}>
-          <p className="text-2xl font-semibold" style={{ color: marginPct >= 20 ? "#16a34a" : "#f59e0b" }}>
+        <div className="px-5 py-4" style={{ background: "var(--bg-elevated)" }}>
+          <p className="text-2xl font-semibold" style={{ color: marginPct >= 20 ? "var(--success)" : "var(--warning-text)" }}>
             {marginPct.toFixed(1)}%
           </p>
-          <p className="text-xs mt-1" style={{ color: "#64748b" }}>Margin %</p>
+          <p className="text-xs mt-1" style={{ color: "var(--text-secondary)" }}>Margin %</p>
         </div>
       </div>
 
       {/* Ad content */}
       {(campaign.adContentUrl || campaign.adCaption || campaign.adLink) && (
-        <div className="rounded-xl p-4 mb-8" style={{ background: "#f8fafc", border: "1px solid #e2e8f0" }}>
-          <p className="text-xs font-medium mb-2" style={{ color: "#94a3b8" }}>AD CONTENT</p>
+        <div className="rounded-xl p-4 mb-8" style={{ background: "var(--bg-primary)", border: "1px solid var(--border)" }}>
+          <p className="text-xs font-medium mb-2" style={{ color: "var(--text-muted)" }}>AD CONTENT</p>
           {campaign.adCaption && (
-            <p className="text-sm mb-2" style={{ color: "#374151" }}>{campaign.adCaption}</p>
+            <p className="text-sm mb-2" style={{ color: "var(--card-foreground)" }}>{campaign.adCaption}</p>
           )}
           <div className="flex gap-4">
             {campaign.adContentUrl && (
@@ -122,7 +122,7 @@ export default async function AdminInternalCampaignDetailPage({
                 target="_blank"
                 rel="noopener noreferrer"
                 className="text-xs underline"
-                style={{ color: "#4f46e5" }}
+                style={{ color: "var(--accent)" }}
               >
                 View Content
               </a>
@@ -133,7 +133,7 @@ export default async function AdminInternalCampaignDetailPage({
                 target="_blank"
                 rel="noopener noreferrer"
                 className="text-xs underline"
-                style={{ color: "#4f46e5" }}
+                style={{ color: "var(--accent)" }}
               >
                 Ad Link
               </a>
@@ -143,12 +143,12 @@ export default async function AdminInternalCampaignDetailPage({
       )}
 
       {/* Pages */}
-      <div className="rounded-xl overflow-hidden mb-6" style={{ border: "1px solid #e2e8f0" }}>
+      <div className="rounded-xl overflow-hidden mb-6" style={{ border: "1px solid var(--border)" }}>
         <div
           className="px-5 py-3"
-          style={{ borderBottom: "1px solid #f1f5f9", background: "#ffffff" }}
+          style={{ borderBottomColor: 'var(--border)', borderBottomWidth: '1px', background: "var(--bg-elevated)" }}
         >
-          <p className="text-sm font-medium" style={{ color: "#0f172a" }}>
+          <p className="text-sm font-medium" style={{ color: "var(--text-primary)" }}>
             Pages ({campaign.campaignPages.length})
           </p>
         </div>
@@ -156,9 +156,10 @@ export default async function AdminInternalCampaignDetailPage({
           className="grid gap-4 px-5 py-2.5 text-xs font-semibold uppercase tracking-wide"
           style={{
             gridTemplateColumns: "1fr auto auto auto auto auto",
-            background: "#f8fafc",
-            borderBottom: "1px solid #e2e8f0",
-            color: "#94a3b8",
+            background: "var(--bg-primary)",
+            borderBottomColor: 'var(--border)',
+            borderBottomWidth: '1px',
+            color: "var(--text-muted)",
           }}
         >
           {["Page", "Cost", "Status", "Scheduled", "Reach", "Contact"].map((h) => (
@@ -166,35 +167,35 @@ export default async function AdminInternalCampaignDetailPage({
           ))}
         </div>
         {campaign.campaignPages.length === 0 ? (
-          <div className="px-5 py-8 text-center" style={{ background: "#ffffff" }}>
-            <p className="text-sm" style={{ color: "#94a3b8" }}>No pages assigned.</p>
+          <div className="px-5 py-8 text-center" style={{ background: "var(--bg-elevated)" }}>
+            <p className="text-sm" style={{ color: "var(--text-muted)" }}>No pages assigned.</p>
           </div>
         ) : (
-          <div style={{ background: "#ffffff" }}>
+          <div style={{ background: "var(--bg-elevated)" }}>
             {campaign.campaignPages.map((cp, i) => {
-              const ps = statusStyle[cp.status] ?? { bg: "#f3f4f6", color: "#6b7280" };
+              const ps = statusStyle[cp.status] ?? { bg: "var(--bg-secondary)", color: "var(--text-secondary)" };
               return (
                 <div
                   key={cp.id}
                   className="grid items-center px-5 py-3.5 gap-4"
                   style={{
                     gridTemplateColumns: "1fr auto auto auto auto auto",
-                    borderTop: i > 0 ? "1px solid #f8fafc" : undefined,
+                    borderTop: i > 0 ? `1px solid var(--bg-primary)` : undefined,
                   }}
                 >
                   <div>
                     <Link
                       href={`/admin/pages/${cp.page.id}`}
                       className="text-sm font-medium hover:underline"
-                      style={{ color: "#0f172a" }}
+                      style={{ color: "var(--text-primary)" }}
                     >
                       @{cp.page.handle}
                     </Link>
                     {cp.page.niche && (
-                      <p className="text-xs mt-0.5" style={{ color: "#94a3b8" }}>{cp.page.niche}</p>
+                      <p className="text-xs mt-0.5" style={{ color: "var(--text-muted)" }}>{cp.page.niche}</p>
                     )}
                   </div>
-                  <p className="text-sm whitespace-nowrap" style={{ color: "#0f172a" }}>
+                  <p className="text-sm whitespace-nowrap" style={{ color: "var(--text-primary)" }}>
                     ${Number(cp.cost).toFixed(2)}
                   </p>
                   <span
@@ -203,12 +204,12 @@ export default async function AdminInternalCampaignDetailPage({
                   >
                     {cp.status}
                   </span>
-                  <p className="text-xs whitespace-nowrap" style={{ color: "#64748b" }}>
+                  <p className="text-xs whitespace-nowrap" style={{ color: "var(--text-secondary)" }}>
                     {cp.scheduledDate
                       ? new Date(cp.scheduledDate).toLocaleDateString("en-GB")
                       : "—"}
                   </p>
-                  <p className="text-sm whitespace-nowrap" style={{ color: "#64748b" }}>
+                  <p className="text-sm whitespace-nowrap" style={{ color: "var(--text-secondary)" }}>
                     {cp.reach != null ? cp.reach.toLocaleString() : "—"}
                   </p>
                   <div>
@@ -218,7 +219,7 @@ export default async function AdminInternalCampaignDetailPage({
                         handle={cp.page.communicationHandle}
                       />
                     ) : (
-                      <span className="text-xs" style={{ color: "#9ca3af" }}>—</span>
+                      <span className="text-xs" style={{ color: "var(--text-muted)" }}>—</span>
                     )}
                   </div>
                 </div>
@@ -230,36 +231,36 @@ export default async function AdminInternalCampaignDetailPage({
 
       {/* Notes */}
       {campaign.notes && (
-        <div className="rounded-xl p-4 mb-8" style={{ background: "#f8fafc", border: "1px solid #e2e8f0" }}>
-          <p className="text-xs font-medium mb-1" style={{ color: "#94a3b8" }}>NOTES</p>
-          <p className="text-sm" style={{ color: "#374151" }}>{campaign.notes}</p>
+        <div className="rounded-xl p-4 mb-8" style={{ background: "var(--bg-primary)", border: "1px solid var(--border)" }}>
+          <p className="text-xs font-medium mb-1" style={{ color: "var(--text-muted)" }}>NOTES</p>
+          <p className="text-sm" style={{ color: "var(--card-foreground)" }}>{campaign.notes}</p>
         </div>
       )}
 
       {/* Payments */}
       {campaign.payments.length > 0 && (
-        <div className="rounded-xl overflow-hidden" style={{ border: "1px solid #e2e8f0" }}>
-          <div className="px-5 py-3" style={{ borderBottom: "1px solid #f1f5f9", background: "#ffffff" }}>
-            <p className="text-sm font-medium" style={{ color: "#0f172a" }}>Payments</p>
+        <div className="rounded-xl overflow-hidden" style={{ border: "1px solid var(--border)" }}>
+          <div className="px-5 py-3" style={{ borderBottomColor: 'var(--border)', borderBottomWidth: '1px', background: "var(--bg-elevated)" }}>
+            <p className="text-sm font-medium" style={{ color: "var(--text-primary)" }}>Payments</p>
           </div>
-          <div style={{ background: "#ffffff" }}>
+          <div style={{ background: "var(--bg-elevated)" }}>
             {campaign.payments.map((p, i) => (
               <div
                 key={p.id}
                 className="flex items-center justify-between px-5 py-3"
-                style={{ borderTop: i > 0 ? "1px solid #f8fafc" : undefined }}
+                style={{ borderTop: i > 0 ? `1px solid var(--bg-primary)` : undefined }}
               >
                 <div>
-                  <p className="text-sm" style={{ color: "#0f172a" }}>
+                  <p className="text-sm" style={{ color: "var(--text-primary)" }}>
                     {p.direction === "in" ? "↑ Received" : "↓ Paid out"}
                   </p>
                   {p.notes && (
-                    <p className="text-xs mt-0.5" style={{ color: "#94a3b8" }}>{p.notes}</p>
+                    <p className="text-xs mt-0.5" style={{ color: "var(--text-muted)" }}>{p.notes}</p>
                   )}
                 </div>
                 <p
                   className="text-sm font-medium"
-                  style={{ color: p.direction === "in" ? "#16a34a" : "#dc2626" }}
+                  style={{ color: p.direction === "in" ? "var(--success)" : "var(--error-text)" }}
                 >
                   {p.direction === "in" ? "+" : "-"}${Number(p.amount).toFixed(2)}
                 </p>

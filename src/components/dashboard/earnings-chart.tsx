@@ -20,7 +20,7 @@ export function EarningsChart({ data }: { data: EarningsDataPoint[] }) {
     return (
       <div
         className="h-48 flex items-center justify-center text-sm"
-        style={{ color: "#94a3b8" }}
+        style={{ color: "var(--text-muted)" }}
       >
         No earnings data yet.
       </div>
@@ -35,18 +35,18 @@ export function EarningsChart({ data }: { data: EarningsDataPoint[] }) {
       >
         <defs>
           <linearGradient id="earnedGrad" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor="#22c55e" stopOpacity={0.2} />
-            <stop offset="100%" stopColor="#22c55e" stopOpacity={0} />
+            <stop offset="0%" stopColor="var(--accent)" stopOpacity={0.2} />
+            <stop offset="100%" stopColor="var(--accent)" stopOpacity={0} />
           </linearGradient>
         </defs>
         <XAxis
           dataKey="label"
-          tick={{ fontSize: 11, fill: "#94a3b8" }}
+          tick={{ fontSize: 11, fill: "var(--text-muted)" }}
           axisLine={false}
           tickLine={false}
         />
         <YAxis
-          tick={{ fontSize: 11, fill: "#94a3b8" }}
+          tick={{ fontSize: 11, fill: "var(--text-muted)" }}
           tickFormatter={(v) => `$${v}`}
           axisLine={false}
           tickLine={false}
@@ -54,11 +54,11 @@ export function EarningsChart({ data }: { data: EarningsDataPoint[] }) {
         />
         <Tooltip
           contentStyle={{
-            background: "#0f172a",
+            background: "var(--bg-primary)",
             border: "none",
             borderRadius: 8,
             fontSize: 12,
-            color: "#f1f5f9",
+            color: "var(--text-primary)",
           }}
           formatter={(value, name) => {
             const v = Number(value ?? 0);
@@ -70,7 +70,7 @@ export function EarningsChart({ data }: { data: EarningsDataPoint[] }) {
         <Area
           type="monotone"
           dataKey="earned"
-          stroke="#22c55e"
+          stroke="var(--accent)"
           strokeWidth={2}
           fill="url(#earnedGrad)"
         />

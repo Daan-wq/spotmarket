@@ -18,7 +18,7 @@ export default function AdminInvoicesPage() {
           { label: "Total billed", value: "—" },
         ]}
       />
-      <div className="bg-white rounded-lg border border-gray-200">
+      <div className="rounded-lg" style={{ background: 'var(--bg-elevated)', border: '1px solid var(--border)' }}>
         <EmptyState
           icon={
             <svg width="20" height="20" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">

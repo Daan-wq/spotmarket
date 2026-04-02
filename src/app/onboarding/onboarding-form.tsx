@@ -1,19 +1,26 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
-import Link from "next/link";
+import { useRouter, useSearchParams } from "next/navigation";
+
+const TRON_REGEX = /^T[1-9A-HJ-NP-Z]{33}$/;
 
 export function OnboardingForm() {
   const router = useRouter();
-  const [selectedRole, setSelectedRole] = useState<"creator" | null>(null);
+  const searchParams = useSearchParams();
+  const referralCode = searchParams.get("ref") ?? undefined;
+
   const [displayName, setDisplayName] = useState("");
+  const [tronsAddress, setTronsAddress] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const tronsAddressValid = !tronsAddress || TRON_REGEX.test(tronsAddress);
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!displayName.trim() || !selectedRole) return;
+    if (!displayName.trim()) return;
+    if (tronsAddress && !TRON_REGEX.test(tronsAddress)) return;
 
     setLoading(true);
     setError(null);
@@ -22,7 +29,11 @@ export function OnboardingForm() {
       const res = await fetch("/api/onboarding/complete", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ displayName: displayName.trim(), role: selectedRole }),
+        body: JSON.stringify({
+          displayName: displayName.trim(),
+          referralCode,
+          tronsAddress: tronsAddress.trim() || undefined,
+        }),
       });
 
       if (!res.ok) {
@@ -30,7 +41,8 @@ export function OnboardingForm() {
         throw new Error(data.error ?? "Failed to set up account");
       }
 
-      router.push("/dashboard");
+      const data = await res.json();
+      router.push(data.redirect ?? "/dashboard");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Something went wrong");
     } finally {
@@ -38,54 +50,10 @@ export function OnboardingForm() {
     }
   }
 
-  if (!selectedRole) {
-    return (
-      <div className="space-y-4">
-        <p className="text-sm mb-6" style={{ color: "#64748b" }}>
-          What type of account do you want to set up?
-        </p>
-
-        <button
-          type="button"
-          onClick={() => setSelectedRole("creator")}
-          className="w-full p-4 border-2 rounded-lg text-left transition-all"
-          style={{ borderColor: "#e2e8f0" }}
-          onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.borderColor = "#4f46e5"; (e.currentTarget as HTMLElement).style.background = "#f8fafc"; }}
-          onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.borderColor = "#e2e8f0"; (e.currentTarget as HTMLElement).style.background = "transparent"; }}
-        >
-          <p className="font-semibold" style={{ color: "#0f172a" }}>Creator</p>
-          <p className="text-xs mt-1" style={{ color: "#64748b" }}>Earn from campaigns and sponsorships</p>
-        </button>
-
-        <Link href="/onboarding/network">
-          <button
-            type="button"
-            className="w-full p-4 border-2 rounded-lg text-left transition-all"
-            style={{ borderColor: "#e2e8f0" }}
-            onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.borderColor = "#4f46e5"; (e.currentTarget as HTMLElement).style.background = "#f8fafc"; }}
-            onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.borderColor = "#e2e8f0"; (e.currentTarget as HTMLElement).style.background = "transparent"; }}
-          >
-            <p className="font-semibold" style={{ color: "#0f172a" }}>Network Owner</p>
-            <p className="text-xs mt-1" style={{ color: "#64748b" }}>Manage a creator network</p>
-          </button>
-        </Link>
-      </div>
-    );
-  }
-
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
-      <button
-        type="button"
-        onClick={() => setSelectedRole(null)}
-        className="text-sm mb-4"
-        style={{ color: "#4f46e5" }}
-      >
-        ← Back
-      </button>
-
       <div>
-        <label className="block text-sm font-medium mb-1.5" style={{ color: "#374151" }}>
+        <label className="block text-sm font-medium mb-1.5" style={{ color: "var(--card-foreground)" }}>
           Your name or page name
         </label>
         <input
@@ -96,10 +64,39 @@ export function OnboardingForm() {
           required
           autoFocus
           className="w-full px-3 py-2.5 rounded-lg text-sm outline-none transition-all"
-          style={{ border: "1px solid #e2e8f0", background: "#f8fafc", color: "#0f172a" }}
-          onFocus={(e) => { e.currentTarget.style.borderColor = "#4f46e5"; e.currentTarget.style.boxShadow = "0 0 0 3px #eef2ff"; }}
-          onBlur={(e) => { e.currentTarget.style.borderColor = "#e2e8f0"; e.currentTarget.style.boxShadow = "none"; }}
+          style={{ border: "1px solid var(--border)", background: "var(--bg-primary)", color: "var(--text-primary)" }}
+          onFocus={(e) => { e.currentTarget.style.borderColor = "var(--accent)"; e.currentTarget.style.boxShadow = "0 0 0 3px var(--accent-bg)"; }}
+          onBlur={(e) => { e.currentTarget.style.borderColor = "var(--border)"; e.currentTarget.style.boxShadow = "none"; }}
         />
+      </div>
+
+      <div>
+        <label className="block text-sm font-medium mb-1.5" style={{ color: "var(--card-foreground)" }}>
+          USDT wallet (TRC-20){" "}
+          <span style={{ color: "var(--text-muted)" }}>(optional — required to launch campaigns)</span>
+        </label>
+        <input
+          type="text"
+          value={tronsAddress}
+          onChange={(e) => setTronsAddress(e.target.value.trim())}
+          placeholder="Txxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+          className="w-full px-3 py-2.5 rounded-lg text-sm outline-none transition-all font-mono"
+          style={{
+            border: `1px solid ${tronsAddress && !tronsAddressValid ? "#f87171" : "var(--border)"}`,
+            background: "var(--bg-primary)",
+            color: "var(--text-primary)",
+          }}
+          onFocus={(e) => { e.currentTarget.style.borderColor = tronsAddress && !tronsAddressValid ? "#f87171" : "var(--accent)"; e.currentTarget.style.boxShadow = "0 0 0 3px var(--accent-bg)"; }}
+          onBlur={(e) => { e.currentTarget.style.borderColor = tronsAddress && !tronsAddressValid ? "#f87171" : "var(--border)"; e.currentTarget.style.boxShadow = "none"; }}
+        />
+        {tronsAddress && !tronsAddressValid && (
+          <p className="text-xs mt-1" style={{ color: "#b91c1c" }}>
+            Invalid Tron address — must start with T and be 34 characters
+          </p>
+        )}
+        <p className="text-xs mt-1" style={{ color: "var(--text-muted)" }}>
+          You can also add this later in your profile.
+        </p>
       </div>
 
       {error && (
@@ -110,17 +107,17 @@ export function OnboardingForm() {
 
       <button
         type="submit"
-        disabled={!displayName.trim() || loading}
+        disabled={!displayName.trim() || loading || (!!tronsAddress && !tronsAddressValid)}
         className="w-full py-2.5 rounded-lg text-sm font-medium text-white transition-colors disabled:opacity-50"
-        style={{ background: "#4f46e5" }}
-        onMouseEnter={(e) => { if (!loading) (e.currentTarget as HTMLElement).style.background = "#4338ca"; }}
-        onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = "#4f46e5"; }}
+        style={{ background: "var(--accent)" }}
+        onMouseEnter={(e) => { if (!loading) (e.currentTarget as HTMLElement).style.background = "var(--accent-hover)"; }}
+        onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = "var(--accent)"; }}
       >
         {loading ? "Setting up…" : "Get started"}
       </button>
 
-      <p className="text-xs text-center" style={{ color: "#94a3b8" }}>
-        You can connect Instagram and set up payouts from your profile later.
+      <p className="text-xs text-center" style={{ color: "var(--text-muted)" }}>
+        You can post for campaigns and launch your own campaigns — all from one account.
       </p>
     </form>
   );

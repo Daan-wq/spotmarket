@@ -18,7 +18,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   if (dbUser?.role === "network") redirect("/network/dashboard");
 
   return (
-    <div className="flex h-screen" style={{ background: "#f9fafb" }}>
+    <div className="flex h-screen" style={{ background: "var(--bg-primary)" }}>
       <Sidebar />
       <main className="flex-1 overflow-auto">{children}</main>
     </div>

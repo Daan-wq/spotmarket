@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { decrypt, encrypt } from "@/lib/crypto";
+import { verifyCron } from "@/lib/cron-auth";
 import { refreshInstagramToken } from "@/lib/instagram";
 
 /**
@@ -8,8 +9,7 @@ import { refreshInstagramToken } from "@/lib/instagram";
  * Triggered by Vercel Cron every Monday at 09:00.
  */
 export async function GET(req: Request) {
-  const authHeader = req.headers.get("authorization");
-  if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
+  if (!verifyCron(req)) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 

@@ -2,18 +2,19 @@
 import { useState } from "react";
 import { updatePageSettings } from "./actions";
 import type { SocialAccount } from "@prisma/client";
+import { Niche } from "@prisma/client";
 
-const NICHES = ["sports", "memes", "casino", "lifestyle", "crypto", "other"];
+const NICHES = Object.values(Niche);
 
 export function PageSettingsForm({ page }: { page: Pick<SocialAccount, "id" | "niche" | "displayLabel"> }) {
-  const [niche, setNiche] = useState(page.niche ?? "");
+  const [niche, setNiche] = useState<Niche | "">(page.niche ?? "");
   const [displayLabel, setDisplayLabel] = useState(page.displayLabel ?? "");
   const [saving, setSaving] = useState(false);
 
   async function handleSave() {
     setSaving(true);
     await updatePageSettings(page.id, {
-      niche: niche || undefined,
+      niche: (niche || undefined) as Niche | undefined,
       displayLabel: displayLabel || undefined,
     });
     setSaving(false);
@@ -35,7 +36,7 @@ export function PageSettingsForm({ page }: { page: Pick<SocialAccount, "id" | "n
         <label className="block text-sm font-medium text-gray-700 mb-1">Niche</label>
         <select
           value={niche}
-          onChange={e => setNiche(e.target.value)}
+          onChange={e => setNiche(e.target.value as Niche | "")}
           className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
         >
           <option value="">— Select niche —</option>

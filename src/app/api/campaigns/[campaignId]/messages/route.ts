@@ -7,6 +7,8 @@ import { z } from "zod";
 const sendMessageSchema = z.object({
   content: z.string().min(1).max(4000),
   recipientId: z.string(),
+  type: z.enum(["GENERAL", "POST_FEEDBACK", "DECLINE_NOTICE"]).optional().default("GENERAL"),
+  postId: z.string().optional(),
 });
 
 async function canAccessCampaignMessages(campaignId: string, supabaseId: string) {
@@ -42,8 +44,16 @@ export async function GET(
   const { searchParams } = new URL(req.url);
   const before = searchParams.get("before");
 
+  const type = searchParams.get("type") as "GENERAL" | "POST_FEEDBACK" | "DECLINE_NOTICE" | null;
+  const postId = searchParams.get("postId");
+
+  const where: Record<string, unknown> = { campaignId };
+  if (before) where.createdAt = { lt: new Date(before) };
+  if (type) where.type = type;
+  if (postId) where.postId = postId;
+
   const messages = await prisma.message.findMany({
-    where: { campaignId, ...(before && { createdAt: { lt: new Date(before) } }) },
+    where,
     include: {
       sender: {
         select: {
@@ -51,6 +61,7 @@ export async function GET(
           creatorProfile: { select: { displayName: true } },
         },
       },
+      post: { select: { id: true, postUrl: true, status: true } },
     },
     orderBy: { createdAt: "desc" },
     take: 50,
@@ -81,7 +92,14 @@ export async function POST(
   if (!recipient) return NextResponse.json({ error: "Recipient not found" }, { status: 404 });
 
   const message = await prisma.message.create({
-    data: { campaignId, senderId: dbUserId, recipientId: parsed.data.recipientId, content: parsed.data.content },
+    data: {
+      campaignId,
+      senderId: dbUserId,
+      recipientId: parsed.data.recipientId,
+      content: parsed.data.content,
+      type: parsed.data.type,
+      postId: parsed.data.postId || null,
+    },
     include: {
       sender: {
         select: {
@@ -89,6 +107,7 @@ export async function POST(
           creatorProfile: { select: { displayName: true } },
         },
       },
+      post: { select: { id: true, postUrl: true, status: true } },
     },
   });
 

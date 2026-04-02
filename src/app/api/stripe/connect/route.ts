@@ -2,10 +2,20 @@ import { NextResponse } from "next/server";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { prisma } from "@/lib/prisma";
 import Stripe from "stripe";
+import { rateLimit, PAYMENT_LIMIT, getClientIp } from "@/lib/rate-limit";
 
-export async function POST() {
+export async function POST(req: Request) {
   if (!process.env.STRIPE_SECRET_KEY) {
     return NextResponse.json({ error: "Stripe not configured" }, { status: 503 });
+  }
+
+  const ip = getClientIp(req);
+  const { success, headers: rlHeaders } = rateLimit(`stripe_connect_${ip}`, PAYMENT_LIMIT);
+  if (!success) {
+    return NextResponse.json(
+      { error: "Rate limit exceeded. Try again later." },
+      { status: 429, headers: rlHeaders },
+    );
   }
 
   const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, { apiVersion: "2026-02-25.clover" });
@@ -51,8 +61,8 @@ export async function POST() {
 
   const accountLink = await stripe.accountLinks.create({
     account: stripeAccountId,
-    refresh_url: `${process.env.NEXT_PUBLIC_APP_URL}/profile?stripe=refresh`,
-    return_url: `${process.env.NEXT_PUBLIC_APP_URL}/profile?stripe=success`,
+    refresh_url: `${process.env.NEXT_PUBLIC_APP_URL}/settings?stripe=refresh`,
+    return_url: `${process.env.NEXT_PUBLIC_APP_URL}/settings?stripe=success`,
     type: "account_onboarding",
   });
 

@@ -46,3 +46,8 @@ next-env.d.ts
 /.clerk/
 
 .vercel
+
+# Test scripts with potential credentials
+scripts/capture-ig-code.ts
+scripts/test-instagram-oauth.ts
+scripts/ig-*.png

@@ -1,6 +1,7 @@
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { prisma } from "@/lib/prisma";
 import { redirect } from "next/navigation";
+import { Suspense } from "react";
 import { OnboardingForm } from "./onboarding-form";
 
 export default async function OnboardingPage() {
@@ -18,32 +19,32 @@ export default async function OnboardingPage() {
       {/* Left panel */}
       <div
         className="hidden lg:flex lg:w-2/5 flex-col justify-between p-10"
-        style={{ background: "#0b0f1a" }}
+        style={{ background: "var(--dark-panel)" }}
       >
-        <span className="text-white font-semibold text-base tracking-tight">Spotmarket</span>
+        <span className="text-white font-semibold text-base tracking-tight">ClipProfit</span>
         <div>
           <p className="text-2xl font-semibold text-white leading-snug mb-3">
             Almost there. Let&apos;s set up your account.
           </p>
-          <p className="text-sm" style={{ color: "#64748b" }}>
+          <p className="text-sm" style={{ color: "var(--text-secondary)" }}>
             Just one step before you can start browsing campaigns and tracking earnings.
           </p>
         </div>
-        <p className="text-xs" style={{ color: "#334155" }}>
-          © {new Date().getFullYear()} Spotmarket
+        <p className="text-xs" style={{ color: "var(--dark-text-light)" }}>
+          © {new Date().getFullYear()} ClipProfit
         </p>
       </div>
 
       {/* Right panel */}
       <div className="flex-1 flex items-center justify-center px-6 py-12 bg-white">
         <div className="w-full max-w-sm">
-          <h1 className="text-2xl font-semibold mb-1" style={{ color: "#0f172a" }}>
-            Welcome to Spotmarket
+          <h1 className="text-2xl font-semibold mb-1" style={{ color: "var(--text-primary)" }}>
+            Welcome to ClipProfit
           </h1>
-          <p className="text-sm mb-8" style={{ color: "#64748b" }}>
+          <p className="text-sm mb-8" style={{ color: "var(--text-secondary)" }}>
             Tell us what to call you.
           </p>
-          <OnboardingForm />
+          <Suspense><OnboardingForm /></Suspense>
         </div>
       </div>
     </div>

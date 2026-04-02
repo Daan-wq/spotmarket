@@ -4,6 +4,7 @@ import { redirect, notFound } from "next/navigation";
 import Link from "next/link";
 import { ViewsChart } from "@/components/analytics/views-chart";
 import { SubmitPostForm } from "./submit-post-form";
+import { PostFeedbackPanel } from "@/components/posts/post-feedback-panel";
 
 export default async function CampaignPostsPage({
   params,
@@ -20,7 +21,7 @@ export default async function CampaignPostsPage({
     where: { supabaseId: authUser.id },
     include: {
       creatorProfile: {
-        include: { socialAccounts: { where: { isActive: true }, select: { id: true, platform: true, platformUsername: true } } },
+        include: { socialAccounts: { where: { isActive: true }, select: { id: true, platform: true, platformUsername: true, igMediaCache: true } } },
       },
     },
   });
@@ -117,25 +118,88 @@ export default async function CampaignPostsPage({
           <div className="divide-y divide-gray-50">
             {application.posts.map((post) => {
               const latestViews = post.snapshots[0]?.viewsCount ?? 0;
+              const statusMap: Record<string, { bg: string; text: string; label: string }> = {
+                submitted:       { bg: "#fffbeb", text: "#92400e", label: "Awaiting Brand Review" },
+                brand_approved:  { bg: "#dbeafe", text: "#1d4ed8", label: "Brand Approved · Admin Review" },
+                brand_rejected:  { bg: "#fef2f2", text: "#b91c1c", label: "Brand Declined" },
+                approved:        { bg: "#f0fdf4", text: "#15803d", label: "Approved · Earning" },
+                rejected:        { bg: "#fef2f2", text: "#b91c1c", label: "Rejected" },
+              };
+              const s = statusMap[post.status] ?? statusMap.submitted;
+
               return (
-                <div key={post.id} className="px-5 py-4 flex items-center justify-between gap-4">
-                  <div>
-                    <a
-                      href={post.postUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-sm text-indigo-600 hover:underline truncate block max-w-xs"
+                <div key={post.id} className="px-5 py-4">
+                  <div className="flex items-center justify-between gap-4">
+                    <div className="min-w-0">
+                      <a
+                        href={post.postUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-sm text-indigo-600 hover:underline truncate block max-w-xs"
+                      >
+                        {post.postUrl}
+                      </a>
+                      <p className="text-xs text-gray-400 mt-0.5">
+                        {new Date(post.submittedAt).toLocaleDateString()} · {post.platform}
+                      </p>
+                    </div>
+                    <div className="text-right shrink-0">
+                      <p className="text-sm font-semibold text-gray-900">{latestViews.toLocaleString()} views</p>
+                      <p className="text-xs text-gray-400">${(latestViews * creatorCpv).toFixed(2)}</p>
+                    </div>
+                  </div>
+
+                  {/* Status badge */}
+                  <div className="mt-2 flex items-center gap-2">
+                    <span
+                      className="text-xs font-medium px-2 py-0.5 rounded-full"
+                      style={{ background: s.bg, color: s.text }}
                     >
-                      {post.postUrl}
-                    </a>
-                    <p className="text-xs text-gray-400 mt-0.5">
-                      {new Date(post.submittedAt).toLocaleDateString()} · {post.platform}
-                    </p>
+                      {s.label}
+                    </span>
                   </div>
-                  <div className="text-right shrink-0">
-                    <p className="text-sm font-semibold text-gray-900">{latestViews.toLocaleString()} views</p>
-                    <p className="text-xs text-gray-400">${(latestViews * creatorCpv).toFixed(2)}</p>
+
+                  {/* Status timeline */}
+                  <div className="mt-2 flex items-center gap-1 text-xs" style={{ color: "var(--text-muted)" }}>
+                    <span className={post.status !== "submitted" ? "font-medium text-green-600" : "font-medium text-amber-600"}>
+                      Submitted
+                    </span>
+                    <span>→</span>
+                    <span className={
+                      ["brand_approved", "approved"].includes(post.status) ? "font-medium text-green-600" :
+                      post.status === "brand_rejected" ? "font-medium text-red-600" : ""
+                    }>
+                      Brand Review
+                    </span>
+                    <span>→</span>
+                    <span className={
+                      post.status === "approved" ? "font-medium text-green-600" :
+                      post.status === "rejected" ? "font-medium text-red-600" : ""
+                    }>
+                      {post.status === "approved" ? "Approved" : post.status === "rejected" ? "Rejected" : "Final Review"}
+                    </span>
                   </div>
+
+                  {/* Actions for declined posts */}
+                  {post.status === "brand_rejected" && (
+                    <div className="mt-2 flex gap-2">
+                      <Link
+                        href={`/campaigns/${campaignId}/messages`}
+                        className="text-xs px-3 py-1.5 rounded-lg font-medium"
+                        style={{ background: "var(--muted)", color: "var(--text-primary)" }}
+                      >
+                        Contact Brand
+                      </Link>
+                    </div>
+                  )}
+
+                  <PostFeedbackPanel
+                    postId={post.id}
+                    campaignId={campaignId}
+                    status={post.status}
+                    brandDeclineReason={post.brandDeclineReason ?? null}
+                    adminDeclineReason={post.adminDeclineReason ?? null}
+                  />
                 </div>
               );
             })}

@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { type CampaignCardData } from "@/types/campaign-card";
 
 type DealCardProps = {
@@ -15,12 +16,12 @@ export function DealCard({ campaign, applicationStatus }: DealCardProps) {
   const [loading, setLoading] = useState(false);
 
   const statusConfig: Record<string, { background: string; color: string; label: string }> = {
-    approved:  { background: "#f0fdf4", color: "#15803d", label: "Approved"  },
-    pending:   { background: "#fffbeb", color: "#92400e", label: "Pending"   },
-    rejected:  { background: "#fef2f2", color: "#b91c1c", label: "Rejected"  },
-    active:    { background: "#f0fdf4", color: "#15803d", label: "Active"    },
-    completed: { background: "#f3f4f6", color: "#6b7280", label: "Completed" },
-    disputed:  { background: "#fff7ed", color: "#c2410c", label: "Disputed"  },
+    approved:  { background: "var(--success-bg)", color: "var(--success-text)", label: "Approved"  },
+    pending:   { background: "var(--warning-bg)", color: "var(--warning-text)", label: "Pending"   },
+    rejected:  { background: "var(--error-bg)", color: "var(--error-text)", label: "Rejected"  },
+    active:    { background: "var(--success-bg)", color: "var(--success-text)", label: "Active"    },
+    completed: { background: "var(--muted)", color: "var(--text-secondary)", label: "Completed" },
+    disputed:  { background: "var(--warning-bg)", color: "var(--warning-text)", label: "Disputed"  },
   };
 
   async function handleApply() {
@@ -36,38 +37,51 @@ export function DealCard({ campaign, applicationStatus }: DealCardProps) {
   return (
     <div
       className="rounded-xl p-4 flex flex-col gap-3 transition-all duration-150"
-      style={{ background: "#f9fafb", border: "1px solid #e5e7eb" }}
+      style={{ background: "var(--bg-card)", border: "1px solid var(--border)" }}
       onMouseEnter={e => {
-        (e.currentTarget as HTMLElement).style.borderColor = "#d1d5db";
-        (e.currentTarget as HTMLElement).style.background = "#ffffff";
+        (e.currentTarget as HTMLElement).style.borderColor = "var(--border-hover)";
+        (e.currentTarget as HTMLElement).style.background = "var(--bg-elevated)";
+        (e.currentTarget as HTMLElement).style.boxShadow = "var(--shadow-card)";
       }}
       onMouseLeave={e => {
-        (e.currentTarget as HTMLElement).style.borderColor = "#e5e7eb";
-        (e.currentTarget as HTMLElement).style.background = "#f9fafb";
+        (e.currentTarget as HTMLElement).style.borderColor = "var(--border)";
+        (e.currentTarget as HTMLElement).style.background = "var(--bg-card)";
+        (e.currentTarget as HTMLElement).style.boxShadow = "none";
       }}
     >
       {/* Brand row */}
-      <div className="flex items-center gap-2.5">
+      <Link
+        href={campaign.launchedBy ? `/profile/${campaign.launchedBy.id}` : `/campaigns/${campaign.id}`}
+        className="flex items-center gap-2.5 hover:opacity-80 transition-opacity"
+        onClick={e => e.stopPropagation()}
+      >
         <div
-          className="w-8 h-8 rounded-lg flex items-center justify-center text-xs font-bold text-white shrink-0"
-          style={{ background: "#111827" }}
+          className="w-8 h-8 rounded-lg flex items-center justify-center text-xs font-bold text-white shrink-0 overflow-hidden"
+          style={{ background: "var(--accent)" }}
         >
-          {campaign.companyInitial}
+          {campaign.launchedBy?.avatarUrl
+            ? <img src={campaign.launchedBy.avatarUrl} alt={campaign.launchedBy.name} className="w-full h-full object-cover" />
+            : (campaign.launchedBy?.name?.[0] ?? campaign.companyInitial).toUpperCase()
+          }
         </div>
-        <p className="text-sm font-semibold" style={{ color: "#111827" }}>{campaign.company}</p>
-      </div>
+        <p className="text-sm font-semibold" style={{ color: "var(--text-primary)" }}>
+          {campaign.launchedBy?.name ?? campaign.company}
+        </p>
+      </Link>
 
-      <p className="text-sm font-medium leading-snug" style={{ color: "#374151" }}>{campaign.name}</p>
+      <Link href={`/campaigns/${campaign.id}`} className="hover:opacity-80 transition-opacity">
+        <p className="text-sm font-medium leading-snug" style={{ color: "var(--card-foreground)" }}>{campaign.name}</p>
+      </Link>
 
       <div className="flex items-baseline gap-3">
-        <span className="text-xl font-bold tracking-tight" style={{ color: "#111827" }}>
+        <span className="text-xl font-bold tracking-tight" style={{ color: "var(--text-primary)" }}>
           {campaign.currency}{(campaign.totalBudget / 1000).toFixed(0)}K
         </span>
-        <span className="text-xs" style={{ color: "#9ca3af" }}>{campaign.daysLeft}d left</span>
+        <span className="text-xs" style={{ color: "var(--text-muted)" }}>{campaign.daysLeft}d left</span>
       </div>
 
-      <div className="flex items-center justify-between mt-auto pt-1" style={{ borderTop: "1px solid #f3f4f6" }}>
-        <span className="text-xs" style={{ color: "#9ca3af" }}>Paid Per View</span>
+      <div className="flex items-center justify-between mt-auto pt-1" style={{ borderTop: "1px solid var(--muted)" }}>
+        <span className="text-xs" style={{ color: "var(--text-muted)" }}>Paid Per View</span>
         {applicationStatus && statusConfig[applicationStatus] ? (
           <span className="text-xs font-semibold px-2.5 py-1 rounded-full" style={statusConfig[applicationStatus]}>
             {statusConfig[applicationStatus].label}
@@ -77,7 +91,7 @@ export function DealCard({ campaign, applicationStatus }: DealCardProps) {
             onClick={handleApply}
             disabled={loading}
             className="text-xs font-semibold px-3 py-1.5 rounded-lg transition-opacity cursor-pointer disabled:opacity-50"
-            style={{ background: "#111827", color: "#ffffff" }}
+            style={{ background: "var(--accent)", color: "#ffffff" }}
             onMouseEnter={e => (e.currentTarget.style.opacity = "0.8")}
             onMouseLeave={e => (e.currentTarget.style.opacity = "1")}
           >

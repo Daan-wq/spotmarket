@@ -2,10 +2,13 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireAuth } from "@/lib/auth";
 import { z } from "zod";
+import { Niche } from "@prisma/client";
+
+const NICHES = Object.values(Niche) as [Niche, ...Niche[]];
 
 const updateSchema = z.object({
   handle: z.string().min(1).optional(),
-  niche: z.string().optional(),
+  niche: z.enum(NICHES).optional(),
   followerCount: z.number().int().min(0).optional(),
   avgEngagementRate: z.number().min(0).optional(),
   avgCpm: z.number().min(0).optional(),

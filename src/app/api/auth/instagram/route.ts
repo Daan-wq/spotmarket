@@ -2,8 +2,18 @@ import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { NextResponse } from "next/server";
 import { getInstagramAuthUrl } from "@/lib/instagram";
 import { prisma } from "@/lib/prisma";
+import { rateLimit, AUTH_LIMIT, getClientIp } from "@/lib/rate-limit";
 
-export async function GET() {
+export async function GET(req: Request) {
+  const ip = getClientIp(req);
+  const { success, headers: rlHeaders } = rateLimit(`auth_ig_${ip}`, AUTH_LIMIT);
+  if (!success) {
+    return NextResponse.json(
+      { error: "Too many requests" },
+      { status: 429, headers: rlHeaders },
+    );
+  }
+
   const supabase = await createSupabaseServerClient();
   const { data: { user: authUser } } = await supabase.auth.getUser();
   if (!authUser) {
@@ -21,9 +31,6 @@ export async function GET() {
 
   const state = Buffer.from(authUser.id).toString("base64url");
   const authUrl = await getInstagramAuthUrl(state);
-
-  console.log("[instagram-oauth] redirect_uri:", `${process.env.NEXT_PUBLIC_APP_URL}/api/auth/instagram/callback`);
-  console.log("[instagram-oauth] full authUrl:", authUrl);
 
   return NextResponse.redirect(authUrl);
 }

@@ -12,6 +12,7 @@ function getKey(): Buffer {
 }
 
 export function encrypt(plaintext: string): { ciphertext: string; iv: string } {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
   const crypto = require("crypto");
   const key = getKey();
   const iv = crypto.randomBytes(12); // 96-bit IV for GCM
@@ -28,6 +29,7 @@ export function encrypt(plaintext: string): { ciphertext: string; iv: string } {
 }
 
 export function decrypt(ciphertext: string, ivHex: string): string {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
   const crypto = require("crypto");
   const key = getKey();
   const iv = Buffer.from(ivHex, "hex");

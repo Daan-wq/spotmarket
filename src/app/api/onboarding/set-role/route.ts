@@ -3,10 +3,20 @@ import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { UserRole } from "@prisma/client";
+import { rateLimit, AUTH_LIMIT, getClientIp } from "@/lib/rate-limit";
 
 const ALLOWED_ROLES: UserRole[] = [UserRole.creator, UserRole.network];
 
 export async function POST(req: Request) {
+  const ip = getClientIp(req);
+  const { success, headers: rlHeaders } = rateLimit(`set_role_${ip}`, AUTH_LIMIT);
+  if (!success) {
+    return NextResponse.json(
+      { error: "Too many requests" },
+      { status: 429, headers: rlHeaders },
+    );
+  }
+
   const supabase = await createSupabaseServerClient();
   const { data: { user: authUser } } = await supabase.auth.getUser();
   if (!authUser) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });

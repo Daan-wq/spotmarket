@@ -83,13 +83,13 @@ export default async function AdminCreatorsPage() {
                     <p className="text-[14px] font-medium text-gray-900 truncate">{c.displayName}</p>
                     <p className="text-[12px] text-gray-400 truncate">{c.user.email}</p>
                   </div>
-                  <p className="text-[14px] truncate" style={{ color: main ? "#0f172a" : "#d97706" }}>
+                  <p className="text-[14px] truncate" style={{ color: main ? "var(--text-primary)" : "#d97706" }}>
                     {main ? `@${main.platformUsername} (${main.platform})` : "Not connected"}
                   </p>
-                  <p className="text-[14px] text-gray-900 whitespace-nowrap">{c.totalFollowers.toLocaleString()}</p>
-                  <p className="text-[14px] text-gray-900 whitespace-nowrap">{c.engagementRate.toString()}%</p>
-                  <p className="text-[14px] text-gray-500 whitespace-nowrap">{c.primaryGeo}</p>
-                  <p className="text-[14px] text-gray-500 whitespace-nowrap text-center">{c._count.applications}</p>
+                  <p className="text-[14px] whitespace-nowrap" style={{ color: "var(--text-primary)" }}>{c.totalFollowers.toLocaleString()}</p>
+                  <p className="text-[14px] whitespace-nowrap" style={{ color: "var(--text-primary)" }}>{c.engagementRate.toString()}%</p>
+                  <p className="text-[14px] whitespace-nowrap" style={{ color: "var(--text-secondary)" }}>{c.primaryGeo}</p>
+                  <p className="text-[14px] whitespace-nowrap text-center" style={{ color: "var(--text-secondary)" }}>{c._count.applications}</p>
                   <form action={`/api/creators/${c.id}/sync`} method="POST" onClick={(e) => e.stopPropagation()}>
                     <button type="submit" className="text-xs text-indigo-600 hover:underline whitespace-nowrap">
                       Sync stats

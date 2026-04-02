@@ -2,6 +2,7 @@ import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { z } from "zod";
+import { notifyCampaignLive } from "@/lib/discord";
 
 function serialize<T>(data: T): T {
   return JSON.parse(
@@ -43,6 +44,19 @@ export async function GET(
     include: { _count: { select: { applications: true } }, report: true },
   });
   if (!campaign) return NextResponse.json({ error: "Not found" }, { status: 404 });
+
+  // Strip sensitive financial fields for non-admin, non-owner users
+  const user = await prisma.user.findUnique({
+    where: { supabaseId: authUser.id },
+    select: { id: true, role: true },
+  });
+  const isPrivileged = user?.role === "admin" || campaign.createdByUserId === user?.id;
+
+  if (!isPrivileged) {
+    const { businessCpv, totalBudget, depositTxHash, report, ...publicFields } = campaign;
+    return NextResponse.json(serialize(publicFields));
+  }
+
   return NextResponse.json(serialize(campaign));
 }
 
@@ -65,11 +79,28 @@ export async function PATCH(
   }
 
   const { deadline, ...rest } = parsed.data;
+  const wasActive = authorized.campaign.status !== "active" && rest.status === "active";
+
   try {
     const updated = await prisma.campaign.update({
       where: { id: campaignId },
       data: { ...rest, ...(deadline && { deadline: new Date(deadline) }) },
+      include: { advertiser: true },
     });
+
+    if (wasActive) {
+      await notifyCampaignLive({
+        id: updated.id,
+        name: updated.name,
+        platform: updated.platform,
+        totalBudget: Number(updated.totalBudget),
+        businessCpv: Number(updated.businessCpv),
+        targetCountry: updated.targetCountry,
+        minEngagementRate: Number(updated.minEngagementRate),
+        advertiserBrandName: updated.advertiser?.brandName ?? null,
+      });
+    }
+
     return NextResponse.json(serialize(updated));
   } catch (err) {
     console.error("[PATCH /api/campaigns]", err);

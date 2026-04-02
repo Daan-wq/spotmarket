@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 
 const inputClass = "w-full px-3 py-2 rounded-lg text-sm outline-none";
-const inputStyle = { border: "1px solid #e2e8f0", background: "#f8fafc", color: "#0f172a" };
+const inputStyle = { border: "1px solid var(--border)", background: "var(--bg-primary)", color: "var(--text-primary)" };
 
 interface Client { id: string; name: string }
 interface Page { id: string; handle: string; followerCount: number; avgCpm: number }
@@ -83,12 +83,12 @@ export default function NewInternalCampaignPage() {
 
   return (
     <div className="p-8 max-w-2xl">
-      <h1 className="text-2xl font-semibold mb-8" style={{ color: "#0f172a" }}>New Internal Campaign</h1>
+      <h1 className="text-2xl font-semibold mb-8" style={{ color: "var(--text-primary)" }}>New Internal Campaign</h1>
 
       <form onSubmit={handleSubmit} className="space-y-5">
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <label className="block text-xs font-medium mb-1" style={{ color: "#374151" }}>Client *</label>
+            <label className="block text-xs font-medium mb-1" style={{ color: "var(--card-foreground)" }}>Client *</label>
             <select
               className={inputClass}
               style={inputStyle}
@@ -103,7 +103,7 @@ export default function NewInternalCampaignPage() {
             </select>
           </div>
           <div>
-            <label className="block text-xs font-medium mb-1" style={{ color: "#374151" }}>Campaign Name *</label>
+            <label className="block text-xs font-medium mb-1" style={{ color: "var(--card-foreground)" }}>Campaign Name *</label>
             <input
               className={inputClass}
               style={inputStyle}
@@ -188,8 +188,8 @@ export default function NewInternalCampaignPage() {
 
         {/* Page selection */}
         <div>
-          <label className="block text-xs font-medium mb-2" style={{ color: "#374151" }}>Instagram Pages</label>
-          <div className="rounded-lg overflow-hidden mb-2" style={{ border: "1px solid #e2e8f0", maxHeight: 200, overflowY: "auto" }}>
+          <label className="block text-xs font-medium mb-2" style={{ color: "var(--card-foreground)" }}>Instagram Pages</label>
+          <div className="rounded-lg overflow-hidden mb-2" style={{ border: "1px solid var(--border)", maxHeight: 200, overflowY: "auto" }}>
             {pages.map((page, i) => {
               const isSelected = selectedPages.some((p) => p.pageId === page.id);
               return (
@@ -199,19 +199,19 @@ export default function NewInternalCampaignPage() {
                   onClick={() => isSelected ? removePage(page.id) : addPage(page)}
                   className="w-full flex items-center justify-between px-4 py-2.5 text-left transition-colors"
                   style={{
-                    borderTop: i > 0 ? "1px solid #f8fafc" : undefined,
-                    background: isSelected ? "#f0fdf4" : "#ffffff",
+                    borderTop: i > 0 ? "1px solid var(--bg-primary)" : undefined,
+                    background: isSelected ? "var(--success-bg)" : "var(--bg-elevated)",
                   }}
                 >
                   <div>
-                    <p className="text-sm font-medium" style={{ color: "#0f172a" }}>@{page.handle}</p>
-                    <p className="text-xs" style={{ color: "#94a3b8" }}>
+                    <p className="text-sm font-medium" style={{ color: "var(--text-primary)" }}>@{page.handle}</p>
+                    <p className="text-xs" style={{ color: "var(--text-muted)" }}>
                       {(page.followerCount / 1000).toFixed(0)}K · avg CPM ${Number(page.avgCpm).toFixed(2)}
                     </p>
                   </div>
                   <span
                     className="text-xs px-2 py-0.5 rounded-full font-medium"
-                    style={isSelected ? { background: "#dcfce7", color: "#16a34a" } : { background: "#f3f4f6", color: "#6b7280" }}
+                    style={isSelected ? { background: "var(--success)", color: "var(--success-bg)" } : { background: "var(--bg-secondary)", color: "var(--text-secondary)" }}
                   >
                     {isSelected ? "Added" : "+ Add"}
                   </span>
@@ -225,7 +225,7 @@ export default function NewInternalCampaignPage() {
             <div className="space-y-2">
               {selectedPages.map((p) => (
                 <div key={p.pageId} className="flex items-center gap-3">
-                  <p className="text-sm flex-1" style={{ color: "#0f172a" }}>@{p.handle}</p>
+                  <p className="text-sm flex-1" style={{ color: "var(--text-primary)" }}>@{p.handle}</p>
                   <div className="w-28">
                     <input
                       type="number"
@@ -241,19 +241,19 @@ export default function NewInternalCampaignPage() {
                     type="button"
                     onClick={() => removePage(p.pageId)}
                     className="text-xs"
-                    style={{ color: "#94a3b8" }}
+                    style={{ color: "var(--text-muted)" }}
                   >
                     ✕
                   </button>
                 </div>
               ))}
-              <div className="flex items-center justify-between pt-2" style={{ borderTop: "1px solid #e2e8f0" }}>
-                <p className="text-xs font-medium" style={{ color: "#374151" }}>
-                  Total cost: <span style={{ color: "#0f172a" }}>${totalCost.toFixed(2)}</span>
+              <div className="flex items-center justify-between pt-2" style={{ borderTopColor: 'var(--border)', borderTopWidth: '1px' }}>
+                <p className="text-xs font-medium" style={{ color: "var(--card-foreground)" }}>
+                  Total cost: <span style={{ color: "var(--text-primary)" }}>${totalCost.toFixed(2)}</span>
                 </p>
-                <p className="text-xs font-medium" style={{ color: "#374151" }}>
+                <p className="text-xs font-medium" style={{ color: "var(--card-foreground)" }}>
                   Margin:{" "}
-                  <span style={{ color: margin >= 0 ? "#16a34a" : "#dc2626", fontWeight: 600 }}>
+                  <span style={{ color: margin >= 0 ? "var(--success)" : "var(--error-text)", fontWeight: 600 }}>
                     ${margin.toFixed(2)}
                   </span>
                 </p>
@@ -263,7 +263,7 @@ export default function NewInternalCampaignPage() {
         </div>
 
         <div>
-          <label className="block text-xs font-medium mb-1" style={{ color: "#374151" }}>Notes</label>
+          <label className="block text-xs font-medium mb-1" style={{ color: "var(--card-foreground)" }}>Notes</label>
           <textarea
             className={inputClass}
             style={{ ...inputStyle, minHeight: 60, resize: "vertical" }}
@@ -272,14 +272,14 @@ export default function NewInternalCampaignPage() {
           />
         </div>
 
-        {error && <p className="text-sm" style={{ color: "#b91c1c" }}>{error}</p>}
+        {error && <p className="text-sm" style={{ color: "var(--error-text)" }}>{error}</p>}
 
         <div className="flex gap-3">
           <button
             type="submit"
             disabled={loading}
             className="px-5 py-2 rounded-lg text-sm font-medium text-white"
-            style={{ background: "#4f46e5", opacity: loading ? 0.7 : 1 }}
+            style={{ background: "var(--accent)", opacity: loading ? 0.7 : 1 }}
           >
             {loading ? "Creating…" : "Create Campaign"}
           </button>
@@ -287,7 +287,7 @@ export default function NewInternalCampaignPage() {
             type="button"
             onClick={() => router.back()}
             className="px-5 py-2 rounded-lg text-sm font-medium"
-            style={{ background: "#f3f4f6", color: "#374151" }}
+            style={{ background: "var(--bg-secondary)", color: "var(--card-foreground)" }}
           >
             Cancel
           </button>

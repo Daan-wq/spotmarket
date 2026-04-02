@@ -12,4 +12,8 @@ export interface CampaignCardData {
   applicants: number;
   maxApplicants: number;
   minFollowers: number;
+  goalViews: number | null;
+  currentViews: number;
+  remainingBudget: number;
+  launchedBy: { id: string; name: string; avatarUrl: string | null } | null;
 }

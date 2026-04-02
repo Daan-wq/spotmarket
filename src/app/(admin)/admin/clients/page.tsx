@@ -37,10 +37,10 @@ export default async function AdminClientsPage() {
         ]}
       />
 
-      <div className="bg-white rounded-lg border border-gray-200">
-        <div className="grid grid-cols-[1fr_auto_auto_auto_auto] gap-4 px-5 py-2.5 border-b border-gray-100">
+      <div className="rounded-lg" style={{ background: 'var(--bg-elevated)', border: '1px solid var(--border)' }}>
+        <div className="grid grid-cols-[1fr_auto_auto_auto_auto] gap-4 px-5 py-2.5" style={{ borderBottomColor: 'var(--border)', borderBottomWidth: '1px' }}>
           {["Name", "Contact", "Channel", "Campaigns", "Total Spent"].map((h) => (
-            <p key={h} className="text-[13px] text-gray-400">{h}</p>
+            <p key={h} className="text-[13px]" style={{ color: 'var(--text-muted)' }}>{h}</p>
           ))}
         </div>
 
@@ -60,21 +60,22 @@ export default async function AdminClientsPage() {
             {clients.map((client, i) => (
               <div
                 key={client.id}
-                className="grid grid-cols-[1fr_auto_auto_auto_auto] gap-4 items-center px-5 py-3 hover:bg-gray-50"
-                style={{ borderTop: i > 0 ? "1px solid #f8fafc" : undefined }}
+                className="grid grid-cols-[1fr_auto_auto_auto_auto] gap-4 items-center px-5 py-3 hover:bg-opacity-5"
+                style={{ borderTop: i > 0 ? `1px solid var(--bg-primary)` : undefined }}
               >
                 <div className="min-w-0">
                   <Link
                     href={`/admin/clients/${client.id}`}
-                    className="text-[14px] font-medium text-gray-900 hover:underline"
+                    className="text-[14px] font-medium hover:underline"
+                    style={{ color: 'var(--text-primary)' }}
                   >
                     {client.name}
                   </Link>
                   {client.company && (
-                    <p className="text-[12px] text-gray-400 mt-0.5 truncate">{client.company}</p>
+                    <p className="text-[12px] mt-0.5 truncate" style={{ color: 'var(--text-muted)' }}>{client.company}</p>
                   )}
                 </div>
-                <p className="text-[14px] text-gray-500 whitespace-nowrap">{client.contactName ?? "—"}</p>
+                <p className="text-[14px] whitespace-nowrap" style={{ color: 'var(--text-secondary)' }}>{client.contactName ?? "—"}</p>
                 <div>
                   {client.communicationHandle ? (
                     <MessageButton
@@ -82,11 +83,11 @@ export default async function AdminClientsPage() {
                       handle={client.communicationHandle}
                     />
                   ) : (
-                    <span className="text-[13px] text-gray-300">—</span>
+                    <span className="text-[13px]" style={{ color: 'var(--text-muted)' }}>—</span>
                   )}
                 </div>
-                <p className="text-[14px] text-gray-500 text-center">{client._count.internalCampaigns}</p>
-                <p className="text-[14px] font-medium text-gray-900 text-right">
+                <p className="text-[14px] text-center" style={{ color: 'var(--text-secondary)' }}>{client._count.internalCampaigns}</p>
+                <p className="text-[14px] font-medium text-right" style={{ color: 'var(--text-primary)' }}>
                   ${Number(client.totalSpent).toFixed(2)}
                 </p>
               </div>

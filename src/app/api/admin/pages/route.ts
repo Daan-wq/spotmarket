@@ -2,10 +2,13 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireAuth } from "@/lib/auth";
 import { z } from "zod";
+import { Niche } from "@prisma/client";
+
+const NICHES = Object.values(Niche) as [Niche, ...Niche[]];
 
 const createSchema = z.object({
   handle: z.string().min(1),
-  niche: z.string().optional(),
+  niche: z.enum(NICHES).optional(),
   followerCount: z.number().int().min(0).default(0),
   avgEngagementRate: z.number().min(0).default(0),
   avgCpm: z.number().min(0).default(0),
@@ -32,7 +35,7 @@ export async function GET(req: NextRequest) {
     where: {
       status: "active",
       ...(search ? { handle: { contains: search, mode: "insensitive" } } : {}),
-      ...(niche ? { niche: { contains: niche, mode: "insensitive" } } : {}),
+      ...(niche && Object.values(Niche).includes(niche as Niche) ? { niche: niche as Niche } : {}),
     },
     include: {
       _count: { select: { internalCampaignPages: true } },

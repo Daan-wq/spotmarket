@@ -5,16 +5,27 @@ import { StatCards } from "@/components/admin/stat-cards";
 import { EmptyState } from "@/components/admin/empty-state";
 
 const statusBadge: Record<string, { bg: string; text: string }> = {
-  draft:     { bg: "bg-gray-100",  text: "text-gray-500" },
-  active:    { bg: "bg-green-50",  text: "text-green-700" },
-  paused:    { bg: "bg-amber-50",  text: "text-amber-700" },
-  completed: { bg: "bg-gray-100",  text: "text-gray-500" },
-  cancelled: { bg: "bg-red-50",    text: "text-red-700" },
+  draft:            { bg: "bg-gray-100",   text: "text-gray-500" },
+  pending_payment:  { bg: "bg-amber-50",   text: "text-amber-700" },
+  pending_review:   { bg: "bg-blue-50",    text: "text-blue-700" },
+  active:           { bg: "bg-green-50",   text: "text-green-700" },
+  paused:           { bg: "bg-amber-50",   text: "text-amber-700" },
+  completed:        { bg: "bg-gray-100",   text: "text-gray-500" },
+  cancelled:        { bg: "bg-red-50",     text: "text-red-700" },
 };
 
 export default async function AdminCampaignsPage() {
-  const [campaigns, activeCnt, pausedCnt, completedCnt] = await Promise.all([
+  const [pendingReview, campaigns, activeCnt, pausedCnt, completedCnt] = await Promise.all([
     prisma.campaign.findMany({
+      where: { status: "pending_review" },
+      include: {
+        createdBy: { include: { creatorProfile: { select: { displayName: true } } } },
+        _count: { select: { applications: true } },
+      },
+      orderBy: { createdAt: "asc" },
+    }),
+    prisma.campaign.findMany({
+      where: { status: { notIn: ["pending_review"] } },
       include: {
         _count: { select: { applications: true } },
       },
@@ -34,13 +45,57 @@ export default async function AdminCampaignsPage() {
       />
       <StatCards
         stats={[
+          { label: "Pending review", value: pendingReview.length },
           { label: "Active", value: activeCnt },
           { label: "Paused", value: pausedCnt },
           { label: "Completed", value: completedCnt },
-          { label: "Total", value: campaigns.length },
         ]}
       />
 
+      {/* Pending Review Queue */}
+      {pendingReview.length > 0 && (
+        <div className="mb-6">
+          <h2 className="text-sm font-semibold text-blue-700 mb-2 flex items-center gap-2">
+            <span className="w-2 h-2 rounded-full bg-blue-500 animate-pulse inline-block" />
+            Needs review ({pendingReview.length})
+          </h2>
+          <div className="bg-white rounded-lg border border-blue-200 divide-y divide-blue-50">
+            {pendingReview.map((c) => {
+              const ownerName = c.createdBy?.creatorProfile?.displayName ?? c.createdBy?.email ?? "Unknown";
+              return (
+                <div key={c.id} className="flex items-center justify-between px-5 py-3 hover:bg-blue-50/40">
+                  <div className="min-w-0 flex-1">
+                    <p className="text-[14px] font-semibold truncate text-gray-900">{c.name}</p>
+                    <p className="text-xs text-gray-500 mt-0.5">
+                      by {ownerName} · ${Number(c.totalBudget).toLocaleString()} USDT ·{" "}
+                      {c.depositTxHash ? (
+                        <a
+                          href={`https://tronscan.org/#/transaction/${c.depositTxHash}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-blue-600 underline"
+                        >
+                          Verify TX ↗
+                        </a>
+                      ) : (
+                        <span className="text-red-500">No TX hash</span>
+                      )}
+                    </p>
+                  </div>
+                  <Link
+                    href={`/admin/campaigns/${c.id}/review`}
+                    className="shrink-0 ml-4 text-xs font-semibold px-3 py-1.5 rounded-lg text-white bg-blue-600 hover:bg-blue-700 transition-colors"
+                  >
+                    Review →
+                  </Link>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* All other campaigns */}
       <div className="bg-white rounded-lg border border-gray-200">
         <div className="grid grid-cols-[1fr_auto_auto_auto_auto_auto_auto] gap-4 px-5 py-2.5 border-b border-gray-100">
           {["Campaign", "Geo", "CPV", "Deadline", "Apps", "Status", ""].map((h) => (
@@ -70,23 +125,22 @@ export default async function AdminCampaignsPage() {
                   style={{ borderTop: i > 0 ? "1px solid #f8fafc" : undefined }}
                 >
                   <div className="min-w-0">
-                    <p className="text-[14px] font-medium text-gray-900 truncate">{c.name}</p>
+                    <p className="text-[14px] font-medium truncate" style={{ color: "var(--text-primary)" }}>{c.name}</p>
                   </div>
-                  <span className="text-xs px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-700 whitespace-nowrap">
-                    {c.targetGeo.join(", ")}
+                  <span className="text-xs px-2 py-0.5 rounded-full whitespace-nowrap" style={{ background: "var(--accent-bg)", color: "var(--accent)" }}>
+                    {c.targetGeo.join(", ") || "—"}
                   </span>
-                  <p className="text-[14px] text-gray-900 whitespace-nowrap">${(Number(c.creatorCpv) * 1_000_000).toFixed(0)}/1M</p>
-                  <p className="text-[14px] text-gray-500 whitespace-nowrap">
+                  <p className="text-[14px] whitespace-nowrap" style={{ color: "var(--text-primary)" }}>
+                    {Number(c.creatorCpv) > 0 ? `$${(Number(c.creatorCpv) * 1_000_000).toFixed(0)}/1M` : "—"}
+                  </p>
+                  <p className="text-[14px] whitespace-nowrap" style={{ color: "var(--text-secondary)" }}>
                     {new Date(c.deadline).toLocaleDateString()}
                   </p>
-                  <p className="text-[14px] text-gray-500 whitespace-nowrap text-center">{c._count.applications}</p>
+                  <p className="text-[14px] whitespace-nowrap text-center" style={{ color: "var(--text-secondary)" }}>{c._count.applications}</p>
                   <span className={`text-xs px-2 py-0.5 rounded-md font-medium whitespace-nowrap ${badge.bg} ${badge.text}`}>
-                    {c.status}
+                    {c.status.replace("_", " ")}
                   </span>
-                  <Link
-                    href={`/admin/campaigns/${c.id}`}
-                    className="text-xs text-indigo-600 hover:underline whitespace-nowrap"
-                  >
+                  <Link href={`/admin/campaigns/${c.id}`} className="text-xs hover:underline whitespace-nowrap" style={{ color: "var(--accent)" }}>
                     View →
                   </Link>
                 </div>
