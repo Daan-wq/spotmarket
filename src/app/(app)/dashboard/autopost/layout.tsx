@@ -6,7 +6,7 @@ import Link from "next/link";
 const TABS = [
   {
     href: "/dashboard/autopost",
-    label: "Post",
+    label: "Overview",
     exact: true,
     description: "Create a one-off post — upload content, write a caption, and publish immediately or at a set time.",
   },
@@ -73,6 +73,9 @@ export default function AutoPostLayout({ children }: { children: React.ReactNode
             </Link>
           );
         })}
+      </div>
+      <div style={{ padding: "8px 16px", fontSize: "12px", color: "var(--text-muted)", background: "var(--bg-secondary)", borderBottom: "1px solid var(--border)" }}>
+        Select a page to manage in the Schedule and Log tabs
       </div>
       {activeTab?.description && (
         <div style={{

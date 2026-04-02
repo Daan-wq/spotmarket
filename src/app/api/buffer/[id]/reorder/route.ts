@@ -19,20 +19,16 @@ export async function PATCH(
 
     const user = await prisma.user.findUnique({
       where: { supabaseId: authUser.id },
-      select: { creatorProfile: { select: { id: true } } },
+      select: { id: true },
     });
-    if (!user?.creatorProfile) return NextResponse.json({ error: "Not a creator" }, { status: 403 });
+    if (!user) return NextResponse.json({ error: "User not found" }, { status: 403 });
 
     const body = await req.json();
     const parsed = schema.safeParse(body);
     if (!parsed.success) return NextResponse.json({ error: "Invalid input" }, { status: 400 });
 
-    // Verify buffer item belongs to creator
-    const buffer = await prisma.contentBuffer.findUnique({
-      where: { id },
-      include: { igAccount: { select: { creatorProfileId: true } } },
-    });
-    if (!buffer || buffer.igAccount.creatorProfileId !== user.creatorProfile.id) {
+    const buffer = await prisma.contentBuffer.findUnique({ where: { id } });
+    if (!buffer || buffer.userId !== user.id) {
       return NextResponse.json({ error: "Not found" }, { status: 404 });
     }
 

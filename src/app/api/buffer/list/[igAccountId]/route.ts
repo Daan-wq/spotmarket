@@ -8,24 +8,25 @@ export async function GET(
   { params }: { params: Promise<{ igAccountId: string }> },
 ) {
   try {
-    const { igAccountId } = await params;
+    // Route param is still called igAccountId for URL compat — treated as collectionId
+    const { igAccountId: collectionId } = await params;
     const supabase = await createSupabaseServerClient();
     const { data: { user: authUser } } = await supabase.auth.getUser();
     if (!authUser) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
     const user = await prisma.user.findUnique({
       where: { supabaseId: authUser.id },
-      select: { id: true, creatorProfile: { select: { id: true } } },
+      select: { id: true },
     });
-    if (!user?.creatorProfile) return NextResponse.json({ error: "Not a creator" }, { status: 403 });
+    if (!user) return NextResponse.json({ error: "User not found" }, { status: 403 });
 
-    // Verify account belongs to creator
-    const account = await prisma.socialAccount.findUnique({
-      where: { id: igAccountId },
-      select: { creatorProfileId: true },
+    // Verify collection belongs to user
+    const collection = await prisma.collection.findUnique({
+      where: { id: collectionId },
+      select: { userId: true },
     });
-    if (!account || account.creatorProfileId !== user.creatorProfile.id) {
-      return NextResponse.json({ error: "Account not found" }, { status: 403 });
+    if (!collection || collection.userId !== user.id) {
+      return NextResponse.json({ error: "Collection not found" }, { status: 403 });
     }
 
     const url = new URL(req.url);
@@ -35,7 +36,7 @@ export async function GET(
     const limit = Math.min(parseInt(url.searchParams.get("limit") || "50", 10), 100);
 
     const where: Record<string, unknown> = {
-      igAccountId,
+      collectionId,
       status,
     };
     if (contentType) where.contentType = contentType;
@@ -60,11 +61,9 @@ export async function GET(
       })),
     );
 
-    // Coverage estimates per content type
-    const coverageStats = await prisma.contentBuffer.groupBy({
-      by: ["contentType"],
-      where: { igAccountId, status: "QUEUED" },
-      _count: true,
+    // Total queued items in this collection
+    const queuedCount = await prisma.contentBuffer.count({
+      where: { collectionId, status: "QUEUED" },
     });
 
     return NextResponse.json({
@@ -72,13 +71,10 @@ export async function GET(
       total,
       page,
       limit,
-      coverage: coverageStats.map((s) => ({
-        contentType: s.contentType,
-        queued: s._count,
-      })),
+      queuedCount,
     });
   } catch (error) {
-    console.error("GET /buffer/[igAccountId] error:", error);
+    console.error("GET /buffer/list/[collectionId] error:", error);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }

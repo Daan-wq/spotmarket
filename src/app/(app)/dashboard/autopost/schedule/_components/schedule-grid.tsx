@@ -5,29 +5,24 @@ import { useState, useEffect, useCallback } from "react";
 const DAYS = ["MONDAY", "TUESDAY", "WEDNESDAY", "THURSDAY", "FRIDAY", "SATURDAY", "SUNDAY"];
 const DAY_LABELS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 const CONTENT_TYPES = ["REEL", "FEED_VIDEO", "FEED_PHOTO", "STORY_VIDEO", "STORY_PHOTO", "CAROUSEL"];
-const CONTENT_COLORS: Record<string, string> = {
-  REEL: "#7c3aed",
-  FEED_VIDEO: "#3b82f6",
-  FEED_PHOTO: "#22c55e",
-  STORY_VIDEO: "#f59e0b",
-  STORY_PHOTO: "#ef4444",
-  CAROUSEL: "#ec4899",
-};
 
 interface IgAccount { id: string; platformUsername: string }
 interface Campaign { id: string; name: string; bannerUrl: string | null }
+interface Collection { id: string; name: string; color: string | null }
 interface Schedule {
   id: string;
   dayOfWeek: string;
   time: string;
   timezone: string;
-  contentType: string;
+  collectionId: string;
+  contentTypeFilter: string | null;
   campaignId: string | null;
   overlayPosition: string | null;
   overlaySize: string | null;
   captionTemplate: string | null;
   enabled: boolean;
   campaign: { id: string; name: string } | null;
+  collection: { id: string; name: string; color: string | null } | null;
 }
 
 export function ScheduleGrid({ igAccounts, campaigns }: { igAccounts: IgAccount[]; campaigns: Campaign[] }) {
@@ -147,7 +142,7 @@ export function ScheduleGrid({ igAccounts, campaigns }: { igAccounts: IgAccount[
                         >
                           {slot ? (
                             <div style={{
-                              background: CONTENT_COLORS[slot.contentType] || "var(--bg-secondary)",
+                              background: slot.collection?.color || "var(--bg-secondary)",
                               color: "#fff",
                               borderRadius: "4px",
                               padding: "4px 6px",
@@ -155,7 +150,12 @@ export function ScheduleGrid({ igAccounts, campaigns }: { igAccounts: IgAccount[
                               fontWeight: 500,
                               opacity: slot.enabled ? 1 : 0.4,
                             }}>
-                              {slot.contentType.replace("_", " ")}
+                              {slot.collection?.name || "Untitled"}
+                              {slot.contentTypeFilter && (
+                                <div style={{ fontSize: "9px", opacity: 0.8, marginTop: "2px" }}>
+                                  {slot.contentTypeFilter.replace("_", " ")}
+                                </div>
+                              )}
                               {slot.campaign && (
                                 <div style={{ fontSize: "9px", opacity: 0.8, marginTop: "2px" }}>
                                   {slot.campaign.name}
@@ -224,14 +224,29 @@ function SlotEditor({
   onDelete?: () => void;
   onClose: () => void;
 }) {
-  const [contentType, setContentType] = useState(existing?.contentType || "REEL");
+  const [collections, setCollections] = useState<Collection[]>([]);
+  const [collectionId, setCollectionId] = useState(existing?.collectionId || "");
+  const [contentTypeFilter, setContentTypeFilter] = useState(existing?.contentTypeFilter || "");
   const [campaignId, setCampaignId] = useState(existing?.campaignId || "");
   const [captionTemplate, setCaptionTemplate] = useState(existing?.captionTemplate || "");
   const [overlayPosition, setOverlayPosition] = useState(existing?.overlayPosition || "BOTTOM_RIGHT");
   const [overlaySize, setOverlaySize] = useState(existing?.overlaySize || "MEDIUM");
   const [enabled, setEnabled] = useState(existing?.enabled ?? true);
+  const [loadingCollections, setLoadingCollections] = useState(true);
 
-  const isStory = contentType === "STORY_VIDEO" || contentType === "STORY_PHOTO";
+  useEffect(() => {
+    const fetchCollections = async () => {
+      try {
+        const res = await fetch("/api/collections");
+        if (res.ok) {
+          const data = await res.json();
+          setCollections(data.collections || []);
+        }
+      } catch { /* ignore */ }
+      setLoadingCollections(false);
+    };
+    fetchCollections();
+  }, []);
 
   return (
     <div style={{
@@ -248,8 +263,26 @@ function SlotEditor({
       </div>
 
       <label style={{ display: "block", marginBottom: "12px" }}>
-        <span style={{ fontSize: "12px", color: "var(--text-secondary)", display: "block", marginBottom: "4px" }}>Content Type</span>
-        <select value={contentType} onChange={e => setContentType(e.target.value)} style={{ width: "100%", background: "var(--bg-secondary)", color: "var(--text-primary)", border: "1px solid var(--border)", borderRadius: "6px", padding: "8px" }}>
+        <span style={{ fontSize: "12px", color: "var(--text-secondary)", display: "block", marginBottom: "4px" }}>Collection</span>
+        {loadingCollections ? (
+          <div style={{ padding: "8px", fontSize: "13px", color: "var(--text-muted)" }}>Loading...</div>
+        ) : (
+          <select value={collectionId} onChange={e => setCollectionId(e.target.value)} style={{ width: "100%", background: "var(--bg-secondary)", color: "var(--text-primary)", border: "1px solid var(--border)", borderRadius: "6px", padding: "8px" }}>
+            <option value="">Select a collection</option>
+            {collections.map(c => (
+              <option key={c.id} value={c.id}>
+                {c.color && <span style={{ display: "inline-block", width: "8px", height: "8px", borderRadius: "2px", background: c.color, marginRight: "6px", verticalAlign: "middle" }} />}
+                {c.name}
+              </option>
+            ))}
+          </select>
+        )}
+      </label>
+
+      <label style={{ display: "block", marginBottom: "12px" }}>
+        <span style={{ fontSize: "12px", color: "var(--text-secondary)", display: "block", marginBottom: "4px" }}>Content Type Filter (optional)</span>
+        <select value={contentTypeFilter} onChange={e => setContentTypeFilter(e.target.value)} style={{ width: "100%", background: "var(--bg-secondary)", color: "var(--text-primary)", border: "1px solid var(--border)", borderRadius: "6px", padding: "8px" }}>
+          <option value="">Any type</option>
           {CONTENT_TYPES.map(t => <option key={t} value={t}>{t.replace("_", " ")}</option>)}
         </select>
       </label>
@@ -293,7 +326,7 @@ function SlotEditor({
         <div style={{ fontSize: "11px", color: "var(--text-muted)", marginTop: "4px" }}>
           Tokens: {"{{required_hashtags}}"} {"{{page_name}}"} {"{{date}}"} {"{{day}}"} {"{{custom_1}}"}
         </div>
-        {isStory && (
+        {contentTypeFilter && (contentTypeFilter === "STORY_VIDEO" || contentTypeFilter === "STORY_PHOTO") && (
           <div style={{ fontSize: "11px", color: "#f59e0b", marginTop: "4px" }}>
             Note: Captions are not supported for Stories posted via API.
           </div>
@@ -307,14 +340,18 @@ function SlotEditor({
 
       <div style={{ display: "flex", gap: "8px" }}>
         <button
-          onClick={() => onSave({
-            contentType,
-            campaignId: campaignId || undefined,
-            captionTemplate: captionTemplate || undefined,
-            overlayPosition: campaignId ? overlayPosition : undefined,
-            overlaySize: campaignId ? overlaySize : undefined,
-            enabled,
-          })}
+          onClick={() => {
+            const data: Record<string, unknown> = {
+              collectionId,
+              campaignId: campaignId || undefined,
+              captionTemplate: captionTemplate || undefined,
+              overlayPosition: campaignId ? overlayPosition : undefined,
+              overlaySize: campaignId ? overlaySize : undefined,
+              enabled,
+            };
+            if (contentTypeFilter) data.contentTypeFilter = contentTypeFilter;
+            onSave(data);
+          }}
           style={{
             flex: 1, background: "var(--accent)", color: "#fff", border: "none",
             borderRadius: "6px", padding: "10px", fontSize: "13px", fontWeight: 500, cursor: "pointer",

@@ -8,7 +8,8 @@ const schema = z.object({
   dayOfWeek: z.enum(["MONDAY", "TUESDAY", "WEDNESDAY", "THURSDAY", "FRIDAY", "SATURDAY", "SUNDAY"]),
   time: z.string().regex(/^\d{2}:\d{2}$/, "Must be HH:MM format"),
   timezone: z.string().min(1),
-  contentType: z.enum(["REEL", "FEED_VIDEO", "FEED_PHOTO", "STORY_VIDEO", "STORY_PHOTO", "CAROUSEL"]),
+  collectionId: z.string().min(1),
+  contentTypeFilter: z.enum(["REEL", "FEED_VIDEO", "FEED_PHOTO", "STORY_VIDEO", "STORY_PHOTO", "CAROUSEL"]).optional(),
   campaignId: z.string().optional(),
   overlayPosition: z.enum([
     "TOP_LEFT", "TOP_CENTER", "TOP_RIGHT",
@@ -47,6 +48,15 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Account not found" }, { status: 403 });
     }
 
+    // Verify collection belongs to user
+    const collection = await prisma.collection.findUnique({
+      where: { id: data.collectionId },
+      select: { userId: true },
+    });
+    if (!collection || collection.userId !== user.id) {
+      return NextResponse.json({ error: "Collection not found" }, { status: 403 });
+    }
+
     // If campaign specified, verify it's active and creator has approved application
     if (data.campaignId) {
       const campaign = await prisma.campaign.findUnique({
@@ -81,7 +91,8 @@ export async function POST(req: Request) {
         dayOfWeek: data.dayOfWeek,
         time: data.time,
         timezone: data.timezone,
-        contentType: data.contentType,
+        collectionId: data.collectionId,
+        contentTypeFilter: data.contentTypeFilter || null,
         campaignId: data.campaignId || null,
         overlayPosition: data.overlayPosition || null,
         overlaySize: data.overlaySize || null,

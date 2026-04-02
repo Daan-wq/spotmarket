@@ -14,21 +14,18 @@ export async function PATCH(
 
     const user = await prisma.user.findUnique({
       where: { supabaseId: authUser.id },
-      select: { creatorProfile: { select: { id: true } } },
+      select: { id: true },
     });
-    if (!user?.creatorProfile) return NextResponse.json({ error: "Not a creator" }, { status: 403 });
+    if (!user) return NextResponse.json({ error: "User not found" }, { status: 403 });
 
-    const buffer = await prisma.contentBuffer.findUnique({
-      where: { id },
-      include: { igAccount: { select: { creatorProfileId: true } } },
-    });
-    if (!buffer || buffer.igAccount.creatorProfileId !== user.creatorProfile.id) {
+    const buffer = await prisma.contentBuffer.findUnique({ where: { id } });
+    if (!buffer || buffer.userId !== user.id) {
       return NextResponse.json({ error: "Not found" }, { status: 404 });
     }
 
-    // Move to back of queue: find max sortOrder and set to max+1
+    // Move to back of queue: find max sortOrder within collection
     const maxItem = await prisma.contentBuffer.findFirst({
-      where: { igAccountId: buffer.igAccountId, contentType: buffer.contentType },
+      where: { collectionId: buffer.collectionId },
       orderBy: { sortOrder: "desc" },
       select: { sortOrder: true },
     });

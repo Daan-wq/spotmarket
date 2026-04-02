@@ -44,6 +44,8 @@ model User {
   campaignSubmissions CampaignSubmission[]
   postSchedules       PostSchedule[]
   deviceTokens        DeviceToken[]
+  collections         Collection[]
+  contentBuffers      ContentBuffer[]
 
   @@index([supabaseId])
   @@index([role])
@@ -249,7 +251,6 @@ model SocialAccount {
   insightSnapshots         AccountInsightSnapshot[]
   mediaInsightSnapshots    MediaInsightSnapshot[]
   demographicSnapshots     DemographicSnapshot[]
-  contentBuffers           ContentBuffer[]
   postSchedules            PostSchedule[]
 
   @@unique([platformUserId])
@@ -652,48 +653,75 @@ model CampaignSubmission {
 }
 
 // ─────────────────────────────────────────
-// CONTENT BUFFER & SCHEDULING
+// COLLECTIONS & CONTENT BUFFER
 // ─────────────────────────────────────────
+
+model Collection {
+  id        String   @id @default(cuid())
+  userId    String
+  name      String
+  color     String? // hex for UI badge
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user          User            @relation(fields: [userId], references: [id])
+  contentItems  ContentBuffer[]
+  scheduleSlots PostSchedule[]
+
+  @@unique([userId, name])
+  @@index([userId])
+}
 
 model ContentBuffer {
   id            String       @id @default(cuid())
-  igAccountId   String
+  userId        String
+  collectionId  String
   contentType   ContentType
-  r2Keys        String[] // single item = 1 key; carousel = ordered array of keys
-  thumbnailKey  String? // first frame extracted after upload, for UI display
-  caption       String?      @db.Text // optional per-item caption override
-  sortOrder     Int // creator can reorder in UI; default = upload timestamp order
+  r2Key         String // single R2 object key per record
+  fileHash      String? // SHA-256 for duplicate detection
+  filename      String? // original filename for display
+  thumbnailKey  String? // first frame extracted after upload
+  caption       String?      @db.Text
+  sortOrder     Int
   status        BufferStatus @default(QUEUED)
   syncSource    String? // "browser_fsa" | "desktop_agent" | "manual_upload"
-  localPath     String? // original local path, for display only
-  carouselSetId String? // groups carousel items together
-  itemIndex     Int? // 0-9: order within carousel
+  localPath     String?
+  carouselSetId String? // groups carousel slides together
+  itemIndex     Int? // 0-9: order within carousel set
   usedAt        DateTime?
   createdAt     DateTime     @default(now())
 
-  igAccount      SocialAccount   @relation(fields: [igAccountId], references: [id])
+  user           User            @relation(fields: [userId], references: [id])
+  collection     Collection      @relation(fields: [collectionId], references: [id])
   scheduledPosts ScheduledPost[]
 
-  @@index([igAccountId, contentType, status])
+  @@index([collectionId, status, usedAt, createdAt])
+  @@index([userId])
   @@index([carouselSetId])
   @@index([sortOrder])
+  @@index([fileHash])
 }
 
+// ─────────────────────────────────────────
+// SCHEDULING
+// ─────────────────────────────────────────
+
 model PostSchedule {
-  id              String           @id @default(cuid())
-  igAccountId     String
-  creatorId       String
-  dayOfWeek       DayOfWeek
-  time            String // "HH:MM" 24h, stored in creator's timezone
-  timezone        String // IANA timezone, e.g. "Europe/Amsterdam"
-  contentType     ContentType
-  campaignId      String? // null = organic post
-  overlayPosition OverlayPosition?
-  overlaySize     OverlaySize?
-  captionTemplate String?          @db.Text
-  enabled         Boolean          @default(true)
-  pausedUntil     DateTime?
-  maxPostsPerDay  Int              @default(0) // 0 = unlimited
+  id                String           @id @default(cuid())
+  igAccountId       String
+  creatorId         String
+  collectionId      String
+  dayOfWeek         DayOfWeek
+  time              String // "HH:MM" 24h, stored in creator's timezone
+  timezone          String // IANA timezone, e.g. "Europe/Amsterdam"
+  contentTypeFilter ContentType? // optional filter within collection
+  campaignId        String? // null = organic post
+  overlayPosition   OverlayPosition?
+  overlaySize       OverlaySize?
+  captionTemplate   String?          @db.Text
+  enabled           Boolean          @default(true)
+  pausedUntil       DateTime?
+  maxPostsPerDay    Int              @default(0) // 0 = unlimited
 
   // Stats
   totalPostsCount Int       @default(0)
@@ -706,12 +734,14 @@ model PostSchedule {
 
   igAccount  SocialAccount       @relation(fields: [igAccountId], references: [id])
   creator    User                @relation(fields: [creatorId], references: [id])
+  collection Collection          @relation(fields: [collectionId], references: [id])
   campaign   Campaign?           @relation(fields: [campaignId], references: [id])
   executions ScheduleExecution[]
   posts      ScheduledPost[]
 
   @@index([igAccountId, enabled])
   @@index([creatorId])
+  @@index([collectionId])
   @@index([campaignId])
 }
 

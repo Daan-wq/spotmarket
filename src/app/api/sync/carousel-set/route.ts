@@ -12,7 +12,7 @@ const fileSchema = z.object({
 });
 
 const schema = z.object({
-  igAccountId: z.string().min(1),
+  collectionId: z.string().min(1),
   files: z.array(fileSchema).min(2).max(10),
   syncSource: z.enum(["browser_fsa", "desktop_agent"]).default("browser_fsa"),
   setLocalPath: z.string().optional(),
@@ -26,60 +26,64 @@ export async function POST(req: Request) {
 
     const user = await prisma.user.findUnique({
       where: { supabaseId: authUser.id },
-      select: { id: true, creatorProfile: { select: { id: true } } },
+      select: { id: true },
     });
-    if (!user?.creatorProfile) return NextResponse.json({ error: "Not a creator" }, { status: 403 });
+    if (!user) return NextResponse.json({ error: "User not found" }, { status: 403 });
 
     const body = await req.json();
     const parsed = schema.safeParse(body);
     if (!parsed.success) return NextResponse.json({ error: "Invalid input", details: parsed.error.flatten() }, { status: 400 });
 
-    const { igAccountId, files, syncSource, setLocalPath } = parsed.data;
+    const { collectionId, files, syncSource, setLocalPath } = parsed.data;
 
-    // Verify account ownership
-    const account = await prisma.socialAccount.findUnique({
-      where: { id: igAccountId },
-      select: { creatorProfileId: true },
+    // Verify collection ownership
+    const collection = await prisma.collection.findUnique({
+      where: { id: collectionId },
+      select: { userId: true },
     });
-    if (!account || account.creatorProfileId !== user.creatorProfile.id) {
-      return NextResponse.json({ error: "Account not found" }, { status: 403 });
+    if (!collection || collection.userId !== user.id) {
+      return NextResponse.json({ error: "Collection not found" }, { status: 403 });
     }
 
     const carouselSetId = randomUUID();
-    const r2Keys: string[] = [];
     const uploadUrls: Array<{ uploadUrl: string; objectKey: string; index: number }> = [];
-
-    for (let i = 0; i < files.length; i++) {
-      const file = files[i];
-      const ext = file.fileName.split(".").pop() || "jpg";
-      const objectKey = `buffer/${igAccountId}/carousels/${carouselSetId}/slide_${String(i).padStart(2, "0")}.${ext}`;
-      const uploadUrl = await getR2UploadUrl(objectKey, file.fileMimeType, 3600);
-      r2Keys.push(objectKey);
-      uploadUrls.push({ uploadUrl, objectKey, index: i });
-    }
+    const bufferIds: string[] = [];
 
     // Get next sortOrder
     const lastItem = await prisma.contentBuffer.findFirst({
-      where: { igAccountId, contentType: "CAROUSEL" },
+      where: { collectionId },
       orderBy: { sortOrder: "desc" },
       select: { sortOrder: true },
     });
+    const baseSortOrder = (lastItem?.sortOrder ?? -1) + 1;
 
-    // Create single ContentBuffer entry for the carousel set
-    const buffer = await prisma.contentBuffer.create({
-      data: {
-        igAccountId,
-        contentType: "CAROUSEL",
-        r2Keys,
-        sortOrder: (lastItem?.sortOrder ?? -1) + 1,
-        syncSource,
-        localPath: setLocalPath,
-        carouselSetId,
-        status: "QUEUED",
-      },
-    });
+    // Create one ContentBuffer per slide (singular r2Key)
+    for (let i = 0; i < files.length; i++) {
+      const file = files[i];
+      const ext = file.fileName.split(".").pop() || "jpg";
+      const objectKey = `buffer/${user.id}/${randomUUID()}.${ext}`;
+      const uploadUrl = await getR2UploadUrl(objectKey, file.fileMimeType, 3600);
+      uploadUrls.push({ uploadUrl, objectKey, index: i });
 
-    return NextResponse.json({ carouselSetId, bufferId: buffer.id, uploadUrls });
+      const buffer = await prisma.contentBuffer.create({
+        data: {
+          userId: user.id,
+          collectionId,
+          contentType: "CAROUSEL",
+          r2Key: objectKey,
+          filename: file.fileName,
+          sortOrder: baseSortOrder,
+          syncSource,
+          localPath: file.localPath || setLocalPath,
+          carouselSetId,
+          itemIndex: i,
+          status: "QUEUED",
+        },
+      });
+      bufferIds.push(buffer.id);
+    }
+
+    return NextResponse.json({ carouselSetId, bufferIds, uploadUrls });
   } catch (error) {
     console.error("POST /sync/carousel-set error:", error);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });

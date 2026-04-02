@@ -14,39 +14,36 @@ export async function GET(
 
     const user = await prisma.user.findUnique({
       where: { supabaseId: authUser.id },
-      select: { creatorProfile: { select: { id: true } } },
+      select: { id: true },
     });
-    if (!user?.creatorProfile) return NextResponse.json({ error: "Not a creator" }, { status: 403 });
+    if (!user) return NextResponse.json({ error: "User not found" }, { status: 403 });
 
-    const account = await prisma.socialAccount.findUnique({
-      where: { id: igAccountId },
-      select: { creatorProfileId: true },
+    // igAccountId param is used as collectionId for backward compat
+    const collectionId = igAccountId;
+    const collection = await prisma.collection.findUnique({
+      where: { id: collectionId },
+      select: { userId: true },
     });
-    if (!account || account.creatorProfileId !== user.creatorProfile.id) {
-      return NextResponse.json({ error: "Account not found" }, { status: 403 });
+    if (!collection || collection.userId !== user.id) {
+      return NextResponse.json({ error: "Collection not found" }, { status: 403 });
     }
 
     // Return all synced local paths to avoid re-uploading
     const syncedItems = await prisma.contentBuffer.findMany({
-      where: { igAccountId, localPath: { not: null } },
+      where: { collectionId, localPath: { not: null } },
       select: { localPath: true, contentType: true, status: true, createdAt: true },
       orderBy: { createdAt: "desc" },
     });
 
-    // Coverage stats
-    const coverage = await prisma.contentBuffer.groupBy({
-      by: ["contentType"],
-      where: { igAccountId, status: "QUEUED" },
-      _count: true,
+    // Queued count
+    const queuedCount = await prisma.contentBuffer.count({
+      where: { collectionId, status: "QUEUED" },
     });
 
     return NextResponse.json({
       syncedPaths: syncedItems.map((i) => i.localPath),
       syncedItems,
-      coverage: coverage.map((c) => ({
-        contentType: c.contentType,
-        queued: c._count,
-      })),
+      queuedCount,
     });
   } catch (error) {
     console.error("GET /sync/status/[igAccountId] error:", error);

@@ -6,7 +6,7 @@ import { z } from "zod";
 import { randomUUID } from "crypto";
 
 const schema = z.object({
-  igAccountId: z.string().min(1),
+  collectionId: z.string().min(1),
   contentType: z.enum(["REEL", "FEED_VIDEO", "FEED_PHOTO", "STORY_VIDEO", "STORY_PHOTO"]),
   fileName: z.string().min(1),
   fileMimeType: z.string().min(1),
@@ -22,29 +22,29 @@ export async function POST(req: Request) {
 
     const user = await prisma.user.findUnique({
       where: { supabaseId: authUser.id },
-      select: { id: true, creatorProfile: { select: { id: true } } },
+      select: { id: true },
     });
-    if (!user?.creatorProfile) return NextResponse.json({ error: "Not a creator" }, { status: 403 });
+    if (!user) return NextResponse.json({ error: "User not found" }, { status: 403 });
 
     const body = await req.json();
     const parsed = schema.safeParse(body);
     if (!parsed.success) return NextResponse.json({ error: "Invalid input" }, { status: 400 });
 
-    const { igAccountId, contentType, fileName, fileMimeType, localPath, syncSource } = parsed.data;
+    const { collectionId, contentType, fileName, fileMimeType, localPath, syncSource } = parsed.data;
 
-    // Verify account ownership
-    const account = await prisma.socialAccount.findUnique({
-      where: { id: igAccountId },
-      select: { creatorProfileId: true },
+    // Verify collection ownership
+    const collection = await prisma.collection.findUnique({
+      where: { id: collectionId },
+      select: { userId: true },
     });
-    if (!account || account.creatorProfileId !== user.creatorProfile.id) {
-      return NextResponse.json({ error: "Account not found" }, { status: 403 });
+    if (!collection || collection.userId !== user.id) {
+      return NextResponse.json({ error: "Collection not found" }, { status: 403 });
     }
 
     // Check if already synced (by localPath)
     if (localPath) {
       const existing = await prisma.contentBuffer.findFirst({
-        where: { igAccountId, localPath },
+        where: { collectionId, localPath },
       });
       if (existing) {
         return NextResponse.json({ alreadySynced: true, id: existing.id });
@@ -52,12 +52,12 @@ export async function POST(req: Request) {
     }
 
     const ext = fileName.split(".").pop() || "mp4";
-    const objectKey = `buffer/${igAccountId}/${contentType.toLowerCase()}/${randomUUID()}.${ext}`;
+    const objectKey = `buffer/${user.id}/${randomUUID()}.${ext}`;
     const uploadUrl = await getR2UploadUrl(objectKey, fileMimeType, 3600);
 
     // Get next sortOrder
     const lastItem = await prisma.contentBuffer.findFirst({
-      where: { igAccountId, contentType },
+      where: { collectionId },
       orderBy: { sortOrder: "desc" },
       select: { sortOrder: true },
     });
@@ -65,9 +65,11 @@ export async function POST(req: Request) {
     // Pre-create the buffer record
     const buffer = await prisma.contentBuffer.create({
       data: {
-        igAccountId,
+        userId: user.id,
+        collectionId,
         contentType,
-        r2Keys: [objectKey],
+        r2Key: objectKey,
+        filename: fileName,
         sortOrder: (lastItem?.sortOrder ?? -1) + 1,
         syncSource,
         localPath,

@@ -15,15 +15,12 @@ export async function DELETE(
 
     const user = await prisma.user.findUnique({
       where: { supabaseId: authUser.id },
-      select: { creatorProfile: { select: { id: true } } },
+      select: { id: true },
     });
-    if (!user?.creatorProfile) return NextResponse.json({ error: "Not a creator" }, { status: 403 });
+    if (!user) return NextResponse.json({ error: "User not found" }, { status: 403 });
 
-    const buffer = await prisma.contentBuffer.findUnique({
-      where: { id },
-      include: { igAccount: { select: { creatorProfileId: true } } },
-    });
-    if (!buffer || buffer.igAccount.creatorProfileId !== user.creatorProfile.id) {
+    const buffer = await prisma.contentBuffer.findUnique({ where: { id } });
+    if (!buffer || buffer.userId !== user.id) {
       return NextResponse.json({ error: "Not found" }, { status: 404 });
     }
 
@@ -31,13 +28,11 @@ export async function DELETE(
       return NextResponse.json({ error: "Cannot delete a reserved buffer item" }, { status: 400 });
     }
 
-    // Delete R2 objects
-    for (const key of buffer.r2Keys) {
-      try {
-        await deleteR2Object(key);
-      } catch {
-        // R2 deletion is best-effort
-      }
+    // Delete R2 object
+    try {
+      await deleteR2Object(buffer.r2Key);
+    } catch {
+      // R2 deletion is best-effort
     }
     if (buffer.thumbnailKey) {
       try {
