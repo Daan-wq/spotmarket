@@ -46,6 +46,7 @@ model User {
   deviceTokens        DeviceToken[]
   collections         Collection[]
   contentBuffers      ContentBuffer[]
+  captionPresets      CaptionPreset[]
 
   @@index([supabaseId])
   @@index([role])
@@ -774,6 +775,20 @@ model DeviceToken {
   createdAt  DateTime  @default(now())
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model CaptionPreset {
+  id        String   @id @default(cuid())
+  userId    String? // null = system preset (available to all users)
+  title     String
+  body      String   @db.Text
+  language  String? // "zh", "en", "ko", "ja"
+  category  String? // "engagement", "viral", "educational"
+  createdAt DateTime @default(now())
+
+  user User? @relation(fields: [userId], references: [id])
 
   @@index([userId])
 }

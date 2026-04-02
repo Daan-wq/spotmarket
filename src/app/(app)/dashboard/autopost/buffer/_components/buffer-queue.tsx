@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { detectContentType, type ContentTypeName } from "@/lib/detect-content-type";
 import { CarouselSetBuilder } from "./carousel-set-builder";
+import { CaptionPresetPicker } from "./caption-preset-picker";
 
 const COLOR_PRESETS = [
   "#7c3aed", // purple
@@ -29,6 +30,7 @@ interface BufferItem {
   sortOrder: number;
   status: string;
   createdAt: string;
+  caption: string | null;
 }
 
 export function BufferQueue() {
@@ -42,6 +44,10 @@ export function BufferQueue() {
   const [stagedFiles, setStagedFiles] = useState<File[]>([]);
   const [showCarouselBuilder, setShowCarouselBuilder] = useState(false);
   const [uploadingCarousel, setUploadingCarousel] = useState(false);
+  const [expandedItemId, setExpandedItemId] = useState<string | null>(null);
+  const [showPresetPicker, setShowPresetPicker] = useState(false);
+  const [presetTargetId, setPresetTargetId] = useState<string | null>(null);
+  const [captionDrafts, setCaptionDrafts] = useState<Record<string, string>>({});
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Fetch collections on mount
@@ -136,6 +142,50 @@ export function BufferQueue() {
     },
     [selectedCollectionId]
   );
+
+  const handleSaveCaption = useCallback(async (id: string, caption: string) => {
+    try {
+      const res = await fetch(`/api/buffer/${id}/caption`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ caption: caption || null }),
+      });
+      if (res.ok) {
+        setItems((prevItems) =>
+          prevItems.map((item) =>
+            item.id === id ? { ...item, caption: caption || null } : item
+          )
+        );
+      }
+    } catch (err) {
+      console.error("Failed to save caption:", err);
+    }
+  }, []);
+
+  const handleApplyPreset = useCallback(
+    (body: string) => {
+      if (!presetTargetId) return;
+      setCaptionDrafts({ ...captionDrafts, [presetTargetId]: body });
+      handleSaveCaption(presetTargetId, body);
+      setShowPresetPicker(false);
+      setPresetTargetId(null);
+    },
+    [presetTargetId, captionDrafts, handleSaveCaption]
+  );
+
+  const handleSaveAsPreset = useCallback(async (caption: string) => {
+    if (!caption.trim()) return;
+    try {
+      const title = caption.substring(0, 30);
+      await fetch("/api/caption-presets", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ title, body: caption }),
+      });
+    } catch (err) {
+      console.error("Failed to save preset:", err);
+    }
+  }, []);
 
   const uploadSingleFile = useCallback(
     async (file: File, contentType: ContentTypeName) => {
@@ -510,73 +560,203 @@ export function BufferQueue() {
               ) : (
                 <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
                   {items.map((item) => (
-                    <div
-                      key={item.id}
-                      style={{
-                        display: "flex",
-                        alignItems: "center",
-                        gap: "12px",
-                        padding: "10px 12px",
-                        background: "var(--bg-card)",
-                        border: "1px solid var(--border)",
-                        borderRadius: "6px",
-                      }}
-                    >
+                    <div key={item.id}>
                       <div
+                        onClick={() =>
+                          setExpandedItemId(expandedItemId === item.id ? null : item.id)
+                        }
                         style={{
-                          width: "40px",
-                          height: "40px",
-                          borderRadius: "4px",
-                          background: item.thumbnailUrl
-                            ? `url(${item.thumbnailUrl}) center/cover`
-                            : "var(--bg-secondary)",
-                          flexShrink: 0,
+                          display: "flex",
+                          alignItems: "center",
+                          gap: "12px",
+                          padding: "10px 12px",
+                          background: "var(--bg-card)",
+                          border: "1px solid var(--border)",
+                          borderRadius: expandedItemId === item.id ? "6px 6px 0 0" : "6px",
+                          cursor: "pointer",
+                          transition: "all 0.15s",
                         }}
-                      />
-                      <div style={{ flex: 1, minWidth: 0 }}>
+                      >
                         <div
                           style={{
-                            fontSize: "13px",
-                            color: "var(--text-primary)",
-                            overflow: "hidden",
-                            textOverflow: "ellipsis",
-                            whiteSpace: "nowrap",
+                            width: "40px",
+                            height: "40px",
+                            borderRadius: "4px",
+                            background: item.thumbnailUrl
+                              ? `url(${item.thumbnailUrl}) center/cover`
+                              : "var(--bg-secondary)",
+                            flexShrink: 0,
+                          }}
+                        />
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div
+                            style={{
+                              fontSize: "13px",
+                              color: "var(--text-primary)",
+                              overflow: "hidden",
+                              textOverflow: "ellipsis",
+                              whiteSpace: "nowrap",
+                            }}
+                          >
+                            {item.filename}
+                          </div>
+                          <div style={{ fontSize: "11px", color: "var(--text-muted)" }}>
+                            #{item.sortOrder + 1} · {item.contentType}
+                          </div>
+                          {item.caption && expandedItemId !== item.id && (
+                            <div
+                              style={{
+                                fontSize: "11px",
+                                color: "var(--text-muted)",
+                                marginTop: "4px",
+                                overflow: "hidden",
+                                textOverflow: "ellipsis",
+                                whiteSpace: "nowrap",
+                              }}
+                            >
+                              {item.caption.substring(0, 60)}
+                              {item.caption.length > 60 ? "..." : ""}
+                            </div>
+                          )}
+                        </div>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleSkip(item.id);
+                          }}
+                          style={{
+                            background: "none",
+                            border: "1px solid var(--border)",
+                            borderRadius: "4px",
+                            padding: "4px 8px",
+                            fontSize: "11px",
+                            color: "var(--text-secondary)",
+                            cursor: "pointer",
                           }}
                         >
-                          {item.filename}
-                        </div>
-                        <div style={{ fontSize: "11px", color: "var(--text-muted)" }}>
-                          #{item.sortOrder + 1} · {item.contentType}
-                        </div>
+                          Skip
+                        </button>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleDelete(item.id);
+                          }}
+                          style={{
+                            background: "none",
+                            border: "1px solid rgba(239,68,68,0.3)",
+                            borderRadius: "4px",
+                            padding: "4px 8px",
+                            fontSize: "11px",
+                            color: "#ef4444",
+                            cursor: "pointer",
+                          }}
+                        >
+                          Delete
+                        </button>
                       </div>
-                      <button
-                        onClick={() => handleSkip(item.id)}
-                        style={{
-                          background: "none",
-                          border: "1px solid var(--border)",
-                          borderRadius: "4px",
-                          padding: "4px 8px",
-                          fontSize: "11px",
-                          color: "var(--text-secondary)",
-                          cursor: "pointer",
-                        }}
-                      >
-                        Skip
-                      </button>
-                      <button
-                        onClick={() => handleDelete(item.id)}
-                        style={{
-                          background: "none",
-                          border: "1px solid rgba(239,68,68,0.3)",
-                          borderRadius: "4px",
-                          padding: "4px 8px",
-                          fontSize: "11px",
-                          color: "#ef4444",
-                          cursor: "pointer",
-                        }}
-                      >
-                        Delete
-                      </button>
+
+                      {expandedItemId === item.id && (
+                        <div
+                          style={{
+                            background: "var(--bg-card)",
+                            borderTop: "1px solid var(--border)",
+                            borderRadius: "0 0 6px 6px",
+                            padding: "12px",
+                          }}
+                        >
+                          <textarea
+                            value={captionDrafts[item.id] ?? item.caption ?? ""}
+                            onChange={(e) =>
+                              setCaptionDrafts({
+                                ...captionDrafts,
+                                [item.id]: e.target.value,
+                              })
+                            }
+                            onBlur={(e) => {
+                              const value = e.currentTarget.value;
+                              if (
+                                value !== item.caption &&
+                                (value || item.caption)
+                              ) {
+                                handleSaveCaption(item.id, value);
+                              }
+                            }}
+                            placeholder="Write a caption for this post..."
+                            rows={4}
+                            style={{
+                              width: "100%",
+                              backgroundColor: "var(--bg-secondary)",
+                              border: "1px solid var(--border)",
+                              borderRadius: "4px",
+                              padding: "8px",
+                              fontSize: "13px",
+                              color: "var(--text-primary)",
+                              fontFamily: "inherit",
+                              resize: "vertical",
+                              boxSizing: "border-box",
+                            }}
+                          />
+                          <div
+                            style={{
+                              display: "flex",
+                              gap: "8px",
+                              marginTop: "8px",
+                            }}
+                          >
+                            <button
+                              onClick={() => {
+                                setShowPresetPicker(true);
+                                setPresetTargetId(item.id);
+                              }}
+                              style={{
+                                flex: 1,
+                                padding: "6px",
+                                fontSize: "11px",
+                                background: "var(--bg-secondary)",
+                                color: "var(--text-secondary)",
+                                border: "1px solid var(--border)",
+                                borderRadius: "4px",
+                                cursor: "pointer",
+                              }}
+                            >
+                              Pick from presets
+                            </button>
+                            <button
+                              onClick={() => {
+                                const caption =
+                                  captionDrafts[item.id] ?? item.caption ?? "";
+                                handleSaveAsPreset(caption);
+                              }}
+                              disabled={
+                                !(
+                                  captionDrafts[item.id] ?? item.caption
+                                )
+                              }
+                              style={{
+                                flex: 1,
+                                padding: "6px",
+                                fontSize: "11px",
+                                background:
+                                  captionDrafts[item.id] || item.caption
+                                    ? "var(--accent)"
+                                    : "var(--bg-secondary)",
+                                color:
+                                  captionDrafts[item.id] || item.caption
+                                    ? "#fff"
+                                    : "var(--text-muted)",
+                                border: "none",
+                                borderRadius: "4px",
+                                cursor:
+                                  captionDrafts[item.id] || item.caption
+                                    ? "pointer"
+                                    : "not-allowed",
+                              }}
+                            >
+                              Save as preset
+                            </button>
+                          </div>
+                        </div>
+                      )}
                     </div>
                   ))}
                 </div>
@@ -616,6 +796,16 @@ export function BufferQueue() {
               </button>
             </div>
           </>
+        )}
+
+        {showPresetPicker && (
+          <CaptionPresetPicker
+            onSelect={handleApplyPreset}
+            onClose={() => {
+              setShowPresetPicker(false);
+              setPresetTargetId(null);
+            }}
+          />
         )}
       </div>
     </div>
