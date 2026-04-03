@@ -25,13 +25,13 @@ const STATUS_LABELS: Record<CampaignStatus, string> = {
 };
 
 const STATUS_STYLE: Record<CampaignStatus, { backgroundColor: string; color: string }> = {
-  draft:            { backgroundColor: "#f1f5f9", color: "#475569" },
-  pending_payment:  { backgroundColor: "#fffbeb", color: "#92400e" },
-  pending_review:   { backgroundColor: "#eff6ff", color: "#1e40af" },
-  active:           { backgroundColor: "#f0fdf4", color: "#15803d" },
-  paused:           { backgroundColor: "#f5f3ff", color: "#7c3aed" },
-  completed:        { backgroundColor: "#eff6ff", color: "#1d4ed8" },
-  cancelled:        { backgroundColor: "#fef2f2", color: "#b91c1c" },
+  draft:            { backgroundColor: "var(--bg-secondary)",  color: "var(--text-muted)" },
+  pending_payment:  { backgroundColor: "var(--warning-bg)",   color: "var(--warning-text)" },
+  pending_review:   { backgroundColor: "var(--accent-bg)",    color: "var(--accent-foreground)" },
+  active:           { backgroundColor: "var(--success-bg)",   color: "var(--success-text)" },
+  paused:           { backgroundColor: "var(--accent-bg)",    color: "var(--accent-foreground)" },
+  completed:        { backgroundColor: "var(--bg-secondary)", color: "var(--text-muted)" },
+  cancelled:        { backgroundColor: "var(--error-bg)",     color: "var(--error-text)" },
 };
 
 export function CampaignStatusToggle({

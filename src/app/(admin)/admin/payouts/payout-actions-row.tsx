@@ -21,12 +21,12 @@ interface PayoutRow {
 }
 
 const statusStyle: Record<PayoutStatus, { backgroundColor: string; color: string }> = {
-  pending:    { backgroundColor: "#fffbeb", color: "#b45309" },
-  processing: { backgroundColor: "#eff6ff", color: "#1d4ed8" },
-  sent:       { backgroundColor: "#f5f3ff", color: "#7c3aed" },
-  confirmed:  { backgroundColor: "#f0fdf4", color: "#15803d" },
-  failed:     { backgroundColor: "#fef2f2", color: "#b91c1c" },
-  disputed:   { backgroundColor: "#fff7ed", color: "#c2410c" },
+  pending:    { backgroundColor: "var(--warning-bg)", color: "var(--warning-text)" },
+  processing: { backgroundColor: "var(--accent-bg)", color: "var(--accent-foreground)" },
+  sent:       { backgroundColor: "var(--accent-bg)", color: "var(--accent-foreground)" },
+  confirmed:  { backgroundColor: "var(--success-bg)", color: "var(--success-text)" },
+  failed:     { backgroundColor: "var(--error-bg)", color: "var(--error-text)" },
+  disputed:   { backgroundColor: "var(--warning-bg)", color: "var(--warning-text)" },
 };
 
 export function PayoutActionsRow({
@@ -150,9 +150,9 @@ export function PayoutActionsRow({
                   onClick={markConfirmed}
                   disabled={loading}
                   className="px-3 py-1.5 rounded-lg text-xs font-medium text-white transition-colors disabled:opacity-50"
-                  style={{ background: "#16a34a" }}
-                  onMouseEnter={(e) => { if (!loading) (e.currentTarget as HTMLElement).style.background = "#15803d"; }}
-                  onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = "#16a34a"; }}
+                  style={{ background: "var(--success)" }}
+                  onMouseEnter={(e) => { if (!loading) (e.currentTarget as HTMLElement).style.background = "var(--success-text)"; }}
+                  onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = "var(--success)"; }}
                 >
                   {loading ? "…" : "Confirm Receipt"}
                 </button>

@@ -3,8 +3,17 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { ApplicationStatus } from "@prisma/client";
+import { BioVerificationBadge } from "@/components/admin/bio-verification-badge";
+
+interface BioVerificationData {
+  id: string;
+  code: string;
+  status: "PENDING" | "VERIFIED" | "FAILED";
+  socialAccountId: string;
+}
 
 interface SocialAccount {
+  id: string;
   platform: string;
   platformUsername: string;
   followerCount: number;
@@ -32,6 +41,7 @@ interface Application {
   engagementSnapshot: string | number | { toString(): string } | null;
   reviewNotes: string | null;
   posts?: PostData[];
+  bioVerifications?: BioVerificationData[];
   creatorProfile: {
     id: string;
     displayName: string;
@@ -42,11 +52,11 @@ interface Application {
 }
 
 const statusStyle: Record<string, { backgroundColor: string; color: string }> = {
-  pending:   { backgroundColor: "#fffbeb", color: "#b45309" },
-  approved:  { backgroundColor: "#f0fdf4", color: "#15803d" },
-  active:    { backgroundColor: "#eff6ff", color: "#1d4ed8" },
-  rejected:  { backgroundColor: "#fef2f2", color: "#b91c1c" },
-  completed: { backgroundColor: "#f1f5f9", color: "#475569" },
+  pending:   { backgroundColor: "var(--warning-bg)", color: "var(--warning-text)" },
+  approved:  { backgroundColor: "var(--success-bg)", color: "var(--success-text)" },
+  active:    { backgroundColor: "var(--accent-bg)", color: "var(--accent-foreground)" },
+  rejected:  { backgroundColor: "var(--error-bg)", color: "var(--error-text)" },
+  completed: { backgroundColor: "var(--bg-secondary)", color: "var(--text-muted)" },
 };
 
 export function ApplicationReviewTable({
@@ -99,11 +109,11 @@ export function ApplicationReviewTable({
   }
 
   const postStatusStyle: Record<string, { bg: string; text: string; label: string }> = {
-    submitted:       { bg: "#fffbeb", text: "#92400e", label: "Pending Brand" },
-    brand_approved:  { bg: "#dbeafe", text: "#1d4ed8", label: "Brand OK · Pending Admin" },
-    brand_rejected:  { bg: "#fef2f2", text: "#b91c1c", label: "Brand Declined" },
-    approved:        { bg: "#f0fdf4", text: "#15803d", label: "Approved" },
-    rejected:        { bg: "#fef2f2", text: "#b91c1c", label: "Rejected" },
+    submitted:       { bg: "var(--warning-bg)", text: "var(--warning-text)", label: "Pending Brand" },
+    brand_approved:  { bg: "var(--accent-bg)", text: "var(--accent-foreground)", label: "Brand OK · Pending Admin" },
+    brand_rejected:  { bg: "var(--error-bg)", text: "var(--error-text)", label: "Brand Declined" },
+    approved:        { bg: "var(--success-bg)", text: "var(--success-text)", label: "Approved" },
+    rejected:        { bg: "var(--error-bg)", text: "var(--error-text)", label: "Rejected" },
   };
 
   if (applications.length === 0) {
@@ -123,7 +133,7 @@ export function ApplicationReviewTable({
         const igAccount = app.creatorProfile.socialAccounts.find((a) => a.platform === "instagram");
         const isPending = app.status === "pending";
         const isProcessing = processing === app.id;
-        const colors = statusStyle[app.status] ?? { backgroundColor: "#f1f5f9", color: "#475569" };
+        const colors = statusStyle[app.status] ?? { backgroundColor: "var(--bg-secondary)", color: "var(--text-muted)" };
 
         return (
           <div
@@ -164,9 +174,22 @@ export function ApplicationReviewTable({
                       )}
                     </>
                   ) : (
-                    <span className="text-xs" style={{ color: "#d97706" }}>No Instagram connected</span>
+                    <span className="text-xs" style={{ color: "var(--warning)" }}>No Instagram connected</span>
                   )}
                 </div>
+
+                {/* Bio Verification */}
+                {igAccount && (
+                  <div className="mb-3">
+                    <BioVerificationBadge
+                      verificationId={app.bioVerifications?.[0]?.id}
+                      code={app.bioVerifications?.[0]?.code}
+                      status={app.bioVerifications?.[0]?.status ?? null}
+                      applicationId={app.id}
+                      socialAccountId={igAccount.id}
+                    />
+                  </div>
+                )}
 
                 {/* Snapshot */}
                 {app.followerSnapshot && (
@@ -220,7 +243,7 @@ export function ApplicationReviewTable({
                                   target="_blank"
                                   rel="noopener noreferrer"
                                   className="text-xs hover:underline truncate"
-                                  style={{ color: "#3b82f6" }}
+                                  style={{ color: "var(--accent)" }}
                                 >
                                   {post.postUrl}
                                 </a>
@@ -234,7 +257,7 @@ export function ApplicationReviewTable({
                                 <span className="capitalize">{post.sourceType.toLowerCase()}</span>
                               </div>
                               {post.brandDeclineReason && (
-                                <p className="text-xs mb-2 px-2 py-1 rounded" style={{ background: "#fef2f2", color: "#b91c1c" }}>
+                                <p className="text-xs mb-2 px-2 py-1 rounded" style={{ background: "var(--error-bg)", color: "var(--error-text)" }}>
                                   Brand: {post.brandDeclineReason}
                                 </p>
                               )}
@@ -244,7 +267,7 @@ export function ApplicationReviewTable({
                                     onClick={() => reviewPost(post.id, "approve")}
                                     disabled={postProcessing === post.id}
                                     className="px-2 py-1 text-xs font-medium text-white rounded cursor-pointer disabled:opacity-50"
-                                    style={{ background: "#16a34a" }}
+                                    style={{ background: "var(--success)" }}
                                   >
                                     {postProcessing === post.id ? "…" : "Approve"}
                                   </button>
@@ -260,7 +283,7 @@ export function ApplicationReviewTable({
                                     onClick={() => reviewPost(post.id, "decline")}
                                     disabled={postProcessing === post.id || !declineReasons[post.id]?.trim()}
                                     className="px-2 py-1 text-xs font-medium rounded cursor-pointer disabled:opacity-50"
-                                    style={{ background: "#fef2f2", color: "#b91c1c" }}
+                                    style={{ background: "var(--error-bg)", color: "var(--error-text)" }}
                                   >
                                     Decline
                                   </button>
@@ -282,9 +305,9 @@ export function ApplicationReviewTable({
                     onClick={() => updateStatus(app.id, "approved")}
                     disabled={isProcessing}
                     className="px-3 py-1.5 rounded-lg text-xs font-medium text-white transition-colors disabled:opacity-50"
-                    style={{ background: "#16a34a" }}
-                    onMouseEnter={(e) => { if (!isProcessing) (e.currentTarget as HTMLElement).style.background = "#15803d"; }}
-                    onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = "#16a34a"; }}
+                    style={{ background: "var(--success)" }}
+                    onMouseEnter={(e) => { if (!isProcessing) (e.currentTarget as HTMLElement).style.background = "var(--success-text)"; }}
+                    onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = "var(--success)"; }}
                   >
                     {isProcessing ? "…" : "Approve"}
                   </button>
@@ -292,9 +315,9 @@ export function ApplicationReviewTable({
                     onClick={() => updateStatus(app.id, "rejected")}
                     disabled={isProcessing}
                     className="px-3 py-1.5 rounded-lg text-xs font-medium transition-colors disabled:opacity-50"
-                    style={{ background: "#fef2f2", color: "#b91c1c", border: "1px solid #fecaca" }}
-                    onMouseEnter={(e) => { if (!isProcessing) (e.currentTarget as HTMLElement).style.background = "#fee2e2"; }}
-                    onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = "#fef2f2"; }}
+                    style={{ background: "var(--error-bg)", color: "var(--error-text)", border: "1px solid var(--error-bg)" }}
+                    onMouseEnter={(e) => { if (!isProcessing) (e.currentTarget as HTMLElement).style.background = "var(--error-bg)"; }}
+                    onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = "var(--error-bg)"; }}
                   >
                     Reject
                   </button>

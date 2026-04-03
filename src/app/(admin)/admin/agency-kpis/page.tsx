@@ -29,7 +29,7 @@ function KpiCard({
       className="rounded-xl p-5"
       style={{ background: colors.bg, border: `1px solid ${colors.border}` }}
     >
-      <p className="text-xs font-medium uppercase tracking-wide mb-2" style={{ color: "#94a3b8" }}>
+      <p className="text-xs font-medium uppercase tracking-wide mb-2" style={{ color: "var(--text-secondary)" }}>
         {label}
       </p>
       <p className="text-3xl font-bold" style={{ color: colors.value }}>
@@ -37,12 +37,12 @@ function KpiCard({
         {unit && <span className="text-lg font-normal ml-1">{unit}</span>}
       </p>
       {benchmarkLabel && (
-        <p className="text-xs mt-1" style={{ color: "#94a3b8" }}>
+        <p className="text-xs mt-1" style={{ color: "var(--text-secondary)" }}>
           doel: {benchmarkLabel}
         </p>
       )}
       {detail && (
-        <p className="text-xs mt-1" style={{ color: "#64748b" }}>{detail}</p>
+        <p className="text-xs mt-1" style={{ color: "var(--text-muted)" }}>{detail}</p>
       )}
     </div>
   );

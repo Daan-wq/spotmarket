@@ -96,7 +96,7 @@ export default async function AdminCampaignReportPage({
                       : finalPayout.status === "sent"
                       ? { background: "var(--accent-bg)", color: "var(--accent-foreground)" }
                       : { background: "var(--warning-bg)", color: "var(--warning-text)" }
-                    : null;
+                    : undefined;
 
                   return (
                     <tr key={app.id} style={{ borderBottomWidth: "1px", borderBottomColor: "var(--border)" }}>

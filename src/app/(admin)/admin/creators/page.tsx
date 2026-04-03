@@ -83,7 +83,7 @@ export default async function AdminCreatorsPage() {
                     <p className="text-[14px] font-medium truncate" style={{ color: "var(--text-primary)" }}>{c.displayName}</p>
                     <p className="text-[12px] truncate" style={{ color: "var(--text-muted)" }}>{c.user.email}</p>
                   </div>
-                  <p className="text-[14px] truncate" style={{ color: main ? "var(--text-primary)" : "#d97706" }}>
+                  <p className="text-[14px] truncate" style={{ color: main ? "var(--text-primary)" : "var(--warning)" }}>
                     {main ? `@${main.platformUsername} (${main.platform})` : "Not connected"}
                   </p>
                   <p className="text-[14px] whitespace-nowrap" style={{ color: "var(--text-primary)" }}>{c.totalFollowers.toLocaleString()}</p>

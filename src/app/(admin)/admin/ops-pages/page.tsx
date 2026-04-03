@@ -11,7 +11,7 @@ type Channel = "whatsapp" | "telegram" | "instagram" | "email" | "signal";
 
 const TIER_STYLES: Record<PageTier, { bg: string; color: string }> = {
   A: { bg: "var(--success-bg)", color: "var(--success)" },
-  B: { bg: "#eff6ff", color: "#1d4ed8" },
+  B: { bg: "var(--accent-bg)", color: "var(--accent-foreground)" },
   C: { bg: "var(--bg-secondary)", color: "var(--text-secondary)" },
 };
 

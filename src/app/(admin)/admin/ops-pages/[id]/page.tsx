@@ -37,8 +37,8 @@ export default async function AdminPageDetailPage({
 
   const statusStyle: Record<string, { bg: string; color: string }> = {
     draft:     { bg: "var(--bg-secondary)", color: "var(--text-secondary)" },
-    confirmed: { bg: "#eff6ff", color: "#1d4ed8" },
-    scheduled: { bg: "#f5f3ff", color: "#7c3aed" },
+    confirmed: { bg: "var(--accent-bg)", color: "var(--accent-foreground)" },
+    scheduled: { bg: "var(--accent-bg)", color: "var(--accent-foreground)" },
     live:      { bg: "var(--success-bg)", color: "var(--success)" },
     completed: { bg: "var(--success-bg)", color: "var(--success)" },
     cancelled: { bg: "var(--error-bg)", color: "var(--error)" },

@@ -57,5 +57,5 @@ export default async function JoinInvitePage({
     );
   }
 
-  return <JoinCampaignClient campaign={toPlain(inviteLink.campaign)} token={token} />;
+  return <JoinCampaignClient campaign={toPlain(inviteLink.campaign) as unknown as { id: string; name: string; description: string | null; platform: string; targetGeo: string[]; creatorCpv: number; deadline: string; contentGuidelines: string | null; niche: string | null; status: string }} token={token} />;
 }

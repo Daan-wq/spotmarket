@@ -32,6 +32,7 @@ export default async function AdminCampaignDetailPage({
               socialAccounts: {
                 where: { isActive: true },
                 select: {
+                  id: true,
                   platform: true,
                   platformUsername: true,
                   followerCount: true,
@@ -49,6 +50,9 @@ export default async function AdminCampaignDetailPage({
               verifiedViews: true, brandDeclineReason: true, adminDeclineReason: true,
               brandReviewedAt: true, sourceType: true,
             },
+          },
+          bioVerifications: {
+            select: { id: true, code: true, status: true, socialAccountId: true },
           },
         },
         orderBy: { appliedAt: "desc" },
@@ -102,7 +106,7 @@ export default async function AdminCampaignDetailPage({
       </div>
 
       {/* Invite Links */}
-      <InviteLinkSection campaignId={c.id} initialLinks={toPlain(c.inviteLinks)} />
+      <InviteLinkSection campaignId={c.id} initialLinks={toPlain(c.inviteLinks) as unknown as { id: string; token: string; maxUses: number | null; usesCount: number; expiresAt: string | null; createdAt: string }[]} />
 
       {/* Applications */}
       <div className="rounded-xl overflow-hidden" style={{ border: "1px solid var(--border)" }}>

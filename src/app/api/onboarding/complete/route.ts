@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { nanoid } from "nanoid";
 
 const TRON_REGEX = /^T[1-9A-HJ-NP-Z]{33}$/;
+const VALID_ROLES = ["creator", "network", "advertiser"] as const;
 
 function generateReferralCode(): string {
   return nanoid(8).toUpperCase();
@@ -31,6 +32,12 @@ export async function POST(req: Request) {
   const displayName = (body.displayName as string)?.trim();
   const refCode = (body.referralCode as string | undefined)?.trim().toUpperCase();
   const tronsAddress = (body.tronsAddress as string | undefined)?.trim();
+  const role = body.role as string | undefined;
+  const niches = (body.niches as string[] | undefined) ?? [];
+  const brandName = (body.brandName as string | undefined)?.trim();
+  const website = (body.website as string | undefined)?.trim();
+  const companyName = (body.companyName as string | undefined)?.trim();
+  const contactName = (body.contactName as string | undefined)?.trim();
 
   if (!displayName) {
     return NextResponse.json({ error: "Display name is required" }, { status: 400 });
@@ -39,6 +46,10 @@ export async function POST(req: Request) {
   if (tronsAddress && !TRON_REGEX.test(tronsAddress)) {
     return NextResponse.json({ error: "Invalid Tron wallet address" }, { status: 400 });
   }
+
+  const selectedRole = role && VALID_ROLES.includes(role as typeof VALID_ROLES[number])
+    ? (role as typeof VALID_ROLES[number])
+    : "creator";
 
   // Resolve referrer
   let referredById: string | undefined;
@@ -51,36 +62,66 @@ export async function POST(req: Request) {
 
   const admin = createSupabaseAdminClient();
   await admin.auth.admin.updateUserById(authUser.id, {
-    user_metadata: { role: "user" },
+    user_metadata: { role: selectedRole },
   });
 
   const user = await prisma.user.upsert({
     where: { supabaseId: authUser.id },
-    update: { role: "user" },
+    update: { role: selectedRole },
     create: {
       supabaseId: authUser.id,
       email: authUser.email ?? "",
-      role: "user",
+      role: selectedRole,
       referralCode,
       referredBy: referredById,
     },
-    include: { creatorProfile: true },
+    include: { creatorProfile: true, advertiserProfile: true, networkProfile: true },
   });
 
-  if (!user.creatorProfile) {
-    await prisma.creatorProfile.create({
+  // Create role-specific profiles
+  if (selectedRole === "creator" || selectedRole === "network") {
+    if (!user.creatorProfile) {
+      await prisma.creatorProfile.create({
+        data: {
+          userId: user.id,
+          displayName,
+          tronsAddress: tronsAddress ?? null,
+        },
+      });
+    } else if (tronsAddress) {
+      await prisma.creatorProfile.update({
+        where: { userId: user.id },
+        data: { tronsAddress },
+      });
+    }
+  }
+
+  if (selectedRole === "advertiser" && !user.advertiserProfile) {
+    await prisma.advertiserProfile.create({
       data: {
         userId: user.id,
-        displayName,
-        tronsAddress: tronsAddress ?? null,
+        brandName: brandName || displayName,
+        website: website || null,
       },
-    });
-  } else if (tronsAddress) {
-    await prisma.creatorProfile.update({
-      where: { userId: user.id },
-      data: { tronsAddress },
     });
   }
 
-  return NextResponse.json({ success: true, redirect: "/dashboard" });
+  if (selectedRole === "network" && !user.networkProfile) {
+    await prisma.networkProfile.create({
+      data: {
+        userId: user.id,
+        companyName: companyName || displayName,
+        contactName: contactName || displayName,
+        website: website || null,
+        inviteCode: nanoid(8).toUpperCase(),
+      },
+    });
+  }
+
+  // Determine redirect
+  let redirect = "/dashboard";
+  if (selectedRole === "advertiser") redirect = "/advertiser/dashboard";
+  if (selectedRole === "network") redirect = "/network/dashboard";
+
+  return NextResponse.json({ success: true, redirect });
 }
