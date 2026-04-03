@@ -13,7 +13,7 @@ export function StatCards({ stats }: StatCardsProps) {
       {stats.map(({ label, value }) => (
         <div
           key={label}
-          className="rounded-md px-4 py-[14px]"
+          className="rounded-xl px-4 py-[14px]"
           style={{
             background: "var(--bg-card)",
             border: "1px solid var(--border)",

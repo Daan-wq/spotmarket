@@ -43,7 +43,7 @@ export function EmptyState({ icon, title, description, actions }: EmptyStateProp
               className={`text-[13px] px-4 py-2 rounded-md ${
                 variant === "primary"
                   ? "text-white"
-                  : "text-gray-600"
+                  : ""
               }`}
               style={
                 variant === "primary"

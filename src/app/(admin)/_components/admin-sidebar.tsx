@@ -65,14 +65,14 @@ export function AdminSidebar({ initials, email }: AdminSidebarProps) {
     <aside
       className="w-[200px] flex flex-col shrink-0"
       style={{
-        background: "var(--bg-elevated)",
-        borderRight: "1px solid var(--border)",
+        background: "var(--sidebar-bg)",
+        borderRight: "1px solid var(--sidebar-border)",
       }}
     >
       {/* Logo */}
-      <div className="px-4 py-5" style={{ borderBottom: "1px solid var(--muted)" }}>
+      <div className="px-4 py-5" style={{ borderBottom: "1px solid var(--sidebar-border)" }}>
         <Logo variant="light" size="sm" />
-        <p className="text-[11px] mt-1" style={{ color: "var(--text-muted)" }}>Admin</p>
+        <p className="text-[11px] mt-1" style={{ color: "var(--sidebar-item)" }}>Admin</p>
       </div>
 
       {/* Nav */}
@@ -81,7 +81,7 @@ export function AdminSidebar({ initials, email }: AdminSidebarProps) {
           <div key={label}>
             <p
               className="px-[10px] mb-1 text-[11px] font-semibold uppercase tracking-[0.4px]"
-              style={{ color: "var(--text-muted)" }}
+              style={{ color: "var(--sidebar-item)" }}
             >
               {label}
             </p>
@@ -93,18 +93,18 @@ export function AdminSidebar({ initials, email }: AdminSidebarProps) {
                   href={href}
                   className="block px-[10px] py-[7px] rounded-md text-[13px] font-medium transition-all duration-250"
                   style={{
-                    color: active ? "var(--accent)" : "var(--text-secondary)",
-                    background: active ? "var(--accent-muted)" : "transparent",
+                    color: active ? "var(--sidebar-active-text)" : "var(--sidebar-item)",
+                    background: active ? "var(--sidebar-active-bg)" : "transparent",
                   }}
                   onMouseEnter={e => {
                     if (!active) {
-                      (e.currentTarget as HTMLElement).style.color = "var(--text-primary)";
-                      (e.currentTarget as HTMLElement).style.background = "var(--bg-card-hover)";
+                      (e.currentTarget as HTMLElement).style.color = "var(--sidebar-item-hover)";
+                      (e.currentTarget as HTMLElement).style.background = "var(--sidebar-hover-bg)";
                     }
                   }}
                   onMouseLeave={e => {
                     if (!active) {
-                      (e.currentTarget as HTMLElement).style.color = "var(--text-secondary)";
+                      (e.currentTarget as HTMLElement).style.color = "var(--sidebar-item)";
                       (e.currentTarget as HTMLElement).style.background = "transparent";
                     }
                   }}
@@ -118,7 +118,7 @@ export function AdminSidebar({ initials, email }: AdminSidebarProps) {
       </nav>
 
       {/* Footer */}
-      <div className="px-2 py-3 space-y-1" style={{ borderTop: "1px solid var(--muted)" }}>
+      <div className="px-2 py-3 space-y-1" style={{ borderTop: "1px solid var(--sidebar-border)" }}>
         <div className="flex items-center gap-2 px-[10px] py-[7px]">
           <div
             className="w-6 h-6 rounded-full flex items-center justify-center text-white text-[11px] font-medium shrink-0"
@@ -126,17 +126,17 @@ export function AdminSidebar({ initials, email }: AdminSidebarProps) {
           >
             {initials}
           </div>
-          <p className="text-[12px] truncate" style={{ color: "var(--text-secondary)" }}>{email}</p>
+          <p className="text-[12px] truncate" style={{ color: "var(--sidebar-item)" }}>{email}</p>
         </div>
         <a
           href="/api/auth/signout"
           className="flex items-center px-[10px] py-[7px] rounded-md text-[13px] transition-colors duration-250"
-          style={{ color: "var(--text-muted)" }}
+          style={{ color: "var(--sidebar-item)" }}
           onMouseEnter={e => {
-            (e.currentTarget as HTMLElement).style.color = "var(--text-primary)";
+            (e.currentTarget as HTMLElement).style.color = "var(--sidebar-item-hover)";
           }}
           onMouseLeave={e => {
-            (e.currentTarget as HTMLElement).style.color = "var(--text-muted)";
+            (e.currentTarget as HTMLElement).style.color = "var(--sidebar-item)";
           }}
         >
           Log out
