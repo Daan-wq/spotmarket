@@ -70,8 +70,8 @@
   /* Sidebar */
   --sidebar-bg: #0d0d0d;
   --sidebar-border: rgba(255, 255, 255, 0.06);
-  --sidebar-item: #64748b;
-  --sidebar-item-hover: #cbd5e1;
+  --sidebar-item: #cbd5e1;
+  --sidebar-item-hover: #ffffff;
   --sidebar-hover-bg: rgba(255, 255, 255, 0.05);
   --sidebar-active-bg: rgba(99, 102, 241, 0.15);
   --sidebar-active-text: #818cf8;
