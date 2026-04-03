@@ -16,7 +16,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   return (
     <div className="flex h-screen" style={{ background: "var(--bg-primary)" }}>
       <AdminSidebar initials={initials} email={user.email ?? ""} />
-      <main className="flex-1 overflow-auto">{children}</main>
+      <main className="flex-1 overflow-auto admin-content">{children}</main>
     </div>
   );
 }
