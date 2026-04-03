@@ -2,90 +2,90 @@
 
 :root {
   /* Font */
-  --font-sans: var(--font-sans, system-ui, sans-serif);
+  --font-sans: var(--font-sans, 'Lexend', system-ui, sans-serif);
 
   /* Backgrounds */
-  --bg-primary: #f7f9f9;
-  --bg-secondary: #f0f2f3;
-  --bg-card: #fbfcfc;
-  --bg-card-hover: #f0f2f3;
-  --bg-elevated: #ffffff;
+  --bg-primary: #0a0a0a;
+  --bg-secondary: #161616;
+  --bg-card: #111111;
+  --bg-card-hover: #1a1a1a;
+  --bg-elevated: #161616;
 
-  /* Primary Purple */
-  --primary: #5d5fef;
-  --primary-hover: #3f41b3;
-  --primary-gradient-light: #5d5fef;
-  --primary-gradient-dark: #3f41b3;
-  --primary-accent: #4e50d1;
-  --primary-deep: #303295;
-  --secondary: #8b8dff;
+  /* Primary Indigo */
+  --primary: #6366F1;
+  --primary-hover: #4f46e5;
+  --primary-gradient-light: #6366F1;
+  --primary-gradient-dark: #4f46e5;
+  --primary-accent: #5855eb;
+  --primary-deep: #3730a3;
+  --secondary: #818cf8;
 
   /* Accent */
-  --accent: #5d5fef;
-  --accent-hover: #3f41b3;
-  --accent-muted: rgba(93, 95, 239, 0.12);
-  --accent-bg: #e8e6ff;
-  --accent-foreground: #303295;
-  --accent-glow: 0 0 40px rgba(93, 95, 239, 0.15);
+  --accent: #6366F1;
+  --accent-hover: #4f46e5;
+  --accent-muted: rgba(99, 102, 241, 0.15);
+  --accent-bg: rgba(99, 102, 241, 0.12);
+  --accent-foreground: #a5b4fc;
+  --accent-glow: 0 0 40px rgba(99, 102, 241, 0.2);
 
   /* Text */
-  --text-primary: #010405;
-  --text-secondary: #5a6569;
-  --text-muted: #5a6569;
-  --card-foreground: #282f31;
+  --text-primary: #f1f5f9;
+  --text-secondary: #94a3b8;
+  --text-muted: #64748b;
+  --card-foreground: #e2e8f0;
 
   /* Muted */
-  --muted: #e8eced;
+  --muted: #1e293b;
 
   /* Borders */
-  --border: #d2d9db;
-  --border-default: #d2d9db;
-  --border-hover: #b0b9bb;
-  --border-active: #5d5fef;
+  --border: rgba(255, 255, 255, 0.07);
+  --border-default: rgba(255, 255, 255, 0.07);
+  --border-hover: rgba(255, 255, 255, 0.12);
+  --border-active: #6366F1;
 
-  /* Dark Mode Colors (for auth/dark panels) */
+  /* Dark mode (auth panels — now same as root) */
   --dark-bg: #0a0a0a;
   --dark-card: #111111;
-  --dark-panel: #0b0f1a;
-  --dark-text: #6b7280;
+  --dark-panel: #111111;
+  --dark-text: #64748b;
   --dark-text-light: #94a3b8;
 
   /* Radius */
   --radius: 1.5rem;
   --radius-sm: 8px;
-  --radius-md: 12px;
-  --radius-lg: 16px;
-  --radius-xl: 24px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
+  --radius-xl: 16px;
   --radius-pill: 9999px;
 
   /* Shadows */
-  --shadow-card: 0 2px 8px rgba(23, 33, 54, 0.08), 0 4px 12px rgba(23, 33, 54, 0.06);
-  --shadow-glow: 0 0 40px rgba(93, 95, 239, 0.15);
+  --shadow-card: 0 1px 3px rgba(0, 0, 0, 0.4), 0 4px 12px rgba(0, 0, 0, 0.3);
+  --shadow-glow: 0 0 40px rgba(99, 102, 241, 0.2);
 
   /* Transitions */
   --transition-fast: 150ms ease;
   --transition-default: 250ms ease;
   --transition-slow: 400ms ease;
 
-  /* Sidebar (dark theme) */
-  --sidebar-bg: #0b0f1a;
-  --sidebar-border: #1e293b;
-  --sidebar-item: #94a3b8;
-  --sidebar-item-hover: #d1d5db;
-  --sidebar-hover-bg: #1e2a40;
-  --sidebar-active-bg: rgba(93, 95, 239, 0.12);
-  --sidebar-active-text: #5d5fef;
+  /* Sidebar */
+  --sidebar-bg: #0d0d0d;
+  --sidebar-border: rgba(255, 255, 255, 0.06);
+  --sidebar-item: #64748b;
+  --sidebar-item-hover: #cbd5e1;
+  --sidebar-hover-bg: rgba(255, 255, 255, 0.05);
+  --sidebar-active-bg: rgba(99, 102, 241, 0.15);
+  --sidebar-active-text: #818cf8;
 
   /* Status */
-  --success: #16a34a;
-  --success-bg: #f0fdf4;
-  --success-text: #15803d;
-  --warning: #d97706;
-  --warning-bg: #fffbeb;
-  --warning-text: #b45309;
-  --error: #dc2626;
-  --error-bg: #fef2f2;
-  --error-text: #b91c1c;
+  --success: #22c55e;
+  --success-bg: rgba(34, 197, 94, 0.1);
+  --success-text: #4ade80;
+  --warning: #f59e0b;
+  --warning-bg: rgba(245, 158, 11, 0.1);
+  --warning-text: #fbbf24;
+  --error: #ef4444;
+  --error-bg: rgba(239, 68, 68, 0.1);
+  --error-text: #f87171;
 }
 
 /* Base styles */
@@ -203,10 +203,10 @@
 @keyframes pulse-glow {
   0%,
   100% {
-    box-shadow: 0 0 20px rgba(93, 95, 239, 0.15);
+    box-shadow: 0 0 20px rgba(99, 102, 241, 0.2);
   }
   50% {
-    box-shadow: 0 0 40px rgba(93, 95, 239, 0.35);
+    box-shadow: 0 0 40px rgba(99, 102, 241, 0.4);
   }
 }
 
@@ -242,7 +242,7 @@
 
 /* Gradient card background */
 .gradient-card {
-  background: linear-gradient(180deg, #fbfcfc 0%, #f0f2f3 100%);
+  background: linear-gradient(180deg, #111111 0%, #0d0d0d 100%);
 }
 
 /* Purple accent border */
