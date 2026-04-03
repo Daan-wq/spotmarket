@@ -253,6 +253,7 @@ model SocialAccount {
   mediaInsightSnapshots    MediaInsightSnapshot[]
   demographicSnapshots     DemographicSnapshot[]
   postSchedules            PostSchedule[]
+  bioVerifications         BioVerification[]
 
   @@unique([platformUserId])
   @@index([platform])
@@ -413,6 +414,7 @@ model Campaign {
   scheduledPosts      ScheduledPost[]
   campaignSubmissions CampaignSubmission[]
   postSchedules       PostSchedule[]
+  inviteLinks         CampaignInviteLink[]
 
   @@index([status])
   @@index([deadline])
@@ -435,6 +437,52 @@ enum Platform {
   INSTAGRAM
   TIKTOK
   BOTH
+}
+
+// ─────────────────────────────────────────
+// CAMPAIGN INVITE LINKS
+// ─────────────────────────────────────────
+
+model CampaignInviteLink {
+  id         String    @id @default(cuid())
+  campaignId String
+  campaign   Campaign  @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  token      String    @unique
+  maxUses    Int?
+  usesCount  Int       @default(0)
+  expiresAt  DateTime?
+  createdAt  DateTime  @default(now())
+
+  @@index([campaignId])
+  @@index([token])
+}
+
+// ─────────────────────────────────────────
+// BIO VERIFICATION
+// ─────────────────────────────────────────
+
+model BioVerification {
+  id              String              @id @default(cuid())
+  applicationId   String
+  application     CampaignApplication @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  socialAccountId String
+  socialAccount   SocialAccount       @relation(fields: [socialAccountId], references: [id], onDelete: Cascade)
+  code            String              @unique
+  status          VerificationStatus  @default(PENDING)
+  lastCheckedAt   DateTime?
+  verifiedAt      DateTime?
+  createdAt       DateTime            @default(now())
+
+  @@unique([applicationId, socialAccountId])
+  @@index([applicationId])
+  @@index([socialAccountId])
+  @@index([status])
+}
+
+enum VerificationStatus {
+  PENDING
+  VERIFIED
+  FAILED
 }
 
 model CampaignApplication {
@@ -465,6 +513,7 @@ model CampaignApplication {
   assignedMembers          NetworkMemberAssignment[]
   campaignApplicationPages CampaignApplicationPage[]
   videoUploads             VideoUpload[]
+  bioVerifications         BioVerification[]
 
   @@index([status])
   @@index([campaignId])

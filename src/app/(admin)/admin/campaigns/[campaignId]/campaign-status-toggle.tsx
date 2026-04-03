@@ -70,9 +70,9 @@ export function CampaignStatusToggle({
           onClick={() => changeStatus(s)}
           disabled={loading}
           className="text-sm px-3 py-1.5 rounded-lg transition-colors disabled:opacity-50"
-          style={{ border: "1px solid #e2e8f0", color: "#374151", background: "#ffffff" }}
-          onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = "#f8fafc"; }}
-          onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = "#ffffff"; }}
+          style={{ border: "1px solid var(--border)", color: "var(--text-secondary)", background: "var(--bg-elevated)" }}
+          onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = "var(--bg-card-hover)"; }}
+          onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = "var(--bg-elevated)"; }}
         >
           → {STATUS_LABELS[s]}
         </button>

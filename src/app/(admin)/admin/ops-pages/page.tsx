@@ -117,16 +117,16 @@ export default async function AdminOpsPages({
           </Link>
         ))}
         {(tier || niche) && (
-          <Link href="/admin/ops-pages" className="text-xs text-gray-400 hover:text-gray-600 ml-1">
+          <Link href="/admin/ops-pages" className="text-xs ml-1" style={{ color: "var(--text-muted)" }}>
             × clear
           </Link>
         )}
       </div>
 
-      <div className="bg-white rounded-lg border border-gray-200">
-        <div className="grid grid-cols-[auto_1fr_auto_auto_auto_auto_auto_auto] gap-3 px-5 py-2.5 border-b border-gray-100">
+      <div className="rounded-lg border" style={{ background: "var(--bg-elevated)", borderColor: "var(--border)" }}>
+        <div className="grid grid-cols-[auto_1fr_auto_auto_auto_auto_auto_auto] gap-3 px-5 py-2.5 border-b" style={{ borderColor: "var(--border)" }}>
           {["Tier", "Handle", "Niche", "Followers", "Eng.", "CPM", "Backlog", "Campaigns"].map((h) => (
-            <p key={h} className="text-[13px] text-gray-400">
+            <p key={h} className="text-[13px]" style={{ color: "var(--text-muted)" }}>
               {h}
             </p>
           ))}
@@ -150,8 +150,8 @@ export default async function AdminOpsPages({
               return (
                 <div
                   key={page.id}
-                  className="grid grid-cols-[auto_1fr_auto_auto_auto_auto_auto_auto] gap-3 items-center px-5 py-3 hover:bg-gray-50"
-                  style={{ borderTop: i > 0 ? "1px solid #f8fafc" : undefined }}
+                  className="grid grid-cols-[auto_1fr_auto_auto_auto_auto_auto_auto] gap-3 items-center px-5 py-3"
+                  style={{ borderTop: i > 0 ? "1px solid var(--border)" : undefined }}
                 >
                   {/* Tier */}
                   <span
@@ -165,7 +165,8 @@ export default async function AdminOpsPages({
                   <div className="flex items-center gap-2 min-w-0">
                     <Link
                       href={`/admin/ops-pages/${page.id}`}
-                      className="text-[14px] font-medium text-gray-900 hover:underline truncate"
+                      className="text-[14px] font-medium hover:underline truncate"
+                      style={{ color: "var(--text-primary)" }}
                     >
                       @{page.handle}
                     </Link>
@@ -184,34 +185,34 @@ export default async function AdminOpsPages({
                   {page.niche ? (
                     <NicheBadge niche={page.niche} />
                   ) : (
-                    <span className="text-xs text-gray-400">—</span>
+                    <span className="text-xs" style={{ color: "var(--text-muted)" }}>—</span>
                   )}
 
                   {/* Followers */}
-                  <p className="text-[14px] text-gray-900 whitespace-nowrap">
+                  <p className="text-[14px] whitespace-nowrap" style={{ color: "var(--text-primary)" }}>
                     {page.followerCount >= 1000
                       ? `${(page.followerCount / 1000).toFixed(0)}K`
                       : String(page.followerCount)}
                   </p>
 
                   {/* Engagement */}
-                  <p className="text-[14px] text-gray-500 whitespace-nowrap">
+                  <p className="text-[14px] whitespace-nowrap" style={{ color: "var(--text-secondary)" }}>
                     {Number(page.avgEngagementRate).toFixed(1)}%
                   </p>
 
                   {/* CPM */}
-                  <p className="text-[14px] text-gray-500 whitespace-nowrap">
+                  <p className="text-[14px] whitespace-nowrap" style={{ color: "var(--text-secondary)" }}>
                     ${Number(page.avgCpm).toFixed(2)}
                   </p>
 
                   {/* Backlog */}
                   <div className="flex items-center gap-1.5">
                     <BacklogDot days={page.contentBacklogDays} />
-                    <span className="text-[13px] text-gray-500">{page.contentBacklogDays}d</span>
+                    <span className="text-[13px]" style={{ color: "var(--text-secondary)" }}>{page.contentBacklogDays}d</span>
                   </div>
 
                   {/* Campaigns */}
-                  <p className="text-[14px] text-gray-500">{page._count.internalCampaignPages}</p>
+                  <p className="text-[14px]" style={{ color: "var(--text-secondary)" }}>{page._count.internalCampaignPages}</p>
                 </div>
               );
             })}

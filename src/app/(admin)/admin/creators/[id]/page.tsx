@@ -40,18 +40,18 @@ export default async function AdminCreatorDetailPage({
   return (
     <div className="p-8 max-w-3xl space-y-6">
       <div className="flex items-center gap-2">
-        <Link href="/admin/creators" className="text-sm text-gray-400 hover:text-gray-600">
+        <Link href="/admin/creators" className="text-sm hover:underline" style={{ color: "var(--text-muted)" }}>
           ← Creators
         </Link>
         {campaign && (
           <>
-            <span className="text-gray-300">/</span>
-            <span className="text-sm text-gray-400">{campaign.name}</span>
+            <span style={{ color: "var(--border)" }}>/</span>
+            <span className="text-sm" style={{ color: "var(--text-muted)" }}>{campaign.name}</span>
           </>
         )}
       </div>
 
-      <div className="rounded-xl border border-gray-200 bg-white p-5">
+      <div className="rounded-xl border p-5" style={{ background: "var(--bg-elevated)", borderColor: "var(--border)" }}>
         <div className="flex items-start justify-between gap-4">
           <div className="flex items-center gap-4">
             {igAccount?.igProfilePicUrl || creator.avatarUrl ? (
@@ -69,18 +69,18 @@ export default async function AdminCreatorDetailPage({
               </div>
             )}
             <div>
-              <p className="text-base font-semibold text-gray-900">{creator.displayName}</p>
-              {igAccount && <p className="text-sm text-gray-500">@{igAccount.platformUsername}</p>}
-              <p className="text-xs text-gray-400">{creator.user.email}</p>
+              <p className="text-base font-semibold" style={{ color: "var(--text-primary)" }}>{creator.displayName}</p>
+              {igAccount && <p className="text-sm" style={{ color: "var(--text-muted)" }}>@{igAccount.platformUsername}</p>}
+              <p className="text-xs" style={{ color: "var(--text-muted)" }}>{creator.user.email}</p>
               {igAccount?.igBio && (
-                <p className="text-xs text-gray-400 mt-1 max-w-xs line-clamp-2">{igAccount.igBio}</p>
+                <p className="text-xs mt-1 max-w-xs line-clamp-2" style={{ color: "var(--text-muted)" }}>{igAccount.igBio}</p>
               )}
             </div>
           </div>
           <div className="flex flex-col items-end gap-2 shrink-0">
             <RefreshButton creatorId={creator.id} />
             {igAccount?.lastSyncedAt && (
-              <span className="text-[11px] text-gray-300">
+              <span className="text-[11px]" style={{ color: "var(--text-muted)" }}>
                 Synced {new Date(igAccount.lastSyncedAt).toLocaleDateString()}
               </span>
             )}
@@ -108,22 +108,22 @@ export default async function AdminCreatorDetailPage({
 
       <RecentPostsGrid mediaCache={mediaCache} />
 
-      <div className="rounded-xl border border-gray-200 bg-white p-4 grid grid-cols-2 gap-3 text-sm">
+      <div className="rounded-xl border p-4 grid grid-cols-2 gap-3 text-sm" style={{ background: "var(--bg-elevated)", borderColor: "var(--border)" }}>
         <div>
-          <p className="text-xs text-gray-400">Campaigns</p>
-          <p className="font-medium text-gray-900">{creator._count.applications}</p>
+          <p className="text-xs" style={{ color: "var(--text-muted)" }}>Campaigns</p>
+          <p className="font-medium" style={{ color: "var(--text-primary)" }}>{creator._count.applications}</p>
         </div>
         <div>
-          <p className="text-xs text-gray-400">Verified</p>
-          <p className="font-medium text-gray-900">{creator.isVerified ? "Yes" : "No"}</p>
+          <p className="text-xs" style={{ color: "var(--text-muted)" }}>Verified</p>
+          <p className="font-medium" style={{ color: "var(--text-primary)" }}>{creator.isVerified ? "Yes" : "No"}</p>
         </div>
         <div>
-          <p className="text-xs text-gray-400">Primary Geo</p>
-          <p className="font-medium text-gray-900">{creator.primaryGeo}</p>
+          <p className="text-xs" style={{ color: "var(--text-muted)" }}>Primary Geo</p>
+          <p className="font-medium" style={{ color: "var(--text-primary)" }}>{creator.primaryGeo}</p>
         </div>
         <div>
-          <p className="text-xs text-gray-400">Joined</p>
-          <p className="font-medium text-gray-900">{new Date(creator.createdAt).toLocaleDateString()}</p>
+          <p className="text-xs" style={{ color: "var(--text-muted)" }}>Joined</p>
+          <p className="font-medium" style={{ color: "var(--text-primary)" }}>{new Date(creator.createdAt).toLocaleDateString()}</p>
         </div>
       </div>
     </div>

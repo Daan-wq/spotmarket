@@ -26,58 +26,59 @@ export default async function CampaignReviewPage({ params }: { params: Promise<{
 
   const fieldRow = (label: string, value: string | null | undefined) =>
     value ? (
-      <div className="grid grid-cols-[180px_1fr] gap-2 py-2 border-b border-gray-100 last:border-0">
-        <span className="text-xs text-gray-500">{label}</span>
-        <span className="text-sm text-gray-800 break-words">{value}</span>
+      <div className="grid grid-cols-[180px_1fr] gap-2 py-2 border-b last:border-0" style={{ borderBottomColor: "var(--border)" }}>
+        <span className="text-xs" style={{ color: "var(--text-muted)" }}>{label}</span>
+        <span className="text-sm break-words" style={{ color: "var(--text-secondary)" }}>{value}</span>
       </div>
     ) : null;
 
   return (
     <div className="p-8 max-w-3xl">
       <div className="flex items-center gap-3 mb-6">
-        <a href="/admin/campaigns" className="text-sm text-gray-400 hover:text-gray-600">← Campaigns</a>
-        <span className="text-gray-300">/</span>
-        <span className="text-sm font-semibold text-blue-700">Review pending campaign</span>
+        <a href="/admin/campaigns" className="text-sm hover:underline" style={{ color: "var(--text-muted)" }}>← Campaigns</a>
+        <span style={{ color: "var(--border)" }}>/</span>
+        <span className="text-sm font-semibold" style={{ color: "var(--accent)" }}>Review pending campaign</span>
       </div>
 
-      <h1 className="text-2xl font-bold text-gray-900 mb-1">{campaign.name}</h1>
-      <p className="text-sm text-gray-500 mb-6">Submitted by <strong>{ownerName}</strong> · {campaign.createdAt.toLocaleDateString()}</p>
+      <h1 className="text-2xl font-bold mb-1" style={{ color: "var(--text-primary)" }}>{campaign.name}</h1>
+      <p className="text-sm mb-6" style={{ color: "var(--text-muted)" }}>Submitted by <strong>{ownerName}</strong> · {campaign.createdAt.toLocaleDateString()}</p>
 
       {/* Deposit verification */}
-      <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 mb-6">
-        <p className="text-sm font-semibold text-blue-800 mb-2">Deposit verification</p>
+      <div className="rounded-xl border p-4 mb-6" style={{ background: "var(--accent-bg)", borderColor: "var(--accent-muted)" }}>
+        <p className="text-sm font-semibold mb-2" style={{ color: "var(--accent-foreground)" }}>Deposit verification</p>
         <div className="space-y-1 text-sm">
           <div className="flex gap-2">
-            <span className="text-blue-600 w-24 shrink-0">Amount:</span>
-            <span className="font-semibold text-blue-900">${Number(campaign.totalBudget).toLocaleString()} USDT</span>
+            <span className="w-24 shrink-0" style={{ color: "var(--accent)" }}>Amount:</span>
+            <span className="font-semibold" style={{ color: "var(--text-primary)" }}>${Number(campaign.totalBudget).toLocaleString()} USDT</span>
           </div>
           <div className="flex gap-2 items-start">
-            <span className="text-blue-600 w-24 shrink-0">TX hash:</span>
+            <span className="w-24 shrink-0" style={{ color: "var(--accent)" }}>TX hash:</span>
             {campaign.depositTxHash ? (
               <a
                 href={`https://tronscan.org/#/transaction/${campaign.depositTxHash}`}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="font-mono text-xs break-all text-blue-700 underline"
+                className="font-mono text-xs break-all underline"
+                style={{ color: "var(--accent)" }}
               >
                 {campaign.depositTxHash} ↗
               </a>
             ) : (
-              <span className="text-red-600">Not provided</span>
+              <span style={{ color: "var(--error)" }}>Not provided</span>
             )}
           </div>
           {ownerWallet && (
             <div className="flex gap-2">
-              <span className="text-blue-600 w-24 shrink-0">Refund to:</span>
-              <span className="font-mono text-xs text-blue-700">{ownerWallet}</span>
+              <span className="w-24 shrink-0" style={{ color: "var(--accent)" }}>Refund to:</span>
+              <span className="font-mono text-xs" style={{ color: "var(--accent)" }}>{ownerWallet}</span>
             </div>
           )}
         </div>
       </div>
 
       {/* Campaign details */}
-      <div className="bg-white border border-gray-200 rounded-xl p-5 mb-6">
-        <p className="text-sm font-semibold text-gray-800 mb-3">Campaign Details</p>
+      <div className="border rounded-xl p-5 mb-6" style={{ background: "var(--bg-elevated)", borderColor: "var(--border)" }}>
+        <p className="text-sm font-semibold mb-3" style={{ color: "var(--text-secondary)" }}>Campaign Details</p>
         {fieldRow("Platform", campaign.platform)}
         {fieldRow("Content type", campaign.contentType)}
         {fieldRow("Description", campaign.description)}

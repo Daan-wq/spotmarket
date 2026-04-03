@@ -113,7 +113,7 @@ export default function EditInternalCampaignPage() {
 
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <label className="block text-xs font-medium mb-1" style={{ color: "#374151" }}>Client Pays ($) *</label>
+            <label className="block text-xs font-medium mb-1" style={{ color: "var(--text-secondary)" }}>Client Pays ($) *</label>
             <input
               type="number"
               step="0.01"
@@ -125,7 +125,7 @@ export default function EditInternalCampaignPage() {
             />
           </div>
           <div>
-            <label className="block text-xs font-medium mb-1" style={{ color: "#374151" }}>Ad Link</label>
+            <label className="block text-xs font-medium mb-1" style={{ color: "var(--text-secondary)" }}>Ad Link</label>
             <input
               className={inputClass}
               style={inputStyle}
@@ -137,7 +137,7 @@ export default function EditInternalCampaignPage() {
 
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <label className="block text-xs font-medium mb-1" style={{ color: "#374151" }}>Start Date</label>
+            <label className="block text-xs font-medium mb-1" style={{ color: "var(--text-secondary)" }}>Start Date</label>
             <input
               type="date"
               className={inputClass}
@@ -147,7 +147,7 @@ export default function EditInternalCampaignPage() {
             />
           </div>
           <div>
-            <label className="block text-xs font-medium mb-1" style={{ color: "#374151" }}>End Date</label>
+            <label className="block text-xs font-medium mb-1" style={{ color: "var(--text-secondary)" }}>End Date</label>
             <input
               type="date"
               className={inputClass}
@@ -159,7 +159,7 @@ export default function EditInternalCampaignPage() {
         </div>
 
         <div>
-          <label className="block text-xs font-medium mb-1" style={{ color: "#374151" }}>Ad Content URL</label>
+          <label className="block text-xs font-medium mb-1" style={{ color: "var(--text-secondary)" }}>Ad Content URL</label>
           <input
             className={inputClass}
             style={inputStyle}
@@ -169,7 +169,7 @@ export default function EditInternalCampaignPage() {
         </div>
 
         <div>
-          <label className="block text-xs font-medium mb-1" style={{ color: "#374151" }}>Ad Caption</label>
+          <label className="block text-xs font-medium mb-1" style={{ color: "var(--text-secondary)" }}>Ad Caption</label>
           <textarea
             className={inputClass}
             style={{ ...inputStyle, minHeight: 80, resize: "vertical" }}
@@ -179,7 +179,7 @@ export default function EditInternalCampaignPage() {
         </div>
 
         <div>
-          <label className="block text-xs font-medium mb-1" style={{ color: "#374151" }}>Notes</label>
+          <label className="block text-xs font-medium mb-1" style={{ color: "var(--text-secondary)" }}>Notes</label>
           <textarea
             className={inputClass}
             style={{ ...inputStyle, minHeight: 60, resize: "vertical" }}

@@ -89,7 +89,7 @@ function NewDealForm() {
         </div>
 
         <div>
-          <label className="block text-sm font-medium mb-1" style={{ color: "#374151" }}>Contact email</label>
+          <label className="block text-sm font-medium mb-1" style={{ color: "var(--text-secondary)" }}>Contact email</label>
           <input
             type="email"
             value={contactEmail}
@@ -191,7 +191,7 @@ function NewDealForm() {
           />
         </div>
 
-        {error && <p className="text-sm text-red-600">{error}</p>}
+        {error && <p className="text-sm" style={{ color: "var(--error)" }}>{error}</p>}
 
         <button
           type="submit"

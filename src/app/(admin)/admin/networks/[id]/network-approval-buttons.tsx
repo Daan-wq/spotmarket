@@ -29,7 +29,8 @@ export function NetworkApprovalButtons({ networkId, isApproved }: Props) {
         <button
           onClick={() => toggle(true)}
           disabled={loading}
-          className="bg-green-600 text-white px-4 py-2 rounded-lg text-sm font-medium disabled:opacity-50"
+          className="px-4 py-2 rounded-lg text-sm font-medium disabled:opacity-50 text-white"
+          style={{ background: "var(--success)" }}
         >
           Approve
         </button>
@@ -38,7 +39,8 @@ export function NetworkApprovalButtons({ networkId, isApproved }: Props) {
         <button
           onClick={() => toggle(false)}
           disabled={loading}
-          className="bg-red-100 text-red-700 px-4 py-2 rounded-lg text-sm font-medium disabled:opacity-50"
+          className="px-4 py-2 rounded-lg text-sm font-medium disabled:opacity-50"
+          style={{ background: "var(--error-bg)", color: "var(--error-text)" }}
         >
           Revoke
         </button>

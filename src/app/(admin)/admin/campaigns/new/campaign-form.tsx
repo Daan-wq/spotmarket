@@ -56,10 +56,9 @@ interface FormState {
 
 type FieldErrors = Partial<Record<keyof FormState | "general", string>>;
 
-const input = "w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-purple-500";
-const inputErr = "w-full px-3 py-2 border border-red-400 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-red-400";
-const label = "block text-sm font-medium text-gray-700 mb-1";
-const card = "bg-white rounded-xl border border-gray-200 p-6 space-y-4";
+const inputStyle = { width: "100%", padding: "0.75rem", border: "1px solid var(--border)", borderRadius: "0.5rem", fontSize: "0.875rem", outline: "none" } as const;
+const inputErrStyle = { ...inputStyle, borderColor: "var(--error)", boxShadow: "0 0 0 2px var(--error-bg)" } as const;
+const cardStyle = { background: "var(--bg-elevated)", borderRadius: "0.75rem", border: "1px solid var(--border)", padding: "1.5rem" } as const;
 
 export function CampaignForm() {
   const router = useRouter();
@@ -237,44 +236,41 @@ export function CampaignForm() {
     <div className="space-y-6">
 
       {/* Section 1: Campaign Details */}
-      <div className={card}>
-        <h2 className="font-semibold text-gray-900 text-base">Campaign Details</h2>
+      <div style={cardStyle} className="space-y-4">
+        <h2 className="font-semibold text-base" style={{ color: "var(--text-primary)" }}>Campaign Details</h2>
 
         <div>
-          <label className={label}>Campaign Name *</label>
+          <label className="form-label">Campaign Name *</label>
           <input
             type="text"
             value={form.name}
             onChange={(e) => set("name", e.target.value)}
-            className={errors.name ? inputErr : input}
+            style={errors.name ? inputErrStyle : inputStyle}
             placeholder='e.g. "USA Sports Q1"'
           />
-          {errors.name && <p className="text-xs text-red-500 mt-1">{errors.name}</p>}
+          {errors.name && <p className="text-xs mt-1" style={{ color: "var(--error)" }}>{errors.name}</p>}
         </div>
 
         <div>
-          <label className={label}>Platform *</label>
+          <label className="form-label">Platform *</label>
           <div className="flex gap-2">
             {(["INSTAGRAM", "TIKTOK", "BOTH"] as Platform[]).map((p) => (
               <button
                 key={p}
                 type="button"
                 onClick={() => set("platform", p)}
-                className={`px-4 py-2 rounded-full text-sm font-medium border transition-colors ${
-                  form.platform === p
-                    ? "bg-purple-600 text-white border-purple-600"
-                    : "bg-white text-gray-600 border-gray-300 hover:border-purple-400"
-                }`}
+                style={form.platform === p ? { background: "var(--accent)", color: "#ffffff", borderColor: "var(--accent)", border: "1px solid var(--accent)" } : { background: "var(--bg-card)", color: "var(--text-secondary)", borderColor: "var(--border)", border: "1px solid var(--border)" }}
+                className="px-4 py-2 rounded-full text-sm font-medium transition-colors"
               >
                 {p.charAt(0) + p.slice(1).toLowerCase()}
               </button>
             ))}
           </div>
-          {errors.platform && <p className="text-xs text-red-500 mt-1">{errors.platform}</p>}
+          {errors.platform && <p className="text-xs mt-1" style={{ color: "var(--error)" }}>{errors.platform}</p>}
         </div>
 
         <div>
-          <label className={label}>Content Type</label>
+          <label className="form-label">Content Type</label>
           <div className="flex flex-wrap gap-2">
             {CONTENT_TYPES.map((ct) => {
               const val = ct.toLowerCase();
@@ -283,11 +279,8 @@ export function CampaignForm() {
                   key={ct}
                   type="button"
                   onClick={() => set("contentType", form.contentType === val ? "" : val)}
-                  className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-colors ${
-                    form.contentType === val
-                      ? "bg-purple-600 text-white border-purple-600"
-                      : "bg-white text-gray-600 border-gray-300 hover:border-purple-400"
-                  }`}
+                  style={form.contentType === val ? { background: "var(--accent)", color: "#ffffff", borderColor: "var(--accent)", border: "1px solid var(--accent)" } : { background: "var(--bg-card)", color: "var(--text-secondary)", borderColor: "var(--border)", border: "1px solid var(--border)" }}
+                  className="px-3 py-1.5 rounded-full text-xs font-medium transition-colors"
                 >
                   {ct}
                 </button>
@@ -297,78 +290,78 @@ export function CampaignForm() {
         </div>
 
         <div>
-          <label className={label}>Description</label>
+          <label className="form-label">Description</label>
           <textarea
             value={form.description}
             onChange={(e) => set("description", e.target.value)}
             rows={3}
-            className={`${input} resize-none`}
+            style={inputStyle}
+            className="resize-none"
             placeholder="Brief overview of campaign goals"
           />
         </div>
 
         <div>
-          <label className={label}>Content Guidelines</label>
+          <label className="form-label">Content Guidelines</label>
           <textarea
             value={form.contentGuidelines}
             onChange={(e) => set("contentGuidelines", e.target.value)}
             rows={4}
-            className={`${input} resize-none`}
+            style={inputStyle}
+            className="resize-none"
             placeholder="What creators must include: CTA, hashtags, disclosure, dos/don'ts..."
           />
         </div>
 
         <div>
-          <label className={label}>Requirements *</label>
+          <label className="form-label">Requirements *</label>
           <input
             type="text"
             value={form.requirements}
             onChange={(e) => set("requirements", e.target.value)}
-            className={input}
+            style={inputStyle}
             placeholder="e.g. Banner + game link in bio"
           />
         </div>
 
         <div>
-          <label className={label}>Other Notes</label>
+          <label className="form-label">Other Notes</label>
           <textarea
             value={form.otherNotes}
             onChange={(e) => set("otherNotes", e.target.value)}
             rows={3}
-            className={`${input} resize-none`}
+            style={inputStyle}
+            className="resize-none"
             placeholder="Additional instructions..."
           />
         </div>
       </div>
 
       {/* Section 2: Audience Targeting */}
-      <div className={card}>
-        <h2 className="font-semibold text-gray-900 text-base">Audience Targeting</h2>
+      <div style={cardStyle} className="space-y-4">
+        <h2 className="font-semibold text-base" style={{ color: "var(--text-primary)" }}>Audience Targeting</h2>
 
         <div>
-          <label className={label}>Target Country *</label>
+          <label className="form-label">Target Country *</label>
           <div className="flex flex-wrap gap-2">
             {GEO_OPTIONS.map((code) => (
               <button
                 key={code}
                 type="button"
                 onClick={() => set("targetCountry", form.targetCountry === code ? "" : code)}
-                className={`px-3 py-1 rounded-full text-xs font-medium border transition-colors ${
-                  form.targetCountry === code
-                    ? "bg-blue-600 text-white border-blue-600"
-                    : "bg-white text-gray-600 border-gray-300 hover:border-blue-400"
-                }`}
+                style={form.targetCountry === code ? { background: "var(--accent)", color: "#ffffff", borderColor: "var(--accent)", border: "1px solid var(--accent)" } : { background: "var(--bg-card)", color: "var(--text-secondary)", borderColor: "var(--border)", border: "1px solid var(--border)" }}
+                className="px-3 py-1 rounded-full text-xs font-medium transition-colors"
               >
                 {code}
               </button>
             ))}
           </div>
-          {errors.targetCountry && <p className="text-xs text-red-500 mt-1">{errors.targetCountry}</p>}
+          {errors.targetCountry && <p className="text-xs mt-1" style={{ color: "var(--error)" }}>{errors.targetCountry}</p>}
         </div>
 
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <label className={label}>Min. Country Audience %</label>
+            <label className="form-label">Min. Country Audience %</label>
             <div className="relative">
               <input
                 type="number"
@@ -376,14 +369,15 @@ export function CampaignForm() {
                 max={100}
                 value={form.targetCountryPercent}
                 onChange={(e) => set("targetCountryPercent", e.target.value)}
-                className={`${input} pr-8`}
+                style={inputStyle}
+                className="pr-8"
                 placeholder="20"
               />
-              <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">%</span>
+              <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm" style={{ color: "var(--text-muted)" }}>%</span>
             </div>
           </div>
           <div>
-            <label className={label}>Min. Age 18+ %</label>
+            <label className="form-label">Min. Age 18+ %</label>
             <div className="relative">
               <input
                 type="number"
@@ -391,17 +385,18 @@ export function CampaignForm() {
                 max={100}
                 value={form.targetMinAge18Percent}
                 onChange={(e) => set("targetMinAge18Percent", e.target.value)}
-                className={`${input} pr-8`}
+                style={inputStyle}
+                className="pr-8"
                 placeholder="20"
               />
-              <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">%</span>
+              <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm" style={{ color: "var(--text-muted)" }}>%</span>
             </div>
           </div>
         </div>
 
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <label className={label}>Min. Male %</label>
+            <label className="form-label">Min. Male %</label>
             <div className="relative">
               <input
                 type="number"
@@ -409,10 +404,11 @@ export function CampaignForm() {
                 max={100}
                 value={form.targetMalePercent}
                 onChange={(e) => set("targetMalePercent", e.target.value)}
-                className={`${input} pr-8`}
+                style={inputStyle}
+                className="pr-8"
                 placeholder="40 (optional)"
               />
-              <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">%</span>
+              <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm" style={{ color: "var(--text-muted)" }}>%</span>
             </div>
           </div>
           <div />
@@ -420,17 +416,18 @@ export function CampaignForm() {
 
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <label className={label}>Min. Engagement Rate</label>
+            <label className="form-label">Min. Engagement Rate</label>
             <div className="relative">
               <input
                 type="number"
                 step="0.1"
                 value={form.minEngagementRate}
                 onChange={(e) => set("minEngagementRate", e.target.value)}
-                className={`${input} pr-8`}
+                style={inputStyle}
+                className="pr-8"
                 placeholder="2"
               />
-              <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">%</span>
+              <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm" style={{ color: "var(--text-muted)" }}>%</span>
             </div>
           </div>
           <div />
@@ -438,93 +435,95 @@ export function CampaignForm() {
       </div>
 
       {/* Section 3: Budget & Goals */}
-      <div className={card}>
-        <h2 className="font-semibold text-gray-900 text-base">Budget & Goals</h2>
+      <div style={cardStyle} className="space-y-4">
+        <h2 className="font-semibold text-base" style={{ color: "var(--text-primary)" }}>Budget & Goals</h2>
 
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <label className={label}>Total Budget *</label>
+            <label className="form-label">Total Budget *</label>
             <div className="relative">
-              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">$</span>
+              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm" style={{ color: "var(--text-muted)" }}>$</span>
               <input
                 type="number"
                 step="0.01"
                 value={form.totalBudget}
                 onChange={(e) => set("totalBudget", e.target.value)}
-                className={`${errors.totalBudget ? inputErr : input} pl-7`}
+                style={errors.totalBudget ? inputErrStyle : inputStyle}
+                className="pl-7"
                 placeholder="15000"
               />
             </div>
-            {errors.totalBudget && <p className="text-xs text-red-500 mt-1">{errors.totalBudget}</p>}
+            {errors.totalBudget && <p className="text-xs mt-1" style={{ color: "var(--error)" }}>{errors.totalBudget}</p>}
           </div>
           <div>
-            <label className={label}>Goal Views *</label>
+            <label className="form-label">Goal Views *</label>
             <input
               type="text"
               value={form.goalViewsRaw}
               onChange={(e) => set("goalViewsRaw", e.target.value)}
-              className={errors.goalViewsRaw ? inputErr : input}
+              style={errors.goalViewsRaw ? inputErrStyle : inputStyle}
               placeholder="e.g. 200m, 500k, 1.5b"
             />
             {goalViews ? (
-              <p className="text-xs text-gray-500 mt-1">= {formatViews(goalViews)}</p>
+              <p className="text-xs mt-1" style={{ color: "var(--text-muted)" }}>= {formatViews(goalViews)}</p>
             ) : (
-              form.goalViewsRaw && <p className="text-xs text-red-500 mt-1">Invalid format. Try: 200m, 500k</p>
+              form.goalViewsRaw && <p className="text-xs mt-1" style={{ color: "var(--error)" }}>Invalid format. Try: 200m, 500k</p>
             )}
             {errors.goalViewsRaw && !form.goalViewsRaw && (
-              <p className="text-xs text-red-500 mt-1">{errors.goalViewsRaw}</p>
+              <p className="text-xs mt-1" style={{ color: "var(--error)" }}>{errors.goalViewsRaw}</p>
             )}
           </div>
         </div>
 
         <div>
-          <label className={label}>Your Margin ($/1M views)</label>
+          <label className="form-label">Your Margin ($/1M views)</label>
           <div className="relative w-1/2">
-            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">$</span>
+            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm" style={{ color: "var(--text-muted)" }}>$</span>
             <input
               type="number"
               step="1"
               value={form.adminMarginPerM}
               onChange={(e) => set("adminMarginPerM", e.target.value)}
-              className={`${errors.adminMarginPerM ? inputErr : input} pl-7`}
+              style={errors.adminMarginPerM ? inputErrStyle : inputStyle}
+              className="pl-7"
               placeholder="25"
             />
           </div>
-          <p className="text-xs text-gray-500 mt-1">How much you keep per 1 million views</p>
-          {errors.adminMarginPerM && <p className="text-xs text-red-500 mt-1">{errors.adminMarginPerM}</p>}
+          <p className="text-xs mt-1" style={{ color: "var(--text-muted)" }}>How much you keep per 1 million views</p>
+          {errors.adminMarginPerM && <p className="text-xs mt-1" style={{ color: "var(--error)" }}>{errors.adminMarginPerM}</p>}
         </div>
 
         {economics && (
-          <div className="bg-gray-50 rounded-xl border border-gray-200 p-4 space-y-3">
-            <p className="text-sm font-semibold text-gray-800">Campaign Economics</p>
+          <div style={{ background: "var(--bg-secondary)", borderRadius: "0.75rem", border: "1px solid var(--border)", padding: "1rem" }} className="space-y-3">
+            <p className="text-sm font-semibold" style={{ color: "var(--text-primary)" }}>Campaign Economics</p>
             <div className="space-y-1.5 text-sm">
               <div className="flex justify-between">
-                <span className="text-gray-600">Client pays (per 1M views)</span>
-                <span className="font-medium text-gray-900">${economics.businessPerM.toFixed(2)}</span>
+                <span style={{ color: "var(--text-secondary)" }}>Client pays (per 1M views)</span>
+                <span className="font-medium" style={{ color: "var(--text-primary)" }}>${economics.businessPerM.toFixed(2)}</span>
               </div>
-              <div className="flex justify-between text-red-600">
+              <div className="flex justify-between" style={{ color: "var(--error)" }}>
                 <span>Your margin</span>
                 <span>−${adminMarginPerM.toFixed(2)}</span>
               </div>
-              <div className="flex justify-between border-t border-gray-200 pt-1.5">
-                <span className="text-gray-600">Creator earns (per 1M views)</span>
-                <span className="font-semibold text-gray-900">${economics.creatorPerM.toFixed(2)}</span>
+              <div className="flex justify-between border-t pt-1.5" style={{ borderTopColor: "var(--border)" }}>
+                <span style={{ color: "var(--text-secondary)" }}>Creator earns (per 1M views)</span>
+                <span className="font-semibold" style={{ color: "var(--text-primary)" }}>${economics.creatorPerM.toFixed(2)}</span>
               </div>
             </div>
-            <div className="border-t border-gray-200 pt-3 space-y-1 text-sm">
-              <div className="flex justify-between text-gray-600">
+            <div className="border-t pt-3 space-y-1 text-sm" style={{ borderTopColor: "var(--border)" }}>
+              <div className="flex justify-between" style={{ color: "var(--text-secondary)" }}>
                 <span>Budget</span>
-                <span className="font-medium text-gray-900">${fmtUsd(budget)}</span>
+                <span className="font-medium" style={{ color: "var(--text-primary)" }}>${fmtUsd(budget)}</span>
               </div>
-              <div className="flex justify-between text-gray-600">
+              <div className="flex justify-between" style={{ color: "var(--text-secondary)" }}>
                 <span>Goal</span>
-                <span className="font-medium text-gray-900">{goalViews ? formatViews(goalViews) : "—"}</span>
+                <span className="font-medium" style={{ color: "var(--text-primary)" }}>{goalViews ? formatViews(goalViews) : "—"}</span>
               </div>
-              <div className="flex justify-between text-gray-600">
+              <div className="flex justify-between" style={{ color: "var(--text-secondary)" }}>
                 <span>Max creator payout</span>
-                <span className="font-medium text-gray-900">${fmtUsd(economics.maxCreatorPayout)}</span>
+                <span className="font-medium" style={{ color: "var(--text-primary)" }}>${fmtUsd(economics.maxCreatorPayout)}</span>
               </div>
-              <div className="flex justify-between text-purple-700 font-medium">
+              <div className="flex justify-between font-medium" style={{ color: "var(--accent)" }}>
                 <span>Your revenue</span>
                 <span>${fmtUsd(economics.adminRevenue)}</span>
               </div>
@@ -534,59 +533,56 @@ export function CampaignForm() {
       </div>
 
       {/* Section 4: Schedule & Assets */}
-      <div className={card}>
-        <h2 className="font-semibold text-gray-900 text-base">Schedule & Assets</h2>
+      <div style={cardStyle} className="space-y-4">
+        <h2 className="font-semibold text-base" style={{ color: "var(--text-primary)" }}>Schedule & Assets</h2>
 
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <label className={label}>Deadline *</label>
+            <label className="form-label">Deadline *</label>
             <input
               type="datetime-local"
               value={form.deadline}
               onChange={(e) => set("deadline", e.target.value)}
-              className={errors.deadline ? inputErr : input}
+              style={errors.deadline ? inputErrStyle : inputStyle}
             />
-            {errors.deadline && <p className="text-xs text-red-500 mt-1">{errors.deadline}</p>}
+            {errors.deadline && <p className="text-xs mt-1" style={{ color: "var(--error)" }}>{errors.deadline}</p>}
           </div>
           <div>
-            <label className={label}>Start Date</label>
+            <label className="form-label">Start Date</label>
             <input
               type="datetime-local"
               value={form.startsAt}
               onChange={(e) => set("startsAt", e.target.value)}
-              className={errors.startsAt ? inputErr : input}
+              style={errors.startsAt ? inputErrStyle : inputStyle}
             />
             {errors.startsAt ? (
-              <p className="text-xs text-red-500 mt-1">{errors.startsAt}</p>
+              <p className="text-xs mt-1" style={{ color: "var(--error)" }}>{errors.startsAt}</p>
             ) : (
-              <p className="text-xs text-gray-500 mt-1">Leave empty to start immediately</p>
+              <p className="text-xs mt-1" style={{ color: "var(--text-muted)" }}>Leave empty to start immediately</p>
             )}
           </div>
         </div>
 
         <div>
-          <label className={label}>Referral Link</label>
+          <label className="form-label">Referral Link</label>
           <input
             type="url"
             value={form.referralLink}
             onChange={(e) => set("referralLink", e.target.value)}
-            className={input}
+            style={inputStyle}
             placeholder="https://your-affiliate-link.com/ref/xxx"
           />
         </div>
 
         <div>
-          <label className={label}>Banner Image</label>
+          <label className="form-label">Banner Image</label>
           <div
             onDragOver={(e) => { e.preventDefault(); setIsDragOver(true); }}
             onDragLeave={() => setIsDragOver(false)}
             onDrop={handleBannerDrop}
             onClick={() => fileInputRef.current?.click()}
-            className={`relative cursor-pointer rounded-xl border-2 border-dashed transition-colors ${
-              isDragOver
-                ? "border-purple-500 bg-purple-50"
-                : "border-gray-300 bg-gray-50 hover:border-purple-400 hover:bg-purple-50/40"
-            }`}
+            style={isDragOver ? { borderColor: "var(--accent)", background: "var(--accent-bg)" } : { borderColor: "var(--border)", background: "var(--bg-secondary)" }}
+            className="relative cursor-pointer rounded-xl border-2 border-dashed transition-colors"
           >
             <input
               ref={fileInputRef}
@@ -606,23 +602,24 @@ export function CampaignForm() {
                 <button
                   type="button"
                   onClick={(e) => { e.stopPropagation(); setBannerFile(null); setBannerPreview(null); set("bannerUrl", ""); }}
-                  className="absolute top-2 right-2 bg-black/60 text-white text-xs px-2 py-1 rounded-lg hover:bg-black/80"
+                  className="absolute top-2 right-2 text-xs px-2 py-1 rounded-lg transition-colors"
+                  style={{ background: "rgba(0, 0, 0, 0.6)", color: "#ffffff" }}
                 >
                   Remove
                 </button>
               </div>
             ) : (
-              <div className="flex flex-col items-center justify-center gap-1 py-8 text-gray-400">
+              <div className="flex flex-col items-center justify-center gap-1 py-8" style={{ color: "var(--text-muted)" }}>
                 <svg className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="m2.25 15.75 5.159-5.159a2.25 2.25 0 0 1 3.182 0l5.159 5.159m-1.5-1.5 1.409-1.409a2.25 2.25 0 0 1 3.182 0l2.909 2.909M3.75 19.5h16.5M13.5 6.75h.008v.008H13.5V6.75Z" />
                 </svg>
-                <p className="text-sm font-medium text-gray-600">Drop image here or click to browse</p>
+                <p className="text-sm font-medium" style={{ color: "var(--text-secondary)" }}>Drop image here or click to browse</p>
                 <p className="text-xs">PNG, JPG, GIF up to any size</p>
               </div>
             )}
             {bannerUploading && (
-              <div className="absolute inset-0 flex items-center justify-center bg-white/70 rounded-xl">
-                <p className="text-sm font-medium text-purple-600">Uploading…</p>
+              <div className="absolute inset-0 flex items-center justify-center rounded-xl" style={{ background: "rgba(255, 255, 255, 0.1)" }}>
+                <p className="text-sm font-medium" style={{ color: "var(--accent)" }}>Uploading…</p>
               </div>
             )}
           </div>
@@ -630,21 +627,23 @@ export function CampaignForm() {
       </div>
 
       {errors.general && (
-        <p className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg p-3">{errors.general}</p>
+        <p className="text-sm rounded-lg p-3 border" style={{ color: "var(--error-text)", background: "var(--error-bg)", borderColor: "var(--error)" }}>{errors.general}</p>
       )}
 
       <div className="flex gap-3">
         <button
           onClick={() => handleSubmit("draft")}
           disabled={loading}
-          className="flex-1 py-3 px-4 border border-gray-300 text-gray-700 rounded-lg text-sm font-semibold hover:bg-gray-50 transition-colors disabled:opacity-50"
+          className="flex-1 py-3 px-4 rounded-lg text-sm font-semibold transition-colors disabled:opacity-50 border"
+          style={{ borderColor: "var(--border)", color: "var(--text-primary)", background: "var(--bg-card)" }}
         >
           Save as Draft
         </button>
         <button
           onClick={() => handleSubmit("active")}
           disabled={loading}
-          className="flex-1 py-3 px-4 bg-purple-600 text-white rounded-lg text-sm font-semibold hover:bg-purple-700 transition-colors disabled:opacity-50"
+          className="flex-1 py-3 px-4 rounded-lg text-sm font-semibold transition-colors disabled:opacity-50"
+          style={{ color: "#ffffff", background: "var(--accent)" }}
         >
           {loading ? "Creating..." : "Launch Campaign"}
         </button>

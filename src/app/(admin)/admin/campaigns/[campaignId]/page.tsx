@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import { ApplicationReviewTable } from "./application-review-table";
 import { CampaignStatusToggle } from "./campaign-status-toggle";
+import { InviteLinkSection } from "@/components/admin/invite-link-section";
 
 function toPlain<T>(data: T): T {
   return JSON.parse(
@@ -53,6 +54,7 @@ export default async function AdminCampaignDetailPage({
         orderBy: { appliedAt: "desc" },
       },
       report: true,
+      inviteLinks: { orderBy: { createdAt: "desc" } },
     },
   });
 
@@ -98,6 +100,9 @@ export default async function AdminCampaignDetailPage({
           </div>
         ))}
       </div>
+
+      {/* Invite Links */}
+      <InviteLinkSection campaignId={c.id} initialLinks={toPlain(c.inviteLinks)} />
 
       {/* Applications */}
       <div className="rounded-xl overflow-hidden" style={{ border: "1px solid var(--border)" }}>

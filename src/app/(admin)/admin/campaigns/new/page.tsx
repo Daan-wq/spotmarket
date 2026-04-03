@@ -9,7 +9,7 @@ export default async function NewCampaignPage() {
 
   return (
     <div className="p-8 max-w-2xl">
-      <h1 className="text-2xl font-bold text-gray-900 mb-8">Create Campaign</h1>
+      <h1 className="text-2xl font-bold mb-8" style={{ color: "var(--text-primary)" }}>Create Campaign</h1>
       <CampaignForm />
     </div>
   );

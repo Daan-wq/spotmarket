@@ -34,12 +34,12 @@ export default async function AdminPageDetailPage({
     .reduce((sum, p) => sum + Number(p.amount), 0);
 
   const statusStyle: Record<string, { bg: string; color: string }> = {
-    draft:     { bg: "#f3f4f6", color: "#6b7280" },
-    confirmed: { bg: "#eff6ff", color: "#1d4ed8" },
-    scheduled: { bg: "#f5f3ff", color: "#7c3aed" },
-    live:      { bg: "#f0fdf4", color: "#15803d" },
-    completed: { bg: "#f0fdf4", color: "#15803d" },
-    cancelled: { bg: "#fef2f2", color: "#b91c1c" },
+    draft:     { bg: "var(--bg-secondary)",  color: "var(--text-muted)" },
+    confirmed: { bg: "var(--accent-bg)",     color: "var(--accent-foreground)" },
+    scheduled: { bg: "var(--accent-bg)",     color: "var(--accent-foreground)" },
+    live:      { bg: "var(--success-bg)",    color: "var(--success-text)" },
+    completed: { bg: "var(--success-bg)",    color: "var(--success-text)" },
+    cancelled: { bg: "var(--error-bg)",      color: "var(--error-text)" },
   };
 
   return (

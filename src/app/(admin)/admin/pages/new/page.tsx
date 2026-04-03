@@ -174,7 +174,7 @@ export default function NewPagePage() {
         </div>
 
         <div>
-          <label className="block text-xs font-medium mb-1" style={{ color: "#374151" }}>Contact Name</label>
+          <label className="block text-xs font-medium mb-1" style={{ color: "var(--text-secondary)" }}>Contact Name</label>
           <input
             className={inputClass}
             style={inputStyle}
@@ -184,7 +184,7 @@ export default function NewPagePage() {
         </div>
 
         <div>
-          <label className="block text-xs font-medium mb-1" style={{ color: "#374151" }}>Notes</label>
+          <label className="block text-xs font-medium mb-1" style={{ color: "var(--text-secondary)" }}>Notes</label>
           <textarea
             className={inputClass}
             style={{ ...inputStyle, minHeight: 80, resize: "vertical" }}

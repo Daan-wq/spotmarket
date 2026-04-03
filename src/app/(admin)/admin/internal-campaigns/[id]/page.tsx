@@ -45,7 +45,7 @@ export default async function AdminInternalCampaignDetailPage({
     ? (margin / Number(campaign.clientPays)) * 100
     : 0;
 
-  const s = statusStyle[campaign.status] ?? { bg: "#f3f4f6", color: "#6b7280" };
+  const s = statusStyle[campaign.status] ?? { bg: "var(--bg-secondary)", color: "var(--text-muted)" };
 
   return (
     <div className="p-8 max-w-5xl">

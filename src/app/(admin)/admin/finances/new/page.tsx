@@ -103,7 +103,7 @@ export default function NewPaymentPage() {
             />
           </div>
           <div>
-            <label className="block text-xs font-medium mb-1" style={{ color: "#374151" }}>Status</label>
+            <label className="block text-xs font-medium mb-1" style={{ color: "var(--text-secondary)" }}>Status</label>
             <select
               className={inputClass}
               style={inputStyle}
@@ -119,7 +119,7 @@ export default function NewPaymentPage() {
 
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <label className="block text-xs font-medium mb-1" style={{ color: "#374151" }}>Client</label>
+            <label className="block text-xs font-medium mb-1" style={{ color: "var(--text-secondary)" }}>Client</label>
             <select
               className={inputClass}
               style={inputStyle}
@@ -131,7 +131,7 @@ export default function NewPaymentPage() {
             </select>
           </div>
           <div>
-            <label className="block text-xs font-medium mb-1" style={{ color: "#374151" }}>Campaign</label>
+            <label className="block text-xs font-medium mb-1" style={{ color: "var(--text-secondary)" }}>Campaign</label>
             <select
               className={inputClass}
               style={inputStyle}
@@ -146,7 +146,7 @@ export default function NewPaymentPage() {
 
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <label className="block text-xs font-medium mb-1" style={{ color: "#374151" }}>Page (if paying out)</label>
+            <label className="block text-xs font-medium mb-1" style={{ color: "var(--text-secondary)" }}>Page (if paying out)</label>
             <select
               className={inputClass}
               style={inputStyle}
@@ -158,7 +158,7 @@ export default function NewPaymentPage() {
             </select>
           </div>
           <div>
-            <label className="block text-xs font-medium mb-1" style={{ color: "#374151" }}>Payment Network</label>
+            <label className="block text-xs font-medium mb-1" style={{ color: "var(--text-secondary)" }}>Payment Network</label>
             <select
               className={inputClass}
               style={inputStyle}
@@ -174,7 +174,7 @@ export default function NewPaymentPage() {
         </div>
 
         <div>
-          <label className="block text-xs font-medium mb-1" style={{ color: "#374151" }}>Due Date</label>
+          <label className="block text-xs font-medium mb-1" style={{ color: "var(--text-secondary)" }}>Due Date</label>
           <input
             type="date"
             className={inputClass}
@@ -185,7 +185,7 @@ export default function NewPaymentPage() {
         </div>
 
         <div>
-          <label className="block text-xs font-medium mb-1" style={{ color: "#374151" }}>Notes</label>
+          <label className="block text-xs font-medium mb-1" style={{ color: "var(--text-secondary)" }}>Notes</label>
           <textarea
             className={inputClass}
             style={{ ...inputStyle, minHeight: 70, resize: "vertical" }}

@@ -37,10 +37,10 @@ export default async function AdminSubmissionsPage() {
         ]}
       />
 
-      <div className="bg-white rounded-lg border border-gray-200">
-        <div className="grid grid-cols-[1fr_1fr_auto_auto_auto] gap-4 px-5 py-2.5 border-b border-gray-100">
+      <div className="rounded-lg border" style={{ background: "var(--bg-elevated)", borderColor: "var(--border)" }}>
+        <div className="grid grid-cols-[1fr_1fr_auto_auto_auto] gap-4 px-5 py-2.5 border-b" style={{ borderBottomColor: "var(--border)" }}>
           {["Creator", "Campaign", "Platform", "Submitted", ""].map((h) => (
-            <p key={h} className="text-[13px] text-gray-400">{h}</p>
+            <p key={h} className="text-[13px]" style={{ color: "var(--text-muted)" }}>{h}</p>
           ))}
         </div>
 
@@ -59,23 +59,24 @@ export default async function AdminSubmissionsPage() {
             {submitted.map((post, i) => (
               <div
                 key={post.id}
-                className="grid grid-cols-[1fr_1fr_auto_auto_auto] gap-4 items-center px-5 py-3 hover:bg-gray-50"
-                style={{ borderTop: i > 0 ? "1px solid #f8fafc" : undefined }}
+                className="grid grid-cols-[1fr_1fr_auto_auto_auto] gap-4 items-center px-5 py-3"
+                style={{ borderTop: i > 0 ? "1px solid var(--border)" : undefined }}
               >
-                <p className="text-[14px] text-gray-900">
+                <p className="text-[14px]" style={{ color: "var(--text-primary)" }}>
                   {post.application.creatorProfile?.displayName ?? "—"}
                 </p>
-                <p className="text-[14px] text-gray-500 truncate">{post.application.campaign.name}</p>
-                <span className="text-xs px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 whitespace-nowrap capitalize">
+                <p className="text-[14px] truncate" style={{ color: "var(--text-secondary)" }}>{post.application.campaign.name}</p>
+                <span className="text-xs px-2 py-0.5 rounded-full whitespace-nowrap capitalize" style={{ background: "var(--accent-bg)", color: "var(--accent-foreground)" }}>
                   {post.platform}
                 </span>
-                <p className="text-[13px] text-gray-400 whitespace-nowrap">
+                <p className="text-[13px] whitespace-nowrap" style={{ color: "var(--text-muted)" }}>
                   {new Date(post.submittedAt).toLocaleDateString()}
                 </p>
                 <Link
                   href={post.postUrl}
                   target="_blank"
-                  className="text-xs text-indigo-600 hover:underline whitespace-nowrap"
+                  className="text-xs hover:underline whitespace-nowrap"
+                  style={{ color: "var(--accent)" }}
                 >
                   View post →
                 </Link>

@@ -103,11 +103,11 @@ export default async function AdminCampaignAnalyticsPage({
   return (
     <div className="p-8 max-w-6xl mx-auto">
       <div className="flex items-center gap-2 mb-2">
-        <Link href={`/admin/campaigns/${campaignId}`} className="text-sm text-gray-500 hover:text-gray-700">
+        <Link href={`/admin/campaigns/${campaignId}`} className="text-sm hover:underline" style={{ color: "var(--text-muted)" }}>
           ← {campaign.name}
         </Link>
       </div>
-      <h1 className="text-2xl font-bold text-gray-900 mb-6">Analytics</h1>
+      <h1 className="text-2xl font-bold mb-6" style={{ color: "var(--text-primary)" }}>Analytics</h1>
 
       {/* KPI Cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
@@ -117,78 +117,79 @@ export default async function AdminCampaignAnalyticsPage({
           { label: "Creator Payouts", value: `$${totalCreatorEarnings.toFixed(2)}` },
           { label: "Platform Revenue", value: `$${totalPlatformRevenue.toFixed(2)}` },
         ].map((kpi) => (
-          <div key={kpi.label} className="bg-white rounded-xl border border-gray-200 p-4">
-            <p className="text-xs text-gray-500 mb-1">{kpi.label}</p>
-            <p className="text-xl font-bold text-gray-900">{kpi.value}</p>
+          <div key={kpi.label} className="rounded-xl border p-4" style={{ background: "var(--bg-elevated)", borderColor: "var(--border)" }}>
+            <p className="text-xs mb-1" style={{ color: "var(--text-muted)" }}>{kpi.label}</p>
+            <p className="text-xl font-bold" style={{ color: "var(--text-primary)" }}>{kpi.value}</p>
           </div>
         ))}
       </div>
 
       {/* Fraud alert */}
       {fraudCount > 0 && (
-        <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-xl text-sm text-red-700">
+        <div className="mb-6 p-4 rounded-xl text-sm" style={{ background: "var(--error-bg)", borderColor: "var(--error)", border: "1px solid var(--error)", color: "var(--error-text)" }}>
           {fraudCount} post{fraudCount > 1 ? "s" : ""} flagged as fraud suspect — excluded from earnings calculations.
         </div>
       )}
 
       {/* Chart */}
-      <div className="bg-white rounded-xl border border-gray-200 p-6 mb-8">
-        <h2 className="text-sm font-semibold text-gray-700 mb-4">Views & Reach Over Time</h2>
+      <div className="rounded-xl border p-6 mb-8" style={{ background: "var(--bg-elevated)", borderColor: "var(--border)" }}>
+        <h2 className="text-sm font-semibold mb-4" style={{ color: "var(--text-secondary)" }}>Views & Reach Over Time</h2>
         <ViewsChart data={chartData} />
       </div>
 
       {/* Per-post breakdown */}
-      <div className="bg-white rounded-xl border border-gray-200">
-        <div className="px-6 py-4 border-b border-gray-100">
-          <h2 className="text-sm font-semibold text-gray-700">Post Breakdown</h2>
+      <div className="rounded-xl border" style={{ background: "var(--bg-elevated)", borderColor: "var(--border)" }}>
+        <div className="px-6 py-4 border-b" style={{ borderBottomColor: "var(--border)" }}>
+          <h2 className="text-sm font-semibold" style={{ color: "var(--text-secondary)" }}>Post Breakdown</h2>
         </div>
         {postBreakdown.length === 0 ? (
-          <div className="p-8 text-center text-sm text-gray-400">No posts yet.</div>
+          <div className="p-8 text-center text-sm" style={{ color: "var(--text-muted)" }}>No posts yet.</div>
         ) : (
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-gray-50">
-                <th className="text-left px-6 py-3 text-xs text-gray-500 font-medium">Creator</th>
-                <th className="text-right px-6 py-3 text-xs text-gray-500 font-medium">Views</th>
-                <th className="text-right px-6 py-3 text-xs text-gray-500 font-medium">Creator Earnings</th>
-                <th className="text-right px-6 py-3 text-xs text-gray-500 font-medium">Platform Revenue</th>
+              <tr style={{ borderBottomColor: "var(--border)", borderBottomWidth: "1px" }}>
+                <th className="text-left px-6 py-3 text-xs font-medium" style={{ color: "var(--text-muted)" }}>Creator</th>
+                <th className="text-right px-6 py-3 text-xs font-medium" style={{ color: "var(--text-muted)" }}>Views</th>
+                <th className="text-right px-6 py-3 text-xs font-medium" style={{ color: "var(--text-muted)" }}>Creator Earnings</th>
+                <th className="text-right px-6 py-3 text-xs font-medium" style={{ color: "var(--text-muted)" }}>Platform Revenue</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-50">
-              {postBreakdown.map((p: PostBreakdownItem) => (
-                <tr key={p.id}>
+            <tbody style={{ borderColor: "var(--border)" }}>
+              {postBreakdown.map((p: PostBreakdownItem, idx: number) => (
+                <tr key={p.id} style={{ borderBottomWidth: idx < postBreakdown.length - 1 ? "1px" : "0", borderBottomColor: "var(--border)" }}>
                   <td className="px-6 py-3">
                     <a
                       href={p.postUrl}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="text-indigo-600 hover:underline"
+                      className="hover:underline"
+                      style={{ color: "var(--accent)" }}
                     >
                       {p.creatorName}
                     </a>
                   </td>
-                  <td className="px-6 py-3 text-right text-gray-700">
+                  <td className="px-6 py-3 text-right" style={{ color: "var(--text-secondary)" }}>
                     {p.views.toLocaleString()}
                   </td>
-                  <td className="px-6 py-3 text-right text-gray-700">
+                  <td className="px-6 py-3 text-right" style={{ color: "var(--text-secondary)" }}>
                     ${p.creatorEarnings.toFixed(2)}
                   </td>
-                  <td className="px-6 py-3 text-right text-gray-700">
+                  <td className="px-6 py-3 text-right" style={{ color: "var(--text-secondary)" }}>
                     ${p.platformRevenue.toFixed(2)}
                   </td>
                 </tr>
               ))}
             </tbody>
             <tfoot>
-              <tr className="border-t border-gray-200 bg-gray-50">
-                <td className="px-6 py-3 text-xs font-semibold text-gray-500">TOTAL</td>
-                <td className="px-6 py-3 text-right font-semibold text-gray-900">
+              <tr style={{ borderTopWidth: "1px", borderTopColor: "var(--border)", background: "var(--bg-secondary)" }}>
+                <td className="px-6 py-3 text-xs font-semibold" style={{ color: "var(--text-muted)" }}>TOTAL</td>
+                <td className="px-6 py-3 text-right font-semibold" style={{ color: "var(--text-primary)" }}>
                   {totalViews.toLocaleString()}
                 </td>
-                <td className="px-6 py-3 text-right font-semibold text-gray-900">
+                <td className="px-6 py-3 text-right font-semibold" style={{ color: "var(--text-primary)" }}>
                   ${totalCreatorEarnings.toFixed(2)}
                 </td>
-                <td className="px-6 py-3 text-right font-semibold text-gray-900">
+                <td className="px-6 py-3 text-right font-semibold" style={{ color: "var(--text-primary)" }}>
                   ${totalPlatformRevenue.toFixed(2)}
                 </td>
               </tr>

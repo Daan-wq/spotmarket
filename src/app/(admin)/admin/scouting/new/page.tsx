@@ -122,7 +122,7 @@ export default function NewScoutPage() {
 
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <label className="block text-sm font-medium mb-1" style={{ color: "#374151" }}>Followers</label>
+            <label className="block text-sm font-medium mb-1" style={{ color: "var(--text-secondary)" }}>Followers</label>
             <input
               type="number"
               placeholder="50000"
@@ -132,8 +132,8 @@ export default function NewScoutPage() {
             />
           </div>
           <div>
-            <label className="block text-sm font-medium mb-1" style={{ color: "#374151" }}>
-              Engagement rate % <span className="text-xs text-gray-400">(30% gewicht)</span>
+            <label className="block text-sm font-medium mb-1" style={{ color: "var(--text-secondary)" }}>
+              Engagement rate % <span className="text-xs" style={{ color: "var(--text-muted)" }}>(30% gewicht)</span>
             </label>
             <input
               type="number"
@@ -153,8 +153,8 @@ export default function NewScoutPage() {
 
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <label className="block text-sm font-medium mb-1" style={{ color: "#374151" }}>
-              Maandelijkse groei % <span className="text-xs text-gray-400">(25% gewicht)</span>
+            <label className="block text-sm font-medium mb-1" style={{ color: "var(--text-secondary)" }}>
+              Maandelijkse groei % <span className="text-xs" style={{ color: "var(--text-muted)" }}>(25% gewicht)</span>
             </label>
             <input
               type="number"
@@ -167,8 +167,8 @@ export default function NewScoutPage() {
             <p className="text-xs mt-1" style={{ color: "var(--text-muted)" }}>10%+/maand = high-potential</p>
           </div>
           <div>
-            <label className="block text-sm font-medium mb-1" style={{ color: "#374151" }}>
-              Posts per week <span className="text-xs text-gray-400">(15% gewicht)</span>
+            <label className="block text-sm font-medium mb-1" style={{ color: "var(--text-secondary)" }}>
+              Posts per week <span className="text-xs" style={{ color: "var(--text-muted)" }}>(15% gewicht)</span>
             </label>
             <input
               type="number"
@@ -183,8 +183,8 @@ export default function NewScoutPage() {
         </div>
 
         <div>
-          <label className="block text-sm font-medium mb-1" style={{ color: "#374151" }}>
-            Authenticiteit score 0–100 <span className="text-xs text-gray-400">(10% gewicht)</span>
+          <label className="block text-sm font-medium mb-1" style={{ color: "var(--text-secondary)" }}>
+            Authenticiteit score 0–100 <span className="text-xs" style={{ color: "var(--text-muted)" }}>(10% gewicht)</span>
           </label>
           <input
             type="number"
@@ -199,7 +199,7 @@ export default function NewScoutPage() {
         </div>
 
         <div>
-          <label className="block text-sm font-medium mb-1" style={{ color: "#374151" }}>Notities (optioneel)</label>
+          <label className="block text-sm font-medium mb-1" style={{ color: "var(--text-secondary)" }}>Notities (optioneel)</label>
           <textarea
             rows={3}
             placeholder="Eerste indruk, bijzonderheden..."
@@ -209,7 +209,7 @@ export default function NewScoutPage() {
           />
         </div>
 
-        {error && <p className="text-sm text-red-600">{error}</p>}
+        {error && <p className="text-sm" style={{ color: "var(--error)" }}>{error}</p>}
 
         <button
           type="submit"

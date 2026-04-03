@@ -37,10 +37,10 @@ export default async function AdminNetworksPage() {
         ]}
       />
 
-      <div className="bg-white rounded-lg border border-gray-200">
-        <div className="grid grid-cols-[1fr_auto_auto_auto_auto] gap-4 px-5 py-2.5 border-b border-gray-100">
+      <div className="rounded-lg border" style={{ background: "var(--bg-elevated)", borderColor: "var(--border)" }}>
+        <div className="grid grid-cols-[1fr_auto_auto_auto_auto] gap-4 px-5 py-2.5 border-b" style={{ borderBottomColor: "var(--border)" }}>
           {["Company", "Contact", "Members", "Status", ""].map((h) => (
-            <p key={h} className="text-[13px] text-gray-400">{h}</p>
+            <p key={h} className="text-[13px]" style={{ color: "var(--text-muted)" }}>{h}</p>
           ))}
         </div>
 
@@ -60,23 +60,22 @@ export default async function AdminNetworksPage() {
             {networks.map((n, i) => (
               <div
                 key={n.id}
-                className="grid grid-cols-[1fr_auto_auto_auto_auto] gap-4 items-center px-5 py-3 hover:bg-gray-50"
-                style={{ borderTop: i > 0 ? "1px solid #f8fafc" : undefined }}
+                className="grid grid-cols-[1fr_auto_auto_auto_auto] gap-4 items-center px-5 py-3"
+                style={{ borderTop: i > 0 ? "1px solid var(--border)" : undefined }}
               >
                 <div className="min-w-0">
-                  <p className="text-[14px] font-medium text-gray-900">{n.companyName}</p>
-                  <p className="text-[12px] text-gray-400">{n.user.email}</p>
+                  <p className="text-[14px] font-medium" style={{ color: "var(--text-primary)" }}>{n.companyName}</p>
+                  <p className="text-[12px]" style={{ color: "var(--text-muted)" }}>{n.user.email}</p>
                 </div>
-                <p className="text-[14px] text-gray-500 whitespace-nowrap">{n.contactName}</p>
-                <p className="text-[14px] text-gray-500 whitespace-nowrap">{n._count.members}</p>
+                <p className="text-[14px] whitespace-nowrap" style={{ color: "var(--text-secondary)" }}>{n.contactName}</p>
+                <p className="text-[14px] whitespace-nowrap" style={{ color: "var(--text-secondary)" }}>{n._count.members}</p>
                 <span
-                  className={`text-xs px-2 py-0.5 rounded-md font-medium whitespace-nowrap ${
-                    n.isApproved ? "bg-green-50 text-green-700" : "bg-amber-50 text-amber-700"
-                  }`}
+                  className="text-xs px-2 py-0.5 rounded-md font-medium whitespace-nowrap"
+                  style={n.isApproved ? { background: "var(--success-bg)", color: "var(--success-text)" } : { background: "var(--warning-bg)", color: "var(--warning-text)" }}
                 >
                   {n.isApproved ? "Approved" : "Pending"}
                 </span>
-                <Link href={`/admin/networks/${n.id}`} className="text-xs text-indigo-600 hover:underline whitespace-nowrap">
+                <Link href={`/admin/networks/${n.id}`} className="text-xs hover:underline whitespace-nowrap" style={{ color: "var(--accent)" }}>
                   View →
                 </Link>
               </div>

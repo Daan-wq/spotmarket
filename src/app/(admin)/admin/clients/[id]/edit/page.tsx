@@ -102,7 +102,7 @@ export default function EditClientPage() {
 
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <label className="block text-xs font-medium mb-1" style={{ color: "#374151" }}>Contact Name</label>
+            <label className="block text-xs font-medium mb-1" style={{ color: "var(--text-secondary)" }}>Contact Name</label>
             <input
               className={inputClass}
               style={inputStyle}
@@ -111,7 +111,7 @@ export default function EditClientPage() {
             />
           </div>
           <div>
-            <label className="block text-xs font-medium mb-1" style={{ color: "#374151" }}>Email</label>
+            <label className="block text-xs font-medium mb-1" style={{ color: "var(--text-secondary)" }}>Email</label>
             <input
               type="email"
               className={inputClass}
@@ -124,7 +124,7 @@ export default function EditClientPage() {
 
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <label className="block text-xs font-medium mb-1" style={{ color: "#374151" }}>Phone</label>
+            <label className="block text-xs font-medium mb-1" style={{ color: "var(--text-secondary)" }}>Phone</label>
             <input
               className={inputClass}
               style={inputStyle}
@@ -133,7 +133,7 @@ export default function EditClientPage() {
             />
           </div>
           <div>
-            <label className="block text-xs font-medium mb-1" style={{ color: "#374151" }}>Country</label>
+            <label className="block text-xs font-medium mb-1" style={{ color: "var(--text-secondary)" }}>Country</label>
             <input
               className={inputClass}
               style={inputStyle}
@@ -145,7 +145,7 @@ export default function EditClientPage() {
 
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <label className="block text-xs font-medium mb-1" style={{ color: "#374151" }}>Communication Channel</label>
+            <label className="block text-xs font-medium mb-1" style={{ color: "var(--text-secondary)" }}>Communication Channel</label>
             <select
               className={inputClass}
               style={inputStyle}
@@ -158,7 +158,7 @@ export default function EditClientPage() {
             </select>
           </div>
           <div>
-            <label className="block text-xs font-medium mb-1" style={{ color: "#374151" }}>Handle / Number</label>
+            <label className="block text-xs font-medium mb-1" style={{ color: "var(--text-secondary)" }}>Handle / Number</label>
             <input
               className={inputClass}
               style={inputStyle}
@@ -170,7 +170,7 @@ export default function EditClientPage() {
         </div>
 
         <div>
-          <label className="block text-xs font-medium mb-1" style={{ color: "#374151" }}>Notes</label>
+          <label className="block text-xs font-medium mb-1" style={{ color: "var(--text-secondary)" }}>Notes</label>
           <textarea
             className={inputClass}
             style={{ ...inputStyle, minHeight: 80, resize: "vertical" }}

@@ -48,10 +48,10 @@ export default async function AdminCreatorsPage() {
         ]}
       />
 
-      <div className="bg-white rounded-lg border border-gray-200">
-        <div className="grid grid-cols-[1fr_1fr_auto_auto_auto_auto_auto] gap-4 px-5 py-2.5 border-b border-gray-100">
+      <div className="rounded-lg border" style={{ background: "var(--bg-elevated)", borderColor: "var(--border)" }}>
+        <div className="grid grid-cols-[1fr_1fr_auto_auto_auto_auto_auto] gap-4 px-5 py-2.5 border-b" style={{ borderBottomColor: "var(--border)" }}>
           {["Creator", "Platform", "Followers", "Engagement", "Geo", "Campaigns", ""].map((h) => (
-            <p key={h} className="text-[13px] text-gray-400">{h}</p>
+            <p key={h} className="text-[13px]" style={{ color: "var(--text-muted)" }}>{h}</p>
           ))}
         </div>
 
@@ -76,12 +76,12 @@ export default async function AdminCreatorsPage() {
                 <Link
                   key={c.id}
                   href={`/admin/creators/${c.id}`}
-                  className="grid grid-cols-[1fr_1fr_auto_auto_auto_auto_auto] gap-4 items-center px-5 py-3 hover:bg-gray-50"
-                  style={{ borderTop: i > 0 ? "1px solid #f8fafc" : undefined }}
+                  className="grid grid-cols-[1fr_1fr_auto_auto_auto_auto_auto] gap-4 items-center px-5 py-3"
+                  style={{ borderTop: i > 0 ? "1px solid var(--border)" : undefined }}
                 >
                   <div className="min-w-0">
-                    <p className="text-[14px] font-medium text-gray-900 truncate">{c.displayName}</p>
-                    <p className="text-[12px] text-gray-400 truncate">{c.user.email}</p>
+                    <p className="text-[14px] font-medium truncate" style={{ color: "var(--text-primary)" }}>{c.displayName}</p>
+                    <p className="text-[12px] truncate" style={{ color: "var(--text-muted)" }}>{c.user.email}</p>
                   </div>
                   <p className="text-[14px] truncate" style={{ color: main ? "var(--text-primary)" : "#d97706" }}>
                     {main ? `@${main.platformUsername} (${main.platform})` : "Not connected"}
@@ -91,7 +91,7 @@ export default async function AdminCreatorsPage() {
                   <p className="text-[14px] whitespace-nowrap" style={{ color: "var(--text-secondary)" }}>{c.primaryGeo}</p>
                   <p className="text-[14px] whitespace-nowrap text-center" style={{ color: "var(--text-secondary)" }}>{c._count.applications}</p>
                   <form action={`/api/creators/${c.id}/sync`} method="POST" onClick={(e) => e.stopPropagation()}>
-                    <button type="submit" className="text-xs text-indigo-600 hover:underline whitespace-nowrap">
+                    <button type="submit" className="text-xs hover:underline whitespace-nowrap" style={{ color: "var(--accent)" }}>
                       Sync stats
                     </button>
                   </form>
