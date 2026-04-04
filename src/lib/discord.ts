@@ -9,6 +9,15 @@ interface CampaignNotification {
   advertiserBrandName?: string | null;
 }
 
+interface CampaignAnnouncement {
+  name: string;
+  totalBudget: number;
+  description?: string | null;
+  platform: string;
+  contentType?: string | null;
+  requirements?: string | null;
+}
+
 export async function notifyCampaignLive(campaign: CampaignNotification): Promise<void> {
   const webhookUrl = process.env.DISCORD_DEALS_WEBHOOK_URL;
   if (!webhookUrl) return;
@@ -41,4 +50,42 @@ export async function notifyCampaignLive(campaign: CampaignNotification): Promis
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),
   }).catch(err => console.error("[discord webhook]", err));
+}
+
+export async function postCampaignAnnouncement(campaign: CampaignAnnouncement): Promise<void> {
+  const botToken = process.env.DISCORD_BOT_TOKEN;
+  const channelId = process.env.DISCORD_CAMPAIGN_CHANNEL_ID;
+  if (!botToken || !channelId) {
+    console.warn("[discord bot] DISCORD_BOT_TOKEN or DISCORD_CAMPAIGN_CHANNEL_ID not set");
+    return;
+  }
+
+  const PLATFORM_LABELS: Record<string, string> = {
+    INSTAGRAM: "Instagram",
+    TIKTOK: "TikTok",
+    BOTH: "Instagram & TikTok",
+  };
+
+  const sep = "━━━━━━━━━━━━━━━━━━━━━━━━━";
+  const budget = new Intl.NumberFormat("de-DE").format(campaign.totalBudget);
+  const platformLabel = PLATFORM_LABELS[campaign.platform] ?? campaign.platform;
+  const regions = campaign.description ?? "-";
+  const content = campaign.contentType ?? "-";
+
+  const reqs = (campaign.requirements ?? "")
+    .split("\n")
+    .filter((r) => r.trim().length > 0)
+    .map((r) => `↳ ${r.trim()}`)
+    .join("\n");
+
+  const message = `${sep}\n      📢 **${campaign.name}**\n${sep}\n\nBUDGET       **€${budget}**\nREGION         ${regions}\nPLATFORMS   ${platformLabel}\nCONTENT       ${content}\n\nREQUIREMENTS\n${reqs}\n\n${sep}\nFull details after application.\n📩  **Send me a dm with your pages and statistics to get approved**\n${sep}`;
+
+  await fetch(`https://discord.com/api/v10/channels/${channelId}/messages`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bot ${botToken}`,
+    },
+    body: JSON.stringify({ content: message }),
+  }).catch((err) => console.error("[discord bot]", err));
 }

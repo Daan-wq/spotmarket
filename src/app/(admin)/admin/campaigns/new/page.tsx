@@ -1,16 +1,16 @@
-import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
-import { CampaignForm } from "./campaign-form";
+import { checkRole } from "@/lib/auth";
+import { CampaignCreateForm } from "./campaign-create-form";
 
 export default async function NewCampaignPage() {
-  const supabase = await createSupabaseServerClient();
-  const { data: { user: authUser } } = await supabase.auth.getUser();
-  if (!authUser) redirect("/sign-in");
+  const isAdmin = await checkRole("admin");
+  if (!isAdmin) redirect("/unauthorized");
 
   return (
-    <div className="p-8 max-w-2xl">
-      <h1 className="text-2xl font-bold mb-8" style={{ color: "var(--text-primary)" }}>Create Campaign</h1>
-      <CampaignForm />
+    <div className="p-8">
+      <h1 className="text-3xl font-bold mb-1" style={{ color: "var(--text-primary)" }}>Create Campaign</h1>
+      <p className="mb-8" style={{ color: "var(--text-secondary)" }}>Fill in the details — you can post it to Discord after saving.</p>
+      <CampaignCreateForm />
     </div>
   );
 }
