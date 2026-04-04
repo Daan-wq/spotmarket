@@ -12,7 +12,7 @@ interface CampaignNotification {
 interface CampaignAnnouncement {
   name: string;
   totalBudget: number;
-  description?: string | null;
+  otherNotes?: string | null;   // stores regions for Discord display
   platform: string;
   contentType?: string | null;
   requirements?: string | null;
@@ -69,7 +69,7 @@ export async function postCampaignAnnouncement(campaign: CampaignAnnouncement): 
   const sep = "━━━━━━━━━━━━━━━━━━━━━━━━━";
   const budget = new Intl.NumberFormat("de-DE").format(campaign.totalBudget);
   const platformLabel = PLATFORM_LABELS[campaign.platform] ?? campaign.platform;
-  const regions = campaign.description ?? "-";
+  const regions = campaign.otherNotes ?? "-";
   const content = campaign.contentType ?? "-";
 
   const reqs = (campaign.requirements ?? "")

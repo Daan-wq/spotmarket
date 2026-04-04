@@ -18,7 +18,7 @@ export async function POST(
       id: true,
       name: true,
       totalBudget: true,
-      description: true,
+      otherNotes: true,
       platform: true,
       contentType: true,
       requirements: true,
@@ -30,7 +30,7 @@ export async function POST(
   await postCampaignAnnouncement({
     name: campaign.name,
     totalBudget: Number(campaign.totalBudget),
-    description: campaign.description,
+    otherNotes: campaign.otherNotes,
     platform: campaign.platform,
     contentType: campaign.contentType,
     requirements: campaign.requirements,
