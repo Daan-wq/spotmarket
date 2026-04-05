@@ -13,8 +13,8 @@ export default async function HomePage() {
     });
     const role = user?.role;
     if (role === "admin") redirect("/admin");
-    if (role === "creator") redirect("/dashboard");
-    if (role === "network") redirect("/network/dashboard");
+    if (role === "creator") redirect("/creator/dashboard");
+    if (role === "advertiser") redirect("/advertiser/dashboard");
     redirect("/onboarding");
   }
 

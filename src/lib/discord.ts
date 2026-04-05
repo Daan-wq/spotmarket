@@ -89,3 +89,58 @@ export async function postCampaignAnnouncement(campaign: CampaignAnnouncement): 
     body: JSON.stringify({ content: message }),
   }).catch((err) => console.error("[discord bot]", err));
 }
+
+interface SubmissionReviewNotification {
+  creatorDiscordId: string | null;
+  status: "APPROVED" | "REJECTED";
+  campaignName: string;
+  earnedAmount?: number;
+  rejectionNote?: string;
+}
+
+export async function notifySubmissionReview(params: SubmissionReviewNotification): Promise<void> {
+  if (!params.creatorDiscordId) {
+    console.warn("[discord notify] Creator has no Discord linked");
+    return;
+  }
+
+  const botToken = process.env.DISCORD_BOT_TOKEN;
+  if (!botToken) {
+    console.warn("[discord notify] DISCORD_BOT_TOKEN not set");
+    return;
+  }
+
+  try {
+    // Create DM channel
+    const dmRes = await fetch("https://discord.com/api/v10/users/@me/channels", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bot ${botToken}`,
+      },
+      body: JSON.stringify({ recipient_id: params.creatorDiscordId }),
+    });
+
+    if (!dmRes.ok) {
+      console.error("[discord notify] Failed to create DM:", await dmRes.text());
+      return;
+    }
+
+    const { id: dmChannelId } = await dmRes.json();
+
+    const content = params.status === "APPROVED"
+      ? `Your submission for **${params.campaignName}** was approved! You earned **$${(params.earnedAmount ?? 0).toFixed(2)}**.`
+      : `Your submission for **${params.campaignName}** was not approved.\n\nReason: ${params.rejectionNote || "Not specified"}`;
+
+    await fetch(`https://discord.com/api/v10/channels/${dmChannelId}/messages`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bot ${botToken}`,
+      },
+      body: JSON.stringify({ content }),
+    });
+  } catch (err) {
+    console.error("[discord notify]", err);
+  }
+}

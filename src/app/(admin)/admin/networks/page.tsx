@@ -1,85 +1,254 @@
-import { prisma } from "@/lib/prisma";
 import Link from "next/link";
-import { PageHeader } from "@/components/admin/page-header";
-import { StatCards } from "@/components/admin/stat-cards";
-import { EmptyState } from "@/components/admin/empty-state";
+import { checkRole } from "@/lib/auth";
+import { prisma } from "@/lib/prisma";
+import { redirect } from "next/navigation";
 
-export default async function AdminNetworksPage() {
-  const [networks, connectedCount, onCampaigns] = await Promise.all([
-    prisma.networkProfile.findMany({
-      include: {
-        user: { select: { email: true } },
-        _count: { select: { members: true, applications: true } },
-      },
-      orderBy: { createdAt: "desc" },
-    }),
-    prisma.networkProfile.count({ where: { isApproved: true } }),
-    prisma.networkProfile.count({
-      where: { applications: { some: { status: { in: ["active", "approved"] } } } },
-    }),
-  ]);
+export default async function NetworksPage() {
+  const isAdmin = await checkRole("admin");
+  if (!isAdmin) {
+    redirect("/");
+  }
 
-  const totalMembers = networks.reduce((sum, n) => sum + n._count.members, 0);
+  // Get all users who have a referral code (potential referrers)
+  const referrers = await prisma.user.findMany({
+    where: { referralCode: { not: null } },
+    select: {
+      id: true,
+      email: true,
+      referralCode: true,
+      referralEarnings: true,
+      creatorProfile: { select: { displayName: true } },
+      _count: { select: { referralPayouts: true } },
+    },
+    orderBy: { referralEarnings: "desc" },
+  });
+
+  // Get referral counts per referrer
+  const referralCounts = await prisma.user.groupBy({
+    by: ["referredBy"],
+    where: { referredBy: { not: null } },
+    _count: { id: true },
+  });
+
+  const referralCountMap = new Map(
+    referralCounts.map((rc) => [rc.referredBy!, rc._count.id])
+  );
+
+  // Calculate summary stats
+  const totalReferrers = referrers.length;
+  const totalReferrals = referralCounts.reduce((sum, rc) => sum + rc._count.id, 0);
+  const totalRevenueShared = referrers.reduce(
+    (sum, ref) => sum + Number(ref.referralEarnings),
+    0
+  );
 
   return (
-    <div className="p-8 max-w-6xl">
-      <PageHeader
-        title="Networks"
-        subtitle="Network owners who bring their creator roster to the platform"
-        action={{ label: "+ Invite network", href: "#invite-network" }}
-      />
-      <StatCards
-        stats={[
-          { label: "Network partners", value: networks.length },
-          { label: "Total members", value: totalMembers },
-          { label: "Approved", value: connectedCount },
-          { label: "On campaigns", value: onCampaigns },
-        ]}
-      />
+    <div className="p-8">
+      <div className="mb-8">
+        <h1
+          className="text-3xl font-bold mb-1"
+          style={{ color: "var(--text-primary)" }}
+        >
+          Networks
+        </h1>
+        <p style={{ color: "var(--text-secondary)" }}>
+          Track referrers, referrals, and revenue share
+        </p>
+      </div>
 
-      <div className="rounded-lg border" style={{ background: "var(--bg-elevated)", borderColor: "var(--border)" }}>
-        <div className="grid grid-cols-[1fr_auto_auto_auto_auto] gap-4 px-5 py-2.5 border-b" style={{ borderBottomColor: "var(--border)" }}>
-          {["Company", "Contact", "Members", "Status", ""].map((h) => (
-            <p key={h} className="text-[13px]" style={{ color: "var(--text-muted)" }}>{h}</p>
-          ))}
+      {/* Summary Cards */}
+      <div className="grid grid-cols-3 gap-4 mb-8">
+        <div
+          className="p-6 rounded-xl"
+          style={{
+            background: "var(--bg-card)",
+            border: "1px solid var(--border)",
+          }}
+        >
+          <p
+            className="text-sm font-medium mb-2"
+            style={{ color: "var(--text-secondary)" }}
+          >
+            Total Referrers
+          </p>
+          <p
+            className="text-2xl font-bold"
+            style={{ color: "var(--text-primary)" }}
+          >
+            {totalReferrers}
+          </p>
         </div>
 
-        {networks.length === 0 ? (
-          <EmptyState
-            icon={
-              <svg width="20" height="20" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M7.217 10.907a2.25 2.25 0 1 0 0 2.186m0-2.186c.18.324.283.696.283 1.093s-.103.77-.283 1.093m0-2.186 9.566-5.314m-9.566 7.5 9.566 5.314m0 0a2.25 2.25 0 1 0 3.935 2.186 2.25 2.25 0 0 0-3.935-2.186Zm0-12.814a2.25 2.25 0 1 0 3.933-2.185 2.25 2.25 0 0 0-3.933 2.185Z" />
-              </svg>
-            }
-            title="No network partners yet"
-            description="Network owners like clipping agencies can partner with you to bring their entire creator network."
-            actions={[{ label: "+ Invite network", href: "#invite-network", variant: "primary" }]}
-          />
-        ) : (
-          <div>
-            {networks.map((n, i) => (
-              <div
-                key={n.id}
-                className="grid grid-cols-[1fr_auto_auto_auto_auto] gap-4 items-center px-5 py-3"
-                style={{ borderTop: i > 0 ? "1px solid var(--border)" : undefined }}
+        <div
+          className="p-6 rounded-xl"
+          style={{
+            background: "var(--bg-card)",
+            border: "1px solid var(--border)",
+          }}
+        >
+          <p
+            className="text-sm font-medium mb-2"
+            style={{ color: "var(--text-secondary)" }}
+          >
+            Total Referrals
+          </p>
+          <p
+            className="text-2xl font-bold"
+            style={{ color: "var(--text-primary)" }}
+          >
+            {totalReferrals}
+          </p>
+        </div>
+
+        <div
+          className="p-6 rounded-xl"
+          style={{
+            background: "var(--bg-card)",
+            border: "1px solid var(--border)",
+          }}
+        >
+          <p
+            className="text-sm font-medium mb-2"
+            style={{ color: "var(--text-secondary)" }}
+          >
+            Total Revenue Shared
+          </p>
+          <p
+            className="text-2xl font-bold"
+            style={{ color: "var(--text-primary)" }}
+          >
+            ${totalRevenueShared.toFixed(2)}
+          </p>
+        </div>
+      </div>
+
+      {/* Referrers Table */}
+      <div
+        className="rounded-xl overflow-hidden"
+        style={{
+          background: "var(--bg-card)",
+          border: "1px solid var(--border)",
+        }}
+      >
+        <table className="w-full">
+          <thead>
+            <tr style={{ borderBottom: "1px solid var(--border)" }}>
+              <th
+                className="px-6 py-3 text-left text-xs font-semibold"
+                style={{ color: "var(--text-secondary)" }}
               >
-                <div className="min-w-0">
-                  <p className="text-[14px] font-medium" style={{ color: "var(--text-primary)" }}>{n.companyName}</p>
-                  <p className="text-[12px]" style={{ color: "var(--text-muted)" }}>{n.user.email}</p>
-                </div>
-                <p className="text-[14px] whitespace-nowrap" style={{ color: "var(--text-secondary)" }}>{n.contactName}</p>
-                <p className="text-[14px] whitespace-nowrap" style={{ color: "var(--text-secondary)" }}>{n._count.members}</p>
-                <span
-                  className="text-xs px-2 py-0.5 rounded-md font-medium whitespace-nowrap"
-                  style={n.isApproved ? { background: "var(--success-bg)", color: "var(--success-text)" } : { background: "var(--warning-bg)", color: "var(--warning-text)" }}
+                Name
+              </th>
+              <th
+                className="px-6 py-3 text-left text-xs font-semibold"
+                style={{ color: "var(--text-secondary)" }}
+              >
+                Email
+              </th>
+              <th
+                className="px-6 py-3 text-left text-xs font-semibold"
+                style={{ color: "var(--text-secondary)" }}
+              >
+                Referral Code
+              </th>
+              <th
+                className="px-6 py-3 text-left text-xs font-semibold"
+                style={{ color: "var(--text-secondary)" }}
+              >
+                Referrals
+              </th>
+              <th
+                className="px-6 py-3 text-left text-xs font-semibold"
+                style={{ color: "var(--text-secondary)" }}
+              >
+                Total Earnings
+              </th>
+              <th
+                className="px-6 py-3 text-left text-xs font-semibold"
+                style={{ color: "var(--text-secondary)" }}
+              >
+                Payouts
+              </th>
+              <th
+                className="px-6 py-3 text-left text-xs font-semibold"
+                style={{ color: "var(--text-secondary)" }}
+              >
+                Details
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            {referrers.map((ref) => (
+              <tr
+                key={ref.id}
+                style={{ borderBottom: "1px solid var(--border)" }}
+              >
+                <td
+                  className="px-6 py-3 text-sm"
+                  style={{ color: "var(--text-primary)" }}
                 >
-                  {n.isApproved ? "Approved" : "Pending"}
-                </span>
-                <Link href={`/admin/networks/${n.id}`} className="text-xs hover:underline whitespace-nowrap" style={{ color: "var(--accent)" }}>
-                  View →
-                </Link>
-              </div>
+                  {ref.creatorProfile?.displayName ?? "-"}
+                </td>
+                <td
+                  className="px-6 py-3 text-sm"
+                  style={{ color: "var(--text-primary)" }}
+                >
+                  {ref.email}
+                </td>
+                <td className="px-6 py-3 text-sm">
+                  <code
+                    style={{
+                      color: "var(--accent, #534AB7)",
+                      fontFamily: "monospace",
+                      fontSize: "12px",
+                      fontWeight: 500,
+                    }}
+                  >
+                    {ref.referralCode}
+                  </code>
+                </td>
+                <td
+                  className="px-6 py-3 text-sm"
+                  style={{ color: "var(--text-primary)" }}
+                >
+                  {referralCountMap.get(ref.id) ?? 0}
+                </td>
+                <td
+                  className="px-6 py-3 text-sm"
+                  style={{ color: "var(--text-primary)" }}
+                >
+                  ${Number(ref.referralEarnings).toFixed(2)}
+                </td>
+                <td
+                  className="px-6 py-3 text-sm"
+                  style={{ color: "var(--text-primary)" }}
+                >
+                  {ref._count.referralPayouts}
+                </td>
+                <td className="px-6 py-3 text-sm">
+                  <Link
+                    href={`/admin/networks/${ref.id}`}
+                    style={{
+                      color: "var(--accent, #534AB7)",
+                      textDecoration: "none",
+                      fontWeight: 600,
+                      cursor: "pointer",
+                    }}
+                  >
+                    View
+                  </Link>
+                </td>
+              </tr>
             ))}
+          </tbody>
+        </table>
+
+        {referrers.length === 0 && (
+          <div
+            className="px-6 py-8 text-center"
+            style={{ color: "var(--text-secondary)" }}
+          >
+            <p>No referrers with active referral codes yet.</p>
           </div>
         )}
       </div>

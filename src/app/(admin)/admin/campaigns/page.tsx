@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { PublishButton } from "./_components/publish-button";
+import { CampaignActions } from "./_components/campaign-actions";
 
 export default async function CampaignsPage() {
   const campaigns = await prisma.campaign.findMany({
@@ -41,6 +42,7 @@ export default async function CampaignsPage() {
               <th className="px-6 py-3 text-left text-xs font-semibold" style={{ color: "var(--text-secondary)" }}>Budget</th>
               <th className="px-6 py-3 text-left text-xs font-semibold" style={{ color: "var(--text-secondary)" }}>Creators</th>
               <th className="px-6 py-3 text-left text-xs font-semibold" style={{ color: "var(--text-secondary)" }}>Discord</th>
+              <th className="px-6 py-3 text-left text-xs font-semibold" style={{ color: "var(--text-secondary)" }}>Actions</th>
             </tr>
           </thead>
           <tbody>
@@ -57,6 +59,9 @@ export default async function CampaignsPage() {
                 <td className="px-6 py-3 text-sm" style={{ color: "var(--text-primary)" }}>{c.applications.length}</td>
                 <td className="px-6 py-3 text-sm">
                   <PublishButton campaignId={c.id} />
+                </td>
+                <td className="px-6 py-3 text-sm">
+                  <CampaignActions campaignId={c.id} status={c.status} />
                 </td>
               </tr>
             ))}

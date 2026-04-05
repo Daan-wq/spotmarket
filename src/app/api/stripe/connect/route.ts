@@ -28,13 +28,12 @@ export async function POST(req: Request) {
     where: { supabaseId: authUser.id },
     include: {
       creatorProfile: true,
-      networkProfile: true,
     },
   });
   if (!dbUser) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
-  const profile = dbUser.creatorProfile ?? dbUser.networkProfile;
-  if (!profile) return NextResponse.json({ error: "No profile found" }, { status: 400 });
+  const profile = dbUser.creatorProfile;
+  if (!profile) return NextResponse.json({ error: "No creator profile found" }, { status: 400 });
 
   let stripeAccountId = profile.stripeAccountId;
 
@@ -46,23 +45,16 @@ export async function POST(req: Request) {
     });
     stripeAccountId = account.id;
 
-    if (dbUser.creatorProfile) {
-      await prisma.creatorProfile.update({
-        where: { id: dbUser.creatorProfile.id },
-        data: { stripeAccountId },
-      });
-    } else if (dbUser.networkProfile) {
-      await prisma.networkProfile.update({
-        where: { id: dbUser.networkProfile.id },
-        data: { stripeAccountId },
-      });
-    }
+    await prisma.creatorProfile.update({
+      where: { id: profile.id },
+      data: { stripeAccountId },
+    });
   }
 
   const accountLink = await stripe.accountLinks.create({
     account: stripeAccountId,
-    refresh_url: `${process.env.NEXT_PUBLIC_APP_URL}/settings?stripe=refresh`,
-    return_url: `${process.env.NEXT_PUBLIC_APP_URL}/settings?stripe=success`,
+    refresh_url: `${process.env.NEXT_PUBLIC_APP_URL}/creator/settings?stripe=refresh`,
+    return_url: `${process.env.NEXT_PUBLIC_APP_URL}/creator/settings?stripe=success`,
     type: "account_onboarding",
   });
 

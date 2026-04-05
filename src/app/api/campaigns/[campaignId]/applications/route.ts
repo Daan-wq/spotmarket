@@ -1,87 +1,113 @@
-import { createSupabaseServerClient } from "@/lib/supabase/server";
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { requireAuth } from "@/lib/auth";
 
 export async function GET(
-  _req: Request,
+  req: NextRequest,
   { params }: { params: Promise<{ campaignId: string }> }
 ) {
-  const supabase = await createSupabaseServerClient();
-  const { data: { user: authUser } } = await supabase.auth.getUser();
-  if (!authUser) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  try {
+    const { userId, role } = await requireAuth("admin", "advertiser");
+    const { campaignId } = await params;
 
-  const { campaignId } = await params;
+    const campaign = await prisma.campaign.findUnique({
+      where: { id: campaignId },
+    });
 
-  const user = await prisma.user.findUnique({
-    where: { supabaseId: authUser.id },
-    include: { creatorProfile: { select: { id: true } } },
-  });
-  if (!user) return NextResponse.json({ error: "User not found" }, { status: 404 });
+    if (!campaign) {
+      return NextResponse.json({ error: "Campaign not found" }, { status: 404 });
+    }
 
-  const campaign = await prisma.campaign.findUnique({ where: { id: campaignId } });
-  if (!campaign) return NextResponse.json({ error: "Campaign not found" }, { status: 404 });
+    if (role === "advertiser") {
+      const user = await prisma.user.findUnique({
+        where: { supabaseId: userId },
+        include: { advertiserProfile: true },
+      });
+      if (campaign.advertiserId !== user?.advertiserProfile?.id) {
+        return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
+      }
+    }
 
-  const isAdmin = user.role === "admin";
-
-  let where: object = { campaignId };
-  if (!isAdmin) {
-    if (!user.creatorProfile) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-    where = { campaignId, creatorProfileId: user.creatorProfile.id };
-  }
-
-  const applications = await prisma.campaignApplication.findMany({
-    where,
-    include: {
-      creatorProfile: {
-        include: {
-          socialAccounts: {
-            select: { platform: true, platformUsername: true, followerCount: true, engagementRate: true, audienceGeo: true, lastSyncedAt: true },
-          },
-        },
+    const applications = await prisma.campaignApplication.findMany({
+      where: { campaignId },
+      include: {
+        creatorProfile: { select: { displayName: true, totalFollowers: true, igConnection: { select: { igUsername: true, isVerified: true } } } },
       },
-    },
-    orderBy: { appliedAt: "desc" },
-  });
+      orderBy: { appliedAt: "desc" },
+    });
 
-  return NextResponse.json(applications);
+    return NextResponse.json({ applications });
+  } catch (err: any) {
+    console.error("[campaigns applications GET]", err);
+    return NextResponse.json({ error: err.message }, { status: 500 });
+  }
 }
 
 export async function POST(
-  _req: Request,
+  req: NextRequest,
   { params }: { params: Promise<{ campaignId: string }> }
 ) {
-  const supabase = await createSupabaseServerClient();
-  const { data: { user: authUser } } = await supabase.auth.getUser();
-  if (!authUser) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  try {
+    const { userId } = await requireAuth("creator");
+    const { campaignId } = await params;
 
-  const { campaignId } = await params;
+    const campaign = await prisma.campaign.findUnique({
+      where: { id: campaignId },
+    });
 
-  const user = await prisma.user.findUnique({
-    where: { supabaseId: authUser.id },
-    include: { creatorProfile: { include: { socialAccounts: { where: { isActive: true } } } } },
-  });
+    if (!campaign) {
+      return NextResponse.json({ error: "Campaign not found" }, { status: 404 });
+    }
 
-  if (!user || user.role !== "creator") return NextResponse.json({ error: "Only creators can apply" }, { status: 403 });
-  if (!user.creatorProfile) return NextResponse.json({ error: "Creator profile required" }, { status: 400 });
+    const user = await prisma.user.findUnique({
+      where: { supabaseId: userId },
+      include: { creatorProfile: { include: { igConnection: true } } },
+    });
 
-  const campaign = await prisma.campaign.findUnique({ where: { id: campaignId } });
-  if (!campaign || campaign.status !== "active") return NextResponse.json({ error: "Campaign is not accepting applications" }, { status: 400 });
-  if (new Date() > campaign.deadline) return NextResponse.json({ error: "Campaign deadline has passed" }, { status: 400 });
+    if (!user?.creatorProfile) {
+      return NextResponse.json({ error: "Creator profile not found" }, { status: 404 });
+    }
 
-  const existing = await prisma.campaignApplication.findFirst({
-    where: { campaignId, creatorProfileId: user.creatorProfile.id },
-  });
-  if (existing) return NextResponse.json({ error: "Already applied to this campaign" }, { status: 409 });
+    if (!user.creatorProfile.igConnection?.isVerified) {
+      return NextResponse.json({ error: "Creator bio must be verified first" }, { status: 400 });
+    }
 
-  const application = await prisma.campaignApplication.create({
-    data: {
-      campaignId,
-      creatorProfileId: user.creatorProfile.id,
-      status: "pending",
-      followerSnapshot: user.creatorProfile.totalFollowers,
-      engagementSnapshot: user.creatorProfile.engagementRate,
-    },
-  });
+    const existing = await prisma.campaignApplication.findFirst({
+      where: {
+        campaignId,
+        creatorProfileId: user.creatorProfile.id,
+      },
+    });
 
-  return NextResponse.json(application, { status: 201 });
+    if (existing) {
+      return NextResponse.json({ error: "Already applied" }, { status: 409 });
+    }
+
+    const application = await prisma.campaignApplication.create({
+      data: {
+        campaignId,
+        creatorProfileId: user.creatorProfile.id,
+        followerSnapshot: user.creatorProfile.totalFollowers,
+        engagementSnapshot: user.creatorProfile.engagementRate,
+        status: "pending",
+      },
+      include: { creatorProfile: true },
+    });
+
+    await prisma.notification.create({
+      data: {
+        userId: campaign.createdByUserId || user.id,
+        type: "APPLICATION_APPROVED",
+        data: {
+          campaignId: campaign.id,
+          creatorName: user.creatorProfile.displayName,
+        },
+      },
+    });
+
+    return NextResponse.json({ application }, { status: 201 });
+  } catch (err: any) {
+    console.error("[campaigns applications POST]", err);
+    return NextResponse.json({ error: err.message }, { status: 500 });
+  }
 }

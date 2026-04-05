@@ -13,7 +13,11 @@ export default async function OnboardingPage() {
   if (user.user_metadata?.role === "admin") redirect("/admin");
 
   const dbUser = await prisma.user.findUnique({ where: { supabaseId: user.id } });
-  if (dbUser) redirect("/dashboard");
+  if (dbUser) {
+    if (dbUser.role === "admin") redirect("/admin");
+    if (dbUser.role === "advertiser") redirect("/advertiser/dashboard");
+    redirect("/creator/dashboard");
+  }
 
   return (
     <div className="min-h-screen flex">

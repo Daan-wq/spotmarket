@@ -23,11 +23,12 @@ export function SignInForm() {
   const redirectUrl = searchParams.get("redirect_url") ?? "/";
 
   const passwordReset = searchParams.get("reset") === "1";
+  const authError = searchParams.get("auth_error");
   const [mode, setMode] = useState<"signin" | "forgot">("signin");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(authError ?? null);
   const [success, setSuccess] = useState<string | null>(passwordReset ? "Password updated. Sign in with your new password." : null);
   const [loading, setLoading] = useState(false);
 
@@ -56,7 +57,7 @@ export function SignInForm() {
 
     const supabase = createSupabaseBrowserClient();
     const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: `${window.location.origin}/auth/callback?next=/reset-password`,
+      redirectTo: `${window.location.origin}/reset-password`,
     });
 
     setLoading(false);

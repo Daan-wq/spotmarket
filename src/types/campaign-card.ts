@@ -1,3 +1,9 @@
+export interface CampaignTopEarner {
+  displayName: string;
+  avatarUrl: string | null;
+  totalEarned: number;
+}
+
 export interface CampaignCardData {
   id: string;
   name: string;
@@ -16,4 +22,7 @@ export interface CampaignCardData {
   currentViews: number;
   remainingBudget: number;
   launchedBy: { id: string; name: string; avatarUrl: string | null } | null;
+  topEarners?: CampaignTopEarner[];
+  totalEarnersCount?: number;
+  totalPaidOut?: number;
 }

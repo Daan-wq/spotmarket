@@ -1,36 +1,79 @@
 "use client";
 
 import { useState } from "react";
-import { createSupabaseBrowserClient } from "@/lib/supabase/client";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import { Logo } from "@/components/shared/logo";
 import Link from "next/link";
 
 export function SignUpForm() {
-  const router = useRouter();
   const searchParams = useSearchParams();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [emailSent, setEmailSent] = useState(false);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
+
+    if (password !== confirmPassword) {
+      setError("Passwords do not match.");
+      return;
+    }
+
     setLoading(true);
 
-    const supabase = createSupabaseBrowserClient();
-    const { error } = await supabase.auth.signUp({ email, password });
+    const ref = searchParams.get("ref");
 
-    if (error) {
-      setError(error.message);
+    const res = await fetch("/api/auth/signup", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email, password, ref: ref || undefined }),
+    });
+
+    const data = await res.json();
+
+    if (!res.ok) {
+      setError(data.error || "Something went wrong.");
       setLoading(false);
       return;
     }
 
-    const ref = searchParams.get("ref");
-    router.push(ref ? `/onboarding?ref=${ref}` : "/onboarding");
-    router.refresh();
+    setEmailSent(true);
+  }
+
+  if (emailSent) {
+    return (
+      <div className="min-h-screen flex items-center justify-center px-4" style={{ background: "#0a0a0a" }}>
+        <div className="w-full max-w-sm">
+          <div className="text-center mb-8">
+            <Link href="/" className="inline-block">
+              <Logo variant="dark" size="sm" />
+            </Link>
+          </div>
+          <div className="rounded-xl p-8 text-center" style={{ background: "#111111", border: "1px solid rgba(255,255,255,0.07)" }}>
+            <div className="w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-4" style={{ background: "var(--accent-bg)" }}>
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <rect x="2" y="4" width="20" height="16" rx="2" />
+                <path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7" />
+              </svg>
+            </div>
+            <h1 className="text-xl font-semibold mb-2 text-white">Check your email</h1>
+            <p className="text-sm mb-6" style={{ color: "var(--text-secondary)" }}>
+              We sent a verification link to <span className="text-white font-medium">{email}</span>. Click it to activate your account and get started.
+            </p>
+            <p className="text-xs" style={{ color: "var(--text-secondary)" }}>
+              Already verified?{" "}
+              <Link href="/sign-in" className="hover:underline" style={{ color: "var(--accent)" }}>
+                Sign in
+              </Link>
+            </p>
+          </div>
+        </div>
+      </div>
+    );
   }
 
   return (
@@ -72,6 +115,20 @@ export function SignUpForm() {
                 type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
+                required
+                minLength={6}
+                className="w-full px-3 py-2.5 rounded-lg text-sm outline-none transition-all text-white"
+                style={{ border: "1px solid rgba(255,255,255,0.1)", background: "rgba(255,255,255,0.05)" }}
+                onFocus={(e) => { e.currentTarget.style.borderColor = "var(--accent)"; e.currentTarget.style.boxShadow = "0 0 0 3px var(--accent-bg)"; }}
+                onBlur={(e) => { e.currentTarget.style.borderColor = "rgba(255,255,255,0.1)"; e.currentTarget.style.boxShadow = "none"; }}
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium mb-1.5" style={{ color: "var(--text-secondary)" }}>Confirm password</label>
+              <input
+                type="password"
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
                 required
                 minLength={6}
                 className="w-full px-3 py-2.5 rounded-lg text-sm outline-none transition-all text-white"

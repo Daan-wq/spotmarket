@@ -1,105 +1,38 @@
 import { prisma } from "@/lib/prisma";
-import Link from "next/link";
-import { PageHeader } from "@/components/admin/page-header";
-import { StatCards } from "@/components/admin/stat-cards";
-import { EmptyState } from "@/components/admin/empty-state";
 
-export default async function AdminCreatorsPage() {
-  const [creators, connectedCount, onCampaigns] = await Promise.all([
-    prisma.creatorProfile.findMany({
-      include: {
-        user: { select: { email: true } },
-        socialAccounts: {
-          where: { isActive: true },
-          select: { platform: true, platformUsername: true, followerCount: true, engagementRate: true },
-        },
-        _count: { select: { applications: true } },
-      },
-      orderBy: { totalFollowers: "desc" },
-    }),
-    prisma.creatorProfile.count({
-      where: { socialAccounts: { some: { isActive: true } } },
-    }),
-    prisma.creatorProfile.count({
-      where: { applications: { some: { status: { in: ["active", "approved"] } } } },
-    }),
-  ]);
-
-  const avgFollowers =
-    creators.length > 0
-      ? Math.round(creators.reduce((sum, c) => sum + c.totalFollowers, 0) / creators.length)
-      : 0;
+export default async function CreatorsPage() {
+  const creators = await prisma.creatorProfile.findMany({
+    include: { igConnection: { select: { isVerified: true, igUsername: true } }, applications: { where: { campaign: { status: "active" } } } },
+    orderBy: { totalFollowers: "desc" },
+  });
 
   return (
-    <div className="p-8 max-w-6xl">
-      <PageHeader
-        title="Creators"
-        subtitle="Individual creators who have signed up to the platform"
-      />
-      <StatCards
-        stats={[
-          { label: "Total creators", value: creators.length },
-          { label: "Connected (OAuth)", value: connectedCount },
-          { label: "On campaigns", value: onCampaigns },
-          {
-            label: "Avg. followers",
-            value: avgFollowers >= 1000 ? `${(avgFollowers / 1000).toFixed(0)}K` : avgFollowers,
-          },
-        ]}
-      />
-
-      <div className="rounded-lg border" style={{ background: "var(--bg-elevated)", borderColor: "var(--border)" }}>
-        <div className="grid grid-cols-[1fr_1fr_auto_auto_auto_auto_auto] gap-4 px-5 py-2.5 border-b" style={{ borderBottomColor: "var(--border)" }}>
-          {["Creator", "Platform", "Followers", "Engagement", "Geo", "Campaigns", ""].map((h) => (
-            <p key={h} className="text-[13px]" style={{ color: "var(--text-muted)" }}>{h}</p>
-          ))}
-        </div>
-
-        {creators.length === 0 ? (
-          <EmptyState
-            icon={
-              <svg width="20" height="20" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M15 19.128a9.38 9.38 0 0 0 2.625.372 9.337 9.337 0 0 0 4.121-.952 4.125 4.125 0 0 0-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 0 1 8.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0 1 11.964-3.07M12 6.375a3.375 3.375 0 1 1-6.75 0 3.375 3.375 0 0 1 6.75 0Zm8.25 2.25a2.625 2.625 0 1 1-5.25 0 2.625 2.625 0 0 1 5.25 0Z" />
-              </svg>
-            }
-            title="No creators signed up yet"
-            description="Creators will appear here when they sign up and connect their Instagram accounts."
-            actions={[{ label: "Copy signup link", href: "#copy-signup", variant: "outline" }]}
-          />
-        ) : (
-          <div>
-            {creators.map((c, i) => {
-              const ig = c.socialAccounts.find((a) => a.platform === "instagram");
-              const tt = c.socialAccounts.find((a) => a.platform === "tiktok");
-              const main = ig ?? tt;
-              return (
-                <Link
-                  key={c.id}
-                  href={`/admin/creators/${c.id}`}
-                  className="grid grid-cols-[1fr_1fr_auto_auto_auto_auto_auto] gap-4 items-center px-5 py-3"
-                  style={{ borderTop: i > 0 ? "1px solid var(--border)" : undefined }}
-                >
-                  <div className="min-w-0">
-                    <p className="text-[14px] font-medium truncate" style={{ color: "var(--text-primary)" }}>{c.displayName}</p>
-                    <p className="text-[12px] truncate" style={{ color: "var(--text-muted)" }}>{c.user.email}</p>
-                  </div>
-                  <p className="text-[14px] truncate" style={{ color: main ? "var(--text-primary)" : "var(--warning)" }}>
-                    {main ? `@${main.platformUsername} (${main.platform})` : "Not connected"}
-                  </p>
-                  <p className="text-[14px] whitespace-nowrap" style={{ color: "var(--text-primary)" }}>{c.totalFollowers.toLocaleString()}</p>
-                  <p className="text-[14px] whitespace-nowrap" style={{ color: "var(--text-primary)" }}>{c.engagementRate.toString()}%</p>
-                  <p className="text-[14px] whitespace-nowrap" style={{ color: "var(--text-secondary)" }}>{c.primaryGeo}</p>
-                  <p className="text-[14px] whitespace-nowrap text-center" style={{ color: "var(--text-secondary)" }}>{c._count.applications}</p>
-                  <form action={`/api/creators/${c.id}/sync`} method="POST" onClick={(e) => e.stopPropagation()}>
-                    <button type="submit" className="text-xs hover:underline whitespace-nowrap" style={{ color: "var(--accent)" }}>
-                      Sync stats
-                    </button>
-                  </form>
-                </Link>
-              );
-            })}
-          </div>
-        )}
+    <div className="p-8">
+      <h1 className="text-3xl font-bold mb-1" style={{ color: "var(--text-primary)" }}>Creators</h1>
+      <p className="mb-6" style={{ color: "var(--text-secondary)" }}>Manage creator accounts</p>
+      <div className="rounded-xl overflow-hidden" style={{ background: "var(--bg-card)", border: "1px solid var(--border)" }}>
+        <table className="w-full">
+          <thead>
+            <tr style={{ borderBottom: "1px solid var(--border)" }}>
+              <th className="px-6 py-3 text-left text-xs font-semibold" style={{ color: "var(--text-secondary)" }}>Name</th>
+              <th className="px-6 py-3 text-left text-xs font-semibold" style={{ color: "var(--text-secondary)" }}>IG Username</th>
+              <th className="px-6 py-3 text-left text-xs font-semibold" style={{ color: "var(--text-secondary)" }}>Verified</th>
+              <th className="px-6 py-3 text-left text-xs font-semibold" style={{ color: "var(--text-secondary)" }}>Followers</th>
+              <th className="px-6 py-3 text-left text-xs font-semibold" style={{ color: "var(--text-secondary)" }}>Active Campaigns</th>
+            </tr>
+          </thead>
+          <tbody>
+            {creators.map((c) => (
+              <tr key={c.id} style={{ borderBottom: "1px solid var(--border)" }}>
+                <td className="px-6 py-3 text-sm" style={{ color: "var(--text-primary)" }}>{c.displayName}</td>
+                <td className="px-6 py-3 text-sm" style={{ color: "var(--text-primary)" }}>{c.igConnection?.igUsername || "-"}</td>
+                <td className="px-6 py-3 text-sm"><span className="px-2 py-1 rounded text-xs" style={{ background: c.isVerified ? "var(--success-bg)" : "var(--warning-bg)", color: c.isVerified ? "var(--success-text)" : "var(--warning-text)" }}>{c.isVerified ? "Yes" : "No"}</span></td>
+                <td className="px-6 py-3 text-sm" style={{ color: "var(--text-primary)" }}>{c.totalFollowers.toLocaleString()}</td>
+                <td className="px-6 py-3 text-sm" style={{ color: "var(--text-primary)" }}>{c.applications.length}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
       </div>
     </div>
   );

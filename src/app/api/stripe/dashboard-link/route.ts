@@ -14,10 +14,10 @@ export async function GET() {
 
   const dbUser = await prisma.user.findUnique({
     where: { supabaseId: authUser.id },
-    include: { creatorProfile: true, networkProfile: true },
+    include: { creatorProfile: true },
   });
 
-  const profile = dbUser?.creatorProfile ?? dbUser?.networkProfile;
+  const profile = dbUser?.creatorProfile;
   if (!profile?.stripeAccountId) {
     return NextResponse.json({ error: "No Stripe account connected" }, { status: 400 });
   }

@@ -41,7 +41,7 @@ export async function GET(
   const { campaignId } = await params;
   const campaign = await prisma.campaign.findUnique({
     where: { id: campaignId },
-    include: { _count: { select: { applications: true } }, report: true },
+    include: { _count: { select: { applications: true } } },
   });
   if (!campaign) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
@@ -53,7 +53,7 @@ export async function GET(
   const isPrivileged = user?.role === "admin" || campaign.createdByUserId === user?.id;
 
   if (!isPrivileged) {
-    const { businessCpv, totalBudget, depositTxHash, report, ...publicFields } = campaign;
+    const { businessCpv, totalBudget, ...publicFields } = campaign;
     return NextResponse.json(serialize(publicFields));
   }
 

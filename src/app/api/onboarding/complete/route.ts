@@ -5,7 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { nanoid } from "nanoid";
 
 const TRON_REGEX = /^T[1-9A-HJ-NP-Z]{33}$/;
-const VALID_ROLES = ["creator", "network", "advertiser"] as const;
+const VALID_ROLES = ["creator", "advertiser"] as const;
 
 function generateReferralCode(): string {
   return nanoid(8).toUpperCase();
@@ -24,6 +24,7 @@ async function uniqueReferralCode(): Promise<string> {
 }
 
 export async function POST(req: Request) {
+  try {
   const supabase = await createSupabaseServerClient();
   const { data: { user: authUser } } = await supabase.auth.getUser();
   if (!authUser) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -33,11 +34,11 @@ export async function POST(req: Request) {
   const refCode = (body.referralCode as string | undefined)?.trim().toUpperCase();
   const tronsAddress = (body.tronsAddress as string | undefined)?.trim();
   const role = body.role as string | undefined;
-  const niches = (body.niches as string[] | undefined) ?? [];
+  const attributionSource = (body.attributionSource as string | undefined)?.trim();
+  const experienceLevel = (body.experienceLevel as string | undefined)?.trim();
+  const portfolioVideoUrl = (body.portfolioVideoUrl as string | undefined)?.trim();
   const brandName = (body.brandName as string | undefined)?.trim();
   const website = (body.website as string | undefined)?.trim();
-  const companyName = (body.companyName as string | undefined)?.trim();
-  const contactName = (body.contactName as string | undefined)?.trim();
 
   if (!displayName) {
     return NextResponse.json({ error: "Display name is required" }, { status: 400 });
@@ -60,6 +61,12 @@ export async function POST(req: Request) {
 
   const referralCode = await uniqueReferralCode();
 
+  // Handle re-signup: if a User record exists for this email with a stale supabaseId, update it
+  const existingByEmail = await prisma.user.findUnique({ where: { email: authUser.email ?? "" } });
+  if (existingByEmail && existingByEmail.supabaseId !== authUser.id) {
+    await prisma.user.update({ where: { id: existingByEmail.id }, data: { supabaseId: authUser.id } });
+  }
+
   const admin = createSupabaseAdminClient();
   await admin.auth.admin.updateUserById(authUser.id, {
     user_metadata: { role: selectedRole },
@@ -75,23 +82,31 @@ export async function POST(req: Request) {
       referralCode,
       referredBy: referredById,
     },
-    include: { creatorProfile: true, advertiserProfile: true, networkProfile: true },
+    include: { creatorProfile: true, advertiserProfile: true },
   });
 
   // Create role-specific profiles
-  if (selectedRole === "creator" || selectedRole === "network") {
+  if (selectedRole === "creator") {
     if (!user.creatorProfile) {
       await prisma.creatorProfile.create({
         data: {
           userId: user.id,
           displayName,
           tronsAddress: tronsAddress ?? null,
+          attributionSource: attributionSource ?? null,
+          experienceLevel: experienceLevel ?? null,
+          portfolioVideoUrl: portfolioVideoUrl ?? null,
         },
       });
-    } else if (tronsAddress) {
+    } else {
       await prisma.creatorProfile.update({
         where: { userId: user.id },
-        data: { tronsAddress },
+        data: {
+          ...(tronsAddress ? { tronsAddress } : {}),
+          ...(attributionSource ? { attributionSource } : {}),
+          ...(experienceLevel ? { experienceLevel } : {}),
+          ...(portfolioVideoUrl ? { portfolioVideoUrl } : {}),
+        },
       });
     }
   }
@@ -106,22 +121,15 @@ export async function POST(req: Request) {
     });
   }
 
-  if (selectedRole === "network" && !user.networkProfile) {
-    await prisma.networkProfile.create({
-      data: {
-        userId: user.id,
-        companyName: companyName || displayName,
-        contactName: contactName || displayName,
-        website: website || null,
-        inviteCode: nanoid(8).toUpperCase(),
-      },
-    });
-  }
-
   // Determine redirect
-  let redirect = "/dashboard";
-  if (selectedRole === "advertiser") redirect = "/advertiser/dashboard";
-  if (selectedRole === "network") redirect = "/network/dashboard";
+  const redirect = selectedRole === "advertiser"
+    ? "/advertiser/dashboard"
+    : "/creator/dashboard";
 
   return NextResponse.json({ success: true, redirect });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    console.error("[onboarding/complete]", message);
+    return NextResponse.json({ error: message }, { status: 500 });
+  }
 }

@@ -20,33 +20,19 @@ model User {
   referralEarnings     Decimal  @default(0) @db.Decimal(10, 2)
   notifyCampaignAlerts Boolean  @default(true)
   notifyPayoutAlerts   Boolean  @default(true)
+  profilePublic        Boolean  @default(true)
+  discordId            String?  @unique
+  discordUsername       String?
   createdAt            DateTime @default(now())
   updatedAt            DateTime @updatedAt
 
-  profilePublic Boolean @default(true)
-
   creatorProfile      CreatorProfile?
-  networkProfile      NetworkProfile?
   advertiserProfile   AdvertiserProfile?
-  sentMessages        Message[]            @relation("SentMessages")
-  receivedMessages    Message[]            @relation("ReceivedMessages")
-  postComments        PostComment[]        @relation("PostComments")
-  videoUploads        VideoUpload[]        @relation("VideoUploads")
   auditLogs           AuditLog[]
   referralPayouts     ReferralPayout[]     @relation("ReferrerPayouts")
   ownedCampaigns      Campaign[]           @relation("OwnedCampaigns")
-  reviews             Review[]             @relation("ReviewsReceived")
-  givenReviews        Review[]             @relation("ReviewsGiven")
-  followers           Follow[]             @relation("Followers")
-  following           Follow[]             @relation("Following")
   notifications       Notification[]
-  scheduledPosts      ScheduledPost[]
   campaignSubmissions CampaignSubmission[]
-  postSchedules       PostSchedule[]
-  deviceTokens        DeviceToken[]
-  collections         Collection[]
-  contentBuffers      ContentBuffer[]
-  captionPresets      CaptionPreset[]
 
   @@index([supabaseId])
   @@index([role])
@@ -56,9 +42,7 @@ model User {
 enum UserRole {
   admin
   creator
-  network
   advertiser
-  user
 }
 
 model CreatorProfile {
@@ -75,19 +59,21 @@ model CreatorProfile {
   totalFollowers     Int      @default(0)
   engagementRate     Decimal  @default(0) @db.Decimal(5, 2)
   isVerified         Boolean  @default(false)
-  // Computed from best connected social account — used for campaign matching queries
   topCountry         String?
   topCountryPercent  Float?
   malePercent        Float?
   age18PlusPercent   Float?
   bestEngagementRate Float?
+  attributionSource  String?
+  experienceLevel    String?
+  portfolioVideoUrl  String?
+  hasTalkingVideos   Boolean  @default(false)
   createdAt          DateTime @default(now())
   updatedAt          DateTime @updatedAt
 
-  socialAccounts SocialAccount[]
-  applications   CampaignApplication[]
-  payouts        Payout[]
-  networkMember  NetworkMember?
+  igConnection CreatorIgConnection?
+  applications CampaignApplication[]
+  payouts      Payout[]
 
   @@index([primaryGeo])
   @@index([engagementRate])
@@ -95,68 +81,6 @@ model CreatorProfile {
   @@index([topCountry])
   @@index([malePercent])
   @@index([age18PlusPercent])
-}
-
-model NetworkProfile {
-  id              String   @id @default(cuid())
-  userId          String   @unique
-  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  companyName     String
-  contactName     String
-  website         String?
-  description     String?
-  networkSize     Int?
-  inviteCode      String   @unique
-  walletAddress   String?
-  stripeAccountId String?
-  isApproved      Boolean  @default(false)
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
-
-  members      NetworkMember[]
-  applications CampaignApplication[]
-  payouts      Payout[]
-
-  @@index([inviteCode])
-  @@index([isApproved])
-}
-
-model NetworkMember {
-  id               String          @id @default(cuid())
-  networkId        String
-  network          NetworkProfile  @relation(fields: [networkId], references: [id], onDelete: Cascade)
-  displayName      String?
-  email            String?
-  igUserId         String?         @unique
-  igUsername       String?
-  igAccessToken    String?
-  igAccessTokenIv  String?
-  igTokenExpiry    DateTime?
-  igFollowerCount  Int?
-  igIsConnected    Boolean         @default(false)
-  creatorProfileId String?         @unique
-  creatorProfile   CreatorProfile? @relation(fields: [creatorProfileId], references: [id])
-  isActive         Boolean         @default(true)
-  joinedAt         DateTime        @default(now())
-
-  posts       CampaignPost[]
-  assignments NetworkMemberAssignment[]
-
-  @@index([networkId])
-  @@index([igUserId])
-}
-
-model NetworkMemberAssignment {
-  id            String              @id @default(cuid())
-  applicationId String
-  application   CampaignApplication @relation(fields: [applicationId], references: [id], onDelete: Cascade)
-  memberId      String
-  member        NetworkMember       @relation(fields: [memberId], references: [id], onDelete: Cascade)
-  assignedAt    DateTime            @default(now())
-
-  @@unique([applicationId, memberId])
-  @@index([applicationId])
-  @@index([memberId])
 }
 
 model AdvertiserProfile {
@@ -190,82 +114,50 @@ model ReferralPayout {
 }
 
 // ─────────────────────────────────────────
-// SOCIAL ACCOUNTS
+// INSTAGRAM CONNECTION (Code-in-Bio)
 // ─────────────────────────────────────────
 
-model SocialAccount {
+model CreatorIgConnection {
   id               String         @id @default(cuid())
-  creatorProfileId String
+  creatorProfileId String         @unique
   creatorProfile   CreatorProfile @relation(fields: [creatorProfileId], references: [id], onDelete: Cascade)
-  platform         SocialPlatform
-  platformUserId   String
-  platformUsername String
-  accessToken      String
-  accessTokenIv    String
-  tokenExpiresAt   DateTime
-  followerCount    Int            @default(0)
-  engagementRate   Decimal        @default(0) @db.Decimal(5, 2)
-  audienceGeo      Json?
-  lastSyncedAt     DateTime?
-  isActive         Boolean        @default(true)
+  igUsername       String         @unique
+  verificationCode String         @unique
+  isVerified       Boolean        @default(false)
+  verifiedAt       DateTime?
+  lastCheckedAt    DateTime?
+  followerCount    Int?
   createdAt        DateTime       @default(now())
   updatedAt        DateTime       @updatedAt
 
-  // Expanded Instagram profile fields
-  igName          String?
-  igBio           String?
-  igProfilePicUrl String?
-  igFollowsCount  Int?
-  igWebsite       String?
+  bioVerifications BioVerification[]
 
-  // igDemographics structure:
-  // {
-  //   countries: { "US": 174, "NL": 12, "DE": 8 },
-  //   genders: { "male": 131, "female": 72, "unknown": 15 },
-  //   ages: { "13-17": 22, "18-24": 65, "25-34": 78, "35-44": 33, "45-54": 12, "55-64": 5, "65+": 3 },
-  //   cities: { "New York": 45, "Los Angeles": 32 }
-  // }
-  igDemographics Json?
-
-  // igMediaCache structure:
-  // [{ id, caption, media_type, media_product_type, permalink, timestamp, like_count, comments_count, thumbnail_url }]
-  igMediaCache Json?
-
-  // 30-day account insights
-  ig30DayReach        Int?
-  ig30DayViews        Int?
-  ig30DayEngaged      Int?
-  ig30DayInteractions Int?
-
-  // Refresh tracking
-  igDemographicsUpdatedAt DateTime?
-  igInsightsUpdatedAt     DateTime?
-
-  niche              Niche?
-  displayLabel       String?
-  activeCampaigns    Int     @default(0)
-  completedCampaigns Int     @default(0)
-  totalEarnings      Int     @default(0)
-
-  posts                    CampaignPost[]
-  campaignApplicationPages CampaignApplicationPage[]
-  insightSnapshots         AccountInsightSnapshot[]
-  mediaInsightSnapshots    MediaInsightSnapshot[]
-  demographicSnapshots     DemographicSnapshot[]
-  postSchedules            PostSchedule[]
-  bioVerifications         BioVerification[]
-
-  @@unique([platformUserId])
-  @@index([platform])
-  @@index([tokenExpiresAt])
-  @@index([creatorProfileId])
-  @@index([isActive])
-  @@index([niche])
+  @@index([igUsername])
+  @@index([isVerified])
 }
 
-enum SocialPlatform {
-  instagram
-  tiktok
+// ─────────────────────────────────────────
+// BIO VERIFICATION
+// ─────────────────────────────────────────
+
+model BioVerification {
+  id            String              @id @default(cuid())
+  connectionId  String
+  connection    CreatorIgConnection @relation(fields: [connectionId], references: [id], onDelete: Cascade)
+  code          String              @unique
+  status        VerificationStatus  @default(PENDING)
+  lastCheckedAt DateTime?
+  verifiedAt    DateTime?
+  createdAt     DateTime            @default(now())
+
+  @@index([connectionId])
+  @@index([status])
+}
+
+enum VerificationStatus {
+  PENDING
+  VERIFIED
+  FAILED
 }
 
 // ─────────────────────────────────────────
@@ -280,68 +172,6 @@ enum Niche {
   HUMOR
   LIFESTYLE
   CASINO
-}
-
-// ─────────────────────────────────────────
-// SCOUTING
-// ─────────────────────────────────────────
-
-enum ScoutStatus {
-  IDENTIFIED
-  CONTACTED
-  DISCOVERY_CALL
-  PROPOSAL_SENT
-  SIGNED
-  REJECTED
-}
-
-// ─────────────────────────────────────────
-// PAGE OWNERSHIP
-// ─────────────────────────────────────────
-
-enum ContractStatus {
-  NONE
-  SENT
-  SIGNED
-  EXPIRED
-}
-
-enum PageTier {
-  A
-  B
-  C
-}
-
-// ─────────────────────────────────────────
-// BRAND DEALS
-// ─────────────────────────────────────────
-
-enum DealType {
-  FLAT_FEE
-  CPM
-  AFFILIATE
-  HYBRID
-}
-
-enum DealStatus {
-  IDENTIFIED
-  PITCHED
-  NEGOTIATING
-  SIGNED
-  LIVE
-  COMPLETED
-  REJECTED
-}
-
-// ─────────────────────────────────────────
-// MULTI-TENANT
-// ─────────────────────────────────────────
-
-enum OrgPlan {
-  FREE
-  STARTER
-  PROFESSIONAL
-  ENTERPRISE
 }
 
 // ─────────────────────────────────────────
@@ -368,7 +198,7 @@ model Campaign {
   status            CampaignStatus @default(draft)
   briefAssetUrl     String?
 
-  // Block 2: Instant claim
+  // Instant claim
   maxSlots         Int?
   claimedSlots     Int     @default(0)
   requiresApproval Boolean @default(false)
@@ -390,30 +220,20 @@ model Campaign {
   advertiser      AdvertiserProfile? @relation(fields: [advertiserId], references: [id])
   stripePaymentId String?
 
-  // Open campaign launch fields
-  bannerVideoUrl    String? // overlay video for creators to edit into their content
-  linkInBioRequired String? // URL creators must put in bio
-  bioRequirement    String? // text creators must include in bio
+  // Link-in-bio campaign fields
+  bannerVideoUrl    String?
+  linkInBioRequired String?
+  bioRequirement    String?
 
-  // Hybrid launch fields
-  createdByUserId    String?
-  createdBy          User?     @relation("OwnedCampaigns", fields: [createdByUserId], references: [id])
-  ownerWalletAddress String? // campaign owner's USDT TRC-20 refund wallet
-  depositTxHash      String?
-  depositConfirmedAt DateTime?
-  refundTxHash       String?
-  rejectReason       String?
+  // Creator/owner
+  createdByUserId String?
+  createdBy       User?   @relation("OwnedCampaigns", fields: [createdByUserId], references: [id])
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   applications        CampaignApplication[]
-  messages            Message[]
-  report              CampaignReport?
-  reviews             Review[]
-  scheduledPosts      ScheduledPost[]
   campaignSubmissions CampaignSubmission[]
-  postSchedules       PostSchedule[]
   inviteLinks         CampaignInviteLink[]
 
   @@index([status])
@@ -458,32 +278,8 @@ model CampaignInviteLink {
 }
 
 // ─────────────────────────────────────────
-// BIO VERIFICATION
+// CAMPAIGN APPLICATIONS
 // ─────────────────────────────────────────
-
-model BioVerification {
-  id              String              @id @default(cuid())
-  applicationId   String
-  application     CampaignApplication @relation(fields: [applicationId], references: [id], onDelete: Cascade)
-  socialAccountId String
-  socialAccount   SocialAccount       @relation(fields: [socialAccountId], references: [id], onDelete: Cascade)
-  code            String              @unique
-  status          VerificationStatus  @default(PENDING)
-  lastCheckedAt   DateTime?
-  verifiedAt      DateTime?
-  createdAt       DateTime            @default(now())
-
-  @@unique([applicationId, socialAccountId])
-  @@index([applicationId])
-  @@index([socialAccountId])
-  @@index([status])
-}
-
-enum VerificationStatus {
-  PENDING
-  VERIFIED
-  FAILED
-}
 
 model CampaignApplication {
   id                 String            @id @default(cuid())
@@ -491,8 +287,6 @@ model CampaignApplication {
   campaign           Campaign          @relation(fields: [campaignId], references: [id])
   creatorProfileId   String?
   creatorProfile     CreatorProfile?   @relation(fields: [creatorProfileId], references: [id])
-  networkId          String?
-  network            NetworkProfile?   @relation(fields: [networkId], references: [id])
   status             ApplicationStatus @default(pending)
   claimType          ClaimType         @default(INSTANT)
   appliedAt          DateTime          @default(now())
@@ -501,40 +295,19 @@ model CampaignApplication {
   followerSnapshot   Int?
   engagementSnapshot Decimal?          @db.Decimal(5, 2)
 
-  // Block 3: Earnings
+  // Earnings
   earnedAmount       Int       @default(0)
   paidAmount         Int       @default(0)
   lastEarningsCalcAt DateTime?
 
   updatedAt DateTime @updatedAt
 
-  posts                    CampaignPost[]
-  payouts                  Payout[]
-  assignedMembers          NetworkMemberAssignment[]
-  campaignApplicationPages CampaignApplicationPage[]
-  videoUploads             VideoUpload[]
-  bioVerifications         BioVerification[]
+  submissions CampaignSubmission[]
+  payouts     Payout[]
 
   @@index([status])
   @@index([campaignId])
   @@index([creatorProfileId])
-  @@index([networkId])
-}
-
-model CampaignApplicationPage {
-  id              String              @id @default(cuid())
-  applicationId   String
-  application     CampaignApplication @relation(fields: [applicationId], references: [id], onDelete: Cascade)
-  socialAccountId String
-  socialAccount   SocialAccount       @relation(fields: [socialAccountId], references: [id], onDelete: Cascade)
-  totalViews      Int                 @default(0)
-  totalReach      Int                 @default(0)
-  earnedAmount    Int                 @default(0)
-  posts           CampaignPost[]
-
-  @@unique([applicationId, socialAccountId])
-  @@index([applicationId])
-  @@index([socialAccountId])
 }
 
 enum ApplicationStatus {
@@ -551,534 +324,43 @@ enum ClaimType {
   APPLICATION
 }
 
-enum OverlayPosition {
-  TOP_LEFT
-  TOP_CENTER
-  TOP_RIGHT
-  MIDDLE_LEFT
-  CENTER
-  MIDDLE_RIGHT
-  BOTTOM_LEFT
-  BOTTOM_CENTER
-  BOTTOM_RIGHT
-}
+// ─────────────────────────────────────────
+// CAMPAIGN SUBMISSIONS (Self-reported views)
+// ─────────────────────────────────────────
 
-enum OverlaySize {
-  SMALL
-  MEDIUM
-  LARGE
-}
+model CampaignSubmission {
+  id            String              @id @default(cuid())
+  applicationId String
+  application   CampaignApplication @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  creatorId     String
+  creator       User                @relation(fields: [creatorId], references: [id])
+  campaignId    String
+  campaign      Campaign            @relation(fields: [campaignId], references: [id])
 
-enum PostType {
-  FEED
-  REEL
-  STORY
-}
+  postUrl       String?
+  screenshotUrl String
+  claimedViews  Int
+  status        SubmissionStatus @default(PENDING)
 
-enum ScheduledPostStatus {
-  PENDING
-  RENDERING
-  QUEUED
-  PUBLISHING
-  PUBLISHED
-  FAILED
+  reviewedAt    DateTime?
+  reviewedBy    String?
+  rejectionNote String?
+
+  earnedAmount Decimal @default(0) @db.Decimal(10, 2)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([applicationId])
+  @@index([creatorId])
+  @@index([campaignId])
+  @@index([status])
 }
 
 enum SubmissionStatus {
-  PENDING_REVIEW
+  PENDING
   APPROVED
-  FLAGGED
-}
-
-enum ContentType {
-  REEL
-  FEED_VIDEO
-  FEED_PHOTO
-  STORY_VIDEO
-  STORY_PHOTO
-  CAROUSEL
-}
-
-enum BufferStatus {
-  QUEUED
-  RESERVED
-  POSTED
-  SKIPPED
-  FAILED_UPLOAD
-}
-
-enum DayOfWeek {
-  MONDAY
-  TUESDAY
-  WEDNESDAY
-  THURSDAY
-  FRIDAY
-  SATURDAY
-  SUNDAY
-}
-
-// ─────────────────────────────────────────
-// AUTOPOST
-// ─────────────────────────────────────────
-
-model ScheduledPost {
-  id          String  @id @default(cuid())
-  creatorId   String
-  campaignId  String? // null = organic post (no overlay, no payout)
-  igAccountId String // SocialAccount.id of creator's linked IG account
-
-  rawVideoKey        String? // Supabase Storage object key (legacy single-post)
-  compositedVideoKey String? // Supabase Storage object key, set after render
-
-  // Multi-file support (scheduled posts, carousels)
-  rawVideoKeys        String[] // R2 keys for scheduled posts; single-item for non-carousel
-  compositedVideoKeys String[] // set after render — one per item for carousel
-
-  overlayPosition OverlayPosition?
-  overlaySize     OverlaySize?
-
-  caption  String   @db.Text
-  postType PostType
-
-  // Extended content type (null for legacy single-post)
-  contentType ContentType?
-
-  scheduledAt DateTime
-  publishedAt DateTime?
-
-  igContainerId String?
-  igMediaId     String? @unique
-
-  status       ScheduledPostStatus @default(PENDING)
-  errorMessage String?
-
-  // Source tracking (for scheduled posts)
-  sourceScheduleId String?
-  sourceBufferId   String?
-
-  createdAt DateTime @default(now())
-
-  creator        User                @relation(fields: [creatorId], references: [id])
-  campaign       Campaign?           @relation(fields: [campaignId], references: [id])
-  submission     CampaignSubmission?
-  sourceSchedule PostSchedule?       @relation(fields: [sourceScheduleId], references: [id])
-  sourceBuffer   ContentBuffer?      @relation(fields: [sourceBufferId], references: [id])
-  executions     ScheduleExecution[]
-
-  @@index([creatorId])
-  @@index([campaignId])
-  @@index([status])
-  @@index([scheduledAt, status])
-  @@index([sourceScheduleId])
-}
-
-model CampaignSubmission {
-  id              String @id @default(cuid())
-  creatorId       String
-  campaignId      String
-  scheduledPostId String @unique
-
-  igMediaId   String  @unique
-  igPermalink String?
-
-  publishedAt DateTime
-  status      SubmissionStatus @default(PENDING_REVIEW)
-
-  reviewedAt DateTime?
-  reviewedBy String? // brand user id
-
-  payoutTriggered Boolean   @default(false)
-  autoApprovedAt  DateTime? // set if approved by cron, not manually
-
-  createdAt DateTime @default(now())
-
-  creator       User          @relation(fields: [creatorId], references: [id])
-  campaign      Campaign      @relation(fields: [campaignId], references: [id])
-  scheduledPost ScheduledPost @relation(fields: [scheduledPostId], references: [id])
-
-  @@index([creatorId])
-  @@index([campaignId])
-  @@index([status])
-  @@index([igMediaId])
-}
-
-// ─────────────────────────────────────────
-// COLLECTIONS & CONTENT BUFFER
-// ─────────────────────────────────────────
-
-model Collection {
-  id        String   @id @default(cuid())
-  userId    String
-  name      String
-  color     String? // hex for UI badge
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  user          User            @relation(fields: [userId], references: [id])
-  contentItems  ContentBuffer[]
-  scheduleSlots PostSchedule[]
-
-  @@unique([userId, name])
-  @@index([userId])
-}
-
-model ContentBuffer {
-  id            String       @id @default(cuid())
-  userId        String
-  collectionId  String
-  contentType   ContentType
-  r2Key         String // single R2 object key per record
-  fileHash      String? // SHA-256 for duplicate detection
-  filename      String? // original filename for display
-  thumbnailKey  String? // first frame extracted after upload
-  caption       String?      @db.Text
-  sortOrder     Int
-  status        BufferStatus @default(QUEUED)
-  syncSource    String? // "browser_fsa" | "desktop_agent" | "manual_upload"
-  localPath     String?
-  carouselSetId String? // groups carousel slides together
-  itemIndex     Int? // 0-9: order within carousel set
-  usedAt        DateTime?
-  createdAt     DateTime     @default(now())
-
-  user           User            @relation(fields: [userId], references: [id])
-  collection     Collection      @relation(fields: [collectionId], references: [id])
-  scheduledPosts ScheduledPost[]
-
-  @@index([collectionId, status, usedAt, createdAt])
-  @@index([userId])
-  @@index([carouselSetId])
-  @@index([sortOrder])
-  @@index([fileHash])
-}
-
-// ─────────────────────────────────────────
-// SCHEDULING
-// ─────────────────────────────────────────
-
-model PostSchedule {
-  id                String           @id @default(cuid())
-  igAccountId       String
-  creatorId         String
-  collectionId      String
-  dayOfWeek         DayOfWeek
-  time              String // "HH:MM" 24h, stored in creator's timezone
-  timezone          String // IANA timezone, e.g. "Europe/Amsterdam"
-  contentTypeFilter ContentType? // optional filter within collection
-  campaignId        String? // null = organic post
-  overlayPosition   OverlayPosition?
-  overlaySize       OverlaySize?
-  captionTemplate   String?          @db.Text
-  enabled           Boolean          @default(true)
-  pausedUntil       DateTime?
-  maxPostsPerDay    Int              @default(0) // 0 = unlimited
-
-  // Stats
-  totalPostsCount Int       @default(0)
-  lastFiredAt     DateTime?
-  lastSkippedAt   DateTime?
-  lastSkipReason  String?
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  igAccount  SocialAccount       @relation(fields: [igAccountId], references: [id])
-  creator    User                @relation(fields: [creatorId], references: [id])
-  collection Collection          @relation(fields: [collectionId], references: [id])
-  campaign   Campaign?           @relation(fields: [campaignId], references: [id])
-  executions ScheduleExecution[]
-  posts      ScheduledPost[]
-
-  @@index([igAccountId, enabled])
-  @@index([creatorId])
-  @@index([collectionId])
-  @@index([campaignId])
-}
-
-model ScheduleExecution {
-  id              String    @id @default(cuid())
-  scheduleId      String
-  scheduledFor    DateTime // the exact datetime this slot was due
-  firedAt         DateTime? // when the job was actually dispatched
-  result          String // DISPATCHED | SKIPPED_EMPTY | SKIPPED_DISABLED | SKIPPED_CAP | FAILED
-  scheduledPostId String?
-  errorMessage    String?
-  createdAt       DateTime  @default(now())
-
-  schedule      PostSchedule   @relation(fields: [scheduleId], references: [id], onDelete: Cascade)
-  scheduledPost ScheduledPost? @relation(fields: [scheduledPostId], references: [id])
-
-  @@index([scheduleId])
-  @@index([result])
-  @@index([scheduledFor])
-}
-
-model DeviceToken {
-  id         String    @id @default(cuid())
-  userId     String
-  deviceName String // "My MacBook", "Desktop", etc.
-  tokenHash  String    @unique // bcrypt hash of token
-  deviceType String // "desktop_agent" | "browser"
-  lastUsedAt DateTime?
-  revokedAt  DateTime?
-  createdAt  DateTime  @default(now())
-
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@index([userId])
-}
-
-model CaptionPreset {
-  id        String   @id @default(cuid())
-  userId    String? // null = system preset (available to all users)
-  title     String
-  body      String   @db.Text
-  language  String? // "zh", "en", "ko", "ja"
-  category  String? // "engagement", "viral", "educational"
-  createdAt DateTime @default(now())
-
-  user User? @relation(fields: [userId], references: [id])
-
-  @@index([userId])
-}
-
-// ─────────────────────────────────────────
-// POSTS & VIEW TRACKING
-// ─────────────────────────────────────────
-
-model CampaignPost {
-  id                String                   @id @default(cuid())
-  applicationId     String
-  application       CampaignApplication      @relation(fields: [applicationId], references: [id])
-  socialAccountId   String?
-  socialAccount     SocialAccount?           @relation(fields: [socialAccountId], references: [id])
-  networkMemberId   String?
-  networkMember     NetworkMember?           @relation(fields: [networkMemberId], references: [id])
-  postUrl           String
-  platformPostId    String
-  platform          SocialPlatform
-  status            PostStatus               @default(submitted)
-  sourceType        PostSourceType           @default(URL)
-  submittedAt       DateTime                 @default(now())
-  approvedAt        DateTime?
-  isApproved        Boolean                  @default(false)
-  isFraudSuspect    Boolean                  @default(false)
-  fraudFlags        Json?
-  autoApproveAt     DateTime?
-  isAutoApproved    Boolean                  @default(false)
-  verifiedViews     Int                      @default(0)
-  campaignAppPageId String?
-  campaignAppPage   CampaignApplicationPage? @relation(fields: [campaignAppPageId], references: [id])
-
-  // Brand/Admin review fields
-  brandReviewedBy    String?
-  brandReviewedAt    DateTime?
-  brandDeclineReason String?
-  adminReviewedBy    String?
-  adminDeclineReason String?
-
-  // Video upload link
-  videoUploadId String?      @unique
-  videoUpload   VideoUpload? @relation("PostVideoUpload", fields: [videoUploadId], references: [id])
-
-  snapshots    ViewSnapshot[]
-  comments     PostComment[]
-  postMessages Message[]      @relation("PostMessages")
-
-  @@index([applicationId])
-  @@index([platformPostId])
-  @@index([platform])
-  @@index([status])
-  @@index([autoApproveAt])
-  @@index([campaignAppPageId])
-}
-
-enum PostStatus {
-  submitted
-  brand_approved
-  brand_rejected
-  approved
-  rejected
-}
-
-enum PostSourceType {
-  URL
-  UPLOAD
-  INSTAGRAM_API
-  CACHED_POST
-}
-
-model ViewSnapshot {
-  id               String       @id @default(cuid())
-  postId           String
-  post             CampaignPost @relation(fields: [postId], references: [id])
-  viewsCount       Int
-  likesCount       Int
-  commentsCount    Int
-  reach            Int?
-  impressions      Int?
-  savedCount       Int?
-  sharesCount      Int?
-  playsCount       Int?
-  avgWatchTimeMs   Int?
-  totalWatchTimeMs Int?
-  profileVisits    Int?
-  followsFromPost  Int?
-  capturedAt       DateTime     @default(now())
-
-  @@index([postId, capturedAt])
-  @@index([capturedAt])
-}
-
-model AccountInsightSnapshot {
-  id              String        @id @default(cuid())
-  socialAccountId String
-  socialAccount   SocialAccount @relation(fields: [socialAccountId], references: [id])
-  date            DateTime
-
-  // Core daily aggregates (v25.0)
-  reach             Int?
-  views             Int?
-  accountsEngaged   Int?
-  totalInteractions Int?
-  likes             Int?
-  comments          Int?
-  saves             Int?
-  shares            Int?
-  reposts           Int?
-  replies           Int?
-
-  // follows_and_unfollows breakdown=follow_type
-  follows   Int?
-  unfollows Int?
-
-  // profile_links_taps breakdown=contact_button_type
-  profileLinksTaps Int?
-  tapCall          Int?
-  tapEmail         Int?
-  tapDirection     Int?
-  tapBookNow       Int?
-  tapText          Int?
-
-  followerCount Int?
-  createdAt     DateTime @default(now())
-
-  @@unique([socialAccountId, date])
-  @@index([socialAccountId, date])
-}
-
-enum MediaSnapshotType {
-  FEED
-  REEL
-  STORY
-}
-
-model MediaInsightSnapshot {
-  id              String            @id @default(cuid())
-  socialAccountId String
-  socialAccount   SocialAccount     @relation(fields: [socialAccountId], references: [id])
-  igMediaId       String            @unique
-  mediaType       MediaSnapshotType
-  fetchedAt       DateTime          @default(now())
-
-  // Shared (FEED + REEL + STORY)
-  reach             Int?
-  views             Int?
-  shares            Int?
-  totalInteractions Int?
-
-  // FEED + STORY
-  likes                    Int?
-  comments                 Int?
-  saved                    Int?
-  follows                  Int?
-  profileVisits            Int?
-  profileActivityBioLink   Int?
-  profileActivityCall      Int?
-  profileActivityDirection Int?
-  profileActivityEmail     Int?
-  profileActivityText      Int?
-
-  // REEL only
-  avgWatchTime   Int? // ig_reels_avg_watch_time ms
-  totalWatchTime Int? // ig_reels_video_view_total_time ms
-
-  // STORY only
-  replies             Int?
-  navigationForward   Int?
-  navigationBack      Int?
-  navigationExit      Int?
-  navigationNextStory Int?
-
-  @@index([socialAccountId, fetchedAt])
-}
-
-enum DemographicType {
-  FOLLOWER
-  ENGAGED
-}
-
-model DemographicSnapshot {
-  id              String          @id @default(cuid())
-  socialAccountId String
-  socialAccount   SocialAccount   @relation(fields: [socialAccountId], references: [id])
-  snapshotDate    DateTime
-  demographicType DemographicType
-  breakdownKey    String // "age" | "gender" | "country" | "city"
-  breakdownValue  String // "25-34", "M", "NL", "Amsterdam"
-  value           Int
-
-  @@unique([socialAccountId, snapshotDate, demographicType, breakdownKey, breakdownValue])
-  @@index([socialAccountId, snapshotDate, demographicType])
-}
-
-// ─────────────────────────────────────────
-// POST COMMENTS (inline feedback on submissions)
-// ─────────────────────────────────────────
-
-model PostComment {
-  id        String       @id @default(cuid())
-  postId    String
-  post      CampaignPost @relation(fields: [postId], references: [id], onDelete: Cascade)
-  authorId  String
-  author    User         @relation("PostComments", fields: [authorId], references: [id])
-  content   String       @db.Text
-  createdAt DateTime     @default(now())
-
-  @@index([postId, createdAt])
-  @@index([authorId])
-}
-
-// ─────────────────────────────────────────
-// MESSAGING
-// ─────────────────────────────────────────
-
-enum MessageType {
-  GENERAL
-  POST_FEEDBACK
-  DECLINE_NOTICE
-}
-
-model Message {
-  id          String        @id @default(cuid())
-  campaignId  String
-  campaign    Campaign      @relation(fields: [campaignId], references: [id])
-  senderId    String
-  sender      User          @relation("SentMessages", fields: [senderId], references: [id])
-  recipientId String
-  recipient   User          @relation("ReceivedMessages", fields: [recipientId], references: [id])
-  content     String        @db.Text
-  type        MessageType   @default(GENERAL)
-  postId      String?
-  post        CampaignPost? @relation("PostMessages", fields: [postId], references: [id])
-  readAt      DateTime?
-  createdAt   DateTime      @default(now())
-
-  @@index([campaignId, createdAt])
-  @@index([senderId])
-  @@index([recipientId])
-  @@index([postId])
-  @@index([type])
+  REJECTED
 }
 
 // ─────────────────────────────────────────
@@ -1089,8 +371,6 @@ model Payout {
   id               String               @id @default(cuid())
   creatorProfileId String?
   creatorProfile   CreatorProfile?      @relation(fields: [creatorProfileId], references: [id])
-  networkId        String?
-  network          NetworkProfile?      @relation(fields: [networkId], references: [id])
   applicationId    String?
   application      CampaignApplication? @relation(fields: [applicationId], references: [id])
   amount           Decimal              @db.Decimal(12, 6)
@@ -1115,7 +395,6 @@ model Payout {
   @@index([applicationId])
   @@index([status])
   @@index([creatorProfileId])
-  @@index([networkId])
 }
 
 enum PayoutType {
@@ -1138,56 +417,6 @@ enum PaymentMethod {
 }
 
 // ─────────────────────────────────────────
-// VIDEO UPLOADS (pre-approval before Instagram posting)
-// ─────────────────────────────────────────
-
-enum UploadStatus {
-  uploading
-  ready
-  linked
-  expired
-}
-
-model VideoUpload {
-  id            String              @id @default(cuid())
-  applicationId String
-  application   CampaignApplication @relation(fields: [applicationId], references: [id], onDelete: Cascade)
-  uploadedById  String
-  uploadedBy    User                @relation("VideoUploads", fields: [uploadedById], references: [id])
-  storagePath   String
-  fileName      String
-  fileSize      Int
-  duration      Int?
-  thumbnailUrl  String?
-  status        UploadStatus        @default(uploading)
-  createdAt     DateTime            @default(now())
-
-  post CampaignPost? @relation("PostVideoUpload")
-
-  @@index([applicationId])
-  @@index([uploadedById])
-  @@index([status])
-}
-
-// ─────────────────────────────────────────
-// REPORTING
-// ─────────────────────────────────────────
-
-model CampaignReport {
-  id           String   @id @default(cuid())
-  campaignId   String   @unique
-  campaign     Campaign @relation(fields: [campaignId], references: [id])
-  totalViews   BigInt
-  totalPayout  Decimal  @db.Decimal(12, 2)
-  adminRevenue Decimal  @db.Decimal(12, 2)
-  creatorCount Int
-  generatedAt  DateTime @default(now())
-  dataJson     Json
-
-  @@index([generatedAt])
-}
-
-// ─────────────────────────────────────────
 // AUDIT LOG
 // ─────────────────────────────────────────
 
@@ -1206,284 +435,8 @@ model AuditLog {
 }
 
 // ─────────────────────────────────────────
-// INTERNAL OPS
+// NOTIFICATIONS
 // ─────────────────────────────────────────
-
-model Client {
-  id                   String   @id @default(cuid())
-  name                 String
-  contactName          String?
-  email                String?
-  phone                String?
-  company              String?
-  communicationChannel String   @default("whatsapp")
-  communicationHandle  String?
-  country              String?
-  notes                String?  @db.Text
-  status               String   @default("active")
-  totalSpent           Decimal  @default(0) @db.Decimal(12, 2)
-  createdAt            DateTime @default(now())
-  updatedAt            DateTime @updatedAt
-
-  internalCampaigns InternalCampaign[]
-  payments          OpsPayment[]
-
-  @@index([status])
-  @@index([createdAt])
-}
-
-model InstagramPage {
-  id                   String  @id @default(cuid())
-  handle               String  @unique
-  niche                Niche?
-  followerCount        Int     @default(0)
-  avgEngagementRate    Decimal @default(0) @db.Decimal(5, 2)
-  avgCpm               Decimal @default(0) @db.Decimal(8, 2)
-  reliabilityScore     Int     @default(5)
-  communicationChannel String  @default("instagram")
-  communicationHandle  String?
-  contactName          String?
-  country              String?
-  notes                String? @db.Text
-  status               String  @default("active")
-
-  // Module 3: Ownership & Operator Management
-  operatorName       String?
-  operatorEmail      String?
-  contractStatus     ContractStatus @default(NONE)
-  contractSignedAt   DateTime?
-  copyrightAssigned  Boolean        @default(false)
-  trademarkBOIP      Boolean        @default(false)
-  trademarkRef       String?
-  credentialVaultId  String?
-  contentBacklogDays Int            @default(0)
-  tierLevel          PageTier       @default(C)
-  replacementReady   Boolean        @default(false)
-  noticePeriodDays   Int            @default(60)
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  internalCampaignPages InternalCampaignPage[]
-  payments              OpsPayment[]
-  brandDeals            BrandDealPage[]
-
-  @@index([status])
-  @@index([niche])
-  @@index([followerCount])
-  @@index([tierLevel])
-  @@index([contractStatus])
-}
-
-model InternalCampaign {
-  id            String    @id @default(cuid())
-  clientId      String
-  client        Client    @relation(fields: [clientId], references: [id])
-  name          String
-  status        String    @default("draft")
-  niche         Niche?
-  clientPays    Decimal   @db.Decimal(12, 2)
-  totalPageCost Decimal   @default(0) @db.Decimal(12, 2)
-  adContentUrl  String?
-  adCaption     String?   @db.Text
-  adLink        String?
-  startDate     DateTime?
-  endDate       DateTime?
-  notes         String?   @db.Text
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
-
-  campaignPages InternalCampaignPage[]
-  payments      OpsPayment[]
-
-  @@index([status])
-  @@index([clientId])
-  @@index([startDate])
-  @@index([niche])
-}
-
-model InternalCampaignPage {
-  id                 String           @id @default(cuid())
-  internalCampaignId String
-  internalCampaign   InternalCampaign @relation(fields: [internalCampaignId], references: [id], onDelete: Cascade)
-  pageId             String
-  page               InstagramPage    @relation(fields: [pageId], references: [id])
-  cost               Decimal          @db.Decimal(10, 2)
-  status             String           @default("pending")
-  scheduledDate      DateTime?
-  postedAt           DateTime?
-  reach              Int?
-  impressions        Int?
-  screenshotUrl      String?
-  createdAt          DateTime         @default(now())
-
-  @@unique([internalCampaignId, pageId])
-  @@index([internalCampaignId])
-  @@index([pageId])
-}
-
-model PaymentNetwork {
-  id           String   @id @default(cuid())
-  platform     String
-  accountLabel String
-  currency     String   @default("USD")
-  balance      Decimal  @default(0) @db.Decimal(12, 2)
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
-
-  payments OpsPayment[]
-
-  @@index([platform])
-}
-
-model OpsPayment {
-  id                 String            @id @default(cuid())
-  direction          String
-  clientId           String?
-  client             Client?           @relation(fields: [clientId], references: [id])
-  pageId             String?
-  page               InstagramPage?    @relation(fields: [pageId], references: [id])
-  internalCampaignId String?
-  internalCampaign   InternalCampaign? @relation(fields: [internalCampaignId], references: [id])
-  paymentNetworkId   String?
-  paymentNetwork     PaymentNetwork?   @relation(fields: [paymentNetworkId], references: [id])
-  amount             Decimal           @db.Decimal(12, 2)
-  currency           String            @default("USD")
-  status             String            @default("pending")
-  dueDate            DateTime?
-  paidAt             DateTime?
-  notes              String?           @db.Text
-  createdAt          DateTime          @default(now())
-  updatedAt          DateTime          @updatedAt
-
-  @@index([direction])
-  @@index([status])
-  @@index([clientId])
-  @@index([pageId])
-  @@index([internalCampaignId])
-  @@index([createdAt])
-}
-
-// ─────────────────────────────────────────
-// MODULE 2: SCOUTING
-// ─────────────────────────────────────────
-
-model ScoutedPage {
-  id                 String      @id @default(cuid())
-  instagramHandle    String
-  niche              Niche
-  followerCount      Int
-  engagementRate     Float
-  monthlyGrowthPct   Float
-  contentFreqPerWeek Int
-  authenticityScore  Float
-  totalScore         Float
-  status             ScoutStatus @default(IDENTIFIED)
-  notes              String?     @db.Text
-  contactedAt        DateTime?
-  signedAt           DateTime?
-  rejectedReason     String?
-  createdAt          DateTime    @default(now())
-  updatedAt          DateTime    @updatedAt
-
-  @@index([status])
-  @@index([niche])
-  @@index([totalScore])
-}
-
-// ─────────────────────────────────────────
-// MODULE 4: BRAND DEAL PIPELINE
-// ─────────────────────────────────────────
-
-model BrandDeal {
-  id               String     @id @default(cuid())
-  brandName        String
-  contactName      String?
-  contactEmail     String?
-  dealType         DealType
-  status           DealStatus @default(IDENTIFIED)
-  niche            Niche
-  proposedCPM      Float?
-  flatFee          Float?
-  commissionPct    Float?
-  totalValue       Float?
-  agencyCommission Float?
-  pitchedAt        DateTime?
-  respondedAt      DateTime?
-  signedAt         DateTime?
-  deliveredAt      DateTime?
-  notes            String?    @db.Text
-  createdAt        DateTime   @default(now())
-  updatedAt        DateTime   @updatedAt
-
-  pages BrandDealPage[]
-
-  @@index([status])
-  @@index([niche])
-  @@index([createdAt])
-}
-
-model BrandDealPage {
-  id      String        @id @default(cuid())
-  dealId  String
-  deal    BrandDeal     @relation(fields: [dealId], references: [id], onDelete: Cascade)
-  pageId  String
-  page    InstagramPage @relation(fields: [pageId], references: [id])
-  addedAt DateTime      @default(now())
-
-  @@unique([dealId, pageId])
-  @@index([dealId])
-  @@index([pageId])
-}
-
-// ─────────────────────────────────────────
-// MODULE 6: MULTI-TENANT FOUNDATION
-// ─────────────────────────────────────────
-
-model Organization {
-  id        String   @id @default(cuid())
-  name      String
-  slug      String   @unique
-  plan      OrgPlan  @default(FREE)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  @@index([slug])
-}
-
-// ─────────────────────────────────────────
-// SOCIAL GRAPH — FOLLOWS, REVIEWS, NOTIFICATIONS
-// ─────────────────────────────────────────
-
-model Follow {
-  id          String   @id @default(cuid())
-  followerId  String
-  follower    User     @relation("Following", fields: [followerId], references: [id], onDelete: Cascade)
-  followingId String
-  following   User     @relation("Followers", fields: [followingId], references: [id], onDelete: Cascade)
-  createdAt   DateTime @default(now())
-
-  @@unique([followerId, followingId])
-  @@index([followingId])
-  @@index([followerId])
-}
-
-model Review {
-  id         String   @id @default(cuid())
-  reviewerId String
-  reviewer   User     @relation("ReviewsGiven", fields: [reviewerId], references: [id], onDelete: Cascade)
-  revieweeId String
-  reviewee   User     @relation("ReviewsReceived", fields: [revieweeId], references: [id], onDelete: Cascade)
-  campaignId String
-  campaign   Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
-  rating     Int
-  text       String?  @db.Text
-  createdAt  DateTime @default(now())
-
-  @@unique([reviewerId, revieweeId, campaignId])
-  @@index([revieweeId])
-  @@index([campaignId])
-}
 
 model Notification {
   id        String           @id @default(cuid())
@@ -1500,14 +453,25 @@ model Notification {
 
 enum NotificationType {
   CAMPAIGN_LAUNCHED
-  NEW_FOLLOWER
-  REVIEW_RECEIVED
-  AUTOPOST_PUBLISHED
-  AUTOPOST_FAILED
   SUBMISSION_APPROVED
-  SUBMISSION_FLAGGED
-  BUFFER_EMPTY
-  BUFFER_LOW
-  SCHEDULE_SKIPPED
-  TOKEN_EXPIRED_PAUSED
+  SUBMISSION_REJECTED
+  APPLICATION_APPROVED
+  APPLICATION_REJECTED
+  BIO_VERIFIED
+  PAYOUT_SENT
+}
+
+// ─────────────────────────────────────────
+// SIGNUP TICKETS (JIT email verification)
+// ─────────────────────────────────────────
+
+model SignupTicket {
+  id        String    @id @default(cuid())
+  email     String
+  ref       String?
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([email])
 }
