@@ -16,7 +16,7 @@ const securityHeaders = [
       "img-src 'self' data: https: blob:",
       "font-src 'self' data:",
       "connect-src 'self' *.supabase.co api.instagram.com graph.instagram.com graph.facebook.com *.stripe.com",
-      "frame-src 'self' js.stripe.com",
+      "frame-src 'self' js.stripe.com www.instagram.com www.facebook.com discord.com",
     ].join("; "),
   },
 ];
@@ -37,11 +37,13 @@ const nextConfig: NextConfig = {
   },
   async redirects() {
     return [
-      { source: "/creator", destination: "/dashboard", permanent: true },
-      { source: "/creator/campaigns", destination: "/campaigns", permanent: true },
-      { source: "/creator/campaigns/:path*", destination: "/campaigns/:path*", permanent: true },
-      { source: "/creator/profile", destination: "/profile", permanent: true },
-      { source: "/creator/earnings", destination: "/earnings", permanent: true },
+      { source: "/dashboard", destination: "/creator/dashboard", permanent: false },
+      { source: "/campaigns", destination: "/creator/campaigns", permanent: false },
+      { source: "/campaigns/:path*", destination: "/creator/campaigns/:path*", permanent: false },
+      { source: "/profile", destination: "/creator/profile", permanent: false },
+      { source: "/earnings", destination: "/creator/earnings", permanent: false },
+      { source: "/creator/payouts", destination: "/creator/profile?tab=balance", permanent: true },
+      { source: "/creator/instagram", destination: "/creator/pages", permanent: true },
     ];
   },
   async headers() {

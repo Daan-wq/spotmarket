@@ -48,7 +48,10 @@ export async function GET(req: NextRequest) {
     });
 
     if (!tokenRes.ok) {
-      console.error("[discord oauth] token exchange failed:", await tokenRes.text());
+      const errBody = await tokenRes.text();
+      console.error("[discord oauth] token exchange failed:", tokenRes.status, errBody);
+      console.error("[discord oauth] redirect_uri used:", redirectUri);
+      console.error("[discord oauth] client_id length:", clientId.length, "client_secret length:", clientSecret.length);
       return NextResponse.redirect(new URL(`${returnTo}?error=discord_token_failed`, req.url));
     }
 

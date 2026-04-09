@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { verifyCron } from "@/lib/cron-auth";
+import { fetchInstagramBio } from "@/lib/instagram-bio";
 
 const ONE_HOUR_AGO = 60 * 60 * 1000;
 const SEVEN_DAYS = 7 * 24 * 60 * 60 * 1000;
@@ -29,9 +30,8 @@ export async function POST(req: Request) {
       ],
     },
     include: {
-      creatorProfile: {
-        select: { userId: true },
-      },
+      creatorProfile: { select: { userId: true } },
+      bioVerifications: { orderBy: { createdAt: "desc" }, take: 1 },
     },
     take: 20, // Process in batches to avoid timeout
   });
@@ -60,7 +60,9 @@ export async function POST(req: Request) {
         continue;
       }
 
-      const codeInBio = bio.includes(connection.verificationCode);
+      const latestBioCode = connection.bioVerifications[0]?.code;
+      const codeToCheck = latestBioCode ?? connection.verificationCode;
+      const codeInBio = bio.includes(codeToCheck);
 
       if (codeInBio) {
         // Verified!
@@ -132,53 +134,3 @@ export async function POST(req: Request) {
   });
 }
 
-/**
- * Fetch Instagram bio from public profile page.
- * Instagram embeds bio text in meta tags on the public profile page.
- * Returns the bio text or null if unable to fetch.
- */
-async function fetchInstagramBio(username: string): Promise<string | null> {
-  try {
-    const res = await fetch(`https://www.instagram.com/${username}/`, {
-      headers: {
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
-        "Accept": "text/html",
-        "Accept-Language": "en-US,en;q=0.9",
-      },
-      signal: AbortSignal.timeout(10000),
-    });
-
-    if (!res.ok) return null;
-
-    const html = await res.text();
-
-    // Try to extract bio from meta description tag
-    // Instagram puts bio in: <meta property="og:description" content="... bio text ..." />
-    const ogMatch = html.match(/<meta\s+property="og:description"\s+content="([^"]*?)"/i);
-    if (ogMatch?.[1]) {
-      return decodeHtmlEntities(ogMatch[1]);
-    }
-
-    // Fallback: try meta name="description"
-    const metaMatch = html.match(/<meta\s+name="description"\s+content="([^"]*?)"/i);
-    if (metaMatch?.[1]) {
-      return decodeHtmlEntities(metaMatch[1]);
-    }
-
-    // Fallback: search raw HTML for the verification code pattern
-    // This is a broad check but works as last resort
-    return html;
-  } catch {
-    return null;
-  }
-}
-
-function decodeHtmlEntities(text: string): string {
-  return text
-    .replace(/&amp;/g, "&")
-    .replace(/&lt;/g, "<")
-    .replace(/&gt;/g, ">")
-    .replace(/&quot;/g, '"')
-    .replace(/&#039;/g, "'")
-    .replace(/&#x27;/g, "'");
-}

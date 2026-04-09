@@ -1,5 +1,12 @@
 @import "tailwindcss";
 
+button:not(:disabled),
+[role="button"]:not(:disabled),
+a[href],
+summary {
+  cursor: pointer;
+}
+
 :root {
   /* Font */
   --font-sans: var(--font-sans, 'Lexend', system-ui, sans-serif);
@@ -124,6 +131,43 @@
   input[type="number"] {
     -moz-appearance: textfield;
   }
+}
+
+/* Creator/Advertiser content area — light theme override (Topr.io style) */
+.creator-theme {
+  --bg-primary: #F9FAFB;
+  --bg-secondary: #F3F4F6;
+  --bg-card: #FFFFFF;
+  --bg-card-hover: #F9FAFB;
+  --bg-elevated: #FFFFFF;
+  --text-primary: #1e293b;
+  --text-secondary: #64748b;
+  --text-muted: #94a3b8;
+  --card-foreground: #1e293b;
+  --border: rgba(0, 0, 0, 0.08);
+  --border-default: #e5e7eb;
+  --border-hover: #d1d5db;
+  --shadow-card: 0 1px 3px rgba(0, 0, 0, 0.06), 0 1px 2px rgba(0, 0, 0, 0.04);
+  --shadow-glow: none;
+  --accent-bg: rgba(99, 102, 241, 0.06);
+  --accent-foreground: #4f46e5;
+  --accent-muted: rgba(99, 102, 241, 0.1);
+  --muted: #f1f5f9;
+  --sidebar-bg: #FFFFFF;
+  --sidebar-border: #e5e7eb;
+  --sidebar-item: #374151;
+  --sidebar-item-hover: #111827;
+  --sidebar-hover-bg: rgba(0, 0, 0, 0.04);
+  --sidebar-active-bg: #6366F1;
+  --sidebar-active-text: #FFFFFF;
+  --success-bg: #f0fdf4;
+  --success-text: #15803d;
+  --warning-bg: #fffbeb;
+  --warning-text: #b45309;
+  --error-bg: #fef2f2;
+  --error-text: #b91c1c;
+  background: var(--bg-primary);
+  color: var(--text-primary);
 }
 
 /* Admin content area — light theme override */

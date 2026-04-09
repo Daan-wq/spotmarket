@@ -21,13 +21,13 @@ export function StepIndicator({
               <div
                 className="w-full h-1 rounded-full transition-colors"
                 style={{
-                  background: isActive || isCompleted ? "var(--accent)" : "var(--border)",
+                  background: isActive || isCompleted ? "var(--accent)" : "#e2e8f0",
                 }}
               />
               {labels?.[i] && (
                 <span
                   className="text-[10px] font-medium"
-                  style={{ color: isActive ? "var(--accent)" : "var(--text-muted)" }}
+                  style={{ color: isActive ? "var(--accent)" : "#94a3b8" }}
                 >
                   {labels[i]}
                 </span>

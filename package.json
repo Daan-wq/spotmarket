@@ -29,6 +29,7 @@
     "p-limit": "^7.3.0",
     "pg": "^8.20.0",
     "prisma": "^7.5.0",
+    "qrcode.react": "^4.2.0",
     "react": "19.2.3",
     "react-dom": "19.2.3",
     "react-email": "^5.2.9",

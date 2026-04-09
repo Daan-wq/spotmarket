@@ -3,10 +3,11 @@ import { prisma } from "@/lib/prisma";
 import { CampaignDetailClient } from "./_components/campaign-detail-client";
 
 interface CampaignDetailPageProps {
-  params: { campaignId: string };
+  params: Promise<{ campaignId: string }>;
 }
 
-export default async function CampaignDetailPage({ params }: CampaignDetailPageProps) {
+export default async function CampaignDetailPage({ params: paramsPromise }: CampaignDetailPageProps) {
+  const params = await paramsPromise;
   const { userId } = await requireAuth("advertiser");
 
   const campaign = await prisma.campaign.findUnique({
@@ -48,8 +49,10 @@ export default async function CampaignDetailPage({ params }: CampaignDetailPageP
         select: {
           displayName: true,
           totalFollowers: true,
-          igConnection: {
+          igConnections: {
             select: { igUsername: true },
+            where: { isVerified: true },
+            take: 1,
           },
         },
       },

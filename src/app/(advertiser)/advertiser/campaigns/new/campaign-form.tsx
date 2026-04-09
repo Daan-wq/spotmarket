@@ -5,14 +5,31 @@ import { useRouter } from "next/navigation";
 import { StepIndicator } from "@/components/onboarding/step-indicator";
 
 const GEO_OPTIONS = ["US","GB","NL","BE","DE","GR","AU","CA","SE","NO","FI","DK","AT","CH","ES","FR","IT","PT","PL","CZ","HU","RO","BG","HR","SK","SI","EE","LV","LT","MT","CY","LU","IE"];
-const NICHES = ["FINANCE", "TECH", "MOTIVATION", "FOOD", "HUMOR", "LIFESTYLE", "CASINO"] as const;
+const NICHE_OPTIONS = [
+  { value: "MEMES", label: "Memes" },
+  { value: "SPORT", label: "Sport" },
+  { value: "CLIPS", label: "Clips" },
+  { value: "GAMING", label: "Gaming" },
+  { value: "LIFESTYLE", label: "Lifestyle" },
+  { value: "FINANCE", label: "Finance" },
+  { value: "OTHER", label: "Other" },
+] as const;
 
-type Platform = "INSTAGRAM" | "TIKTOK" | "BOTH";
+const PLATFORM_OPTIONS = [
+  { value: "INSTAGRAM", label: "Instagram" },
+  { value: "TIKTOK", label: "TikTok" },
+  { value: "YOUTUBE_SHORTS", label: "YouTube Shorts" },
+  { value: "FACEBOOK", label: "Facebook" },
+  { value: "X", label: "X" },
+] as const;
+
+type PlatformValue = typeof PLATFORM_OPTIONS[number]["value"];
 
 interface FormState {
   name: string;
-  platform: Platform;
-  niche: string;
+  platforms: PlatformValue[];
+  niches: string[];
+  nicheOther: string;
   description: string;
   contentGuidelines: string;
   referralLink: string;
@@ -21,14 +38,14 @@ interface FormState {
   bioRequirement: string;
   linkInBioRequired: string;
   totalBudget: string;
-  cpmUsd: string;
+  goalViews: string;
   deadline: string;
   maxSlots: string;
   requiresApproval: boolean;
   requirements: string;
 }
 
-const DEFAULT_ADMIN_MARGIN_PER_M = 15;
+const PLATFORM_FEE_PERCENT = 0.10;
 const STEP_LABELS = ["Brief", "Targeting", "Budget", "Review"];
 
 const inputStyle = {
@@ -45,34 +62,35 @@ export function AdvertiserCampaignForm() {
 
   const [form, setForm] = useState<FormState>({
     name: "",
-    platform: "INSTAGRAM",
-    niche: "",
+    platforms: [] as PlatformValue[],
+    niches: [] as string[],
+    nicheOther: "",
     description: "",
     contentGuidelines: "",
     referralLink: "",
     targetCountry: "US",
-    minEngagementRate: "2",
+    minEngagementRate: "",
     bioRequirement: "",
     linkInBioRequired: "",
     totalBudget: "",
-    cpmUsd: "",
+    goalViews: "",
     deadline: "",
     maxSlots: "",
     requiresApproval: false,
     requirements: "",
   });
 
-  function set(key: keyof FormState, value: string | boolean) {
+  function set(key: keyof FormState, value: string | boolean | PlatformValue[]) {
     setForm(prev => ({ ...prev, [key]: value }));
   }
 
   const budgetNum = parseFloat(form.totalBudget) || 0;
-  const cpmNum = parseFloat(form.cpmUsd) || 0;
-  const goalViews = cpmNum > 0 ? Math.floor((budgetNum / cpmNum) * 1000) : 0;
+  const goalViewsNum = parseInt(form.goalViews) || 0;
+  const cpmNum = goalViewsNum > 0 ? (budgetNum / goalViewsNum) * 1000 : 0;
 
   function canProceed(): boolean {
-    if (step === 1) return !!form.name.trim();
-    if (step === 3) return !!form.totalBudget && !!form.cpmUsd && !!form.deadline;
+    if (step === 1) return !!form.name.trim() && form.platforms.length > 0;
+    if (step === 3) return !!form.totalBudget && !!form.goalViews && !!form.deadline;
     return true;
   }
 
@@ -87,10 +105,14 @@ export function AdvertiserCampaignForm() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           ...form,
+          niche: form.niches.includes("OTHER")
+            ? [...form.niches.filter(n => n !== "OTHER"), form.nicheOther || "OTHER"].join(", ")
+            : form.niches.join(", "),
           status: asDraft ? "draft" : undefined,
-          goalViews: goalViews > 0 ? goalViews : undefined,
-          creatorCpvPerM: cpmNum - DEFAULT_ADMIN_MARGIN_PER_M,
-          adminMarginPerM: DEFAULT_ADMIN_MARGIN_PER_M,
+          goalViews: goalViewsNum > 0 ? goalViewsNum : undefined,
+          cpmUsd: cpmNum.toFixed(2),
+          creatorCpvPerM: cpmNum * (1 - PLATFORM_FEE_PERCENT),
+          adminMarginPerM: cpmNum * PLATFORM_FEE_PERCENT,
         }),
       });
 
@@ -134,30 +156,75 @@ export function AdvertiserCampaignForm() {
           </div>
 
           <div>
-            <label className="block text-sm font-medium mb-1" style={{ color: "var(--text-primary)" }}>Platform *</label>
-            <select
-              className="w-full px-3 py-2.5 rounded-lg text-sm outline-none cursor-pointer"
-              style={inputStyle}
-              value={form.platform}
-              onChange={e => set("platform", e.target.value as Platform)}
-            >
-              <option value="INSTAGRAM">Instagram</option>
-              <option value="TIKTOK">TikTok</option>
-              <option value="BOTH">Both</option>
-            </select>
+            <label className="block text-sm font-medium mb-1" style={{ color: "var(--text-primary)" }}>Platforms *</label>
+            <div className="flex flex-wrap gap-2">
+              {PLATFORM_OPTIONS.map(({ value, label }) => {
+                const selected = form.platforms.includes(value);
+                return (
+                  <button
+                    key={value}
+                    type="button"
+                    onClick={() =>
+                      setForm(prev => ({
+                        ...prev,
+                        platforms: selected
+                          ? prev.platforms.filter(p => p !== value)
+                          : [...prev.platforms, value],
+                      }))
+                    }
+                    className="px-3 py-1.5 rounded-lg text-sm font-medium transition-colors cursor-pointer"
+                    style={{
+                      border: `1px solid ${selected ? "var(--accent)" : "var(--border)"}`,
+                      background: selected ? "var(--accent-bg)" : "var(--bg-primary)",
+                      color: selected ? "var(--accent)" : "var(--text-secondary)",
+                    }}
+                  >
+                    {label}
+                  </button>
+                );
+              })}
+            </div>
           </div>
 
           <div>
             <label className="block text-sm font-medium mb-1" style={{ color: "var(--text-primary)" }}>Niche</label>
-            <select
-              className="w-full px-3 py-2.5 rounded-lg text-sm outline-none cursor-pointer"
-              style={inputStyle}
-              value={form.niche}
-              onChange={e => set("niche", e.target.value)}
-            >
-              <option value="">Select niche (optional)</option>
-              {NICHES.map(n => <option key={n} value={n}>{n.charAt(0) + n.slice(1).toLowerCase()}</option>)}
-            </select>
+            <div className="flex flex-wrap gap-2">
+              {NICHE_OPTIONS.map(({ value, label }) => {
+                const selected = form.niches.includes(value);
+                return (
+                  <button
+                    key={value}
+                    type="button"
+                    onClick={() =>
+                      setForm(prev => ({
+                        ...prev,
+                        niches: selected
+                          ? prev.niches.filter(n => n !== value)
+                          : [...prev.niches, value],
+                      }))
+                    }
+                    className="px-3 py-1.5 rounded-lg text-sm font-medium transition-colors cursor-pointer"
+                    style={{
+                      border: `1px solid ${selected ? "var(--accent)" : "var(--border)"}`,
+                      background: selected ? "var(--accent-bg)" : "var(--bg-primary)",
+                      color: selected ? "var(--accent)" : "var(--text-secondary)",
+                    }}
+                  >
+                    {label}
+                  </button>
+                );
+              })}
+            </div>
+            {form.niches.includes("OTHER") && (
+              <input
+                className="w-full px-3 py-2.5 rounded-lg text-sm outline-none mt-2"
+                style={inputStyle}
+                value={form.nicheOther}
+                onChange={e => set("nicheOther", e.target.value)}
+                placeholder="Specify niche..."
+                autoFocus
+              />
+            )}
           </div>
 
           <div>
@@ -192,7 +259,9 @@ export function AdvertiserCampaignForm() {
           </div>
 
           <div>
-            <label className="block text-sm font-medium mb-1" style={{ color: "var(--text-primary)" }}>Min. engagement rate (%)</label>
+            <label className="block text-sm font-medium mb-1" style={{ color: "var(--text-primary)" }}>
+              Min. engagement rate (%) <span style={{ color: "var(--text-muted)" }}>(optional)</span>
+            </label>
             <input
               className="w-full px-3 py-2.5 rounded-lg text-sm outline-none"
               style={inputStyle}
@@ -202,6 +271,7 @@ export function AdvertiserCampaignForm() {
               max="100"
               value={form.minEngagementRate}
               onChange={e => set("minEngagementRate", e.target.value)}
+              placeholder="e.g. 2"
             />
           </div>
 
@@ -266,28 +336,27 @@ export function AdvertiserCampaignForm() {
               />
             </div>
             <div>
-              <label className="block text-sm font-medium mb-1" style={{ color: "var(--text-primary)" }}>CPM rate ($/1K views) *</label>
+              <label className="block text-sm font-medium mb-1" style={{ color: "var(--text-primary)" }}>Goal views *</label>
               <input
                 className="w-full px-3 py-2.5 rounded-lg text-sm outline-none"
                 style={inputStyle}
                 type="number"
-                min="16"
-                step="1"
-                value={form.cpmUsd}
-                onChange={e => set("cpmUsd", e.target.value)}
-                placeholder="e.g. 45"
+                min="1000"
+                step="1000"
+                value={form.goalViews}
+                onChange={e => set("goalViews", e.target.value)}
+                placeholder="e.g. 2000000"
               />
-              <p className="text-[10px] mt-0.5" style={{ color: "var(--text-muted)" }}>Min $16/1K views</p>
             </div>
           </div>
 
-          {goalViews > 0 && (
+          {cpmNum > 0 && (
             <div className="rounded-lg p-4" style={{ background: "var(--accent-bg)", border: "1px solid var(--accent)" }}>
               <p className="text-sm font-medium" style={{ color: "var(--accent)" }}>
-                Estimated ~{goalViews.toLocaleString()} views
+                ${cpmNum.toFixed(2)}/1K views
               </p>
-              <p className="text-xs mt-1" style={{ color: "var(--text-secondary)" }}>
-                Creator: ${((cpmNum - DEFAULT_ADMIN_MARGIN_PER_M)).toFixed(0)}/1K views &middot; Platform: ${DEFAULT_ADMIN_MARGIN_PER_M}/1K views
+              <p className="text-xs mt-1" style={{ color: "var(--text-muted)" }}>
+                ClipProfit takes a 10% platform fee
               </p>
             </div>
           )}
@@ -342,13 +411,13 @@ export function AdvertiserCampaignForm() {
           <div className="rounded-xl overflow-hidden" style={{ border: "1px solid var(--border)" }}>
             {[
               { label: "Name", value: form.name },
-              { label: "Platform", value: form.platform },
-              { label: "Niche", value: form.niche || "Not set" },
+              { label: "Platforms", value: form.platforms.map(p => PLATFORM_OPTIONS.find(o => o.value === p)?.label).join(", ") || "None" },
+              { label: "Niche", value: form.niches.length > 0 ? form.niches.map(n => n === "OTHER" ? (form.nicheOther || "Other") : NICHE_OPTIONS.find(o => o.value === n)?.label).join(", ") : "Not set" },
               { label: "Target country", value: form.targetCountry },
-              { label: "Min. engagement", value: `${form.minEngagementRate}%` },
+              { label: "Min. engagement", value: form.minEngagementRate ? `${form.minEngagementRate}%` : "Not set" },
               { label: "Budget", value: `$${budgetNum.toLocaleString()}` },
-              { label: "CPM", value: `$${cpmNum}/1K views` },
-              { label: "Est. views", value: goalViews > 0 ? `~${goalViews.toLocaleString()}` : "N/A" },
+              { label: "Goal views", value: goalViewsNum > 0 ? `~${goalViewsNum.toLocaleString()}` : "N/A" },
+              { label: "CPM", value: cpmNum > 0 ? `$${cpmNum.toFixed(2)}/1K views` : "N/A" },
               { label: "Deadline", value: form.deadline || "Not set" },
               { label: "Max creators", value: form.maxSlots || "Unlimited" },
               { label: "Approval", value: form.requiresApproval ? "Required" : "Open" },
@@ -441,7 +510,7 @@ export function AdvertiserCampaignForm() {
             </button>
             <button
               onClick={() => submitCampaign(false)}
-              disabled={loading || !form.name || !form.totalBudget || !form.cpmUsd || !form.deadline}
+              disabled={loading || !form.name || !form.totalBudget || !form.goalViews || !form.deadline}
               className="flex-1 py-2.5 rounded-lg text-sm font-medium text-white transition-colors disabled:opacity-50 cursor-pointer"
               style={{ background: "var(--accent)" }}
             >

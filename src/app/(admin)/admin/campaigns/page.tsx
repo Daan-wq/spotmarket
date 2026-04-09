@@ -60,7 +60,14 @@ export default async function CampaignsPage() {
                 <td className="px-6 py-3 text-sm">
                   <PublishButton campaignId={c.id} />
                 </td>
-                <td className="px-6 py-3 text-sm">
+                <td className="px-6 py-3 text-sm flex items-center gap-2">
+                  <Link
+                    href={`/admin/campaigns/${c.id}/edit`}
+                    className="px-3 py-1 rounded text-xs font-medium transition-opacity hover:opacity-70"
+                    style={{ border: "1px solid var(--border)", color: "var(--text-secondary)" }}
+                  >
+                    Edit
+                  </Link>
                   <CampaignActions campaignId={c.id} status={c.status} />
                 </td>
               </tr>

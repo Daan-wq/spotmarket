@@ -4,6 +4,7 @@ import { useState } from "react";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
+import { OAuthButtons, OAuthDivider } from "@/components/auth/oauth-buttons";
 
 function EyeIcon({ open }: { open: boolean }) {
   return open ? (
@@ -158,6 +159,9 @@ export function SignInForm() {
           {success}
         </p>
       )}
+
+      <OAuthButtons mode="signin" />
+      <OAuthDivider />
 
       <form onSubmit={handleSignIn} className="space-y-4">
         <div>

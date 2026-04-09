@@ -5,9 +5,8 @@ import { z } from "zod";
 
 const createSubmissionSchema = z.object({
   applicationId: z.string().min(1),
-  postUrl: z.string().url().optional(),
-  screenshotUrl: z.string().url(),
-  claimedViews: z.number().int().positive(),
+  postUrl: z.string().url(),
+  screenshotUrl: z.string().url().optional(),
 });
 
 export async function GET(req: NextRequest) {
@@ -48,18 +47,18 @@ export async function POST(req: NextRequest) {
     const { userId, role } = await requireAuth("creator");
 
     const body = await req.json();
-    const { applicationId, postUrl, screenshotUrl, claimedViews } = createSubmissionSchema.parse(body);
+    const { applicationId, postUrl, screenshotUrl } = createSubmissionSchema.parse(body);
 
     const creator = await prisma.user.findUnique({
       where: { supabaseId: userId },
-      include: { creatorProfile: { include: { igConnection: true } } },
+      include: { creatorProfile: { include: { igConnections: true } } },
     });
 
     if (!creator?.creatorProfile) {
       return NextResponse.json({ error: "Creator profile not found" }, { status: 404 });
     }
 
-    if (!creator.creatorProfile.igConnection?.isVerified) {
+    if (!creator.creatorProfile.igConnections?.some(c => c.isVerified)) {
       return NextResponse.json({ error: "Creator IG must be verified" }, { status: 400 });
     }
 
@@ -78,11 +77,18 @@ export async function POST(req: NextRequest) {
         creatorId: creator.id,
         campaignId: app.campaignId,
         postUrl,
-        screenshotUrl,
-        claimedViews,
+        screenshotUrl: screenshotUrl ?? null,
+        claimedViews: 0,
         status: "PENDING",
       },
-      include: { campaign: true, creator: true, application: true },
+      select: {
+        id: true,
+        postUrl: true,
+        status: true,
+        createdAt: true,
+        applicationId: true,
+        campaignId: true,
+      },
     });
 
     return NextResponse.json({ submission }, { status: 201 });

@@ -14,8 +14,11 @@ interface CampaignAnnouncement {
   totalBudget: number;
   otherNotes?: string | null;   // stores regions for Discord display
   platform: string;
+  platforms?: string[];
   contentType?: string | null;
   requirements?: string | null;
+  minAge?: string | null;
+  pageStats?: string | null;    // JSON string of selected stats
 }
 
 export async function notifyCampaignLive(campaign: CampaignNotification): Promise<void> {
@@ -43,6 +46,19 @@ export async function notifyCampaignLive(campaign: CampaignNotification): Promis
         timestamp: new Date().toISOString(),
       },
     ],
+    components: [
+      {
+        type: 1,
+        components: [
+          {
+            type: 2,
+            style: 5,
+            label: "Apply Now",
+            url: `${appUrl}/creator/campaigns/${campaign.id}`,
+          },
+        ],
+      },
+    ],
   };
 
   await fetch(webhookUrl, {
@@ -63,22 +79,45 @@ export async function postCampaignAnnouncement(campaign: CampaignAnnouncement): 
   const PLATFORM_LABELS: Record<string, string> = {
     INSTAGRAM: "Instagram",
     TIKTOK: "TikTok",
+    YOUTUBE_SHORTS: "YouTube Shorts",
+    FACEBOOK: "Facebook",
+    X: "X",
     BOTH: "Instagram & TikTok",
   };
 
-  const sep = "━━━━━━━━━━━━━━━━━━━━━━━━━";
   const budget = new Intl.NumberFormat("de-DE").format(campaign.totalBudget);
-  const platformLabel = PLATFORM_LABELS[campaign.platform] ?? campaign.platform;
-  const regions = campaign.otherNotes ?? "-";
-  const content = campaign.contentType ?? "-";
 
+  // Build platform label from platforms array or fallback to single platform
+  const platformLabel = campaign.platforms && campaign.platforms.length > 0
+    ? campaign.platforms.map((p) => PLATFORM_LABELS[p] ?? p).join(" · ")
+    : PLATFORM_LABELS[campaign.platform] ?? campaign.platform;
+
+  // Build description lines — only include fields that have values
+  const lines: string[] = [];
+  lines.push(`💰 **Budget**       €${budget}`);
+  if (campaign.otherNotes) {
+    lines.push(`🌍 **Region**        ${campaign.otherNotes}`);
+  }
+  lines.push(`📱 **Platforms**    ${platformLabel}`);
+  if (campaign.contentType) {
+    lines.push(`🎬 **Content**      ${campaign.contentType}`);
+  }
+  if (campaign.minAge) {
+    lines.push(`👤 **Age**             ${campaign.minAge}`);
+  }
+
+  // Requirements as checkmarks
   const reqs = (campaign.requirements ?? "")
     .split("\n")
     .filter((r) => r.trim().length > 0)
-    .map((r) => `↳ ${r.trim()}`)
+    .map((r) => `✅ ${r.trim()}`)
     .join("\n");
 
-  const message = `${sep}\n      📢 **${campaign.name}**\n${sep}\n\nBUDGET       **€${budget}**\nREGION         ${regions}\nPLATFORMS   ${platformLabel}\nCONTENT       ${content}\n\nREQUIREMENTS\n${reqs}\n\n${sep}\nFull details after application.\n📩  **Send me a dm with your pages and statistics to get approved**\n${sep}`;
+  const descParts = [lines.join("\n")];
+  if (reqs) descParts.push("", reqs);
+  descParts.push("", "Full brief after approval.");
+
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://clipprofit.com";
 
   await fetch(`https://discord.com/api/v10/channels/${channelId}/messages`, {
     method: "POST",
@@ -86,7 +125,28 @@ export async function postCampaignAnnouncement(campaign: CampaignAnnouncement): 
       "Content-Type": "application/json",
       Authorization: `Bot ${botToken}`,
     },
-    body: JSON.stringify({ content: message }),
+    body: JSON.stringify({
+      embeds: [
+        {
+          title: `📢 ${campaign.name}`,
+          description: descParts.join("\n"),
+          color: 0x534AB7,
+        },
+      ],
+      components: [
+        {
+          type: 1,
+          components: [
+            {
+              type: 2,
+              style: 5,
+              label: "Apply to start earning 💵",
+              url: `${appUrl}/sign-up`,
+            },
+          ],
+        },
+      ],
+    }),
   }).catch((err) => console.error("[discord bot]", err));
 }
 

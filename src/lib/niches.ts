@@ -59,6 +59,41 @@ export const NICHE_CONFIG: Record<Niche, NicheConfig> = {
     description:
       "⚠️ Legacy niche — illegaal in NL (KSA-verbod sinds juli 2023). Wordt geleidelijk uitgefaseerd.",
   },
+  MEMES: {
+    label: "Memes",
+    cpmBenchmark: 4.5,
+    isLegacy: false,
+    color: "yellow",
+    description: "Viral meme content — massive reach potential",
+  },
+  SPORT: {
+    label: "Sport",
+    cpmBenchmark: 6.0,
+    isLegacy: false,
+    color: "green",
+    description: "Sports highlights, analysis, and fan content",
+  },
+  CLIPS: {
+    label: "Clips",
+    cpmBenchmark: 5.0,
+    isLegacy: false,
+    color: "cyan",
+    description: "Short-form video clips and compilations",
+  },
+  GAMING: {
+    label: "Gaming",
+    cpmBenchmark: 7.0,
+    isLegacy: false,
+    color: "indigo",
+    description: "Gaming content, reviews, and gameplay",
+  },
+  OTHER: {
+    label: "Other",
+    cpmBenchmark: 4.0,
+    isLegacy: false,
+    color: "gray",
+    description: "Custom niche specified by advertiser",
+  },
 };
 
 export const ACTIVE_NICHES = (Object.keys(NICHE_CONFIG) as Niche[]).filter(

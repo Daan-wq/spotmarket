@@ -22,7 +22,7 @@ model User {
   notifyPayoutAlerts   Boolean  @default(true)
   profilePublic        Boolean  @default(true)
   discordId            String?  @unique
-  discordUsername       String?
+  discordUsername      String?
   createdAt            DateTime @default(now())
   updatedAt            DateTime @updatedAt
 
@@ -33,6 +33,7 @@ model User {
   ownedCampaigns      Campaign[]           @relation("OwnedCampaigns")
   notifications       Notification[]
   campaignSubmissions CampaignSubmission[]
+  wallet              Wallet?
 
   @@index([supabaseId])
   @@index([role])
@@ -71,9 +72,10 @@ model CreatorProfile {
   createdAt          DateTime @default(now())
   updatedAt          DateTime @updatedAt
 
-  igConnection CreatorIgConnection?
-  applications CampaignApplication[]
-  payouts      Payout[]
+  igConnections CreatorIgConnection[]
+  fbConnections CreatorFbConnection[]
+  applications  CampaignApplication[]
+  payouts       Payout[]
 
   @@index([primaryGeo])
   @@index([engagementRate])
@@ -99,18 +101,21 @@ model AdvertiserProfile {
 }
 
 model ReferralPayout {
-  id                    String   @id @default(cuid())
+  id                    String              @id @default(cuid())
   referrerId            String
-  referrer              User     @relation("ReferrerPayouts", fields: [referrerId], references: [id])
+  referrer              User                @relation("ReferrerPayouts", fields: [referrerId], references: [id])
   referredUserId        String
   campaignApplicationId String
-  amount                Decimal  @db.Decimal(10, 2)
-  status                String   @default("pending")
-  createdAt             DateTime @default(now())
+  submissionId          String?
+  submission            CampaignSubmission? @relation("ReferralPayouts", fields: [submissionId], references: [id])
+  amount                Decimal             @db.Decimal(10, 2)
+  status                String              @default("pending")
+  createdAt             DateTime            @default(now())
 
   @@index([referrerId])
   @@index([referredUserId])
   @@index([status])
+  @@index([referrerId, createdAt])
 }
 
 // ─────────────────────────────────────────
@@ -119,7 +124,7 @@ model ReferralPayout {
 
 model CreatorIgConnection {
   id               String         @id @default(cuid())
-  creatorProfileId String         @unique
+  creatorProfileId String
   creatorProfile   CreatorProfile @relation(fields: [creatorProfileId], references: [id], onDelete: Cascade)
   igUsername       String         @unique
   verificationCode String         @unique
@@ -127,13 +132,44 @@ model CreatorIgConnection {
   verifiedAt       DateTime?
   lastCheckedAt    DateTime?
   followerCount    Int?
+  profilePicUrl    String?
+  igUserId         String?
+  accessToken      String?
+  accessTokenIv    String?
+  tokenExpiresAt   DateTime?
   createdAt        DateTime       @default(now())
   updatedAt        DateTime       @updatedAt
 
   bioVerifications BioVerification[]
 
-  @@index([igUsername])
+  @@unique([creatorProfileId, igUsername])
+  @@index([creatorProfileId])
   @@index([isVerified])
+  @@index([tokenExpiresAt])
+}
+
+// ─────────────────────────────────────────
+// FACEBOOK PAGE CONNECTION (OAuth)
+// ─────────────────────────────────────────
+
+model CreatorFbConnection {
+  id               String         @id @default(cuid())
+  creatorProfileId String
+  creatorProfile   CreatorProfile @relation(fields: [creatorProfileId], references: [id], onDelete: Cascade)
+  fbPageId         String         @unique
+  pageName         String
+  profilePicUrl    String?
+  followerCount    Int?
+  accessToken      String?
+  accessTokenIv    String?
+  tokenExpiresAt   DateTime?
+  isVerified       Boolean        @default(true)
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
+
+  @@unique([creatorProfileId, fbPageId])
+  @@index([creatorProfileId])
+  @@index([tokenExpiresAt])
 }
 
 // ─────────────────────────────────────────
@@ -172,6 +208,11 @@ enum Niche {
   HUMOR
   LIFESTYLE
   CASINO
+  MEMES
+  SPORT
+  CLIPS
+  GAMING
+  OTHER
 }
 
 // ─────────────────────────────────────────
@@ -182,6 +223,7 @@ model Campaign {
   id                String         @id @default(cuid())
   name              String
   platform          Platform       @default(INSTAGRAM)
+  platforms         Platform[]     @default([])
   description       String?
   contentGuidelines String?        @db.Text
   referralLink      String?
@@ -211,6 +253,8 @@ model Campaign {
   contentType           String?
   requirements          String?
   otherNotes            String?
+  pageStats             String?
+  minAge                String?
   bannerUrl             String?
   contentAssetUrls      String[]
   guidelinesUrl         String?
@@ -256,6 +300,9 @@ enum CampaignStatus {
 enum Platform {
   INSTAGRAM
   TIKTOK
+  YOUTUBE_SHORTS
+  FACEBOOK
+  X
   BOTH
 }
 
@@ -337,30 +384,43 @@ model CampaignSubmission {
   campaignId    String
   campaign      Campaign            @relation(fields: [campaignId], references: [id])
 
-  postUrl       String?
-  screenshotUrl String
-  claimedViews  Int
+  postUrl       String
+  videoUrl      String?
+  screenshotUrl String?
+  claimedViews  Int              @default(0)
+  brandMessage  String?          @db.Text
+  viewCount     Int?
+  likeCount     Int?
+  commentCount  Int?
+  shareCount    Int?
+  baselineViews Int?
+  eligibleViews Int?
   status        SubmissionStatus @default(PENDING)
 
   reviewedAt    DateTime?
   reviewedBy    String?
   rejectionNote String?
+  settledAt     DateTime?
 
   earnedAmount Decimal @default(0) @db.Decimal(10, 2)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  referralPayouts ReferralPayout[] @relation("ReferralPayouts")
+
   @@index([applicationId])
   @@index([creatorId])
   @@index([campaignId])
   @@index([status])
+  @@index([settledAt])
 }
 
 enum SubmissionStatus {
   PENDING
   APPROVED
   REJECTED
+  FLAGGED
 }
 
 // ─────────────────────────────────────────
@@ -459,6 +519,9 @@ enum NotificationType {
   APPLICATION_REJECTED
   BIO_VERIFIED
   PAYOUT_SENT
+  REFERRAL_EARNED
+  EARNINGS_CREDITED
+  WITHDRAWAL_PROCESSED
 }
 
 // ─────────────────────────────────────────
@@ -474,4 +537,66 @@ model SignupTicket {
   createdAt DateTime  @default(now())
 
   @@index([email])
+}
+
+// ─────────────────────────────────────────
+// MESSAGES (Creator ↔ Brand)
+// ─────────────────────────────────────────
+
+model Message {
+  id           String   @id @default(cuid())
+  campaignId   String
+  senderId     String
+  receiverId   String
+  submissionId String?
+  content      String   @db.Text
+  isRead       Boolean  @default(false)
+  createdAt    DateTime @default(now())
+
+  @@index([campaignId, senderId])
+  @@index([receiverId, isRead])
+}
+
+// ─────────────────────────────────────────
+// WALLET & WITHDRAWALS
+// ─────────────────────────────────────────
+
+model Wallet {
+  id        String   @id @default(cuid())
+  userId    String   @unique
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  balance   Decimal  @default(0) @db.Decimal(12, 2)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  withdrawals WithdrawalRequest[]
+
+  @@index([userId])
+}
+
+model WithdrawalRequest {
+  id            String           @id @default(cuid())
+  walletId      String
+  wallet        Wallet           @relation(fields: [walletId], references: [id], onDelete: Cascade)
+  amount        Decimal          @db.Decimal(12, 2)
+  walletAddress String
+  network       String           @default("TRC-20")
+  currency      String           @default("USDT")
+  status        WithdrawalStatus @default(PENDING)
+  txHash        String?
+  processedBy   String?
+  processedAt   DateTime?
+  createdAt     DateTime         @default(now())
+  updatedAt     DateTime         @updatedAt
+
+  @@index([walletId])
+  @@index([status])
+}
+
+enum WithdrawalStatus {
+  PENDING
+  PROCESSING
+  SENT
+  CONFIRMED
+  REJECTED
 }

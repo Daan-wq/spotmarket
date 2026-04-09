@@ -13,9 +13,9 @@ export default async function AdvertiserLayout({
   }
 
   return (
-    <div className="flex h-screen" style={{ background: "var(--bg-primary)" }}>
+    <div className="creator-theme flex h-screen">
       <AdvertiserSidebar />
-      <main className="flex-1 overflow-auto">{children}</main>
+      <main className="flex-1 overflow-auto" style={{ background: "var(--bg-primary)" }}>{children}</main>
     </div>
   );
 }

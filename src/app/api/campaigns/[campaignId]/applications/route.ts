@@ -31,7 +31,7 @@ export async function GET(
     const applications = await prisma.campaignApplication.findMany({
       where: { campaignId },
       include: {
-        creatorProfile: { select: { displayName: true, totalFollowers: true, igConnection: { select: { igUsername: true, isVerified: true } } } },
+        creatorProfile: { select: { displayName: true, totalFollowers: true, igConnections: { select: { igUsername: true, isVerified: true }, take: 1, where: { isVerified: true } } } },
       },
       orderBy: { appliedAt: "desc" },
     });
@@ -61,14 +61,14 @@ export async function POST(
 
     const user = await prisma.user.findUnique({
       where: { supabaseId: userId },
-      include: { creatorProfile: { include: { igConnection: true } } },
+      include: { creatorProfile: { include: { igConnections: true } } },
     });
 
     if (!user?.creatorProfile) {
       return NextResponse.json({ error: "Creator profile not found" }, { status: 404 });
     }
 
-    if (!user.creatorProfile.igConnection?.isVerified) {
+    if (!user.creatorProfile.igConnections?.some(c => c.isVerified)) {
       return NextResponse.json({ error: "Creator bio must be verified first" }, { status: 400 });
     }
 

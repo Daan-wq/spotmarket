@@ -2,7 +2,7 @@ import { prisma } from "@/lib/prisma";
 
 export default async function CreatorsPage() {
   const creators = await prisma.creatorProfile.findMany({
-    include: { igConnection: { select: { isVerified: true, igUsername: true } }, applications: { where: { campaign: { status: "active" } } } },
+    include: { igConnections: { select: { isVerified: true, igUsername: true }, where: { isVerified: true }, take: 1 }, applications: { where: { campaign: { status: "active" } } } },
     orderBy: { totalFollowers: "desc" },
   });
 
@@ -25,7 +25,7 @@ export default async function CreatorsPage() {
             {creators.map((c) => (
               <tr key={c.id} style={{ borderBottom: "1px solid var(--border)" }}>
                 <td className="px-6 py-3 text-sm" style={{ color: "var(--text-primary)" }}>{c.displayName}</td>
-                <td className="px-6 py-3 text-sm" style={{ color: "var(--text-primary)" }}>{c.igConnection?.igUsername || "-"}</td>
+                <td className="px-6 py-3 text-sm" style={{ color: "var(--text-primary)" }}>{c.igConnections[0]?.igUsername || "-"}</td>
                 <td className="px-6 py-3 text-sm"><span className="px-2 py-1 rounded text-xs" style={{ background: c.isVerified ? "var(--success-bg)" : "var(--warning-bg)", color: c.isVerified ? "var(--success-text)" : "var(--warning-text)" }}>{c.isVerified ? "Yes" : "No"}</span></td>
                 <td className="px-6 py-3 text-sm" style={{ color: "var(--text-primary)" }}>{c.totalFollowers.toLocaleString()}</td>
                 <td className="px-6 py-3 text-sm" style={{ color: "var(--text-primary)" }}>{c.applications.length}</td>

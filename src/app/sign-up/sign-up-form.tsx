@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { Logo } from "@/components/shared/logo";
 import Link from "next/link";
+import { OAuthButtons, OAuthDivider } from "@/components/auth/oauth-buttons";
 
 export function SignUpForm() {
   const searchParams = useSearchParams();
@@ -92,6 +93,9 @@ export function SignUpForm() {
               Sign in
             </Link>
           </p>
+
+          <OAuthButtons mode="signup" />
+          <OAuthDivider />
 
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>

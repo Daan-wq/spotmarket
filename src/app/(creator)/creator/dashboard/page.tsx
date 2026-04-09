@@ -26,7 +26,7 @@ export default async function DashboardPage() {
   const activeCampaigns = await prisma.campaignApplication.count({
     where: {
       creatorProfileId: profile.id,
-      status: { in: ["approved", "active"] },
+      status: { in: ["pending", "approved", "active"] },
     },
   });
 
@@ -34,10 +34,10 @@ export default async function DashboardPage() {
     where: { creatorId: user.id, status: "PENDING" },
   });
 
-  const igConnection = await prisma.creatorIgConnection.findUnique({
+  const igConnections = await prisma.creatorIgConnection.findMany({
     where: { creatorProfileId: profile.id },
   });
-  const bioVerified = igConnection?.isVerified ?? false;
+  const bioVerified = igConnections.some(c => c.isVerified);
 
   // Recent submissions
   const recentSubmissions = await prisma.campaignSubmission.findMany({

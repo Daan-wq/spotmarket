@@ -20,7 +20,7 @@ interface CampaignDetailClientProps {
     creatorProfile?: {
       displayName: string;
       totalFollowers: number;
-      igConnection?: { igUsername: string };
+      igConnections?: { igUsername: string }[];
     };
   }>;
   submissions: Array<{
@@ -57,9 +57,18 @@ export function CampaignDetailClient({
         ← Back to Campaigns
       </Link>
 
-      <h1 className="text-3xl font-bold mb-2" style={{ color: "var(--text-primary)" }}>
-        {campaign.name}
-      </h1>
+      <div className="flex items-center gap-4 mb-2">
+        <h1 className="text-3xl font-bold" style={{ color: "var(--text-primary)" }}>
+          {campaign.name}
+        </h1>
+        <Link
+          href={`/advertiser/campaigns/${campaign.id}/edit`}
+          className="px-4 py-1.5 rounded-lg text-sm font-medium transition-colors"
+          style={{ border: "1px solid var(--border)", color: "var(--text-secondary)" }}
+        >
+          Edit
+        </Link>
+      </div>
       <p className="text-sm mb-8" style={{ color: "var(--text-secondary)" }}>
         {campaign.description}
       </p>
@@ -151,7 +160,7 @@ export function CampaignDetailClient({
                         {app.creatorProfile?.displayName || "Unknown"}
                       </td>
                       <td className="px-6 py-4" style={{ color: "var(--text-primary)" }}>
-                        @{app.creatorProfile?.igConnection?.igUsername || "—"}
+                        @{app.creatorProfile?.igConnections?.[0]?.igUsername || "—"}
                       </td>
                       <td className="px-6 py-4" style={{ color: "var(--text-primary)" }}>
                         {app.creatorProfile?.totalFollowers?.toLocaleString() || "—"}

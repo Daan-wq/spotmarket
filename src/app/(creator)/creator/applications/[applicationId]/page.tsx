@@ -6,8 +6,9 @@ import { notFound } from "next/navigation";
 export default async function ApplicationDetailPage({
   params,
 }: {
-  params: { applicationId: string };
+  params: Promise<{ applicationId: string }>;
 }) {
+  const { applicationId } = await params;
   const { userId } = await requireAuth("creator");
 
   const user = await prisma.user.findUnique({
@@ -17,13 +18,13 @@ export default async function ApplicationDetailPage({
   if (!user) throw new Error("User not found");
 
   const application = await prisma.campaignApplication.findUnique({
-    where: { id: params.applicationId },
+    where: { id: applicationId },
     include: { campaign: true, creatorProfile: true },
   });
   if (!application || application.creatorProfile?.userId !== user.id) notFound();
 
   const submissions = await prisma.campaignSubmission.findMany({
-    where: { applicationId: params.applicationId },
+    where: { applicationId },
     orderBy: { createdAt: "desc" },
   });
 
@@ -67,7 +68,7 @@ export default async function ApplicationDetailPage({
             style={{ color: "var(--primary)" }}
             className="text-2xl font-bold"
           >
-            ${(application.earnedAmount / 100).toFixed(2)}
+            ${Number(application.earnedAmount).toFixed(2)}
           </p>
         </div>
         <div
@@ -107,7 +108,7 @@ export default async function ApplicationDetailPage({
       </div>
 
       {/* New Submission Button */}
-      <Link href={`/creator/applications/${params.applicationId}/submit`}>
+      <Link href={`/creator/applications/${applicationId}/submit`}>
         <button
           className="mb-6 px-6 py-3 rounded-lg font-medium"
           style={{

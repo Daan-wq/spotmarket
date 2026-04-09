@@ -4,9 +4,7 @@ import { useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { StepIndicator } from "@/components/onboarding/step-indicator";
 
-const TRON_REGEX = /^T[1-9A-HJ-NP-Z]{33}$/;
-
-const NICHES = ["FINANCE", "TECH", "MOTIVATION", "FOOD", "HUMOR", "LIFESTYLE", "CASINO"] as const;
+const NICHES = ["Memes", "Sport", "Gaming", "Lifestyle", "Finance", "Tech", "Other"] as const;
 
 const ATTRIBUTION_SOURCES = [
   "Google Search",
@@ -53,12 +51,12 @@ type Role = "creator" | "advertiser";
 
 interface FormData {
   attributionSource: string;
+  attributionOther: string;
   displayName: string;
-  tronsAddress: string;
   role: Role | null;
   niches: string[];
+  nicheOther: string;
   experienceLevel: string;
-  portfolioVideoUrl: string;
   brandName: string;
   website: string;
 }
@@ -74,20 +72,18 @@ export function OnboardingForm() {
 
   const [form, setForm] = useState<FormData>({
     attributionSource: "",
+    attributionOther: "",
     displayName: "",
-    tronsAddress: "",
     role: null,
     niches: [],
+    nicheOther: "",
     experienceLevel: "",
-    portfolioVideoUrl: "",
     brandName: "",
     website: "",
   });
 
-  const tronsAddressValid = !form.tronsAddress || TRON_REGEX.test(form.tronsAddress);
-
   function getSteps(): { labels: string[]; total: number } {
-    if (form.role === "creator") return { labels: ["Source", "Info", "Role", "Niche", "Experience", "Portfolio"], total: 6 };
+    if (form.role === "creator") return { labels: ["Source", "Info", "Role", "Niche", "Experience"], total: 5 };
     if (form.role === "advertiser") return { labels: ["Source", "Info", "Role", "Brand"], total: 4 };
     return { labels: ["Source", "Info", "Role"], total: 3 };
   }
@@ -95,11 +91,10 @@ export function OnboardingForm() {
   const { labels, total } = getSteps();
 
   function canProceed(): boolean {
-    if (step === 1) return !!form.attributionSource;
-    if (step === 2) return !!form.displayName.trim() && tronsAddressValid;
+    if (step === 1) return !!form.attributionSource && (form.attributionSource !== "Other" || !!form.attributionOther.trim());
+    if (step === 2) return !!form.displayName.trim();
     if (step === 3) return !!form.role;
     if (step === 4 && form.role === "advertiser") return !!form.brandName.trim();
-    // Creator steps 4 (niche), 5 (experience), 6 (portfolio) are all optional
     return true;
   }
 
@@ -107,18 +102,24 @@ export function OnboardingForm() {
     setLoading(true);
     setError(null);
     try {
+      const attribution = form.attributionSource === "Other"
+        ? `Other: ${form.attributionOther.trim()}`
+        : form.attributionSource;
+
+      const niches = form.niches.includes("Other") && form.nicheOther.trim()
+        ? [...form.niches.filter((n) => n !== "Other"), `Other: ${form.nicheOther.trim()}`]
+        : form.niches;
+
       const res = await fetch("/api/onboarding/complete", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           displayName: form.displayName.trim(),
           referralCode,
-          tronsAddress: form.tronsAddress.trim() || undefined,
           role: form.role,
-          niches: form.niches,
-          attributionSource: form.attributionSource || undefined,
+          niches,
+          attributionSource: attribution || undefined,
           experienceLevel: form.experienceLevel || undefined,
-          portfolioVideoUrl: form.portfolioVideoUrl.trim() || undefined,
           brandName: form.brandName.trim() || undefined,
           website: form.website.trim() || undefined,
         }),
@@ -144,11 +145,13 @@ export function OnboardingForm() {
     }
   }
 
+  const inputClass = "w-full px-4 py-3 rounded-xl text-sm outline-none transition-colors";
   const inputStyle = {
-    border: "1px solid var(--border)",
-    background: "var(--bg-primary)",
-    color: "var(--text-primary)",
+    border: "1.5px solid #e2e8f0",
+    background: "#fff",
+    color: "#111827",
   };
+  const labelClass = "block text-sm font-semibold mb-2 text-gray-800";
 
   return (
     <div>
@@ -157,23 +160,34 @@ export function OnboardingForm() {
       {/* Step 1: Attribution */}
       {step === 1 && (
         <div>
-          <p className="text-sm mb-4" style={{ color: "var(--text-secondary)" }}>Where did you hear about us?</p>
+          <p className="text-sm font-medium mb-4 text-gray-500">Where did you hear about us?</p>
           <div className="space-y-2">
             {ATTRIBUTION_SOURCES.map((source) => (
               <button
                 key={source}
-                onClick={() => setForm({ ...form, attributionSource: source })}
-                className="w-full text-left px-4 py-3 rounded-xl text-sm transition-colors cursor-pointer"
+                onClick={() => setForm({ ...form, attributionSource: source, attributionOther: "" })}
+                className="w-full text-left px-4 py-3 rounded-xl text-sm font-medium transition-colors cursor-pointer"
                 style={{
-                  border: `2px solid ${form.attributionSource === source ? "var(--accent)" : "var(--border)"}`,
-                  background: form.attributionSource === source ? "var(--accent-bg)" : "var(--bg-primary)",
-                  color: "var(--text-primary)",
+                  border: `2px solid ${form.attributionSource === source ? "var(--accent)" : "#e2e8f0"}`,
+                  background: form.attributionSource === source ? "var(--accent-bg)" : "#fff",
+                  color: form.attributionSource === source ? "var(--accent)" : "#374151",
                 }}
               >
                 {source}
               </button>
             ))}
           </div>
+          {form.attributionSource === "Other" && (
+            <input
+              type="text"
+              autoFocus
+              value={form.attributionOther}
+              onChange={(e) => setForm({ ...form, attributionOther: e.target.value })}
+              placeholder="Tell us where..."
+              className={`${inputClass} mt-3`}
+              style={inputStyle}
+            />
+          )}
         </div>
       )}
 
@@ -181,9 +195,7 @@ export function OnboardingForm() {
       {step === 2 && (
         <div className="space-y-4">
           <div>
-            <label className="block text-sm font-medium mb-1.5" style={{ color: "var(--card-foreground)" }}>
-              Your name or page name
-            </label>
+            <label className={labelClass}>Your name or page name</label>
             <input
               type="text"
               value={form.displayName}
@@ -191,29 +203,9 @@ export function OnboardingForm() {
               placeholder="e.g. John or @mypagename"
               required
               autoFocus
-              className="w-full px-3 py-2.5 rounded-lg text-sm outline-none"
+              className={inputClass}
               style={inputStyle}
             />
-          </div>
-          <div>
-            <label className="block text-sm font-medium mb-1.5" style={{ color: "var(--card-foreground)" }}>
-              USDT wallet (TRC-20){" "}
-              <span style={{ color: "var(--text-muted)" }}>(optional)</span>
-            </label>
-            <input
-              type="text"
-              value={form.tronsAddress}
-              onChange={(e) => setForm({ ...form, tronsAddress: e.target.value.trim() })}
-              placeholder="Txxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
-              className="w-full px-3 py-2.5 rounded-lg text-sm outline-none font-mono"
-              style={{
-                ...inputStyle,
-                borderColor: form.tronsAddress && !tronsAddressValid ? "var(--error)" : undefined,
-              }}
-            />
-            {form.tronsAddress && !tronsAddressValid && (
-              <p className="text-xs mt-1" style={{ color: "var(--error)" }}>Invalid Tron address</p>
-            )}
           </div>
         </div>
       )}
@@ -221,29 +213,29 @@ export function OnboardingForm() {
       {/* Step 3: Role Selection */}
       {step === 3 && (
         <div className="space-y-3">
-          <p className="text-sm mb-4" style={{ color: "var(--text-secondary)" }}>What describes you best?</p>
+          <p className="text-sm font-medium mb-4 text-gray-500">What describes you best?</p>
           {ROLES.map((role) => (
             <button
               key={role.value}
               onClick={() => setForm({ ...form, role: role.value as Role })}
               className="w-full flex items-center gap-4 p-4 rounded-xl transition-colors text-left cursor-pointer"
               style={{
-                border: `2px solid ${form.role === role.value ? "var(--accent)" : "var(--border)"}`,
-                background: form.role === role.value ? "var(--accent-bg)" : "var(--bg-primary)",
+                border: `2px solid ${form.role === role.value ? "var(--accent)" : "#e2e8f0"}`,
+                background: form.role === role.value ? "var(--accent-bg)" : "#fff",
               }}
             >
               <div
                 className="w-10 h-10 rounded-lg flex items-center justify-center shrink-0"
                 style={{
-                  background: form.role === role.value ? "var(--accent)" : "var(--bg-secondary)",
-                  color: form.role === role.value ? "#fff" : "var(--text-muted)",
+                  background: form.role === role.value ? "var(--accent)" : "#f3f4f6",
+                  color: form.role === role.value ? "#fff" : "#6b7280",
                 }}
               >
                 {role.icon}
               </div>
               <div>
-                <p className="text-sm font-medium" style={{ color: "var(--text-primary)" }}>{role.label}</p>
-                <p className="text-xs" style={{ color: "var(--text-muted)" }}>{role.description}</p>
+                <p className="text-sm font-semibold text-gray-800">{role.label}</p>
+                <p className="text-xs text-gray-500 mt-0.5">{role.description}</p>
               </div>
             </button>
           ))}
@@ -253,7 +245,7 @@ export function OnboardingForm() {
       {/* Step 4: Niche Selection (Creator) */}
       {step === 4 && form.role === "creator" && (
         <div>
-          <p className="text-sm mb-4" style={{ color: "var(--text-secondary)" }}>Select the niches you create content for</p>
+          <p className="text-sm font-medium mb-4 text-gray-500">What niche(s) do you create content for?</p>
           <div className="flex flex-wrap gap-2">
             {NICHES.map((niche) => {
               const selected = form.niches.includes(niche);
@@ -266,27 +258,39 @@ export function OnboardingForm() {
                       niches: selected
                         ? form.niches.filter((n) => n !== niche)
                         : [...form.niches, niche],
+                      nicheOther: selected && niche === "Other" ? "" : form.nicheOther,
                     })
                   }
-                  className="px-4 py-2 rounded-full text-sm font-medium transition-colors cursor-pointer"
+                  className="px-4 py-2 rounded-full text-sm font-semibold transition-colors cursor-pointer"
                   style={{
-                    border: `1.5px solid ${selected ? "var(--accent)" : "var(--border)"}`,
-                    background: selected ? "var(--accent-bg)" : "var(--bg-primary)",
-                    color: selected ? "var(--accent)" : "var(--text-secondary)",
+                    border: `1.5px solid ${selected ? "var(--accent)" : "#e2e8f0"}`,
+                    background: selected ? "var(--accent-bg)" : "#fff",
+                    color: selected ? "var(--accent)" : "#374151",
                   }}
                 >
-                  {niche.charAt(0) + niche.slice(1).toLowerCase()}
+                  {niche}
                 </button>
               );
             })}
           </div>
+          {form.niches.includes("Other") && (
+            <input
+              type="text"
+              autoFocus
+              value={form.nicheOther}
+              onChange={(e) => setForm({ ...form, nicheOther: e.target.value })}
+              placeholder="Describe your niche..."
+              className={`${inputClass} mt-4`}
+              style={inputStyle}
+            />
+          )}
         </div>
       )}
 
       {/* Step 5: Experience Level (Creator) */}
       {step === 5 && form.role === "creator" && (
         <div>
-          <p className="text-sm mb-4" style={{ color: "var(--text-secondary)" }}>
+          <p className="text-sm font-medium mb-4 text-gray-500">
             What&apos;s your content creation experience?
           </p>
           <div className="grid grid-cols-2 gap-3">
@@ -296,39 +300,14 @@ export function OnboardingForm() {
                 onClick={() => setForm({ ...form, experienceLevel: level.value })}
                 className="p-4 rounded-xl text-left transition-colors cursor-pointer"
                 style={{
-                  border: `2px solid ${form.experienceLevel === level.value ? "var(--accent)" : "var(--border)"}`,
-                  background: form.experienceLevel === level.value ? "var(--accent-bg)" : "var(--bg-primary)",
+                  border: `2px solid ${form.experienceLevel === level.value ? "var(--accent)" : "#e2e8f0"}`,
+                  background: form.experienceLevel === level.value ? "var(--accent-bg)" : "#fff",
                 }}
               >
-                <p className="text-sm font-medium" style={{ color: "var(--text-primary)" }}>{level.label}</p>
-                <p className="text-xs mt-0.5" style={{ color: "var(--text-muted)" }}>{level.description}</p>
+                <p className="text-sm font-semibold text-gray-800">{level.label}</p>
+                <p className="text-xs text-gray-500 mt-0.5">{level.description}</p>
               </button>
             ))}
-          </div>
-        </div>
-      )}
-
-      {/* Step 6: Portfolio Video Link (Creator) */}
-      {step === 6 && form.role === "creator" && (
-        <div className="space-y-4">
-          <p className="text-sm" style={{ color: "var(--text-secondary)" }}>
-            Share a video of your work to help us match you with the right campaigns
-          </p>
-          <div>
-            <label className="block text-sm font-medium mb-1.5" style={{ color: "var(--card-foreground)" }}>
-              Video Link <span style={{ color: "var(--text-muted)" }}>(optional)</span>
-            </label>
-            <input
-              type="url"
-              value={form.portfolioVideoUrl}
-              onChange={(e) => setForm({ ...form, portfolioVideoUrl: e.target.value })}
-              placeholder="https://instagram.com/reel/... or https://tiktok.com/@username/video/..."
-              className="w-full px-3 py-2.5 rounded-lg text-sm outline-none"
-              style={inputStyle}
-            />
-            <p className="text-xs mt-1.5" style={{ color: "var(--text-muted)" }}>
-              Preferably a video where you&apos;re speaking. Don&apos;t have one? No worries, you can skip this step!
-            </p>
           </div>
         </div>
       )}
@@ -337,29 +316,27 @@ export function OnboardingForm() {
       {step === 4 && form.role === "advertiser" && (
         <div className="space-y-4">
           <div>
-            <label className="block text-sm font-medium mb-1.5" style={{ color: "var(--card-foreground)" }}>
-              Brand name
-            </label>
+            <label className={labelClass}>Brand name</label>
             <input
               type="text"
               value={form.brandName}
               onChange={(e) => setForm({ ...form, brandName: e.target.value })}
               placeholder="Your brand or company name"
               autoFocus
-              className="w-full px-3 py-2.5 rounded-lg text-sm outline-none"
+              className={inputClass}
               style={inputStyle}
             />
           </div>
           <div>
-            <label className="block text-sm font-medium mb-1.5" style={{ color: "var(--card-foreground)" }}>
-              Website <span style={{ color: "var(--text-muted)" }}>(optional)</span>
+            <label className={labelClass}>
+              Website <span className="font-normal text-gray-400">(optional)</span>
             </label>
             <input
               type="url"
               value={form.website}
               onChange={(e) => setForm({ ...form, website: e.target.value })}
               placeholder="https://yourbrand.com"
-              className="w-full px-3 py-2.5 rounded-lg text-sm outline-none"
+              className={inputClass}
               style={inputStyle}
             />
           </div>
@@ -373,28 +350,25 @@ export function OnboardingForm() {
         </p>
       )}
 
-      {/* Navigation buttons */}
-      {(
-        <div className="flex gap-3 mt-6">
-          {step > 1 && (
-            <button
-              onClick={() => setStep(step - 1)}
-              className="flex-1 py-2.5 rounded-lg text-sm font-medium transition-colors cursor-pointer"
-              style={{ border: "1px solid var(--border)", color: "var(--text-secondary)" }}
-            >
-              Back
-            </button>
-          )}
+      {/* Navigation */}
+      <div className="flex gap-3 mt-6">
+        {step > 1 && (
           <button
-            onClick={handleNext}
-            disabled={!canProceed() || loading}
-            className="flex-1 py-2.5 rounded-lg text-sm font-medium text-white transition-colors disabled:opacity-50 cursor-pointer"
-            style={{ background: "var(--accent)" }}
+            onClick={() => setStep(step - 1)}
+            className="flex-1 py-3 rounded-xl text-sm font-semibold transition-colors cursor-pointer text-gray-600 bg-gray-100 hover:bg-gray-200"
           >
-            {loading ? "Setting up..." : step === total ? "Get started" : "Next"}
+            Back
           </button>
-        </div>
-      )}
+        )}
+        <button
+          onClick={handleNext}
+          disabled={!canProceed() || loading}
+          className="flex-1 py-3 rounded-xl text-sm font-semibold text-white transition-colors disabled:opacity-40 cursor-pointer"
+          style={{ background: "var(--accent)" }}
+        >
+          {loading ? "Setting up..." : step === total ? "Get started" : "Next"}
+        </button>
+      </div>
     </div>
   );
 }

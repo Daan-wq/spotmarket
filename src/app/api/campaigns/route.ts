@@ -6,12 +6,15 @@ import { z } from "zod";
 const createCampaignSchema = z.object({
   // Section 1
   name: z.string().min(1).max(200),
-  platform: z.enum(["INSTAGRAM", "TIKTOK", "BOTH"]).optional().default("INSTAGRAM"),
+  platform: z.enum(["INSTAGRAM", "TIKTOK", "BOTH", "YOUTUBE_SHORTS", "FACEBOOK", "X"]).optional().default("INSTAGRAM"),
+  platforms: z.array(z.enum(["INSTAGRAM", "TIKTOK", "YOUTUBE_SHORTS", "FACEBOOK", "X"])).optional().default([]),
   contentType: z.string().max(100).optional(),
   description: z.string().max(2000).optional(),
   contentGuidelines: z.string().max(5000).optional(),
   requirements: z.string().max(2000).optional(),
   otherNotes: z.string().max(2000).optional(),
+  pageStats: z.string().max(2000).optional(),    // JSON string of selected stats
+  minAge: z.string().max(10).optional(),          // e.g. "25+"
 
   // Section 2
   targetCountry: z.string().length(2).optional(),
@@ -128,12 +131,15 @@ export async function POST(req: Request) {
     campaign = await prisma.campaign.create({
       data: {
         name: d.name,
-        platform: d.platform,
+        platform: d.platforms.length > 0 ? d.platforms[0] : d.platform,
+        platforms: d.platforms.length > 0 ? d.platforms : (d.platform ? [d.platform] : []),
         contentType: d.contentType,
         description: d.description,
         contentGuidelines: d.contentGuidelines,
         requirements: d.requirements,
         otherNotes: d.otherNotes,
+        pageStats: d.pageStats,
+        minAge: d.minAge,
         referralLink: d.referralLink || null,
         targetGeo,
         minFollowers: 0,

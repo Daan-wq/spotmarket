@@ -4,6 +4,11 @@ import { requireAuth } from "@/lib/auth";
 import { nanoid } from "nanoid";
 import { z } from "zod";
 
+function generateBioCode(): string {
+  const digits = Math.floor(1000 + Math.random() * 9000).toString();
+  return `CLIPPROFIT ${digits}`;
+}
+
 const bioVerificationSchema = z.object({
   igUsername: z.string().min(1),
 });
@@ -14,20 +19,31 @@ export async function GET(req: NextRequest) {
 
     const user = await prisma.user.findUnique({
       where: { supabaseId: userId },
-      include: { creatorProfile: { include: { igConnection: { include: { bioVerifications: { orderBy: { createdAt: "desc" }, take: 1 } } } } } },
+      include: {
+        creatorProfile: {
+          include: {
+            igConnections: {
+              include: { bioVerifications: { orderBy: { createdAt: "desc" }, take: 1 } },
+              orderBy: { createdAt: "desc" },
+            },
+          },
+        },
+      },
     });
 
-    if (!user?.creatorProfile?.igConnection) {
+    const connections = user?.creatorProfile?.igConnections ?? [];
+    if (connections.length === 0) {
       return NextResponse.json({ status: null, code: null });
     }
 
-    const conn = user.creatorProfile.igConnection;
-    const bio = conn.bioVerifications[0];
+    // Return the most recent pending connection (for the verify flow)
+    const pending = connections.find(c => !c.isVerified) ?? connections[0];
+    const bio = pending.bioVerifications[0];
 
     return NextResponse.json({
-      status: conn.isVerified ? "verified" : bio?.status?.toLowerCase() || "pending",
+      status: pending.isVerified ? "verified" : bio?.status?.toLowerCase() || "pending",
       code: bio?.code,
-      igUsername: conn.igUsername,
+      igUsername: pending.igUsername,
     });
   } catch (err: any) {
     console.error("[bio-verification GET]", err);
@@ -51,33 +67,38 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Creator profile not found" }, { status: 404 });
     }
 
-    const code = nanoid(6).toUpperCase();
-
-    let conn = await prisma.creatorIgConnection.findUnique({
-      where: { creatorProfileId: user.creatorProfile.id },
+    // Check if this username already has a pending/verified connection for this creator
+    const existing = await prisma.creatorIgConnection.findUnique({
+      where: { creatorProfileId_igUsername: { creatorProfileId: user.creatorProfile.id, igUsername } },
+      include: { bioVerifications: { orderBy: { createdAt: "desc" }, take: 1 } },
     });
 
-    if (!conn) {
-      conn = await prisma.creatorIgConnection.create({
-        data: {
-          creatorProfileId: user.creatorProfile.id,
-          igUsername,
-          verificationCode: nanoid(32),
-        },
+    if (existing) {
+      // Already exists — return the existing code (or generate a fresh one if none)
+      const latestBio = existing.bioVerifications[0];
+      if (latestBio && latestBio.status === "PENDING") {
+        return NextResponse.json({ code: latestBio.code, status: "pending" });
+      }
+      // Generate a new code for a re-verify attempt
+      const code = generateBioCode();
+      await prisma.bioVerification.create({
+        data: { connectionId: existing.id, code, status: "PENDING" },
       });
-    } else {
-      conn = await prisma.creatorIgConnection.update({
-        where: { id: conn.id },
-        data: { igUsername },
-      });
+      return NextResponse.json({ code, status: "pending" }, { status: 201 });
     }
 
-    const bio = await prisma.bioVerification.create({
+    // New connection
+    const code = generateBioCode();
+    const conn = await prisma.creatorIgConnection.create({
       data: {
-        connectionId: conn.id,
-        code,
-        status: "PENDING",
+        creatorProfileId: user.creatorProfile.id,
+        igUsername,
+        verificationCode: nanoid(32),
       },
+    });
+
+    await prisma.bioVerification.create({
+      data: { connectionId: conn.id, code, status: "PENDING" },
     });
 
     return NextResponse.json({ code, status: "pending" }, { status: 201 });

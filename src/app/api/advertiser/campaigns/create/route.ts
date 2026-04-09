@@ -8,7 +8,7 @@ import { rateLimit, API_LIMIT, getClientIp } from "@/lib/rate-limit";
 
 const CreateSchema = z.object({
   name: z.string().min(1),
-  platform: z.enum(["INSTAGRAM", "TIKTOK", "BOTH"]),
+  platforms: z.array(z.enum(["INSTAGRAM", "TIKTOK", "YOUTUBE_SHORTS", "FACEBOOK", "X"])).min(1),
   description: z.string().optional(),
   contentGuidelines: z.string().optional(),
   referralLink: z.string().optional(),
@@ -58,8 +58,8 @@ export async function POST(req: Request) {
   if (isNaN(totalBudget) || totalBudget < 100) {
     return NextResponse.json({ error: "Budget must be at least $100" }, { status: 400 });
   }
-  if (isNaN(cpmUsd) || cpmUsd < 16) {
-    return NextResponse.json({ error: "CPM must be at least $16" }, { status: 400 });
+  if (isNaN(cpmUsd)) {
+    return NextResponse.json({ error: "Invalid CPM value" }, { status: 400 });
   }
 
   // CPV stored as cost per single view (micro denomination)
@@ -70,13 +70,14 @@ export async function POST(req: Request) {
   const campaign = await prisma.campaign.create({
     data: {
       name: data.name,
-      platform: data.platform as Platform,
+      platform: data.platforms[0] as Platform,
+      platforms: data.platforms as Platform[],
       description: data.description || null,
       contentGuidelines: data.contentGuidelines || null,
       referralLink: data.referralLink || null,
       targetGeo: data.targetCountry ? [data.targetCountry] : [],
       targetCountry: data.targetCountry || null,
-      minEngagementRate: parseFloat(data.minEngagementRate ?? "2") || 2,
+      minEngagementRate: data.minEngagementRate ? parseFloat(data.minEngagementRate) : 0,
       totalBudget,
       creatorCpv,
       adminMargin,

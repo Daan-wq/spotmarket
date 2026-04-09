@@ -1,6 +1,7 @@
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { Platform } from "@prisma/client";
 import { z } from "zod";
 import { notifyCampaignLive } from "@/lib/discord";
 
@@ -12,21 +13,39 @@ function serialize<T>(data: T): T {
 
 const patchSchema = z.object({
   name: z.string().min(1).max(200).optional(),
-  description: z.string().max(2000).optional(),
-  contentGuidelines: z.string().max(5000).optional(),
+  description: z.string().max(2000).optional().nullable(),
+  contentGuidelines: z.string().max(5000).optional().nullable(),
+  requirements: z.string().max(2000).optional().nullable(),
+  referralLink: z.string().optional().nullable(),
+  targetCountry: z.string().optional().nullable(),
+  minEngagementRate: z.number().min(0).max(100).optional(),
+  bioRequirement: z.string().optional().nullable(),
+  linkInBioRequired: z.string().optional().nullable(),
+  totalBudget: z.number().positive().optional(),
+  goalViews: z.number().int().positive().optional().nullable(),
+  maxSlots: z.number().int().positive().optional().nullable(),
+  requiresApproval: z.boolean().optional(),
   status: z.enum(["draft", "active", "paused", "completed", "cancelled"]).optional(),
-  deadline: z.string().datetime().optional(),
+  deadline: z.string().optional().nullable(),
+  niche: z.string().optional().nullable(),
+  platforms: z.array(z.string()).optional(),
+  contentType: z.string().max(100).optional().nullable(),
+  otherNotes: z.string().max(2000).optional().nullable(),
+  pageStats: z.string().max(2000).optional().nullable(),
+  minAge: z.string().max(10).optional().nullable(),
 });
 
 async function getAuthorizedUser(supabaseId: string, campaignId: string) {
   const user = await prisma.user.findUnique({
     where: { supabaseId },
+    include: { advertiserProfile: { select: { id: true } } },
   });
   if (!user) return null;
   const campaign = await prisma.campaign.findUnique({ where: { id: campaignId } });
   if (!campaign) return null;
   const isAdmin = user.role === "admin";
-  if (!isAdmin) return null;
+  const isOwner = user.advertiserProfile && campaign.advertiserId === user.advertiserProfile.id;
+  if (!isAdmin && !isOwner) return null;
   return { user, campaign };
 }
 
@@ -78,17 +97,28 @@ export async function PATCH(
     return NextResponse.json({ error: parsed.error.issues[0]?.message ?? "Invalid input" }, { status: 400 });
   }
 
-  const { deadline, ...rest } = parsed.data;
+  const { deadline, platforms, goalViews, minEngagementRate, ...rest } = parsed.data;
   const wasActive = authorized.campaign.status !== "active" && rest.status === "active";
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const data: Record<string, any> = { ...rest };
+  if (deadline) data.deadline = new Date(deadline);
+  if (platforms) {
+    data.platforms = platforms as Platform[];
+    data.platform = (platforms[0] ?? authorized.campaign.platform) as Platform;
+  }
+  if (goalViews !== undefined) data.goalViews = goalViews ? BigInt(goalViews) : null;
+  if (minEngagementRate !== undefined) data.minEngagementRate = minEngagementRate;
 
   try {
     const updated = await prisma.campaign.update({
       where: { id: campaignId },
-      data: { ...rest, ...(deadline && { deadline: new Date(deadline) }) },
+      data,
       include: { advertiser: true },
     });
 
     if (wasActive) {
+      const adv = updated as typeof updated & { advertiser?: { brandName?: string | null } };
       await notifyCampaignLive({
         id: updated.id,
         name: updated.name,
@@ -97,7 +127,7 @@ export async function PATCH(
         businessCpv: Number(updated.businessCpv),
         targetCountry: updated.targetCountry,
         minEngagementRate: Number(updated.minEngagementRate),
-        advertiserBrandName: updated.advertiser?.brandName ?? null,
+        advertiserBrandName: adv.advertiser?.brandName ?? null,
       });
     }
 

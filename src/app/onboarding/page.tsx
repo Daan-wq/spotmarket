@@ -43,11 +43,11 @@ export default async function OnboardingPage() {
       {/* Right panel */}
       <div className="flex-1 flex items-center justify-center px-6 py-12 bg-white">
         <div className="w-full max-w-sm">
-          <h1 className="text-2xl font-semibold mb-1" style={{ color: "var(--text-primary)" }}>
+          <h1 className="text-2xl font-semibold mb-1 text-gray-900">
             Welcome to ClipProfit
           </h1>
-          <p className="text-sm mb-8" style={{ color: "var(--text-secondary)" }}>
-            Tell us what to call you.
+          <p className="text-sm mb-8 text-gray-500">
+            Just a few quick questions to get you started.
           </p>
           <Suspense><OnboardingForm /></Suspense>
         </div>

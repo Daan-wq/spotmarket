@@ -13,7 +13,7 @@ export interface NotificationData {
   PAYOUT_SENT: { payoutId: string; amount: number };
 }
 
-export async function createNotification<T extends NotificationType>(
+export async function createNotification<T extends keyof NotificationData>(
   userId: string,
   type: T,
   data: NotificationData[T]

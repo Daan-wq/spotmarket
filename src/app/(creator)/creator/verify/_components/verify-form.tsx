@@ -17,11 +17,10 @@ export function VerifyForm({ creatorProfileId }: { creatorProfileId: string }) {
     setStatus(null);
 
     try {
-      const res = await fetch("/api/verify-ig", {
+      const res = await fetch("/api/bio-verification", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          creatorProfileId,
           igUsername: username,
         }),
       });
@@ -33,8 +32,7 @@ export function VerifyForm({ creatorProfileId }: { creatorProfileId: string }) {
       }
 
       const data = await res.json();
-      setStatus(data.message || "Verification initiated. Check your Instagram bio for the verification code.");
-      setUsername("");
+      setStatus(`Add this code to your Instagram bio: ${data.code}`);
     } catch (err) {
       setError("An error occurred");
       console.error(err);
@@ -54,13 +52,10 @@ export function VerifyForm({ creatorProfileId }: { creatorProfileId: string }) {
     setStatus(null);
 
     try {
-      const res = await fetch("/api/check-ig-verification", {
+      const res = await fetch("/api/bio-verification/check", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          creatorProfileId,
-          igUsername: username,
-        }),
+        body: JSON.stringify({ igUsername: username }),
       });
 
       if (!res.ok) {
@@ -71,8 +66,8 @@ export function VerifyForm({ creatorProfileId }: { creatorProfileId: string }) {
 
       const data = await res.json();
       if (data.verified) {
-        setStatus("✓ Verification successful!");
-        setTimeout(() => router.refresh(), 1000);
+        setStatus("✓ Verification successful! Redirecting to your pages...");
+        setTimeout(() => router.push("/creator/pages"), 1000);
       } else {
         setStatus("Verification not detected yet. Please make sure the code is in your bio.");
       }

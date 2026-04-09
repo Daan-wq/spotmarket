@@ -52,11 +52,16 @@ export async function POST(req: Request) {
     ? (role as typeof VALID_ROLES[number])
     : "creator";
 
-  // Resolve referrer
+  // Resolve referrer (only creators can be referrers)
   let referredById: string | undefined;
   if (refCode) {
-    const referrer = await prisma.user.findUnique({ where: { referralCode: refCode } });
-    if (referrer) referredById = referrer.id;
+    const referrer = await prisma.user.findUnique({
+      where: { referralCode: refCode },
+      select: { id: true, role: true },
+    });
+    if (referrer && referrer.role === "creator") {
+      referredById = referrer.id;
+    }
   }
 
   const referralCode = await uniqueReferralCode();
@@ -72,6 +77,15 @@ export async function POST(req: Request) {
     user_metadata: { role: selectedRole },
   });
 
+  // Extract Discord info from OAuth metadata if available
+  const provider = authUser.app_metadata?.provider;
+  const discordId = provider === "discord"
+    ? (authUser.user_metadata?.provider_id ?? authUser.user_metadata?.sub ?? null)
+    : null;
+  const discordUsername = provider === "discord"
+    ? (authUser.user_metadata?.full_name ?? authUser.user_metadata?.name ?? null)
+    : null;
+
   const user = await prisma.user.upsert({
     where: { supabaseId: authUser.id },
     update: { role: selectedRole },
@@ -81,6 +95,7 @@ export async function POST(req: Request) {
       role: selectedRole,
       referralCode,
       referredBy: referredById,
+      ...(discordId ? { discordId, discordUsername } : {}),
     },
     include: { creatorProfile: true, advertiserProfile: true },
   });
