@@ -72,8 +72,10 @@ model CreatorProfile {
   createdAt          DateTime @default(now())
   updatedAt          DateTime @updatedAt
 
-  igConnections CreatorIgConnection[]
-  fbConnections CreatorFbConnection[]
+  igConnections  CreatorIgConnection[]
+  fbConnections  CreatorFbConnection[]
+  ytConnections  CreatorYtConnection[]
+  ttConnections  CreatorTikTokConnection[]
   applications  CampaignApplication[]
   payouts       Payout[]
 
@@ -168,6 +170,59 @@ model CreatorFbConnection {
   updatedAt        DateTime       @updatedAt
 
   @@unique([creatorProfileId, fbPageId])
+  @@index([creatorProfileId])
+  @@index([tokenExpiresAt])
+}
+
+// ─────────────────────────────────────────
+// YOUTUBE CONNECTION (OAuth)
+// ─────────────────────────────────────────
+
+model CreatorYtConnection {
+  id               String         @id @default(cuid())
+  creatorProfileId String
+  creatorProfile   CreatorProfile @relation(fields: [creatorProfileId], references: [id], onDelete: Cascade)
+  channelId        String         @unique
+  channelName      String
+  profilePicUrl    String?
+  subscriberCount  Int?
+  videoCount       Int?
+  accessToken      String?
+  accessTokenIv    String?
+  refreshToken     String?
+  refreshTokenIv   String?
+  tokenExpiresAt   DateTime?
+  isVerified       Boolean        @default(true)
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
+
+  @@unique([creatorProfileId, channelId])
+  @@index([creatorProfileId])
+  @@index([tokenExpiresAt])
+}
+
+// ─────────────────────────────────────────
+// TIKTOK CONNECTION (OAuth)
+// ─────────────────────────────────────────
+
+model CreatorTikTokConnection {
+  id               String         @id @default(cuid())
+  creatorProfileId String
+  creatorProfile   CreatorProfile @relation(fields: [creatorProfileId], references: [id], onDelete: Cascade)
+  tikTokOpenId     String         @unique
+  username         String
+  displayName      String?
+  profilePicUrl    String?
+  followerCount    Int?
+  accessToken      String?
+  accessTokenIv    String?
+  refreshToken     String?
+  refreshTokenIv   String?
+  tokenExpiresAt   DateTime?
+  isVerified       Boolean        @default(true)
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
+
   @@index([creatorProfileId])
   @@index([tokenExpiresAt])
 }

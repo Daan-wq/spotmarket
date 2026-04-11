@@ -104,7 +104,9 @@ export async function GET(req: NextRequest) {
 
     return NextResponse.redirect(new URL(`${returnTo}?facebook=linked`, req.url));
   } catch (err) {
-    console.error("[facebook oauth]", err);
-    return NextResponse.redirect(new URL(`${returnTo}?error=fb_error`, req.url));
+    const message = err instanceof Error ? err.message : String(err);
+    console.error("[facebook oauth] error:", message);
+    const errorSlug = encodeURIComponent(message.slice(0, 80));
+    return NextResponse.redirect(new URL(`${returnTo}?error=fb_error&detail=${errorSlug}`, req.url));
   }
 }

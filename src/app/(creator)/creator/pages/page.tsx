@@ -4,10 +4,15 @@ import { prisma } from "@/lib/prisma";
 import { decrypt } from "@/lib/crypto";
 import { fetchInstagramProfile } from "@/lib/instagram";
 import { fetchFacebookPageProfile } from "@/lib/facebook";
+import { fetchChannelProfile as fetchYtProfile } from "@/lib/youtube";
 import { RemovePageButton } from "./_components/remove-page-button";
 import { RemoveFbPageButton } from "./_components/remove-fb-page-button";
+import { RemoveYtPageButton } from "./_components/remove-yt-page-button";
+import { RemoveTikTokPageButton } from "./_components/remove-tiktok-page-button";
 import { InstagramConnectButton } from "./_components/instagram-connect-button";
 import { FacebookConnectButton } from "./_components/facebook-connect-button";
+import { YoutubeConnectButton } from "./_components/youtube-connect-button";
+import { TikTokConnectButton } from "./_components/tiktok-connect-button";
 
 export default async function PagesPage() {
   const { userId } = await requireAuth("creator");
@@ -26,6 +31,12 @@ export default async function PagesPage() {
         orderBy: { createdAt: "desc" },
       },
       fbConnections: {
+        orderBy: { createdAt: "desc" },
+      },
+      ytConnections: {
+        orderBy: { createdAt: "desc" },
+      },
+      ttConnections: {
         orderBy: { createdAt: "desc" },
       },
     },
@@ -61,6 +72,19 @@ export default async function PagesPage() {
           if (c.profilePicUrl) profilePics.set(c.id, c.profilePicUrl);
         }
       }),
+    ...profile.ytConnections
+      .filter((c) => c.accessToken && c.accessTokenIv)
+      .map(async (c) => {
+        try {
+          const token = decrypt(c.accessToken!, c.accessTokenIv!);
+          const ytProfile = await fetchYtProfile(token);
+          if (ytProfile.profilePictureUrl) {
+            profilePics.set(c.id, ytProfile.profilePictureUrl);
+          }
+        } catch {
+          if (c.profilePicUrl) profilePics.set(c.id, c.profilePicUrl);
+        }
+      }),
   ]);
 
   return (
@@ -89,36 +113,11 @@ export default async function PagesPage() {
           {/* Facebook */}
           <FacebookConnectButton />
 
-          {/* TikTok — coming soon */}
-          <button
-            disabled
-            className="flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium border opacity-40 cursor-not-allowed"
-            style={{ background: "var(--bg-primary)", borderColor: "var(--border)", color: "var(--text-primary)" }}
-          >
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" style={{ color: "#000" }}>
-              <path d="M19.59 6.69a4.83 4.83 0 0 1-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 0 1-2.88 2.5 2.89 2.89 0 0 1-2.89-2.89 2.89 2.89 0 0 1 2.89-2.89c.28 0 .54.04.79.1V9.01a6.33 6.33 0 0 0-.79-.05 6.34 6.34 0 0 0-6.34 6.34 6.34 6.34 0 0 0 6.34 6.34 6.34 6.34 0 0 0 6.33-6.34V9.19a8.16 8.16 0 0 0 4.77 1.52V7.27a4.85 4.85 0 0 1-1-.58z" />
-            </svg>
-            TikTok
-            <span className="text-[10px] px-1.5 py-0.5 rounded-full font-medium" style={{ background: "var(--warning-bg)", color: "var(--warning-text)" }}>
-              Soon
-            </span>
-          </button>
+          {/* YouTube */}
+          <YoutubeConnectButton />
 
-          {/* YouTube — coming soon */}
-          <button
-            disabled
-            className="flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium border opacity-40 cursor-not-allowed"
-            style={{ background: "var(--bg-primary)", borderColor: "var(--border)", color: "var(--text-primary)" }}
-          >
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" style={{ color: "#FF0000" }}>
-              <path d="M22.54 6.42a2.78 2.78 0 0 0-1.95-1.96C18.88 4 12 4 12 4s-6.88 0-8.59.46A2.78 2.78 0 0 0 1.46 6.42 29 29 0 0 0 1 12a29 29 0 0 0 .46 5.58A2.78 2.78 0 0 0 3.41 19.6C5.12 20 12 20 12 20s6.88 0 8.59-.4a2.78 2.78 0 0 0 1.95-1.95A29 29 0 0 0 23 12a29 29 0 0 0-.46-5.58z" />
-              <polygon fill="#fff" points="9.75 15.02 15.5 12 9.75 8.98 9.75 15.02" />
-            </svg>
-            YouTube
-            <span className="text-[10px] px-1.5 py-0.5 rounded-full font-medium" style={{ background: "var(--warning-bg)", color: "var(--warning-text)" }}>
-              Soon
-            </span>
-          </button>
+          {/* TikTok */}
+          <TikTokConnectButton />
         </div>
       </div>
 
@@ -338,32 +337,194 @@ export default async function PagesPage() {
         )}
       </div>
 
-      {/* TikTok — coming soon */}
+      {/* YouTube Channels */}
       <div>
         <div className="flex items-center gap-2 mb-3">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style={{ color: "var(--text-muted)" }}>
-            <path d="M19.59 6.69a4.83 4.83 0 0 1-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 0 1-2.88 2.5 2.89 2.89 0 0 1-2.89-2.89 2.89 2.89 0 0 1 2.89-2.89c.28 0 .54.04.79.1V9.01a6.33 6.33 0 0 0-.79-.05 6.34 6.34 0 0 0-6.34 6.34 6.34 6.34 0 0 0 6.34 6.34 6.34 6.34 0 0 0 6.33-6.34V9.19a8.16 8.16 0 0 0 4.77 1.52V7.27a4.85 4.85 0 0 1-1-.58z" />
-          </svg>
-          <span className="text-sm font-semibold" style={{ color: "var(--text-muted)" }}>TikTok</span>
-          <span className="text-[10px] px-1.5 py-0.5 rounded-full ml-1" style={{ background: "var(--warning-bg)", color: "var(--warning-text)" }}>
-            Coming soon
-          </span>
-        </div>
-      </div>
-
-      {/* YouTube — coming soon */}
-      <div>
-        <div className="flex items-center gap-2 mb-3">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style={{ color: "var(--text-muted)" }}>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style={{ color: "#FF0000" }}>
             <path d="M22.54 6.42a2.78 2.78 0 0 0-1.95-1.96C18.88 4 12 4 12 4s-6.88 0-8.59.46A2.78 2.78 0 0 0 1.46 6.42 29 29 0 0 0 1 12a29 29 0 0 0 .46 5.58A2.78 2.78 0 0 0 3.41 19.6C5.12 20 12 20 12 20s6.88 0 8.59-.4a2.78 2.78 0 0 0 1.95-1.95A29 29 0 0 0 23 12a29 29 0 0 0-.46-5.58z" />
             <polygon fill="#fff" points="9.75 15.02 15.5 12 9.75 8.98 9.75 15.02" />
           </svg>
-          <span className="text-sm font-semibold" style={{ color: "var(--text-muted)" }}>YouTube</span>
-          <span className="text-[10px] px-1.5 py-0.5 rounded-full ml-1" style={{ background: "var(--warning-bg)", color: "var(--warning-text)" }}>
-            Coming soon
-          </span>
+          <span className="text-sm font-semibold" style={{ color: "var(--text-primary)" }}>YouTube</span>
+          <span className="text-xs ml-1" style={{ color: "var(--text-muted)" }}>({profile.ytConnections.length})</span>
         </div>
+
+        {profile.ytConnections.length === 0 ? (
+          <div
+            className="rounded-lg p-6 border text-center"
+            style={{ borderColor: "var(--border)", background: "var(--bg-card)" }}
+          >
+            <p className="text-sm" style={{ color: "var(--text-secondary)" }}>
+              No YouTube channels connected yet.
+            </p>
+          </div>
+        ) : (
+          <div className="space-y-2">
+            {profile.ytConnections.map((conn) => {
+              const hasToken = !!conn.accessToken;
+
+              return (
+                <div
+                  key={conn.id}
+                  className="rounded-lg border overflow-hidden"
+                  style={{ background: "var(--bg-card)", borderColor: "var(--border)" }}
+                >
+                  <div className="flex items-center justify-between gap-4 p-4">
+                    <Link
+                      href={hasToken ? `/creator/pages/yt/${conn.id}` : "/creator/pages"}
+                      className="flex items-center gap-3 min-w-0 flex-1 group"
+                    >
+                      {profilePics.get(conn.id) ? (
+                        <img
+                          src={profilePics.get(conn.id)}
+                          alt={conn.channelName}
+                          className="w-10 h-10 rounded-full object-cover shrink-0"
+                        />
+                      ) : (
+                        <div
+                          className="w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold shrink-0"
+                          style={{ background: "#FF0000", color: "#fff" }}
+                        >
+                          {conn.channelName[0].toUpperCase()}
+                        </div>
+                      )}
+                      <div className="min-w-0 flex-1">
+                        <p
+                          className="text-sm font-semibold truncate group-hover:underline"
+                          style={{ color: "var(--text-primary)" }}
+                        >
+                          {conn.channelName}
+                        </p>
+                        <div className="flex items-center gap-3 mt-0.5">
+                          {conn.subscriberCount && (
+                            <span className="text-xs" style={{ color: "var(--text-secondary)" }}>
+                              {conn.subscriberCount.toLocaleString()} subscribers
+                            </span>
+                          )}
+                          <span className="text-xs" style={{ color: "var(--text-muted)" }}>
+                            Added {new Date(conn.createdAt).toLocaleDateString()}
+                          </span>
+                        </div>
+                      </div>
+                      {hasToken && (
+                        <svg
+                          width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                          strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
+                          className="shrink-0 opacity-40 group-hover:opacity-100 transition-opacity"
+                          style={{ color: "var(--text-secondary)" }}
+                        >
+                          <path d="m9 18 6-6-6-6" />
+                        </svg>
+                      )}
+                    </Link>
+
+                    <div className="flex items-center gap-3 shrink-0">
+                      <span
+                        className="text-xs px-2 py-1 rounded-full font-medium"
+                        style={{ background: "var(--success-bg)", color: "var(--success-text)" }}
+                      >
+                        Verified
+                      </span>
+                      <RemoveYtPageButton connectionId={conn.id} />
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
       </div>
+
+      {/* TikTok Accounts */}
+      <div>
+        <div className="flex items-center gap-2 mb-3">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style={{ color: "var(--text-primary)" }}>
+            <path d="M19.59 6.69a4.83 4.83 0 0 1-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 0 1-2.88 2.5 2.89 2.89 0 0 1-2.89-2.89 2.89 2.89 0 0 1 2.89-2.89c.28 0 .54.04.79.1V9.01a6.33 6.33 0 0 0-.79-.05 6.34 6.34 0 0 0-6.34 6.34 6.34 6.34 0 0 0 6.34 6.34 6.34 6.34 0 0 0 6.33-6.34V9.19a8.16 8.16 0 0 0 4.77 1.52V7.27a4.85 4.85 0 0 1-1-.58z" />
+          </svg>
+          <span className="text-sm font-semibold" style={{ color: "var(--text-primary)" }}>TikTok</span>
+          <span className="text-xs ml-1" style={{ color: "var(--text-muted)" }}>({profile.ttConnections.length})</span>
+        </div>
+
+        {profile.ttConnections.length === 0 ? (
+          <div
+            className="rounded-lg p-6 border text-center"
+            style={{ borderColor: "var(--border)", background: "var(--bg-card)" }}
+          >
+            <p className="text-sm" style={{ color: "var(--text-secondary)" }}>
+              No TikTok accounts connected yet.
+            </p>
+          </div>
+        ) : (
+          <div className="space-y-2">
+            {profile.ttConnections.map((conn) => (
+              <div
+                key={conn.id}
+                className="rounded-lg border overflow-hidden"
+                style={{ background: "var(--bg-card)", borderColor: "var(--border)" }}
+              >
+                <div className="flex items-center justify-between gap-4 p-4">
+                  <Link
+                    href={`/creator/pages/tt/${conn.id}`}
+                    className="flex items-center gap-3 min-w-0 flex-1 group"
+                  >
+                    {conn.profilePicUrl ? (
+                      <img
+                        src={conn.profilePicUrl}
+                        alt={conn.displayName ?? conn.username}
+                        width={40}
+                        height={40}
+                        className="rounded-full shrink-0 object-cover"
+                      />
+                    ) : (
+                      <div
+                        className="w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold shrink-0"
+                        style={{ background: "#010101", color: "#fff" }}
+                      >
+                        {(conn.displayName ?? conn.username)[0].toUpperCase()}
+                      </div>
+                    )}
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-semibold truncate group-hover:underline" style={{ color: "var(--text-primary)" }}>
+                        {conn.displayName ?? conn.username}
+                      </p>
+                      <div className="flex items-center gap-3 mt-0.5">
+                        <span className="text-xs" style={{ color: "var(--text-muted)" }}>
+                          @{conn.username}
+                        </span>
+                        {conn.followerCount != null && (
+                          <span className="text-xs" style={{ color: "var(--text-secondary)" }}>
+                            {conn.followerCount.toLocaleString()} followers
+                          </span>
+                        )}
+                        <span className="text-xs" style={{ color: "var(--text-muted)" }}>
+                          Added {new Date(conn.createdAt).toLocaleDateString()}
+                        </span>
+                      </div>
+                    </div>
+                    <svg
+                      width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                      strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
+                      className="shrink-0 opacity-40 group-hover:opacity-100 transition-opacity"
+                      style={{ color: "var(--text-secondary)" }}
+                    >
+                      <path d="m9 18 6-6-6-6" />
+                    </svg>
+                  </Link>
+                  <div className="flex items-center gap-3 shrink-0">
+                    <span
+                      className="text-xs px-2 py-1 rounded-full font-medium"
+                      style={{ background: "var(--success-bg)", color: "var(--success-text)" }}
+                    >
+                      Verified
+                    </span>
+                    <RemoveTikTokPageButton connectionId={conn.id} />
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
     </div>
   );
 }

@@ -158,6 +158,16 @@ export async function DELETE(
     return NextResponse.json({ error: "Cannot delete campaign with active applications" }, { status: 409 });
   }
 
-  await prisma.campaign.delete({ where: { id: campaignId } });
-  return new NextResponse(null, { status: 204 });
+  try {
+    // Delete submissions directly linked to this campaign (avoids FK constraint on campaignId)
+    await prisma.campaignSubmission.deleteMany({ where: { campaignId } });
+    // Delete all applications (Payouts.applicationId is optional → SetNull on DB level)
+    await prisma.campaignApplication.deleteMany({ where: { campaignId } });
+    // Now safe to delete the campaign
+    await prisma.campaign.delete({ where: { id: campaignId } });
+    return new NextResponse(null, { status: 204 });
+  } catch (err) {
+    console.error("[DELETE /api/campaigns]", err);
+    return NextResponse.json({ error: "Failed to delete campaign" }, { status: 500 });
+  }
 }

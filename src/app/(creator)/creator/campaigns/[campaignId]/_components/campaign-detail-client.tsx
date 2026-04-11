@@ -56,10 +56,17 @@ export function CampaignDetailClient({
 
   if (!isVerified) {
     return (
-      <div className="mb-6 p-4 rounded-xl" style={{ background: "var(--warning-bg)" }}>
+      <div className="mb-6 p-4 rounded-xl flex items-center justify-between gap-4" style={{ background: "var(--warning-bg)" }}>
         <p className="text-sm" style={{ color: "var(--warning-text)" }}>
-          You must verify your Instagram account before creating content for campaigns.
+          Connect at least one social account (Instagram, YouTube, TikTok, or Facebook) to join campaigns.
         </p>
+        <a
+          href="/creator/pages"
+          className="shrink-0 px-4 py-2 rounded-lg font-semibold text-sm text-white"
+          style={{ background: "var(--primary)" }}
+        >
+          Connect account
+        </a>
       </div>
     );
   }

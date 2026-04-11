@@ -35,10 +35,17 @@ export default async function CampaignDetailPage({
   });
   if (!profile) throw new Error("Creator profile not found");
 
-  const igConnections = await prisma.creatorIgConnection.findMany({
-    where: { creatorProfileId: profile.id },
-  });
-  const isVerified = igConnections.some((c) => c.isVerified);
+  const [igConnections, ytConnections, ttConnections, fbConnections] = await Promise.all([
+    prisma.creatorIgConnection.findMany({ where: { creatorProfileId: profile.id } }),
+    prisma.creatorYtConnection.findMany({ where: { creatorProfileId: profile.id } }),
+    prisma.creatorTikTokConnection.findMany({ where: { creatorProfileId: profile.id } }),
+    prisma.creatorFbConnection.findMany({ where: { creatorProfileId: profile.id } }),
+  ]);
+  const isVerified =
+    igConnections.some((c) => c.isVerified) ||
+    ytConnections.length > 0 ||
+    ttConnections.length > 0 ||
+    fbConnections.length > 0;
 
   const existingApplication = await prisma.campaignApplication.findFirst({
     where: { campaignId, creatorProfileId: profile.id },
