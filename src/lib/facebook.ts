@@ -245,16 +245,21 @@ export async function fetchPageDailyInsights(
 // ─────────────────────────────────────────
 
 function mapPost(post: Record<string, unknown>, defaultType: string): FbPagePost {
-  const reactions = post.reactions as Record<string, unknown> | undefined;
+  const likes = post.likes as Record<string, unknown> | undefined;
+  const reactionsLegacy = post.reactions as Record<string, unknown> | undefined;
   const comments = post.comments as Record<string, unknown> | undefined;
   const shares = post.shares as Record<string, unknown> | undefined;
+  const likeCount =
+    ((likes?.summary as Record<string, unknown>)?.total_count as number) ??
+    ((reactionsLegacy?.summary as Record<string, unknown>)?.total_count as number) ??
+    0;
   return {
     id: post.id as string,
     message: (post.message as string | null) ?? (post.story as string | null) ?? (post.description as string | null) ?? (post.title as string | null) ?? null,
     type: (post.type as string) ?? (post.status_type as string) ?? defaultType,
     permalink: (post.permalink_url as string) ?? "",
     createdTime: (post.created_time as string) ?? "",
-    reactions: ((reactions?.summary as Record<string, unknown>)?.total_count as number) ?? 0,
+    reactions: likeCount,
     comments: ((comments?.summary as Record<string, unknown>)?.total_count as number) ?? 0,
     shares: (shares?.count as number) ?? 0,
   };
@@ -265,10 +270,9 @@ export async function fetchRecentPagePosts(
   accessToken: string,
   limit = 50
 ): Promise<FbPagePost[]> {
-  // NOTE: v3.3+ deprecated reactions.summary/comments.summary/shares on post edges.
-  // Engagement counts are now fetched via /insights — keep post fields minimal here.
-  const fields = "id,message,story,status_type,permalink_url,created_time,full_picture,attachments";
-  const videoFields = "id,description,title,permalink_url,created_time";
+  // v25: use .limit(0) on summary expansions to count-only (avoids deprecation error 12)
+  const fields = "id,message,story,status_type,permalink_url,created_time,full_picture,attachments,likes.summary(true).limit(0),comments.summary(true).limit(0),shares";
+  const videoFields = "id,description,title,permalink_url,created_time,likes.summary(true).limit(0),comments.summary(true).limit(0)";
   const [publishedPostsRes, postsRes, videosRes, reelsRes] = await Promise.all([
     fetch(`${GRAPH_BASE}/${pageId}/published_posts?${new URLSearchParams({ fields, limit: String(limit), access_token: accessToken })}`),
     fetch(`${GRAPH_BASE}/${pageId}/feed?${new URLSearchParams({ fields, limit: String(limit), access_token: accessToken })}`),

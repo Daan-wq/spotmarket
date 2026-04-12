@@ -22,8 +22,8 @@ export async function GET(req: NextRequest) {
   const accessToken = decrypt(conn.accessToken!, conn.accessTokenIv!);
   const pageId = conn.fbPageId;
 
-  const fields = "id,message,story,status_type,permalink_url,created_time,full_picture,attachments";
-  const videoFields = "id,description,title,permalink_url,created_time";
+  const fields = "id,message,story,status_type,permalink_url,created_time,full_picture,attachments,likes.summary(true).limit(0),comments.summary(true).limit(0),shares";
+  const videoFields = "id,description,title,permalink_url,created_time,likes.summary(true).limit(0),comments.summary(true).limit(0)";
 
   const [pageCheckRes, publishedPostsRes, postsOnlyRes, feedRes, videosRes, reelsRes] = await Promise.all([
     fetch(`${GRAPH_BASE}/${pageId}?fields=id,name,fan_count&access_token=${accessToken}`),
