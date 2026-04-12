@@ -22,11 +22,11 @@ export async function GET(req: NextRequest) {
   const accessToken = decrypt(conn.accessToken!, conn.accessTokenIv!);
   const pageId = conn.fbPageId;
 
-  const fields = "id,message,story,type,permalink_url,created_time,reactions.summary(true),comments.summary(true),shares";
-  const videoFields = "id,description,title,permalink_url,created_time,reactions.summary(true),comments.summary(true),shares";
+  const fields = "id,message,story,status_type,permalink_url,created_time,full_picture,attachments";
+  const videoFields = "id,description,title,permalink_url,created_time";
 
   const [pageCheckRes, publishedPostsRes, postsOnlyRes, feedRes, videosRes, reelsRes] = await Promise.all([
-    fetch(`${GRAPH_BASE}/${pageId}?fields=id,name,fan_count,tasks&access_token=${accessToken}`),
+    fetch(`${GRAPH_BASE}/${pageId}?fields=id,name,fan_count&access_token=${accessToken}`),
     fetch(`${GRAPH_BASE}/${pageId}/published_posts?fields=${fields}&limit=10&access_token=${accessToken}`),
     fetch(`${GRAPH_BASE}/${pageId}/posts?fields=${fields}&limit=10&access_token=${accessToken}`),
     fetch(`${GRAPH_BASE}/${pageId}/feed?fields=${fields}&limit=10&access_token=${accessToken}`),
@@ -53,12 +53,10 @@ export async function GET(req: NextRequest) {
   const reels = { status: reelsRes.status, body: parse(reelsText), count: parse(reelsText).data?.length ?? 0 };
 
   let hint: string | null = null;
-  if (publishedPosts.count === 0 && feed.count === 0) {
-    const tasks = (pageCheck.body as { tasks?: string[] })?.tasks;
+  if (publishedPosts.count === 0 && feed.count === 0 && posts.count === 0) {
     hint =
-      "No posts returned from /published_posts or /feed. Most likely causes: " +
-      "(a) In development mode, the Facebook user managing this Page must be added as a Tester or Developer in Meta App Dashboard → App Roles, and then re-run the OAuth flow to get a new token. " +
-      `(b) Check pageCheck.body.tasks — currently ${tasks ? JSON.stringify(tasks) : "missing/empty"}. The token needs MANAGE, CREATE_CONTENT, or ADVERTISE to read Page content. If tasks is missing or empty, the token is not a Page admin token.`;
+      "No posts returned. If any edge has an error with code 12 (deprecated), the fields string still references deprecated fields. " +
+      "If errors are permission-related, the FB user must be added as Tester in Meta App Dashboard → App Roles and re-run OAuth to get a new token.";
   }
 
   return NextResponse.json({

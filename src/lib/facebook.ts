@@ -251,7 +251,7 @@ function mapPost(post: Record<string, unknown>, defaultType: string): FbPagePost
   return {
     id: post.id as string,
     message: (post.message as string | null) ?? (post.story as string | null) ?? (post.description as string | null) ?? (post.title as string | null) ?? null,
-    type: (post.type as string) ?? defaultType,
+    type: (post.type as string) ?? (post.status_type as string) ?? defaultType,
     permalink: (post.permalink_url as string) ?? "",
     createdTime: (post.created_time as string) ?? "",
     reactions: ((reactions?.summary as Record<string, unknown>)?.total_count as number) ?? 0,
@@ -265,10 +265,10 @@ export async function fetchRecentPagePosts(
   accessToken: string,
   limit = 50
 ): Promise<FbPagePost[]> {
-  const fields = "id,message,story,type,permalink_url,created_time,reactions.summary(true),comments.summary(true),shares";
-
-  // Fetch published_posts, feed, videos, and reels in parallel
-  const videoFields = "id,description,title,permalink_url,created_time,reactions.summary(true),comments.summary(true),shares";
+  // NOTE: v3.3+ deprecated reactions.summary/comments.summary/shares on post edges.
+  // Engagement counts are now fetched via /insights — keep post fields minimal here.
+  const fields = "id,message,story,status_type,permalink_url,created_time,full_picture,attachments";
+  const videoFields = "id,description,title,permalink_url,created_time";
   const [publishedPostsRes, postsRes, videosRes, reelsRes] = await Promise.all([
     fetch(`${GRAPH_BASE}/${pageId}/published_posts?${new URLSearchParams({ fields, limit: String(limit), access_token: accessToken })}`),
     fetch(`${GRAPH_BASE}/${pageId}/feed?${new URLSearchParams({ fields, limit: String(limit), access_token: accessToken })}`),
