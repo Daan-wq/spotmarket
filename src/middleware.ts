@@ -18,6 +18,13 @@ function isPublicRoute(pathname: string) {
 }
 
 export async function middleware(request: NextRequest) {
+  const { pathname } = request.nextUrl;
+
+  // API routes handle their own auth — skip middleware overhead
+  if (pathname.startsWith("/api/")) {
+    return NextResponse.next({ request });
+  }
+
   let supabaseResponse = NextResponse.next({ request });
 
   const supabase = createServerClient(
@@ -47,8 +54,6 @@ export async function middleware(request: NextRequest) {
 
   // Refresh session — required for Server Components to read auth state
   const { data: { user } } = await supabase.auth.getUser();
-
-  const { pathname } = request.nextUrl;
 
   // Redirect unauthenticated users away from protected routes
   if (!user && !isPublicRoute(pathname) && pathname !== "/") {

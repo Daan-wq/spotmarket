@@ -20,9 +20,9 @@ const GRAPH_BASE = "https://graph.facebook.com/v25.0";
 
 export function getFacebookAuthUrl(state: string): string {
   const params = new URLSearchParams({
-    client_id: process.env.INSTAGRAM_APP_ID!,
+    client_id: process.env.FACEBOOK_APP_ID!,
     redirect_uri: process.env.FACEBOOK_REDIRECT_URI!,
-    scope: "pages_show_list,pages_read_engagement,read_insights",
+    scope: "pages_show_list,pages_read_engagement,read_insights,pages_read_user_content",
     response_type: "code",
     state,
   });
@@ -34,8 +34,8 @@ export async function exchangeFbCodeForToken(
 ): Promise<{ accessToken: string; expiresIn: number }> {
   // Step 1: Exchange code for short-lived user token
   const params = new URLSearchParams({
-    client_id: process.env.INSTAGRAM_APP_ID!,
-    client_secret: process.env.INSTAGRAM_APP_SECRET!,
+    client_id: process.env.FACEBOOK_APP_ID!,
+    client_secret: process.env.FACEBOOK_APP_SECRET!,
     redirect_uri: process.env.FACEBOOK_REDIRECT_URI!,
     code,
   });
@@ -49,8 +49,8 @@ export async function exchangeFbCodeForToken(
   // Step 2: Exchange for long-lived user token (~60 days)
   const longParams = new URLSearchParams({
     grant_type: "fb_exchange_token",
-    client_id: process.env.INSTAGRAM_APP_ID!,
-    client_secret: process.env.INSTAGRAM_APP_SECRET!,
+    client_id: process.env.FACEBOOK_APP_ID!,
+    client_secret: process.env.FACEBOOK_APP_SECRET!,
     fb_exchange_token: shortLivedToken,
   });
   const longRes = await fetch(`${GRAPH_BASE}/oauth/access_token?${longParams}`);
@@ -244,37 +244,85 @@ export async function fetchPageDailyInsights(
 // RECENT PAGE POSTS
 // ─────────────────────────────────────────
 
+function mapPost(post: Record<string, unknown>, defaultType: string): FbPagePost {
+  const reactions = post.reactions as Record<string, unknown> | undefined;
+  const comments = post.comments as Record<string, unknown> | undefined;
+  const shares = post.shares as Record<string, unknown> | undefined;
+  return {
+    id: post.id as string,
+    message: (post.message as string | null) ?? (post.story as string | null) ?? (post.description as string | null) ?? (post.title as string | null) ?? null,
+    type: (post.type as string) ?? defaultType,
+    permalink: (post.permalink_url as string) ?? "",
+    createdTime: (post.created_time as string) ?? "",
+    reactions: ((reactions?.summary as Record<string, unknown>)?.total_count as number) ?? 0,
+    comments: ((comments?.summary as Record<string, unknown>)?.total_count as number) ?? 0,
+    shares: (shares?.count as number) ?? 0,
+  };
+}
+
 export async function fetchRecentPagePosts(
   pageId: string,
   accessToken: string,
   limit = 50
 ): Promise<FbPagePost[]> {
-  const params = new URLSearchParams({
-    fields: "id,message,type,permalink_url,created_time,reactions.summary(true),comments.summary(true),shares",
-    limit: String(limit),
-    access_token: accessToken,
-  });
-  const res = await fetch(`${GRAPH_BASE}/${pageId}/posts?${params}`);
-  if (!res.ok) {
-    console.warn(`fetchRecentPagePosts ${res.status}: ${(await res.text()).slice(0, 120)}`);
-    return [];
+  const fields = "id,message,story,type,permalink_url,created_time,reactions.summary(true),comments.summary(true),shares";
+
+  // Fetch published_posts, feed, videos, and reels in parallel
+  const videoFields = "id,description,title,permalink_url,created_time,reactions.summary(true),comments.summary(true),shares";
+  const [publishedPostsRes, postsRes, videosRes, reelsRes] = await Promise.all([
+    fetch(`${GRAPH_BASE}/${pageId}/published_posts?${new URLSearchParams({ fields, limit: String(limit), access_token: accessToken })}`),
+    fetch(`${GRAPH_BASE}/${pageId}/feed?${new URLSearchParams({ fields, limit: String(limit), access_token: accessToken })}`),
+    fetch(`${GRAPH_BASE}/${pageId}/videos?${new URLSearchParams({ fields: videoFields, limit: String(limit), access_token: accessToken })}`),
+    fetch(`${GRAPH_BASE}/${pageId}/video_reels?${new URLSearchParams({ fields: videoFields, limit: String(limit), access_token: accessToken })}`),
+  ]);
+
+  const results: FbPagePost[] = [];
+  const seenIds = new Set<string>();
+
+  const addPosts = (data: Record<string, unknown>[], defaultType: string) => {
+    for (const post of data) {
+      const id = post.id as string;
+      if (seenIds.has(id)) continue;
+      seenIds.add(id);
+      results.push(mapPost(post, defaultType));
+    }
+  };
+
+  if (publishedPostsRes.ok) {
+    const d = await publishedPostsRes.json();
+    console.log(`[fb] /published_posts count=${d.data?.length ?? 0}`);
+    addPosts(d.data ?? [], "status");
+  } else {
+    console.error(`[fb-error] /published_posts ${publishedPostsRes.status}: ${await publishedPostsRes.text()}`);
   }
-  const data = await res.json();
-  return (data.data ?? []).map((post: Record<string, unknown>): FbPagePost => {
-    const reactions = post.reactions as Record<string, unknown> | undefined;
-    const comments = post.comments as Record<string, unknown> | undefined;
-    const shares = post.shares as Record<string, unknown> | undefined;
-    return {
-      id: post.id as string,
-      message: (post.message as string | null) ?? null,
-      type: (post.type as string) ?? "status",
-      permalink: (post.permalink_url as string) ?? "",
-      createdTime: (post.created_time as string) ?? "",
-      reactions: ((reactions?.summary as Record<string, unknown>)?.total_count as number) ?? 0,
-      comments: ((comments?.summary as Record<string, unknown>)?.total_count as number) ?? 0,
-      shares: (shares?.count as number) ?? 0,
-    };
-  });
+
+  if (postsRes.ok) {
+    const d = await postsRes.json();
+    console.log(`[fb] /feed count=${d.data?.length ?? 0}`);
+    addPosts(d.data ?? [], "status");
+  } else {
+    const feedErr = await postsRes.text();
+    console.error(`[fb-error] /feed ${postsRes.status}: ${feedErr}`);
+  }
+
+  if (videosRes.ok) {
+    const d = await videosRes.json();
+    console.log(`[fb] /videos count=${d.data?.length ?? 0}`);
+    addPosts(d.data ?? [], "video");
+  } else {
+    console.error(`[fb-error] /videos ${videosRes.status}: ${await videosRes.text()}`);
+  }
+
+  if (reelsRes.ok) {
+    const d = await reelsRes.json();
+    console.log(`[fb] /video_reels count=${d.data?.length ?? 0}`);
+    addPosts(d.data ?? [], "reel");
+  } else {
+    console.error(`[fb-error] /video_reels ${reelsRes.status}: ${await reelsRes.text()}`);
+  }
+
+  // Sort by createdTime descending
+  return results.sort((a, b) => (a.createdTime > b.createdTime ? -1 : 1));
 }
 
 // ─────────────────────────────────────────

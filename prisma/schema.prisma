@@ -584,12 +584,14 @@ enum NotificationType {
 // ─────────────────────────────────────────
 
 model SignupTicket {
-  id        String    @id @default(cuid())
-  email     String
-  ref       String?
-  expiresAt DateTime
-  usedAt    DateTime?
-  createdAt DateTime  @default(now())
+  id           String    @id @default(cuid())
+  email        String
+  ref          String?
+  expiresAt    DateTime
+  usedAt       DateTime?
+  accessToken  String?
+  refreshToken String?
+  createdAt    DateTime  @default(now())
 
   @@index([email])
 }

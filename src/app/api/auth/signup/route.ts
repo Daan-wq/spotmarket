@@ -25,7 +25,8 @@ export async function POST(request: Request) {
     );
   }
 
-  const { email, password, ref } = parsed.data;
+  const { password, ref } = parsed.data;
+  const email = parsed.data.email.toLowerCase();
 
   // Rate limit: 1 ticket per email per 60s
   const recentTicket = await prisma.signupTicket.findFirst({
@@ -97,5 +98,5 @@ export async function POST(request: Request) {
     `,
   });
 
-  return NextResponse.json({ success: true });
+  return NextResponse.json({ success: true, ticketId: ticket.id });
 }
