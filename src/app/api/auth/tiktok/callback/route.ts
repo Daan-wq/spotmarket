@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { prisma } from "@/lib/prisma";
-import { exchangeCodeForTokens, fetchTikTokProfile } from "@/lib/tiktok";
+import { exchangeCodeForTokens, fetchTikTokProfile, REQUIRED_TT_SCOPES } from "@/lib/tiktok";
 import { encrypt } from "@/lib/crypto";
 
 export async function GET(req: NextRequest) {
@@ -38,7 +38,13 @@ export async function GET(req: NextRequest) {
 
   try {
     // Exchange code for tokens
-    const { accessToken, refreshToken, expiresIn, openId } = await exchangeCodeForTokens(code);
+    const { accessToken, refreshToken, expiresIn, openId, grantedScopes } = await exchangeCodeForTokens(code);
+
+    // Validate all required scopes were granted
+    const missing = REQUIRED_TT_SCOPES.filter((s) => !grantedScopes.includes(s));
+    if (missing.length > 0) {
+      return NextResponse.redirect(new URL(`${returnTo}?error=tt_missing_scopes`, req.url));
+    }
 
     // Fetch TikTok profile
     const ttProfile = await fetchTikTokProfile(accessToken);

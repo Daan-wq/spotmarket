@@ -18,12 +18,20 @@ const GRAPH_BASE = "https://graph.facebook.com/v25.0";
 // OAUTH HELPERS
 // ─────────────────────────────────────────
 
+export const REQUIRED_FB_SCOPES = [
+  "pages_show_list",
+  "pages_read_engagement",
+  "read_insights",
+  "pages_read_user_content",
+] as const;
+
 export function getFacebookAuthUrl(state: string): string {
   const params = new URLSearchParams({
     client_id: process.env.FACEBOOK_APP_ID!,
     redirect_uri: process.env.FACEBOOK_REDIRECT_URI!,
-    scope: "pages_show_list,pages_read_engagement,read_insights,pages_read_user_content",
+    scope: REQUIRED_FB_SCOPES.join(","),
     response_type: "code",
+    auth_type: "rerequest",
     state,
   });
   return `https://www.facebook.com/v25.0/dialog/oauth?${params.toString()}`;
@@ -31,7 +39,7 @@ export function getFacebookAuthUrl(state: string): string {
 
 export async function exchangeFbCodeForToken(
   code: string
-): Promise<{ accessToken: string; expiresIn: number }> {
+): Promise<{ accessToken: string; expiresIn: number; grantedScopes: string[] }> {
   // Step 1: Exchange code for short-lived user token
   const params = new URLSearchParams({
     client_id: process.env.FACEBOOK_APP_ID!,
@@ -54,16 +62,36 @@ export async function exchangeFbCodeForToken(
     fb_exchange_token: shortLivedToken,
   });
   const longRes = await fetch(`${GRAPH_BASE}/oauth/access_token?${longParams}`);
-  if (!longRes.ok) {
+  let accessToken = shortLivedToken;
+  let expiresIn = shortData.expires_in ?? 3600;
+  if (longRes.ok) {
+    const longData = await longRes.json();
+    accessToken = longData.access_token;
+    expiresIn = longData.expires_in ?? 5184000;
+  } else {
     console.error("[facebook] long-lived exchange failed:", await longRes.text());
-    return { accessToken: shortLivedToken, expiresIn: shortData.expires_in ?? 3600 };
   }
-  const longData = await longRes.json();
 
-  return {
-    accessToken: longData.access_token,
-    expiresIn: longData.expires_in ?? 5184000, // ~60 days
-  };
+  // Step 3: Fetch granted permissions (Facebook token exchange doesn't return scope field)
+  const grantedScopes = await fetchFacebookGrantedScopes(accessToken);
+
+  return { accessToken, expiresIn, grantedScopes };
+}
+
+async function fetchFacebookGrantedScopes(accessToken: string): Promise<string[]> {
+  try {
+    const res = await fetch(
+      `${GRAPH_BASE}/me/permissions?access_token=${encodeURIComponent(accessToken)}`
+    );
+    if (!res.ok) return [];
+    const data = await res.json();
+    const rows = (data.data ?? []) as { permission: string; status: string }[];
+    return rows
+      .filter((r) => r.status === "granted" && typeof r.permission === "string")
+      .map((r) => r.permission);
+  } catch {
+    return [];
+  }
 }
 
 /**
@@ -129,6 +157,26 @@ function extractDayValues(
     }
   }
   return map;
+}
+
+/**
+ * Aggregate reactions/comments/shares from already-fetched posts.
+ * Meta deprecated dedicated page-level totals for these in v3.3+; computing
+ * from posts is the canonical workaround.
+ */
+export function computeEngagementTotalsFromPosts(posts: FbPagePost[]): {
+  reactions: number;
+  comments: number;
+  shares: number;
+} {
+  return posts.reduce(
+    (acc, p) => ({
+      reactions: acc.reactions + (p.reactions ?? 0),
+      comments: acc.comments + (p.comments ?? 0),
+      shares: acc.shares + (p.shares ?? 0),
+    }),
+    { reactions: 0, comments: 0, shares: 0 }
+  );
 }
 
 export async function fetchPageDailyInsights(
@@ -241,6 +289,83 @@ export async function fetchPageDailyInsights(
 }
 
 // ─────────────────────────────────────────
+// PAGE DEMOGRAPHICS (fans country + gender/age)
+// ─────────────────────────────────────────
+
+export interface FbPageDemographics {
+  countries: Record<string, number>; // ISO code → percent
+  genders: { male?: number; female?: number };
+  ages: Record<string, number>; // bucket ("18-24" etc) → percent
+}
+
+/**
+ * Fetch lifetime fan demographics. These metrics require the `read_insights`
+ * permission and a Page with at least ~100 fans to return data.
+ * Metrics: page_fans_country (top fan countries), page_fans_gender_age (M.18-24 etc.).
+ */
+export async function fetchFacebookPageDemographics(
+  pageId: string,
+  accessToken: string
+): Promise<FbPageDemographics> {
+  const demographics: FbPageDemographics = { countries: {}, genders: {}, ages: {} };
+
+  const extractLatest = (item: { values?: { value: Record<string, number> }[] }): Record<string, number> => {
+    const values = item.values ?? [];
+    return values[values.length - 1]?.value ?? {};
+  };
+
+  try {
+    const params = new URLSearchParams({
+      metric: "page_fans_country,page_fans_gender_age",
+      period: "lifetime",
+      access_token: accessToken,
+    });
+    const res = await fetch(`${GRAPH_BASE}/${pageId}/insights?${params}`);
+    if (!res.ok) return demographics;
+
+    const data = await res.json();
+    for (const item of data.data ?? []) {
+      if (item.name === "page_fans_country") {
+        const raw = extractLatest(item);
+        const total = Object.values(raw).reduce((s, v) => s + v, 0);
+        if (total > 0) {
+          for (const [country, count] of Object.entries(raw)) {
+            demographics.countries[country] = Math.round((count / total) * 100);
+          }
+        }
+      } else if (item.name === "page_fans_gender_age") {
+        const raw = extractLatest(item);
+        let maleTotal = 0;
+        let femaleTotal = 0;
+        const ageMap: Record<string, number> = {};
+        for (const [key, count] of Object.entries(raw)) {
+          // Keys look like "M.25-34", "F.18-24", "U.13-17"
+          const [gender, age] = key.split(".");
+          if (gender === "M") maleTotal += count;
+          else if (gender === "F") femaleTotal += count;
+          if (age) ageMap[age] = (ageMap[age] ?? 0) + count;
+        }
+        const genderTotal = maleTotal + femaleTotal;
+        if (genderTotal > 0) {
+          demographics.genders.male = Math.round((maleTotal / genderTotal) * 100);
+          demographics.genders.female = Math.round((femaleTotal / genderTotal) * 100);
+        }
+        const ageTotal = Object.values(ageMap).reduce((s, v) => s + v, 0);
+        if (ageTotal > 0) {
+          for (const [age, count] of Object.entries(ageMap)) {
+            demographics.ages[age] = Math.round((count / ageTotal) * 100);
+          }
+        }
+      }
+    }
+  } catch {
+    // Non-fatal — return empty demographics
+  }
+
+  return demographics;
+}
+
+// ─────────────────────────────────────────
 // RECENT PAGE POSTS
 // ─────────────────────────────────────────
 
@@ -253,12 +378,19 @@ function mapPost(post: Record<string, unknown>, defaultType: string): FbPagePost
     ((likes?.summary as Record<string, unknown>)?.total_count as number) ??
     ((reactionsLegacy?.summary as Record<string, unknown>)?.total_count as number) ??
     0;
+  const attachments = post.attachments as { data?: { media?: { image?: { src?: string } } }[] } | undefined;
+  const attachmentThumb = attachments?.data?.[0]?.media?.image?.src;
+  const thumbnailUrl =
+    (post.full_picture as string | undefined) ??
+    attachmentThumb ??
+    null;
   return {
     id: post.id as string,
     message: (post.message as string | null) ?? (post.story as string | null) ?? (post.description as string | null) ?? (post.title as string | null) ?? null,
     type: (post.type as string) ?? (post.status_type as string) ?? defaultType,
     permalink: (post.permalink_url as string) ?? "",
     createdTime: (post.created_time as string) ?? "",
+    thumbnailUrl,
     reactions: likeCount,
     comments: ((comments?.summary as Record<string, unknown>)?.total_count as number) ?? 0,
     shares: (shares?.count as number) ?? 0,

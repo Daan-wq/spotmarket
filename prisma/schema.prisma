@@ -223,8 +223,32 @@ model CreatorTikTokConnection {
   createdAt        DateTime       @default(now())
   updatedAt        DateTime       @updatedAt
 
+  demographicSubmissions TikTokDemographicSubmission[]
+
   @@index([creatorProfileId])
   @@index([tokenExpiresAt])
+}
+
+model TikTokDemographicSubmission {
+  id                 String                  @id @default(cuid())
+  connectionId       String
+  connection         CreatorTikTokConnection @relation(fields: [connectionId], references: [id], onDelete: Cascade)
+  topCountry         String
+  topCountryPercent  Int
+  malePercent        Int
+  femalePercent      Int
+  ageBuckets         Json
+  screenRecordingUrl String
+  status             VerificationStatus      @default(PENDING)
+  reviewNotes        String?
+  reviewedBy         String?
+  reviewedAt         DateTime?
+  createdAt          DateTime                @default(now())
+  updatedAt          DateTime                @updatedAt
+
+  @@index([connectionId])
+  @@index([status])
+  @@index([connectionId, status])
 }
 
 // ─────────────────────────────────────────

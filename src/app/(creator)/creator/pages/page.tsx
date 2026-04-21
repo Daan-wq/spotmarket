@@ -5,6 +5,7 @@ import { decrypt } from "@/lib/crypto";
 import { fetchInstagramProfile } from "@/lib/instagram";
 import { fetchFacebookPageProfile } from "@/lib/facebook";
 import { fetchChannelProfile as fetchYtProfile } from "@/lib/youtube";
+import { fetchTikTokProfile } from "@/lib/tiktok";
 import { RemovePageButton } from "./_components/remove-page-button";
 import { RemoveFbPageButton } from "./_components/remove-fb-page-button";
 import { RemoveYtPageButton } from "./_components/remove-yt-page-button";
@@ -85,6 +86,19 @@ export default async function PagesPage() {
           if (c.profilePicUrl) profilePics.set(c.id, c.profilePicUrl);
         }
       }),
+    ...profile.ttConnections
+      .filter((c) => c.accessToken && c.accessTokenIv)
+      .map(async (c) => {
+        try {
+          const token = decrypt(c.accessToken!, c.accessTokenIv!);
+          const ttProfile = await fetchTikTokProfile(token);
+          if (ttProfile.avatarUrl) {
+            profilePics.set(c.id, ttProfile.avatarUrl);
+          }
+        } catch {
+          if (c.profilePicUrl) profilePics.set(c.id, c.profilePicUrl);
+        }
+      }),
   ]);
 
   return (
@@ -159,7 +173,7 @@ export default async function PagesPage() {
                 >
                   <div className="flex items-center justify-between gap-4 p-4">
                     <Link
-                      href={hasToken ? `/creator/pages/${conn.id}` : "/creator/verify"}
+                      href={hasToken ? `/creator/pages/ig/${conn.id}` : "/creator/verify"}
                       className="flex items-center gap-3 min-w-0 flex-1 group"
                     >
                       {profilePics.get(conn.id) ? (
@@ -321,12 +335,6 @@ export default async function PagesPage() {
                     </Link>
 
                     <div className="flex items-center gap-3 shrink-0">
-                      <span
-                        className="text-xs px-2 py-1 rounded-full font-medium"
-                        style={{ background: "var(--success-bg)", color: "var(--success-text)" }}
-                      >
-                        Verified
-                      </span>
                       <RemoveFbPageButton connectionId={conn.id} />
                     </div>
                   </div>
@@ -418,12 +426,6 @@ export default async function PagesPage() {
                     </Link>
 
                     <div className="flex items-center gap-3 shrink-0">
-                      <span
-                        className="text-xs px-2 py-1 rounded-full font-medium"
-                        style={{ background: "var(--success-bg)", color: "var(--success-text)" }}
-                      >
-                        Verified
-                      </span>
                       <RemoveYtPageButton connectionId={conn.id} />
                     </div>
                   </div>
@@ -466,9 +468,9 @@ export default async function PagesPage() {
                     href={`/creator/pages/tt/${conn.id}`}
                     className="flex items-center gap-3 min-w-0 flex-1 group"
                   >
-                    {conn.profilePicUrl ? (
+                    {(profilePics.get(conn.id) ?? conn.profilePicUrl) ? (
                       <img
-                        src={conn.profilePicUrl}
+                        src={profilePics.get(conn.id) ?? conn.profilePicUrl!}
                         alt={conn.displayName ?? conn.username}
                         width={40}
                         height={40}
@@ -510,12 +512,6 @@ export default async function PagesPage() {
                     </svg>
                   </Link>
                   <div className="flex items-center gap-3 shrink-0">
-                    <span
-                      className="text-xs px-2 py-1 rounded-full font-medium"
-                      style={{ background: "var(--success-bg)", color: "var(--success-text)" }}
-                    >
-                      Verified
-                    </span>
                     <RemoveTikTokPageButton connectionId={conn.id} />
                   </div>
                 </div>

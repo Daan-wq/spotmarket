@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { prisma } from "@/lib/prisma";
-import { exchangeCodeForTokens, fetchChannelProfile } from "@/lib/youtube";
+import { exchangeCodeForTokens, fetchChannelProfile, REQUIRED_YT_SCOPES } from "@/lib/youtube";
 import { encrypt } from "@/lib/crypto";
 
 export async function GET(req: NextRequest) {
@@ -38,7 +38,13 @@ export async function GET(req: NextRequest) {
 
   try {
     // Exchange code for tokens
-    const { accessToken, refreshToken, expiresIn } = await exchangeCodeForTokens(code);
+    const { accessToken, refreshToken, expiresIn, grantedScopes } = await exchangeCodeForTokens(code);
+
+    // Validate all required scopes were granted
+    const missing = REQUIRED_YT_SCOPES.filter((s) => !grantedScopes.includes(s));
+    if (missing.length > 0) {
+      return NextResponse.redirect(new URL(`${returnTo}?error=yt_missing_scopes`, req.url));
+    }
 
     // Fetch YouTube channel profile
     const channel = await fetchChannelProfile(accessToken);

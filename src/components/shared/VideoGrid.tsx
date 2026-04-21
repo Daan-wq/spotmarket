@@ -20,7 +20,7 @@ interface ActiveApplication {
 
 interface VideoGridProps {
   videos: VideoItem[];
-  platform: "tiktok" | "youtube";
+  platform: "tiktok" | "youtube" | "facebook";
   username?: string;
   activeApplications?: ActiveApplication[];
 }
@@ -40,6 +40,7 @@ export function VideoGrid({ videos, platform, username, activeApplications = [] 
   function getUrl(video: VideoItem): string {
     if (video.shareUrl) return video.shareUrl;
     if (platform === "youtube") return `https://www.youtube.com/shorts/${video.id}`;
+    if (platform === "facebook") return `https://www.facebook.com/${video.id}`;
     return `https://www.tiktok.com/@${username ?? ""}/video/${video.id}`;
   }
 

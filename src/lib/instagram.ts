@@ -11,13 +11,19 @@ export type { IgDemographics, IgMediaItem, ComputedCreatorStats };
 const GRAPH_BASE = "https://graph.instagram.com/v25.0";
 const META_BASE = "https://api.instagram.com";
 
+export const REQUIRED_IG_SCOPES = [
+  "instagram_business_basic",
+  "instagram_business_manage_insights",
+] as const;
+
 export async function getInstagramAuthUrl(state: string): Promise<string> {
   const redirectUri = process.env.INSTAGRAM_REDIRECT_URI!;
   const params = new URLSearchParams({
     client_id: process.env.INSTAGRAM_APP_ID!,
     redirect_uri: redirectUri,
-    scope: "instagram_business_basic,instagram_business_manage_insights",
+    scope: REQUIRED_IG_SCOPES.join(","),
     response_type: "code",
+    auth_type: "rerequest",
     state,
   });
   // Must use www.instagram.com for the new Instagram Login product
@@ -26,7 +32,7 @@ export async function getInstagramAuthUrl(state: string): Promise<string> {
 
 export async function exchangeCodeForToken(
   code: string
-): Promise<{ accessToken: string; expiresIn: number }> {
+): Promise<{ accessToken: string; expiresIn: number; grantedScopes: string[] }> {
   // Step 1: Short-lived token
   const tokenRedirectUri = process.env.INSTAGRAM_REDIRECT_URI!;
   const body = new URLSearchParams({
@@ -49,6 +55,10 @@ export async function exchangeCodeForToken(
 
   const shortData = JSON.parse(rawResponse);
   const shortLivedToken = shortData.access_token;
+  // Instagram Business Login returns permissions as an array on the short-lived token response
+  const grantedScopes: string[] = Array.isArray(shortData.permissions)
+    ? shortData.permissions.filter((s: unknown): s is string => typeof s === "string")
+    : [];
 
   // Step 2: Exchange short-lived token for long-lived token (60 days)
   const longRes = await fetch(
@@ -62,6 +72,7 @@ export async function exchangeCodeForToken(
     return {
       accessToken: shortLivedToken,
       expiresIn: shortData.expires_in ?? 3600,
+      grantedScopes,
     };
   }
 
@@ -69,6 +80,7 @@ export async function exchangeCodeForToken(
   return {
     accessToken: longData.access_token,
     expiresIn: longData.expires_in ?? 5183944, // ~60 days
+    grantedScopes,
   };
 }
 

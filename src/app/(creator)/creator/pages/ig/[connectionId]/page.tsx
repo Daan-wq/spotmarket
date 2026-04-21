@@ -6,10 +6,12 @@ import {
   fetchRecentMedia,
   fetchAccountDailyInsights,
   fetchDemographicSnapshots,
+  fetchMediaInsights,
   computeEngagementRate,
   computeDemographicStats,
   mergeDailyPostCounts,
 } from "@/lib/instagram";
+import type { MediaInsights } from "@/lib/instagram";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { PostGrid } from "./_components/post-grid";
@@ -80,14 +82,29 @@ export default async function PageDetailPage({ params }: PageDetailProps) {
   }
   const demographicStats = computeDemographicStats(demographicData?.legacyJson ?? null);
 
-  const mediaInsightsForEngagement = mediaData.map((m) => ({
-    mediaId: m.id,
-    impressions: 0,
-    reach: 0,
-    videoViews: 0,
-    likeCount: m.like_count,
-    commentCount: m.comments_count,
-  }));
+  // P2.9: enrich engagement signal with per-media reach/views for the 10 most recent
+  // posts. Capped at 10 to avoid N=100 parallel Graph calls on page load.
+  const sampleMedia = mediaData.slice(0, 10);
+  const perMediaInsights = await Promise.allSettled(
+    sampleMedia.map((m) => {
+      const type = m.media_product_type === "REELS" ? "REEL"
+        : m.media_product_type === "STORY" ? "STORY"
+        : "FEED";
+      return fetchMediaInsights(m.id, accessToken, type);
+    })
+  );
+  const mediaInsightsForEngagement: MediaInsights[] = sampleMedia.map((m, i) => {
+    const settled = perMediaInsights[i];
+    const r = settled.status === "fulfilled" ? settled.value : null;
+    return {
+      mediaId: m.id,
+      impressions: 0,
+      reach: r?.reach ?? 0,
+      videoViews: r?.views ?? 0,
+      likeCount: r?.likes ?? m.like_count,
+      commentCount: r?.comments ?? m.comments_count,
+    };
+  });
   const engagementRate = computeEngagementRate(
     mediaInsightsForEngagement,
     profileData?.followersCount ?? conn.followerCount ?? 0

@@ -1,14 +1,13 @@
 import { requireAuth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { decrypt } from "@/lib/crypto";
 import {
   fetchChannelProfile,
   fetchRecentShorts,
   fetchChannelAnalytics,
   fetchVideoDemographics,
-  computeEngagementRate,
   formatWatchTime,
 } from "@/lib/youtube";
+import { getFreshYoutubeAccessToken } from "@/lib/token-refresh";
 import { VideoGrid } from "@/components/shared/VideoGrid";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -41,7 +40,8 @@ export default async function YtPageDetailPage({ params }: PageDetailProps) {
     notFound();
   }
 
-  const accessToken = decrypt(conn.accessToken, conn.accessTokenIv);
+  const accessToken = await getFreshYoutubeAccessToken(conn);
+  if (!accessToken) notFound();
 
   // Date range: last 30 days
   const now = new Date();
@@ -88,11 +88,6 @@ export default async function YtPageDetailPage({ params }: PageDetailProps) {
     }
   }
 
-  const engagementRate = computeEngagementRate(
-    shorts,
-    channel?.subscriberCount ?? conn.subscriberCount ?? 0
-  );
-
   const totals = analytics?.totals ?? {
     views: 0,
     estimatedMinutesWatched: 0,
@@ -102,6 +97,13 @@ export default async function YtPageDetailPage({ params }: PageDetailProps) {
     comments: 0,
     shares: 0,
   };
+
+  // Engagement rate from Analytics totals — (likes + comments + shares) / views * 100.
+  // Matches the metric cards' 30d window; falls back to 0 when there are no views.
+  const engagementRate =
+    totals.views > 0
+      ? (((totals.likes + totals.comments + totals.shares) / totals.views) * 100).toFixed(2)
+      : "0.00";
 
   return (
     <div className="p-6 space-y-6">

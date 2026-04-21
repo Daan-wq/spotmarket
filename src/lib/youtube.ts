@@ -19,17 +19,20 @@ const OAUTH_BASE = "https://oauth2.googleapis.com";
 
 // ─── OAuth ──────────────────────────────────────────────────────────
 
+export const REQUIRED_YT_SCOPES = [
+  "https://www.googleapis.com/auth/youtube.readonly",
+  "https://www.googleapis.com/auth/yt-analytics.readonly",
+] as const;
+
 export function getYoutubeAuthUrl(state: string): string {
   const params = new URLSearchParams({
     client_id: process.env.GOOGLE_CLIENT_ID!,
     redirect_uri: process.env.YOUTUBE_REDIRECT_URI!,
     response_type: "code",
-    scope: [
-      "https://www.googleapis.com/auth/youtube.readonly",
-      "https://www.googleapis.com/auth/yt-analytics.readonly",
-    ].join(" "),
+    scope: REQUIRED_YT_SCOPES.join(" "),
     access_type: "offline",
     prompt: "consent",
+    include_granted_scopes: "true",
     state,
   });
   return `https://accounts.google.com/o/oauth2/v2/auth?${params.toString()}`;
@@ -37,7 +40,7 @@ export function getYoutubeAuthUrl(state: string): string {
 
 export async function exchangeCodeForTokens(
   code: string
-): Promise<{ accessToken: string; refreshToken: string; expiresIn: number }> {
+): Promise<{ accessToken: string; refreshToken: string; expiresIn: number; grantedScopes: string[] }> {
   const res = await fetch(`${OAUTH_BASE}/token`, {
     method: "POST",
     headers: { "Content-Type": "application/x-www-form-urlencoded" },
@@ -60,6 +63,7 @@ export async function exchangeCodeForTokens(
     accessToken: data.access_token,
     refreshToken: data.refresh_token,
     expiresIn: data.expires_in ?? 3600,
+    grantedScopes: typeof data.scope === "string" ? data.scope.split(/\s+/).filter(Boolean) : [],
   };
 }
 

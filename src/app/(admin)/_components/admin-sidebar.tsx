@@ -48,6 +48,7 @@ const NAV: NavSection[] = [
     label: "OPERATIONS",
     items: [
       { href: "/admin/verifications", label: "Verifications", icon: "✓", description: "Instagram account reviews" },
+      { href: "/admin/tiktok-demographics", label: "TikTok Demos", icon: "🎯", description: "Self-reported TikTok audience reviews" },
       { href: "/admin/payouts", label: "Payouts", icon: "💰", description: "Creator payment processing" },
       { href: "/admin/withdrawals", label: "Withdrawals", icon: "🏦", description: "USDT withdrawal requests" },
     ],

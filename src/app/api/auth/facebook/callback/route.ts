@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { prisma } from "@/lib/prisma";
-import { exchangeFbCodeForToken, fetchUserPages, fetchFacebookPageProfile } from "@/lib/facebook";
+import { exchangeFbCodeForToken, fetchUserPages, fetchFacebookPageProfile, REQUIRED_FB_SCOPES } from "@/lib/facebook";
 import { encrypt } from "@/lib/crypto";
 
 export async function GET(req: NextRequest) {
@@ -36,7 +36,13 @@ export async function GET(req: NextRequest) {
 
   try {
     // Exchange code for long-lived user token
-    const { accessToken: userToken } = await exchangeFbCodeForToken(code);
+    const { accessToken: userToken, grantedScopes } = await exchangeFbCodeForToken(code);
+
+    // Validate all required scopes were granted
+    const missing = REQUIRED_FB_SCOPES.filter((s) => !grantedScopes.includes(s));
+    if (missing.length > 0) {
+      return NextResponse.redirect(new URL(`${returnTo}?error=fb_missing_scopes`, req.url));
+    }
 
     // Fetch pages the user manages (returns never-expiring page tokens)
     const pages = await fetchUserPages(userToken);
