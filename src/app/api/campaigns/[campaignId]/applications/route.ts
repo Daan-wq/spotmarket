@@ -7,7 +7,7 @@ export async function GET(
   { params }: { params: Promise<{ campaignId: string }> }
 ) {
   try {
-    const { userId, role } = await requireAuth("admin", "advertiser");
+    await requireAuth("admin");
     const { campaignId } = await params;
 
     const campaign = await prisma.campaign.findUnique({
@@ -16,16 +16,6 @@ export async function GET(
 
     if (!campaign) {
       return NextResponse.json({ error: "Campaign not found" }, { status: 404 });
-    }
-
-    if (role === "advertiser") {
-      const user = await prisma.user.findUnique({
-        where: { supabaseId: userId },
-        include: { advertiserProfile: true },
-      });
-      if (campaign.advertiserId !== user?.advertiserProfile?.id) {
-        return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
-      }
     }
 
     const applications = await prisma.campaignApplication.findMany({

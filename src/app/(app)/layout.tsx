@@ -14,6 +14,5 @@ export default async function AppLayout() {
   });
 
   if (dbUser?.role === "admin") redirect("/admin");
-  if (dbUser?.role === "advertiser") redirect("/advertiser/dashboard");
   redirect("/creator/dashboard");
 }

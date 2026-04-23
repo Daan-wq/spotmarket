@@ -27,7 +27,6 @@ model User {
   updatedAt            DateTime @updatedAt
 
   creatorProfile      CreatorProfile?
-  advertiserProfile   AdvertiserProfile?
   auditLogs           AuditLog[]
   referralPayouts     ReferralPayout[]     @relation("ReferrerPayouts")
   ownedCampaigns      Campaign[]           @relation("OwnedCampaigns")
@@ -43,7 +42,6 @@ model User {
 enum UserRole {
   admin
   creator
-  advertiser
 }
 
 model CreatorProfile {
@@ -85,21 +83,6 @@ model CreatorProfile {
   @@index([topCountry])
   @@index([malePercent])
   @@index([age18PlusPercent])
-}
-
-model AdvertiserProfile {
-  id        String   @id @default(cuid())
-  userId    String   @unique
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  brandName String
-  website   String?
-  industry  String?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  campaigns Campaign[]
-
-  @@index([userId])
 }
 
 model ReferralPayout {
@@ -339,8 +322,6 @@ model Campaign {
   guidelinesUrl         String?
 
   niche           Niche?
-  advertiserId    String?
-  advertiser      AdvertiserProfile? @relation(fields: [advertiserId], references: [id])
   stripePaymentId String?
 
   // Link-in-bio campaign fields
@@ -362,7 +343,6 @@ model Campaign {
   @@index([status])
   @@index([deadline])
   @@index([niche])
-  @@index([advertiserId])
   @@index([createdByUserId])
 }
 

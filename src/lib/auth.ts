@@ -3,7 +3,7 @@ import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { prisma } from "@/lib/prisma";
 import { UserRole } from "@prisma/client";
 
-const VALID_ROLES: UserRole[] = ["admin", "creator", "advertiser"];
+const VALID_ROLES: UserRole[] = ["admin", "creator"];
 
 function isValidRole(value: unknown): value is UserRole {
   return typeof value === "string" && VALID_ROLES.includes(value as UserRole);

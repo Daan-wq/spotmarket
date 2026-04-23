@@ -15,10 +15,10 @@ function formatCurrency(val: any): string {
 }
 
 export default async function AdminDashboard() {
-  const [tc, ta, ac, rev, earn, spend, subs] = await Promise.all([
+  const [tc, ac, totalCampaigns, rev, earn, spend, subs] = await Promise.all([
     prisma.creatorProfile.count(),
-    prisma.advertiserProfile.count(),
     prisma.campaign.count({ where: { status: "active" } }),
+    prisma.campaign.count(),
     prisma.campaign.aggregate({ _sum: { adminMargin: true }, where: { status: "active" } }),
     prisma.campaignSubmission.aggregate({ _sum: { earnedAmount: true }, where: { status: "APPROVED" } }),
     prisma.campaign.aggregate({ _sum: { totalBudget: true }, where: { status: "active" } }),
@@ -32,11 +32,11 @@ export default async function AdminDashboard() {
 
       <div className="grid grid-cols-3 gap-4 mb-8">
         <StatCard label="Total Creators" value={tc} />
-        <StatCard label="Total Advertisers" value={ta} />
         <StatCard label="Active Campaigns" value={ac} />
+        <StatCard label="Total Campaigns" value={totalCampaigns} />
         <StatCard label="Platform Revenue" value={formatCurrency(rev._sum.adminMargin)} />
         <StatCard label="Creator Earnings" value={formatCurrency(earn._sum.earnedAmount)} />
-        <StatCard label="Brand Spend" value={formatCurrency(spend._sum.totalBudget)} />
+        <StatCard label="Campaign Budget" value={formatCurrency(spend._sum.totalBudget)} />
       </div>
 
       <div className="rounded-xl overflow-hidden" style={{ background: "var(--bg-card)", border: "1px solid var(--border)" }}>

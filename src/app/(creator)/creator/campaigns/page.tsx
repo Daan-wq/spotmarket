@@ -29,9 +29,6 @@ export default async function CampaignsPage() {
       contentType: true,
       niche: true,
       bannerUrl: true,
-      advertiser: {
-        select: { brandName: true },
-      },
       campaignSubmissions: {
         select: { earnedAmount: true },
       },
@@ -57,9 +54,6 @@ export default async function CampaignsPage() {
               contentType: true,
               niche: true,
               bannerUrl: true,
-              advertiser: {
-                select: { brandName: true },
-              },
               campaignSubmissions: {
                 select: { earnedAmount: true },
               },
@@ -86,7 +80,7 @@ export default async function CampaignsPage() {
       platform: c.platform,
       contentType: c.contentType ?? "UGC",
       niche: c.niche ?? null,
-      brandName: c.advertiser?.brandName ?? "Unknown",
+      brandName: c.name,
       bannerUrl: c.bannerUrl ?? null,
     };
   });
@@ -107,7 +101,7 @@ export default async function CampaignsPage() {
       platform: c.platform,
       contentType: c.contentType ?? "UGC",
       niche: c.niche ?? null,
-      brandName: c.advertiser?.brandName ?? "Unknown",
+      brandName: c.name,
       bannerUrl: c.bannerUrl ?? null,
       applicationId: a.id,
     };

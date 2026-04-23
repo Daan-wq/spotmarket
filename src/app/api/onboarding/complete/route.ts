@@ -5,7 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { nanoid } from "nanoid";
 
 const TRON_REGEX = /^T[1-9A-HJ-NP-Z]{33}$/;
-const VALID_ROLES = ["creator", "advertiser"] as const;
+const VALID_ROLES = ["creator"] as const;
 
 function generateReferralCode(): string {
   return nanoid(8).toUpperCase();
@@ -37,8 +37,6 @@ export async function POST(req: Request) {
   const attributionSource = (body.attributionSource as string | undefined)?.trim();
   const experienceLevel = (body.experienceLevel as string | undefined)?.trim();
   const portfolioVideoUrl = (body.portfolioVideoUrl as string | undefined)?.trim();
-  const brandName = (body.brandName as string | undefined)?.trim();
-  const website = (body.website as string | undefined)?.trim();
 
   if (!displayName) {
     return NextResponse.json({ error: "Display name is required" }, { status: 400 });
@@ -97,51 +95,33 @@ export async function POST(req: Request) {
       referredBy: referredById,
       ...(discordId ? { discordId, discordUsername } : {}),
     },
-    include: { creatorProfile: true, advertiserProfile: true },
+    include: { creatorProfile: true },
   });
 
-  // Create role-specific profiles
-  if (selectedRole === "creator") {
-    if (!user.creatorProfile) {
-      await prisma.creatorProfile.create({
-        data: {
-          userId: user.id,
-          displayName,
-          tronsAddress: tronsAddress ?? null,
-          attributionSource: attributionSource ?? null,
-          experienceLevel: experienceLevel ?? null,
-          portfolioVideoUrl: portfolioVideoUrl ?? null,
-        },
-      });
-    } else {
-      await prisma.creatorProfile.update({
-        where: { userId: user.id },
-        data: {
-          ...(tronsAddress ? { tronsAddress } : {}),
-          ...(attributionSource ? { attributionSource } : {}),
-          ...(experienceLevel ? { experienceLevel } : {}),
-          ...(portfolioVideoUrl ? { portfolioVideoUrl } : {}),
-        },
-      });
-    }
-  }
-
-  if (selectedRole === "advertiser" && !user.advertiserProfile) {
-    await prisma.advertiserProfile.create({
+  if (!user.creatorProfile) {
+    await prisma.creatorProfile.create({
       data: {
         userId: user.id,
-        brandName: brandName || displayName,
-        website: website || null,
+        displayName,
+        tronsAddress: tronsAddress ?? null,
+        attributionSource: attributionSource ?? null,
+        experienceLevel: experienceLevel ?? null,
+        portfolioVideoUrl: portfolioVideoUrl ?? null,
+      },
+    });
+  } else {
+    await prisma.creatorProfile.update({
+      where: { userId: user.id },
+      data: {
+        ...(tronsAddress ? { tronsAddress } : {}),
+        ...(attributionSource ? { attributionSource } : {}),
+        ...(experienceLevel ? { experienceLevel } : {}),
+        ...(portfolioVideoUrl ? { portfolioVideoUrl } : {}),
       },
     });
   }
 
-  // Determine redirect
-  const redirect = selectedRole === "advertiser"
-    ? "/advertiser/dashboard"
-    : "/creator/dashboard";
-
-  return NextResponse.json({ success: true, redirect });
+  return NextResponse.json({ success: true, redirect: "/creator/dashboard" });
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     console.error("[onboarding/complete]", message);

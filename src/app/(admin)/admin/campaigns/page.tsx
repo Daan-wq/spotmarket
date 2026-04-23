@@ -5,7 +5,10 @@ import { CampaignActions } from "./_components/campaign-actions";
 
 export default async function CampaignsPage() {
   const campaigns = await prisma.campaign.findMany({
-    include: { advertiser: { select: { brandName: true } }, applications: { select: { id: true } } },
+    include: {
+      createdBy: { select: { email: true } },
+      applications: { select: { id: true } },
+    },
     orderBy: { createdAt: "desc" },
   });
 
@@ -37,7 +40,7 @@ export default async function CampaignsPage() {
           <thead>
             <tr style={{ borderBottom: "1px solid var(--border)" }}>
               <th className="px-6 py-3 text-left text-xs font-semibold" style={{ color: "var(--text-secondary)" }}>Name</th>
-              <th className="px-6 py-3 text-left text-xs font-semibold" style={{ color: "var(--text-secondary)" }}>Advertiser</th>
+              <th className="px-6 py-3 text-left text-xs font-semibold" style={{ color: "var(--text-secondary)" }}>Created by</th>
               <th className="px-6 py-3 text-left text-xs font-semibold" style={{ color: "var(--text-secondary)" }}>Status</th>
               <th className="px-6 py-3 text-left text-xs font-semibold" style={{ color: "var(--text-secondary)" }}>Budget</th>
               <th className="px-6 py-3 text-left text-xs font-semibold" style={{ color: "var(--text-secondary)" }}>Creators</th>
@@ -49,7 +52,7 @@ export default async function CampaignsPage() {
             {campaigns.map((c) => (
               <tr key={c.id} style={{ borderBottom: "1px solid var(--border)" }}>
                 <td className="px-6 py-3 text-sm" style={{ color: "var(--text-primary)" }}>{c.name}</td>
-                <td className="px-6 py-3 text-sm" style={{ color: "var(--text-primary)" }}>{c.advertiser?.brandName || "-"}</td>
+                <td className="px-6 py-3 text-sm" style={{ color: "var(--text-primary)" }}>{c.createdBy?.email ?? "-"}</td>
                 <td className="px-6 py-3 text-sm">
                   <span className="px-2 py-1 rounded text-xs" style={{ background: c.status === "active" ? "var(--success-bg)" : "var(--warning-bg)", color: c.status === "active" ? "var(--success-text)" : "var(--warning-text)" }}>
                     {c.status}

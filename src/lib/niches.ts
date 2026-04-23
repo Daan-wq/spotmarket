@@ -92,7 +92,7 @@ export const NICHE_CONFIG: Record<Niche, NicheConfig> = {
     cpmBenchmark: 4.0,
     isLegacy: false,
     color: "gray",
-    description: "Custom niche specified by advertiser",
+    description: "Custom niche specified by admin",
   },
 };
 

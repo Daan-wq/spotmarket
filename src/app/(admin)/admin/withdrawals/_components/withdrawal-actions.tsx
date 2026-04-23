@@ -1,6 +1,8 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useTransition } from 'react';
+import { useRouter } from 'next/navigation';
+import { toast } from 'sonner';
 
 interface WithdrawalActionsProps {
   id: string;
@@ -10,23 +12,29 @@ interface WithdrawalActionsProps {
 }
 
 export default function WithdrawalActions({ id, status, walletAddress, txHash }: WithdrawalActionsProps) {
-  const [loading, setLoading] = useState(false);
+  const router = useRouter();
+  const [isPending, startTransition] = useTransition();
   const [txInput, setTxInput] = useState('');
   const [showTxForm, setShowTxForm] = useState(false);
+  const loading = isPending;
 
   async function updateStatus(newStatus: string, hash?: string) {
-    setLoading(true);
+    if (isPending) return;
     try {
       const res = await fetch(`/api/admin/withdrawals/${id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ status: newStatus, txHash: hash }),
       });
-      if (res.ok) location.reload();
+      if (!res.ok) {
+        toast.error('Failed to update withdrawal');
+        return;
+      }
+      toast.success(`Withdrawal ${newStatus.toLowerCase()}`);
+      startTransition(() => router.refresh());
     } catch (err) {
       console.error(err);
-    } finally {
-      setLoading(false);
+      toast.error('Network error');
     }
   }
 

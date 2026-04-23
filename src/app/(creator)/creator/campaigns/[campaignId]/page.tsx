@@ -16,7 +16,6 @@ export default async function CampaignDetailPage({
   const campaign = await prisma.campaign.findUnique({
     where: { id: campaignId },
     include: {
-      advertiser: { select: { brandName: true } },
       campaignSubmissions: {
         select: { earnedAmount: true, status: true },
       },
@@ -132,7 +131,7 @@ export default async function CampaignDetailPage({
             style={{ background: "#e5e7eb" }}
           >
             <span style={{ color: "var(--text-primary)" }}>
-              {(campaign.advertiser?.brandName ?? campaign.name).charAt(0).toUpperCase()}
+              {campaign.name.charAt(0).toUpperCase()}
             </span>
           </div>
         )}

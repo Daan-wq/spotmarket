@@ -17,7 +17,7 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { userId, role } = await requireAuth("admin", "advertiser");
+    const { userId } = await requireAuth("admin");
     const { id } = await params;
 
     const body = await req.json();
@@ -30,17 +30,6 @@ export async function POST(
 
     if (!submission) {
       return NextResponse.json({ error: "Submission not found" }, { status: 404 });
-    }
-
-    // If advertiser, verify they own the campaign
-    if (role === "advertiser") {
-      const user = await prisma.user.findUnique({
-        where: { supabaseId: userId },
-        select: { advertiserProfile: { select: { id: true } } },
-      });
-      if (!user?.advertiserProfile || submission.campaign.advertiserId !== user.advertiserProfile.id) {
-        return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-      }
     }
 
     // Calculate eligible views and earnings

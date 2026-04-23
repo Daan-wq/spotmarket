@@ -73,7 +73,6 @@ export function PostFeedbackPanel({
 
   const roleColors: Record<string, string> = {
     admin: "#7c3aed",
-    advertiser: "#2563eb",
     creator: "#059669",
     network: "#d97706",
   };

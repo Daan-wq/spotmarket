@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Lexend } from "next/font/google";
 import { AuthErrorHandler } from "./auth-error-handler";
+import { Toaster } from "@/components/ui/toaster";
 import "./globals.css";
 
 const lexend = Lexend({
@@ -25,6 +26,7 @@ export default function RootLayout({
       <body className={`${lexend.variable} antialiased`}>
         <AuthErrorHandler />
         {children}
+        <Toaster />
       </body>
     </html>
   );

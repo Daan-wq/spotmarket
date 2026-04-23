@@ -26,7 +26,6 @@ export default async function MyVideosPage() {
         select: {
           name: true,
           platform: true,
-          advertiser: { select: { brandName: true } },
         },
       },
     },
@@ -40,7 +39,7 @@ export default async function MyVideosPage() {
     views: s.viewCount ?? s.claimedViews,
     createdAt: s.createdAt.toISOString(),
     campaignName: s.campaign.name,
-    brandName: s.campaign.advertiser?.brandName ?? "Unknown",
+    brandName: s.campaign.name,
     platform: s.campaign.platform,
   }));
 

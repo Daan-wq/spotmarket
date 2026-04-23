@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import { usePathname } from "next/navigation";
+import { memo, useState, useTransition } from "react";
+import { usePathname, useRouter } from "next/navigation";
 import Link from "next/link";
 import { Logo } from "@/components/shared/logo";
 
@@ -28,7 +28,6 @@ const NAV: NavSection[] = [
     label: "USERS",
     items: [
       { href: "/admin/creators", label: "Creators", icon: "👥" },
-      { href: "/admin/advertisers", label: "Advertisers", icon: "🏢" },
     ],
   },
   {
@@ -60,13 +59,93 @@ interface AdminSidebarProps {
   email: string;
 }
 
+interface SidebarLinkProps {
+  href: string;
+  label: string;
+  icon: string;
+  description?: string;
+  active: boolean;
+  pending: boolean;
+  collapsed: boolean;
+  onNavigate: (href: string) => void;
+}
+
+const SidebarLink = memo(function SidebarLink({
+  href,
+  label,
+  icon,
+  description,
+  active,
+  pending,
+  collapsed,
+  onNavigate,
+}: SidebarLinkProps) {
+  // Show active styling instantly when user clicks, even before route resolves
+  const showActive = active || pending;
+  return (
+    <Link
+      prefetch
+      href={href}
+      onClick={(e) => {
+        // Intercept to trigger optimistic active-state via useTransition in parent
+        if (!e.metaKey && !e.ctrlKey && !e.shiftKey && e.button === 0) {
+          e.preventDefault();
+          onNavigate(href);
+        }
+      }}
+      className="flex items-center gap-2.5 rounded-md text-[13px] font-medium transition-all"
+      style={{
+        padding: collapsed ? "8px" : "7px 10px",
+        justifyContent: collapsed ? "center" : "flex-start",
+        color: showActive ? "var(--sidebar-active-text)" : "var(--sidebar-item)",
+        background: showActive ? "var(--sidebar-active-bg)" : "transparent",
+        opacity: pending && !active ? 0.7 : 1,
+      }}
+    >
+      <span>{icon}</span>
+      {!collapsed && (
+        <div className="flex flex-col gap-0.5">
+          <span>{label}</span>
+          {description && (
+            <span
+              className="text-[10px]"
+              style={{
+                color: "var(--text-muted, var(--text-secondary))",
+                lineHeight: "1.2",
+              }}
+            >
+              {description}
+            </span>
+          )}
+        </div>
+      )}
+    </Link>
+  );
+});
+
 export function AdminSidebar({ initials, email }: AdminSidebarProps) {
   const pathname = usePathname();
+  const router = useRouter();
   const [collapsed, setCollapsed] = useState(false);
+  const [isPending, startTransition] = useTransition();
+  const [pendingHref, setPendingHref] = useState<string | null>(null);
 
   function isActive(href: string) {
     if (href === "/admin") return pathname === "/admin";
     return pathname.startsWith(href);
+  }
+
+  function handleNavigate(href: string) {
+    if (isActive(href)) return;
+    setPendingHref(href);
+    startTransition(() => {
+      router.push(href);
+    });
+  }
+
+  // Reset pending indicator once navigation completes
+  if (!isPending && pendingHref && pathname.startsWith(pendingHref)) {
+    queueMicrotask(() => setPendingHref(null));
   }
 
   return (
@@ -110,40 +189,19 @@ export function AdminSidebar({ initials, email }: AdminSidebarProps) {
                 {label}
               </p>
             )}
-            {items.map(({ href, label: itemLabel, icon, description }) => {
-              const active = isActive(href);
-              return (
-                <Link
-                  key={href}
-                  href={href}
-                  className="flex items-center gap-2.5 rounded-md text-[13px] font-medium transition-all"
-                  style={{
-                    padding: collapsed ? "8px" : "7px 10px",
-                    justifyContent: collapsed ? "center" : "flex-start",
-                    color: active ? "var(--sidebar-active-text)" : "var(--sidebar-item)",
-                    background: active ? "var(--sidebar-active-bg)" : "transparent",
-                  }}
-                >
-                  <span>{icon}</span>
-                  {!collapsed && (
-                    <div className="flex flex-col gap-0.5">
-                      <span>{itemLabel}</span>
-                      {description && (
-                        <span
-                          className="text-[10px]"
-                          style={{
-                            color: "var(--text-muted, var(--text-secondary))",
-                            lineHeight: "1.2",
-                          }}
-                        >
-                          {description}
-                        </span>
-                      )}
-                    </div>
-                  )}
-                </Link>
-              );
-            })}
+            {items.map((item) => (
+              <SidebarLink
+                key={item.href}
+                href={item.href}
+                label={item.label}
+                icon={item.icon}
+                description={item.description}
+                active={isActive(item.href)}
+                pending={pendingHref === item.href && isPending}
+                collapsed={collapsed}
+                onNavigate={handleNavigate}
+              />
+            ))}
           </div>
         ))}
       </nav>
