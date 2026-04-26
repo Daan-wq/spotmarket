@@ -38,12 +38,12 @@ export default async function FbPageDetailPage({ params }: PageDetailProps) {
     where: { id: connectionId, creatorProfileId: profile.id },
   });
 
-  if (!conn || !conn.accessToken || !conn.accessTokenIv) {
+  if (!conn || !conn.accessToken || !conn.accessTokenIv || !conn.fbPageId) {
     notFound();
   }
 
   const accessToken = decrypt(conn.accessToken, conn.accessTokenIv);
-  const pageId = conn.fbPageId;
+  const pageId: string = conn.fbPageId;
 
   // Fetch all data in parallel
   const now = new Date();

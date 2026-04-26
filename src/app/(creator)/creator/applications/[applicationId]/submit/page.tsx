@@ -382,6 +382,25 @@ export default function SubmitPage() {
             </div>
           )}
 
+          {/* Bio-verify hint banner — shown when no OAuth pages are connected */}
+          {connections.length === 0 && (
+            <div
+              className="m-5 mb-0 p-3 rounded-lg text-sm border"
+              style={{
+                background: "rgba(99, 102, 241, 0.08)",
+                borderColor: "rgba(99, 102, 241, 0.3)",
+                color: "var(--text-secondary)",
+              }}
+            >
+              <p className="font-medium" style={{ color: "var(--text-primary)" }}>
+                Submitting via link in bio
+              </p>
+              <p className="text-xs mt-1">
+                Paste the public URL of your post. The clip&apos;s author handle must match one of your verified accounts. We&apos;ll track views automatically once the post is approved.
+              </p>
+            </div>
+          )}
+
           <form onSubmit={submitManual} className="p-5 space-y-5">
             {/* Post URL */}
             <div>
@@ -392,7 +411,7 @@ export default function SubmitPage() {
                 type="url"
                 value={postUrl}
                 onChange={(e) => setPostUrl(e.target.value)}
-                placeholder="https://instagram.com/reel/..."
+                placeholder="https://www.tiktok.com/@you/video/... or https://instagram.com/reel/..."
                 required
                 className="w-full px-4 py-2 rounded-lg border text-sm focus:outline-none focus:ring-2"
                 style={{
@@ -402,7 +421,7 @@ export default function SubmitPage() {
                 }}
               />
               <p className="text-xs mt-1.5" style={{ color: "var(--text-secondary)" }}>
-                Paste the direct link to your Instagram Reel or TikTok video
+                Paste a direct link to your TikTok video, Instagram Reel, Facebook video, or YouTube Short
               </p>
             </div>
 

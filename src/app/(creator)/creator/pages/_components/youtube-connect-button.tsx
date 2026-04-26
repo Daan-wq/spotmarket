@@ -7,17 +7,38 @@ export function YoutubeConnectButton() {
 
   return (
     <>
-      <button
-        onClick={() => setShowModal(true)}
-        className="flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium border transition-all hover:shadow-sm"
-        style={{ background: "var(--bg-primary)", borderColor: "var(--border)", color: "var(--text-primary)" }}
+      <div
+        className="rounded-lg border p-4 flex flex-col gap-3"
+        style={{ background: "var(--bg-primary)", borderColor: "var(--border)" }}
       >
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" style={{ color: "#FF0000" }}>
-          <path d="M22.54 6.42a2.78 2.78 0 0 0-1.95-1.96C18.88 4 12 4 12 4s-6.88 0-8.59.46A2.78 2.78 0 0 0 1.46 6.42 29 29 0 0 0 1 12a29 29 0 0 0 .46 5.58A2.78 2.78 0 0 0 3.41 19.6C5.12 20 12 20 12 20s6.88 0 8.59-.4a2.78 2.78 0 0 0 1.95-1.95A29 29 0 0 0 23 12a29 29 0 0 0-.46-5.58z" />
-          <polygon fill="#fff" points="9.75 15.02 15.5 12 9.75 8.98 9.75 15.02" />
-        </svg>
-        YouTube
-      </button>
+        <div className="flex items-center gap-3">
+          <div
+            className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0"
+            style={{ background: "#FF0000" }}
+          >
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="white">
+              <path d="M22.54 6.42a2.78 2.78 0 0 0-1.95-1.96C18.88 4 12 4 12 4s-6.88 0-8.59.46A2.78 2.78 0 0 0 1.46 6.42 29 29 0 0 0 1 12a29 29 0 0 0 .46 5.58A2.78 2.78 0 0 0 3.41 19.6C5.12 20 12 20 12 20s6.88 0 8.59-.4a2.78 2.78 0 0 0 1.95-1.95A29 29 0 0 0 23 12a29 29 0 0 0-.46-5.58z" />
+              <polygon fill="#FF0000" points="9.75 15.02 15.5 12 9.75 8.98 9.75 15.02" />
+            </svg>
+          </div>
+          <div className="min-w-0">
+            <p className="text-sm font-semibold" style={{ color: "var(--text-primary)" }}>
+              YouTube
+            </p>
+            <p className="text-[11px]" style={{ color: "var(--text-muted)" }}>
+              Sign in with Google &mdash; available now
+            </p>
+          </div>
+        </div>
+
+        <button
+          onClick={() => setShowModal(true)}
+          className="w-full px-3 py-2 rounded-md text-xs font-semibold transition-all"
+          style={{ background: "var(--primary)", color: "#fff" }}
+        >
+          Connect YouTube channel
+        </button>
+      </div>
 
       {showModal && (
         <div
@@ -56,19 +77,19 @@ export function YoutubeConnectButton() {
               <div className="flex items-start gap-2">
                 <span className="text-base mt-0.5">1.</span>
                 <p className="text-sm" style={{ color: "var(--text-primary)" }}>
-                  <strong>Sign into the correct Google account</strong> — make sure you&apos;re logged into the Google account that owns your YouTube channel.
+                  <strong>Sign into the correct Google account</strong> &mdash; make sure you&apos;re logged into the Google account that owns your YouTube channel.
                 </p>
               </div>
               <div className="flex items-start gap-2">
                 <span className="text-base mt-0.5">2.</span>
                 <p className="text-sm" style={{ color: "var(--text-primary)" }}>
-                  <strong>Grant all permissions</strong> — we need read-only access to your channel data and analytics to track campaign performance.
+                  <strong>Grant all permissions</strong> &mdash; we need read-only access to your channel data and analytics to track campaign performance.
                 </p>
               </div>
               <div className="flex items-start gap-2">
                 <span className="text-base mt-0.5">3.</span>
                 <p className="text-sm" style={{ color: "var(--text-primary)" }}>
-                  <strong>YouTube Shorts only</strong> — we track Shorts performance (videos under 60 seconds) for campaign metrics.
+                  <strong>YouTube Shorts only</strong> &mdash; we track Shorts performance (videos under 60 seconds) for campaign metrics.
                 </p>
               </div>
             </div>

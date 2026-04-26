@@ -17,7 +17,9 @@ export default async function SubmissionsPage() {
             <tr style={{ borderBottom: "1px solid var(--border)" }}>
               <th className="px-6 py-3 text-left text-xs font-semibold" style={{ color: "var(--text-secondary)" }}>Campaign</th>
               <th className="px-6 py-3 text-left text-xs font-semibold" style={{ color: "var(--text-secondary)" }}>Creator</th>
+              <th className="px-6 py-3 text-left text-xs font-semibold" style={{ color: "var(--text-secondary)" }}>Source</th>
               <th className="px-6 py-3 text-left text-xs font-semibold" style={{ color: "var(--text-secondary)" }}>Submitted</th>
+              <th className="px-6 py-3 text-left text-xs font-semibold" style={{ color: "var(--text-secondary)" }}>Last Scrape</th>
               <th className="px-6 py-3 text-left text-xs font-semibold" style={{ color: "var(--text-secondary)" }}>Eligible Views</th>
               <th className="px-6 py-3 text-left text-xs font-semibold" style={{ color: "var(--text-secondary)" }}>Earned</th>
               <th className="px-6 py-3 text-left text-xs font-semibold" style={{ color: "var(--text-secondary)" }}>Status</th>
@@ -29,7 +31,42 @@ export default async function SubmissionsPage() {
               <tr key={s.id} style={{ borderBottom: "1px solid var(--border)" }}>
                 <td className="px-6 py-3 text-sm" style={{ color: "var(--text-primary)" }}>{s.campaign.name}</td>
                 <td className="px-6 py-3 text-sm" style={{ color: "var(--text-primary)" }}>{s.creator.email}</td>
+                <td className="px-6 py-3 text-xs">
+                  <div className="flex flex-col gap-0.5">
+                    {s.sourcePlatform && (
+                      <span style={{ color: "var(--text-secondary)" }}>{s.sourcePlatform.toLowerCase()}</span>
+                    )}
+                    {s.sourceMethod === "BIO_VERIFY" ? (
+                      <span
+                        className="inline-block px-1.5 py-0.5 rounded font-medium w-fit"
+                        style={{ background: "var(--warning-bg)", color: "var(--warning-text)" }}
+                      >
+                        bio-verify
+                      </span>
+                    ) : s.sourceMethod === "OAUTH" ? (
+                      <span
+                        className="inline-block px-1.5 py-0.5 rounded font-medium w-fit"
+                        style={{ background: "var(--success-bg)", color: "var(--success-text)" }}
+                      >
+                        oauth
+                      </span>
+                    ) : (
+                      <span style={{ color: "var(--text-muted)" }}>—</span>
+                    )}
+                    {s.authorHandle && (
+                      <span style={{ color: "var(--text-muted)" }}>@{s.authorHandle}</span>
+                    )}
+                  </div>
+                </td>
                 <td className="px-6 py-3 text-sm" style={{ color: "var(--text-secondary)" }}>{new Date(s.createdAt).toLocaleDateString()}</td>
+                <td className="px-6 py-3 text-xs" style={{ color: "var(--text-secondary)" }}>
+                  {s.lastScrapedAt ? new Date(s.lastScrapedAt).toLocaleString() : "—"}
+                  {s.scrapeFailures > 0 && (
+                    <span className="block text-[10px]" style={{ color: "var(--error-text)" }}>
+                      {s.scrapeFailures} failure{s.scrapeFailures === 1 ? "" : "s"}
+                    </span>
+                  )}
+                </td>
                 <td className="px-6 py-3 text-sm" style={{ color: "var(--text-primary)" }}>
                   {s.eligibleViews != null ? s.eligibleViews.toLocaleString() : '-'}
                 </td>

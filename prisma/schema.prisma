@@ -70,10 +70,10 @@ model CreatorProfile {
   createdAt          DateTime @default(now())
   updatedAt          DateTime @updatedAt
 
-  igConnections  CreatorIgConnection[]
-  fbConnections  CreatorFbConnection[]
-  ytConnections  CreatorYtConnection[]
-  ttConnections  CreatorTikTokConnection[]
+  igConnections CreatorIgConnection[]
+  fbConnections CreatorFbConnection[]
+  ytConnections CreatorYtConnection[]
+  ttConnections CreatorTikTokConnection[]
   applications  CampaignApplication[]
   payouts       Payout[]
 
@@ -141,18 +141,24 @@ model CreatorFbConnection {
   id               String         @id @default(cuid())
   creatorProfileId String
   creatorProfile   CreatorProfile @relation(fields: [creatorProfileId], references: [id], onDelete: Cascade)
-  fbPageId         String         @unique
+  fbPageId         String?        @unique
   pageName         String
+  pageHandle       String?
   profilePicUrl    String?
   followerCount    Int?
   accessToken      String?
   accessTokenIv    String?
   tokenExpiresAt   DateTime?
-  isVerified       Boolean        @default(true)
+  isVerified       Boolean        @default(false)
+  verifiedAt       DateTime?
+  lastCheckedAt    DateTime?
   createdAt        DateTime       @default(now())
   updatedAt        DateTime       @updatedAt
 
+  bioVerifications BioVerification[]
+
   @@unique([creatorProfileId, fbPageId])
+  @@unique([creatorProfileId, pageHandle])
   @@index([creatorProfileId])
   @@index([tokenExpiresAt])
 }
@@ -192,7 +198,7 @@ model CreatorTikTokConnection {
   id               String         @id @default(cuid())
   creatorProfileId String
   creatorProfile   CreatorProfile @relation(fields: [creatorProfileId], references: [id], onDelete: Cascade)
-  tikTokOpenId     String         @unique
+  tikTokOpenId     String?        @unique
   username         String
   displayName      String?
   profilePicUrl    String?
@@ -202,12 +208,16 @@ model CreatorTikTokConnection {
   refreshToken     String?
   refreshTokenIv   String?
   tokenExpiresAt   DateTime?
-  isVerified       Boolean        @default(true)
+  isVerified       Boolean        @default(false)
+  verifiedAt       DateTime?
+  lastCheckedAt    DateTime?
   createdAt        DateTime       @default(now())
   updatedAt        DateTime       @updatedAt
 
   demographicSubmissions TikTokDemographicSubmission[]
+  bioVerifications       BioVerification[]
 
+  @@unique([creatorProfileId, username])
   @@index([creatorProfileId])
   @@index([tokenExpiresAt])
 }
@@ -239,17 +249,31 @@ model TikTokDemographicSubmission {
 // ─────────────────────────────────────────
 
 model BioVerification {
-  id            String              @id @default(cuid())
-  connectionId  String
-  connection    CreatorIgConnection @relation(fields: [connectionId], references: [id], onDelete: Cascade)
-  code          String              @unique
-  status        VerificationStatus  @default(PENDING)
-  lastCheckedAt DateTime?
-  verifiedAt    DateTime?
-  createdAt     DateTime            @default(now())
+  id                 String                   @id @default(cuid())
+  platform           BioPlatform              @default(INSTAGRAM)
+  connectionId       String?
+  connection         CreatorIgConnection?     @relation(fields: [connectionId], references: [id], onDelete: Cascade)
+  tiktokConnectionId String?
+  tiktokConnection   CreatorTikTokConnection? @relation(fields: [tiktokConnectionId], references: [id], onDelete: Cascade)
+  fbConnectionId     String?
+  fbConnection       CreatorFbConnection?     @relation(fields: [fbConnectionId], references: [id], onDelete: Cascade)
+  code               String                   @unique
+  status             VerificationStatus       @default(PENDING)
+  lastCheckedAt      DateTime?
+  verifiedAt         DateTime?
+  createdAt          DateTime                 @default(now())
 
   @@index([connectionId])
+  @@index([tiktokConnectionId])
+  @@index([fbConnectionId])
+  @@index([platform, status])
   @@index([status])
+}
+
+enum BioPlatform {
+  INSTAGRAM
+  TIKTOK
+  FACEBOOK
 }
 
 enum VerificationStatus {
@@ -456,6 +480,13 @@ model CampaignSubmission {
   eligibleViews Int?
   status        SubmissionStatus @default(PENDING)
 
+  // Source tracking for bio-verify fallback flow
+  sourcePlatform BioPlatform?
+  sourceMethod   SubmissionMethod @default(UNKNOWN)
+  authorHandle   String?
+  lastScrapedAt  DateTime?
+  scrapeFailures Int              @default(0)
+
   reviewedAt    DateTime?
   reviewedBy    String?
   rejectionNote String?
@@ -480,6 +511,12 @@ enum SubmissionStatus {
   APPROVED
   REJECTED
   FLAGGED
+}
+
+enum SubmissionMethod {
+  UNKNOWN
+  OAUTH
+  BIO_VERIFY
 }
 
 // ─────────────────────────────────────────
