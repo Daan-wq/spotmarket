@@ -117,12 +117,9 @@ export default async function PagesPage() {
         className="rounded-lg p-5 border"
         style={{ background: "var(--bg-card)", borderColor: "var(--border)" }}
       >
-        <div className="flex items-center justify-between mb-3">
+        <div className="mb-3">
           <p className="text-xs font-semibold uppercase tracking-wide" style={{ color: "var(--text-muted)" }}>
             Connect Account
-          </p>
-          <p className="text-[11px]" style={{ color: "var(--text-muted)" }}>
-            OAuth login pending review &mdash; verify via bio to start now
           </p>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
