@@ -330,6 +330,14 @@ export default async function PagesPage() {
                     </Link>
 
                     <div className="flex items-center gap-3 shrink-0">
+                      {conn.isVerified && (
+                        <span
+                          className="text-xs px-2 py-1 rounded-full font-medium"
+                          style={{ background: "var(--success-bg)", color: "var(--success-text)" }}
+                        >
+                          Verified
+                        </span>
+                      )}
                       <RemoveFbPageButton connectionId={conn.id} />
                     </div>
                   </div>

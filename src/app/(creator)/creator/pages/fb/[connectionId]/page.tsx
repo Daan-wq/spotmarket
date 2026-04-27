@@ -6,6 +6,7 @@ import {
   fetchRecentPagePosts,
   fetchPageDailyInsights,
   fetchFacebookPageDemographics,
+  aggregatePostInsights,
   computeEngagementRate,
   computeEngagementTotalsFromPosts,
   mergeDailyPostCounts,
@@ -73,8 +74,16 @@ export default async function FbPageDetailPage({ params }: PageDetailProps) {
     reach: 0, impressions: 0, engagedUsers: 0,
     reactions: 0, comments: 0, shares: 0, pageFans: 0,
   };
+
+  // Page-level metrics often return 0 on small/new pages in v25 — fall back
+  // to summing post-level insights, which is what FB's native dashboard shows.
+  const postTotals = await aggregatePostInsights(postsData, accessToken, sinceUnix, untilUnix);
+
   const windowTotals = {
     ...baseTotals,
+    reach: Math.max(baseTotals.reach, postTotals.reach),
+    impressions: Math.max(baseTotals.impressions, postTotals.impressions),
+    engagedUsers: Math.max(baseTotals.engagedUsers, postTotals.engagedUsers),
     reactions: postEngagementTotals.reactions,
     comments: postEngagementTotals.comments,
     shares: postEngagementTotals.shares,

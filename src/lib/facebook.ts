@@ -95,6 +95,23 @@ async function fetchFacebookGrantedScopes(accessToken: string): Promise<string[]
 }
 
 /**
+ * Fetch the authenticated user's FB user ID via /me.
+ * Used to associate connections with the FB user for deauthorize/data-deletion webhooks.
+ */
+export async function fetchFacebookUserId(userAccessToken: string): Promise<string | null> {
+  try {
+    const res = await fetch(
+      `${GRAPH_BASE}/me?fields=id&access_token=${encodeURIComponent(userAccessToken)}`
+    );
+    if (!res.ok) return null;
+    const data = await res.json();
+    return typeof data.id === "string" ? data.id : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
  * Fetch user's managed Facebook Pages with the user token,
  * then return pages with their never-expiring Page Access Tokens.
  */
@@ -489,6 +506,72 @@ export function mergeDailyPostCounts(
   }
 
   return daily;
+}
+
+// ─────────────────────────────────────────
+// POST-LEVEL INSIGHTS (used to aggregate page totals)
+// ─────────────────────────────────────────
+
+/**
+ * Fetch insights for a single post. Returns null on failure (insights not
+ * available for some post types — Reels/videos use different metrics).
+ */
+async function fetchSinglePostInsights(
+  postId: string,
+  accessToken: string
+): Promise<{ impressions: number; reach: number; engagedUsers: number } | null> {
+  try {
+    const params = new URLSearchParams({
+      metric: "post_impressions,post_impressions_unique,post_engaged_users",
+      access_token: accessToken,
+    });
+    const res = await fetch(`${GRAPH_BASE}/${postId}/insights?${params}`);
+    if (!res.ok) return null;
+    const data = await res.json();
+    const byName: Record<string, number> = {};
+    for (const item of (data.data ?? []) as { name: string; values: { value: number }[] }[]) {
+      byName[item.name] = item.values?.[0]?.value ?? 0;
+    }
+    return {
+      impressions: byName["post_impressions"] ?? 0,
+      reach: byName["post_impressions_unique"] ?? 0,
+      engagedUsers: byName["post_engaged_users"] ?? 0,
+    };
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Sum post-level insights across recent posts in the window.
+ * Mirrors what Facebook's native dashboard shows since page-level
+ * impressions/reach metrics return 0 for many small/new pages in v25.
+ */
+export async function aggregatePostInsights(
+  posts: FbPagePost[],
+  accessToken: string,
+  sinceUnix: number,
+  untilUnix: number
+): Promise<{ reach: number; impressions: number; engagedUsers: number }> {
+  const sinceMs = sinceUnix * 1000;
+  const untilMs = untilUnix * 1000;
+  const inWindow = posts.filter((p) => {
+    const ts = new Date(p.createdTime).getTime();
+    return ts >= sinceMs && ts <= untilMs;
+  });
+
+  const results = await Promise.all(
+    inWindow.slice(0, 50).map((p) => fetchSinglePostInsights(p.id, accessToken))
+  );
+
+  const totals = { reach: 0, impressions: 0, engagedUsers: 0 };
+  for (const r of results) {
+    if (!r) continue;
+    totals.reach += r.reach;
+    totals.impressions += r.impressions;
+    totals.engagedUsers += r.engagedUsers;
+  }
+  return totals;
 }
 
 // ─────────────────────────────────────────
