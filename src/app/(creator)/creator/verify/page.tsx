@@ -17,14 +17,14 @@ const COPY: Record<VerifyPlatform, { title: string; subtitle: string; oauthHref:
     subtitle: "Add a one-time code to your TikTok bio so we know the account is yours.",
     oauthHref: "/api/auth/tiktok?return_to=/creator/pages",
     oauthLabel: "Connect TikTok Account",
-    oauthAvailable: false,
+    oauthAvailable: true,
   },
   facebook: {
     title: "Verify Facebook Page",
     subtitle: "Add a one-time code to your Facebook Page bio so we know the page is yours.",
     oauthHref: "/api/auth/facebook?return_to=/creator/pages",
     oauthLabel: "Connect Facebook Page",
-    oauthAvailable: false,
+    oauthAvailable: true,
   },
 };
 
