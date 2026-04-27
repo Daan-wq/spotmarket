@@ -60,18 +60,13 @@ export function BioVerifyCard({ platform, brand, icon, oauthHref, oauthAvailable
           <button
             type="button"
             disabled
-            title="OAuth login coming soon — pending platform review"
-            className="flex items-center justify-center gap-1.5 px-3 py-2 rounded-md text-xs font-medium border cursor-not-allowed"
+            className="flex items-center justify-center gap-1.5 px-3 py-2 rounded-md text-xs font-medium border cursor-not-allowed opacity-50"
             style={{ borderColor: "var(--border)", color: "var(--text-muted)", background: "var(--bg-card)" }}
           >
-            Login (coming soon)
+            Login
           </button>
         )}
       </div>
-
-      <p className="text-[10px]" style={{ color: "var(--text-muted)" }}>
-        Login is paused while platform review is pending. Use bio-verify to start earning right away.
-      </p>
     </div>
   );
 }

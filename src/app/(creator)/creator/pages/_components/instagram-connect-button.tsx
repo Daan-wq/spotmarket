@@ -12,7 +12,7 @@ export function InstagramConnectButton() {
         gradient: "linear-gradient(135deg, #f09433, #e6683c, #dc2743, #cc2366, #bc1888)",
       }}
       oauthHref="/api/auth/instagram"
-      oauthAvailable={false}
+      oauthAvailable={true}
       icon={
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
           <rect width="20" height="20" x="2" y="2" rx="5" ry="5" />

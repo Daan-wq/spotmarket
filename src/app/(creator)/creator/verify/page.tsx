@@ -4,14 +4,13 @@ import { VerifyForm, type VerifyPlatform } from "./_components/verify-form";
 
 const PLATFORMS: ReadonlyArray<VerifyPlatform> = ["instagram", "tiktok", "facebook"];
 
-const COPY: Record<VerifyPlatform, { title: string; subtitle: string; oauthHref: string; oauthLabel: string; oauthAvailable: boolean; oauthMessage: string }> = {
+const COPY: Record<VerifyPlatform, { title: string; subtitle: string; oauthHref: string; oauthLabel: string; oauthAvailable: boolean }> = {
   instagram: {
     title: "Verify Instagram",
     subtitle: "Add a one-time code to your Instagram bio so we know the account is yours.",
     oauthHref: "/api/auth/instagram?return_to=/creator/pages",
     oauthLabel: "Connect Instagram Account",
-    oauthAvailable: false,
-    oauthMessage: "Login is temporarily unavailable while we wait for platform review. Use the bio code below.",
+    oauthAvailable: true,
   },
   tiktok: {
     title: "Verify TikTok",
@@ -19,7 +18,6 @@ const COPY: Record<VerifyPlatform, { title: string; subtitle: string; oauthHref:
     oauthHref: "/api/auth/tiktok?return_to=/creator/pages",
     oauthLabel: "Connect TikTok Account",
     oauthAvailable: false,
-    oauthMessage: "Login is temporarily unavailable while we wait for platform review. Use the bio code below.",
   },
   facebook: {
     title: "Verify Facebook Page",
@@ -27,7 +25,6 @@ const COPY: Record<VerifyPlatform, { title: string; subtitle: string; oauthHref:
     oauthHref: "/api/auth/facebook?return_to=/creator/pages",
     oauthLabel: "Connect Facebook Page",
     oauthAvailable: false,
-    oauthMessage: "Login is temporarily unavailable while we wait for platform review. Use the bio code below.",
   },
 };
 
@@ -64,19 +61,15 @@ export default async function VerifyPage({ searchParams }: PageProps) {
         {copy.subtitle}
       </p>
 
-      {/* OAuth status banner */}
-      <div
-        className="rounded-lg p-4 mb-6 border"
-        style={{
-          background: "var(--warning-bg)",
-          borderColor: "var(--warning-text)",
-          color: "var(--warning-text)",
-        }}
-      >
-        <p className="text-sm">
-          <strong>Login flow:</strong> {copy.oauthMessage}
-        </p>
-      </div>
+      {copy.oauthAvailable && (
+        <a
+          href={copy.oauthHref}
+          className="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-md text-sm font-semibold mb-6 transition-all"
+          style={{ background: "var(--primary)", color: "#fff" }}
+        >
+          {copy.oauthLabel}
+        </a>
+      )}
 
       <VerifyForm platform={platform} creatorProfileId={profile.id} />
 
