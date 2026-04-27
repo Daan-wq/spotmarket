@@ -193,7 +193,7 @@ export default async function PagesPage() {
                           @{conn.igUsername}
                         </p>
                         <div className="flex items-center gap-3 mt-0.5">
-                          {conn.followerCount && (
+                          {conn.followerCount != null && (
                             <span className="text-xs" style={{ color: "var(--text-secondary)" }}>
                               {conn.followerCount.toLocaleString()} followers
                             </span>
@@ -307,7 +307,7 @@ export default async function PagesPage() {
                           {conn.pageName}
                         </p>
                         <div className="flex items-center gap-3 mt-0.5">
-                          {conn.followerCount && (
+                          {conn.followerCount != null && (
                             <span className="text-xs" style={{ color: "var(--text-secondary)" }}>
                               {conn.followerCount.toLocaleString()} followers
                             </span>
@@ -398,7 +398,7 @@ export default async function PagesPage() {
                           {conn.channelName}
                         </p>
                         <div className="flex items-center gap-3 mt-0.5">
-                          {conn.subscriberCount && (
+                          {conn.subscriberCount != null && (
                             <span className="text-xs" style={{ color: "var(--text-secondary)" }}>
                               {conn.subscriberCount.toLocaleString()} subscribers
                             </span>
