@@ -309,7 +309,7 @@ export default async function PagesPage() {
                         <div className="flex items-center gap-3 mt-0.5">
                           {conn.followerCount != null && (
                             <span className="text-xs" style={{ color: "var(--text-secondary)" }}>
-                              {conn.followerCount.toLocaleString()} likes
+                              {conn.followerCount.toLocaleString()} followers
                             </span>
                           )}
                           <span className="text-xs" style={{ color: "var(--text-muted)" }}>

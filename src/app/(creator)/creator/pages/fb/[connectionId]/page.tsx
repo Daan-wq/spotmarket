@@ -80,12 +80,15 @@ export default async function FbPageDetailPage({ params }: PageDetailProps) {
     shares: postEngagementTotals.shares,
   };
 
-  // Persist profile pic URL for the pages listing
-  if (profileData?.profilePictureUrl && profileData.profilePictureUrl !== conn.profilePicUrl) {
+  // Persist fresh profile data for the pages listing
+  if (profileData) {
     try {
       await prisma.creatorFbConnection.update({
         where: { id: conn.id },
-        data: { profilePicUrl: profileData.profilePictureUrl },
+        data: {
+          ...(profileData.profilePictureUrl !== conn.profilePicUrl && { profilePicUrl: profileData.profilePictureUrl }),
+          followerCount: profileData.followerCount,
+        },
       });
     } catch {
       // Non-fatal
@@ -163,7 +166,7 @@ export default async function FbPageDetailPage({ params }: PageDetailProps) {
           </div>
           <div className="flex gap-6 text-center shrink-0">
             <Stat label="Followers" value={profileData.followerCount.toLocaleString()} />
-            <Stat label="Page Fans" value={windowTotals.pageFans.toLocaleString()} />
+            <Stat label="Page Likes" value={windowTotals.pageFans.toLocaleString()} />
           </div>
         </div>
       )}
