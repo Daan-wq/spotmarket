@@ -4,6 +4,8 @@ import { checkRole } from "@/lib/auth";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { prisma } from "@/lib/prisma";
 import { CreatorSidebar } from "../_components/creator-sidebar";
+import { BalanceWidget } from "../_components/balance-widget";
+import { BalanceSkeleton } from "../_components/page-skeletons";
 import { TopBar } from "@/components/shared/top-bar";
 import { ScopeErrorDialog } from "@/components/auth/scope-error-dialog";
 
@@ -19,8 +21,7 @@ export default async function CreatorLayout({
   const { data: { user: authUser } } = await supabase.auth.getUser();
 
   let userName = "Creator";
-  let availableBalance = 0;
-  let pendingBalance = 0;
+  let creatorProfileId: string | null = null;
 
   if (authUser) {
     const user = await prisma.user.findUnique({
@@ -31,19 +32,7 @@ export default async function CreatorLayout({
     });
     if (user?.creatorProfile) {
       userName = user.creatorProfile.displayName;
-
-      const [available, pending] = await Promise.all([
-        prisma.payout.aggregate({
-          where: { creatorProfileId: user.creatorProfile.id, status: "confirmed" },
-          _sum: { amount: true },
-        }),
-        prisma.payout.aggregate({
-          where: { creatorProfileId: user.creatorProfile.id, status: "pending" },
-          _sum: { amount: true },
-        }),
-      ]);
-      availableBalance = Number(available._sum.amount ?? 0);
-      pendingBalance = Number(pending._sum.amount ?? 0);
+      creatorProfileId = user.creatorProfile.id;
     }
   }
 
@@ -51,8 +40,15 @@ export default async function CreatorLayout({
     <div className="creator-theme flex h-screen">
       <CreatorSidebar
         userName={userName}
-        availableBalance={availableBalance}
-        pendingBalance={pendingBalance}
+        balanceSlot={
+          creatorProfileId ? (
+            <Suspense fallback={<BalanceSkeleton />}>
+              <BalanceWidget creatorProfileId={creatorProfileId} />
+            </Suspense>
+          ) : (
+            <BalanceSkeleton />
+          )
+        }
       />
       <div className="flex-1 flex flex-col overflow-hidden">
         <TopBar />
