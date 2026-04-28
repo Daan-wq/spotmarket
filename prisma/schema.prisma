@@ -142,6 +142,7 @@ model CreatorFbConnection {
   creatorProfileId String
   creatorProfile   CreatorProfile @relation(fields: [creatorProfileId], references: [id], onDelete: Cascade)
   fbPageId         String?        @unique
+  fbUserId         String?
   pageName         String
   pageHandle       String?
   profilePicUrl    String?
@@ -161,6 +162,7 @@ model CreatorFbConnection {
   @@unique([creatorProfileId, pageHandle])
   @@index([creatorProfileId])
   @@index([tokenExpiresAt])
+  @@index([fbUserId])
 }
 
 // ─────────────────────────────────────────

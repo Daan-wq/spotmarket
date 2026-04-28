@@ -34,10 +34,22 @@ export default async function DashboardPage() {
     where: { creatorId: user.id, status: "PENDING" },
   });
 
-  const igConnections = await prisma.creatorIgConnection.findMany({
-    where: { creatorProfileId: profile.id },
-  });
-  const bioVerified = igConnections.some(c => c.isVerified);
+  const [igConnections, fbConnections, ytConnections, ttConnections] = await Promise.all([
+    prisma.creatorIgConnection.findMany({ where: { creatorProfileId: profile.id }, select: { isVerified: true } }),
+    prisma.creatorFbConnection.findMany({ where: { creatorProfileId: profile.id }, select: { isVerified: true } }),
+    prisma.creatorYtConnection.findMany({ where: { creatorProfileId: profile.id }, select: { isVerified: true } }),
+    prisma.creatorTikTokConnection.findMany({ where: { creatorProfileId: profile.id }, select: { isVerified: true } }),
+  ]);
+
+  const platforms = [
+    { connected: igConnections.length > 0, verified: igConnections.some(c => c.isVerified) },
+    { connected: fbConnections.length > 0, verified: fbConnections.some(c => c.isVerified) },
+    { connected: ytConnections.length > 0, verified: ytConnections.some(c => c.isVerified) },
+    { connected: ttConnections.length > 0, verified: ttConnections.some(c => c.isVerified) },
+  ];
+  const connectedCount = platforms.filter(p => p.connected).length;
+  const verifiedCount = platforms.filter(p => p.verified).length;
+  const allVerified = connectedCount > 0 && verifiedCount === connectedCount;
 
   // Recent submissions
   const recentSubmissions = await prisma.campaignSubmission.findMany({
@@ -78,9 +90,9 @@ export default async function DashboardPage() {
           color="#f59e0b"
         />
         <StatCard
-          label="IG Verified"
-          value={bioVerified ? "Yes" : "No"}
-          color={bioVerified ? "#22c55e" : "#ef4444"}
+          label="Verified Platforms"
+          value={connectedCount === 0 ? "—" : `${verifiedCount}/${connectedCount}`}
+          color={connectedCount === 0 ? "#64748b" : allVerified ? "#22c55e" : "#f59e0b"}
         />
       </div>
 

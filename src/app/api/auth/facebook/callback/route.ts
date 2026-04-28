@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { prisma } from "@/lib/prisma";
-import { exchangeFbCodeForToken, fetchUserPages, fetchFacebookPageProfile, REQUIRED_FB_SCOPES } from "@/lib/facebook";
+import { exchangeFbCodeForToken, fetchUserPages, fetchFacebookPageProfile, fetchFacebookUserId, REQUIRED_FB_SCOPES } from "@/lib/facebook";
 import { encrypt } from "@/lib/crypto";
 
 export async function GET(req: NextRequest) {
@@ -44,6 +44,9 @@ export async function GET(req: NextRequest) {
       return NextResponse.redirect(new URL(`${returnTo}?error=fb_missing_scopes`, req.url));
     }
 
+    // Capture the FB user_id (used for deauthorize/data-deletion webhook mapping)
+    const fbUserId = await fetchFacebookUserId(userToken);
+
     // Fetch pages the user manages (returns never-expiring page tokens)
     const pages = await fetchUserPages(userToken);
 
@@ -83,6 +86,7 @@ export async function GET(req: NextRequest) {
         where: { id: existing.id },
         data: {
           creatorProfileId,
+          fbUserId: fbUserId ?? undefined,
           pageName: pageProfile.name,
           profilePicUrl: pageProfile.profilePictureUrl || null,
           followerCount: pageProfile.followerCount,
@@ -97,6 +101,7 @@ export async function GET(req: NextRequest) {
         data: {
           creatorProfileId,
           fbPageId: page.id,
+          fbUserId: fbUserId ?? undefined,
           pageName: pageProfile.name,
           profilePicUrl: pageProfile.profilePictureUrl || null,
           followerCount: pageProfile.followerCount,

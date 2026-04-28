@@ -50,7 +50,7 @@ export function ProfileClient({ initialTab, profileData, balanceData }: ProfileC
   return (
     <div className="flex p-6 gap-6 max-w-5xl mx-auto">
       {/* Left Panel — Sub Navigation */}
-      <div className="w-52 shrink-0">
+      <div className="w-52 shrink-0 flex flex-col">
         <h2 className="text-lg font-bold mb-4" style={{ color: "var(--text-primary)" }}>Creator Profile</h2>
         <div className="flex items-center gap-2 mb-6">
           <div className="w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold text-white" style={{ background: "#14b8a6" }}>
@@ -78,6 +78,23 @@ export function ProfileClient({ initialTab, profileData, balanceData }: ProfileC
             );
           })}
         </nav>
+
+        <div className="mt-6 pt-4" style={{ borderTop: "1px solid var(--border-default)" }}>
+          <form action="/api/auth/signout" method="POST">
+            <button
+              type="submit"
+              className="flex items-center gap-2 w-full px-3 py-2.5 rounded-lg text-sm font-medium transition-colors cursor-pointer text-left"
+              style={{ color: "var(--text-secondary)" }}
+              onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = "var(--sidebar-hover-bg)"; (e.currentTarget as HTMLElement).style.color = "var(--text-primary)"; }}
+              onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = "transparent"; (e.currentTarget as HTMLElement).style.color = "var(--text-secondary)"; }}
+            >
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" /><polyline points="16 17 21 12 16 7" /><line x1="21" y1="12" x2="9" y2="12" />
+              </svg>
+              Sign out
+            </button>
+          </form>
+        </div>
       </div>
 
       {/* Right Panel — Content */}
