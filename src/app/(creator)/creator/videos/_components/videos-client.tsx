@@ -114,7 +114,12 @@ export function VideosClient({ videos, statusCounts }: VideosClientProps) {
                   </td>
                   <td className="py-3 px-2">
                     <Link href={`/creator/videos/${video.id}`} className="block">
-                      <div className="font-medium" style={{ color: "var(--text-primary)" }}>{video.campaignName}</div>
+                      <span
+                        className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold mb-1"
+                        style={{ background: "rgba(99,102,241,0.12)", color: "var(--primary)" }}
+                      >
+                        {video.campaignName}
+                      </span>
                       <div className="text-xs" style={{ color: "var(--text-muted)" }}>by {video.brandName}</div>
                     </Link>
                   </td>
