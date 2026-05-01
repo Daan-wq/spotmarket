@@ -12,7 +12,7 @@ interface Props {
 }
 
 export default function AccountSwitcher({ accounts, activeId, onChange }: Props) {
-  if (accounts.length <= 1) return null;
+  if (accounts.length === 0) return null;
   return (
     <div className="flex items-center gap-1 flex-wrap">
       {accounts.map((acc) => (
