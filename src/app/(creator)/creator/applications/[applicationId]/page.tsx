@@ -36,7 +36,7 @@ export default async function ApplicationDetailPage({
   };
 
   return (
-    <div className="p-6 max-w-4xl">
+    <div className="p-6 w-full">
       <div className="flex items-center gap-4 mb-6">
         <h1 className="text-3xl font-bold" style={{ color: "var(--text-primary)" }}>
           {application.campaign.name}

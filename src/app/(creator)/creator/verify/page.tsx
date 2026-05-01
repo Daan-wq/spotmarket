@@ -53,7 +53,7 @@ export default async function VerifyPage({ searchParams }: PageProps) {
   const copy = COPY[platform];
 
   return (
-    <div className="p-6 max-w-2xl">
+    <div className="p-6 w-full">
       <h1 className="text-3xl font-bold mb-2" style={{ color: "var(--text-primary)" }}>
         {copy.title}
       </h1>
