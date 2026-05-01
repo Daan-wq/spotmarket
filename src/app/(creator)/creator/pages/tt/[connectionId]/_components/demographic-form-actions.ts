@@ -12,6 +12,7 @@ const ALLOWED_VIDEO_TYPES = new Set([
   "video/x-matroska",
 ]);
 const MAX_FILE_BYTES = 100 * 1024 * 1024; // 100 MB
+const COUNTRY_SLOTS = 5;
 
 export async function submitTikTokDemographics(formData: FormData) {
   const { userId } = await requireAuth("creator");
@@ -35,26 +36,48 @@ export async function submitTikTokDemographics(formData: FormData) {
   });
   if (!conn) throw new Error("Connection not found");
 
-  const topCountry = String(formData.get("topCountry") ?? "").trim().toUpperCase();
-  const topCountryPercent = parseInt(String(formData.get("topCountryPercent") ?? "0"), 10);
-  const malePercent = parseInt(String(formData.get("malePercent") ?? "0"), 10);
-  const femalePercent = 100 - malePercent;
+  // ─── Top countries (up to 5) ─────────────────────────────────────
+  const topCountries: { iso: string; percent: number }[] = [];
+  for (let i = 0; i < COUNTRY_SLOTS; i++) {
+    const iso = String(formData.get(`country_iso_${i}`) ?? "").trim().toUpperCase();
+    const pctRaw = String(formData.get(`country_pct_${i}`) ?? "").trim();
+    if (!iso && !pctRaw) continue;
+    if (!/^[A-Z]{2}$/.test(iso)) throw new Error(`Country ${i + 1}: ISO code must be 2 letters`);
+    const percent = parseFloat(pctRaw);
+    if (!Number.isFinite(percent) || percent < 0 || percent > 100) {
+      throw new Error(`Country ${i + 1}: percent must be 0-100`);
+    }
+    topCountries.push({ iso, percent: Math.round(percent * 10) / 10 });
+  }
+  if (topCountries.length === 0) throw new Error("At least one country is required");
+  const countriesSum = topCountries.reduce((s, c) => s + c.percent, 0);
+  if (countriesSum > 105) throw new Error("Country percentages cannot exceed 100% in total");
 
+  const topCountry = topCountries[0].iso;
+  const topCountryPercent = Math.round(topCountries[0].percent);
+
+  // ─── Gender (3-way: male / female / other, must sum to 100) ──────
+  const malePercent = parseInt(String(formData.get("malePercent") ?? "0"), 10);
+  const femalePercent = parseInt(String(formData.get("femalePercent") ?? "0"), 10);
+  const otherPercent = parseInt(String(formData.get("otherPercent") ?? "0"), 10);
+  for (const [name, val] of [["male", malePercent], ["female", femalePercent], ["other", otherPercent]] as const) {
+    if (!Number.isFinite(val) || val < 0 || val > 100) throw new Error(`Gender ${name} % must be 0-100`);
+  }
+  const genderSum = malePercent + femalePercent + otherPercent;
+  if (genderSum < 95 || genderSum > 105) throw new Error("Gender values must sum to ~100%");
+
+  // ─── Age buckets (no 13-17, TikTok Studio doesn't expose it) ─────
   const ageBuckets: Record<string, number> = {
-    "13-17": parseInt(String(formData.get("age_13_17") ?? "0"), 10),
     "18-24": parseInt(String(formData.get("age_18_24") ?? "0"), 10),
     "25-34": parseInt(String(formData.get("age_25_34") ?? "0"), 10),
     "35-44": parseInt(String(formData.get("age_35_44") ?? "0"), 10),
     "45-54": parseInt(String(formData.get("age_45_54") ?? "0"), 10),
     "55+": parseInt(String(formData.get("age_55") ?? "0"), 10),
   };
-
-  if (!/^[A-Z]{2}$/.test(topCountry)) throw new Error("Top country must be a 2-letter ISO code");
-  if (topCountryPercent < 1 || topCountryPercent > 100) throw new Error("Top country % must be 1-100");
-  if (malePercent < 0 || malePercent > 100) throw new Error("Gender % must be 0-100");
   const ageSum = Object.values(ageBuckets).reduce((s, v) => s + v, 0);
   if (ageSum < 95 || ageSum > 105) throw new Error("Age buckets must sum to ~100%");
 
+  // ─── Screen recording ────────────────────────────────────────────
   const file = formData.get("screenRecording");
   if (!(file instanceof File) || file.size === 0) throw new Error("Screen recording required");
   if (!ALLOWED_VIDEO_TYPES.has(file.type)) throw new Error("Unsupported video format (mp4, mov, webm, mkv)");
@@ -69,8 +92,10 @@ export async function submitTikTokDemographics(formData: FormData) {
       connectionId: conn.id,
       topCountry,
       topCountryPercent,
+      topCountries,
       malePercent,
       femalePercent,
+      otherPercent,
       ageBuckets,
       screenRecordingUrl: storagePath,
       status: "PENDING",
