@@ -45,7 +45,7 @@ export function CampaignsClient({ marketplace, myCampaigns }: CampaignsClientPro
   }, [campaigns, search, platformFilter, typeFilter]);
 
   return (
-    <div className="p-6 max-w-5xl mx-auto space-y-6">
+    <div className="p-6 w-full space-y-6">
       {/* Tab Toggle */}
       <div className="flex justify-center">
         <div

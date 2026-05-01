@@ -19,8 +19,10 @@ const TYPE_LABELS: Record<string, string> = {
   CAMPAIGN_LAUNCHED: "New campaign available",
   SUBMISSION_APPROVED: "Submission approved",
   SUBMISSION_REJECTED: "Submission rejected",
-  APPLICATION_APPROVED: "Application approved",
-  APPLICATION_REJECTED: "Application rejected",
+  APPLICATION_APPROVED: "Join request approved",
+  APPLICATION_REJECTED: "Join request rejected",
+  DEMOGRAPHICS_VERIFIED: "Demographics verified",
+  DEMOGRAPHICS_REJECTED: "Demographics rejected",
   BIO_VERIFIED: "Bio verified",
   PAYOUT_SENT: "Payout sent",
   REFERRAL_EARNED: "Referral earned",
@@ -59,7 +61,7 @@ export function NotificationsClient({ notifications, unreadCount }: Notification
   };
 
   return (
-    <div className="p-6 max-w-3xl mx-auto">
+    <div className="p-6 w-full">
       {/* Tabs + Mark All Read */}
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-1">
@@ -132,6 +134,16 @@ export function NotificationsClient({ notifications, unreadCount }: Notification
                   <p className="text-sm font-medium" style={{ color: "var(--text-primary)" }}>
                     {TYPE_LABELS[notification.type] ?? notification.type}
                   </p>
+                  {(notification.data?.campaignName || notification.data?.tiktokHandle) && (
+                    <p className="text-xs mt-0.5" style={{ color: "var(--text-secondary)" }}>
+                      {notification.data.campaignName ?? `@${notification.data.tiktokHandle}`}
+                    </p>
+                  )}
+                  {notification.data?.rejectionNote && (
+                    <p className="text-xs mt-1 italic" style={{ color: "var(--text-muted)" }}>
+                      Reason: {notification.data.rejectionNote}
+                    </p>
+                  )}
                   {notification.data?.message && (
                     <p className="text-xs mt-0.5" style={{ color: "var(--text-secondary)" }}>
                       {notification.data.message}

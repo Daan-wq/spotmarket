@@ -78,7 +78,7 @@ export default function WalletPage() {
   }
 
   return (
-    <div className="p-6 max-w-3xl">
+    <div className="p-6 w-full">
       <h1 className="text-3xl font-bold mb-6" style={{ color: "var(--text-primary)" }}>
         Wallet
       </h1>

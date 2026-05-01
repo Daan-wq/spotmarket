@@ -48,7 +48,7 @@ export function ProfileClient({ initialTab, profileData, balanceData }: ProfileC
   };
 
   return (
-    <div className="flex p-6 gap-6 max-w-5xl mx-auto">
+    <div className="flex p-6 gap-6 w-full">
       {/* Left Panel — Sub Navigation */}
       <div className="w-52 shrink-0 flex flex-col">
         <h2 className="text-lg font-bold mb-4" style={{ color: "var(--text-primary)" }}>Creator Profile</h2>

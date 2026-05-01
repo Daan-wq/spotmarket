@@ -50,7 +50,7 @@ export function VideosClient({ videos, statusCounts }: VideosClientProps) {
   }, [videos, activeTab]);
 
   return (
-    <div className="p-6 max-w-5xl mx-auto">
+    <div className="p-6 w-full">
       {/* Status Tabs */}
       <div className="flex items-center gap-1 mb-6 flex-wrap">
         {STATUS_TABS.map((tab) => {

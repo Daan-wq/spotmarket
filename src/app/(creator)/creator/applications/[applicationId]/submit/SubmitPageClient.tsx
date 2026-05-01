@@ -302,7 +302,7 @@ export default function SubmitPageClient({
   const allPlatforms: Platform[] = ["ig", "tt", "fb"];
 
   return (
-    <div className="p-6 max-w-4xl">
+    <div className="p-6 w-full">
       <SubmitHeader
         campaignName={campaign.name}
         requirements={campaign.requirements}
