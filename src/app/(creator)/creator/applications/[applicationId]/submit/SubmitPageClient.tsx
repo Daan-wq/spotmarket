@@ -337,7 +337,6 @@ export default function SubmitPageClient({
             activeId={activeConnectionId}
             onChange={handleConnectionChange}
           />
-          <div className="flex-1" />
           <SearchBar value={searchQuery} onChange={setSearchQuery} />
           <DateFilterControl
             filter={dateFilter}
