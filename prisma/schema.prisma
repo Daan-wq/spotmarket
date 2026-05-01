@@ -230,8 +230,10 @@ model TikTokDemographicSubmission {
   connection         CreatorTikTokConnection @relation(fields: [connectionId], references: [id], onDelete: Cascade)
   topCountry         String
   topCountryPercent  Int
+  topCountries       Json                    @default("[]")
   malePercent        Int
   femalePercent      Int
+  otherPercent       Int                     @default(0)
   ageBuckets         Json
   screenRecordingUrl String
   status             VerificationStatus      @default(PENDING)
@@ -355,6 +357,9 @@ model Campaign {
   linkInBioRequired String?
   bioRequirement    String?
 
+  // Content eligibility
+  requiredHashtags String[] @default([])
+
   // Creator/owner
   createdByUserId String?
   createdBy       User?   @relation("OwnedCampaigns", fields: [createdByUserId], references: [id])
@@ -423,6 +428,7 @@ model CampaignApplication {
   claimType          ClaimType         @default(INSTANT)
   appliedAt          DateTime          @default(now())
   reviewedAt         DateTime?
+  reviewedBy         String?
   reviewNotes        String?
   followerSnapshot   Int?
   engagementSnapshot Decimal?          @db.Decimal(5, 2)
@@ -597,16 +603,19 @@ model AuditLog {
 // ─────────────────────────────────────────
 
 model Notification {
-  id        String           @id @default(cuid())
-  userId    String
-  user      User             @relation(fields: [userId], references: [id], onDelete: Cascade)
-  type      NotificationType
-  data      Json
-  read      Boolean          @default(false)
-  createdAt DateTime         @default(now())
+  id             String           @id @default(cuid())
+  userId         String
+  user           User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type           NotificationType
+  data           Json
+  read           Boolean          @default(false)
+  acknowledged   Boolean          @default(false)
+  acknowledgedAt DateTime?
+  createdAt      DateTime         @default(now())
 
   @@index([userId, read])
   @@index([userId, createdAt])
+  @@index([userId, acknowledged])
 }
 
 enum NotificationType {
@@ -615,6 +624,8 @@ enum NotificationType {
   SUBMISSION_REJECTED
   APPLICATION_APPROVED
   APPLICATION_REJECTED
+  DEMOGRAPHICS_VERIFIED
+  DEMOGRAPHICS_REJECTED
   BIO_VERIFIED
   PAYOUT_SENT
   REFERRAL_EARNED

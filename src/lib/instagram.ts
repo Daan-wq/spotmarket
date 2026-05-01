@@ -298,22 +298,24 @@ export async function fetchFollowerDemographics(
 export async function fetchRecentMedia(
   accessToken: string,
   igUserId: string,
-  limit = 12
-): Promise<IgMediaItem[]> {
+  limit = 12,
+  cursor?: string
+): Promise<{ media: IgMediaItem[]; nextCursor: string | null }> {
   const params = new URLSearchParams({
     fields:
       "id,caption,media_type,media_product_type,permalink,timestamp,like_count,comments_count,media_url,thumbnail_url",
     limit: String(limit),
     access_token: accessToken,
   });
+  if (cursor) params.set("after", cursor);
   const res = await fetch(`${GRAPH_BASE}/${igUserId}/media?${params}`);
   if (!res.ok) {
     const errText = await res.text();
     console.warn(`fetchRecentMedia ${res.status}: ${errText.slice(0, 120)}`);
-    return [];
+    return { media: [], nextCursor: null };
   }
   const data = await res.json();
-  return (data.data ?? []).map((item: unknown): IgMediaItem => {
+  const media = (data.data ?? []).map((item: unknown): IgMediaItem => {
     const mediaItem = item as Record<string, unknown>;
     return {
       id: mediaItem.id as string,
@@ -328,6 +330,9 @@ export async function fetchRecentMedia(
       thumbnail_url: (mediaItem.thumbnail_url as string | null) ?? null,
     };
   });
+  const nextCursor =
+    data.paging?.next ? (data.paging?.cursors?.after ?? null) : null;
+  return { media, nextCursor };
 }
 
 // ─────────────────────────────────────────

@@ -63,7 +63,7 @@ export default async function PageDetailPage({ params }: PageDetailProps) {
   ]);
 
   const profileData = igProfile.status === "fulfilled" ? igProfile.value : null;
-  const mediaData = recentMedia.status === "fulfilled" ? recentMedia.value : [];
+  const mediaData = recentMedia.status === "fulfilled" ? recentMedia.value.media : [];
   const insightsResult = dailyInsights.status === "fulfilled" ? dailyInsights.value : null;
   const insightsData = insightsResult ? mergeDailyPostCounts(insightsResult.daily, mediaData) : [];
   const windowTotals = insightsResult?.windowTotals ?? { views: 0, accountsEngaged: 0, totalInteractions: 0, likes: 0, comments: 0, saves: 0, shares: 0, reposts: 0, replies: 0, follows: null, unfollows: null, profileLinksTaps: null };

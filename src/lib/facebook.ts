@@ -479,6 +479,34 @@ export async function fetchRecentPagePosts(
 }
 
 // ─────────────────────────────────────────
+// PAGINATED PAGE POSTS (for submission flow)
+// ─────────────────────────────────────────
+
+export async function fetchFacebookPagePostsPaginated(
+  pageId: string,
+  accessToken: string,
+  limit: number,
+  cursor?: string
+): Promise<{ posts: FbPagePost[]; nextCursor: string | null }> {
+  const fields =
+    "id,message,story,status_type,permalink_url,created_time,full_picture,attachments,likes.summary(true).limit(0),comments.summary(true).limit(0),shares";
+  const params = new URLSearchParams({ fields, limit: String(limit), access_token: accessToken });
+  if (cursor) params.set("after", cursor);
+  const res = await fetch(`${GRAPH_BASE}/${pageId}/published_posts?${params}`);
+  if (!res.ok) {
+    console.warn(`fetchFacebookPagePostsPaginated ${res.status}: ${(await res.text()).slice(0, 120)}`);
+    return { posts: [], nextCursor: null };
+  }
+  const data = await res.json();
+  const posts: FbPagePost[] = (data.data ?? []).map((p: Record<string, unknown>) =>
+    mapPost(p, "status")
+  );
+  const nextCursor =
+    data.paging?.next ? (data.paging?.cursors?.after ?? null) : null;
+  return { posts, nextCursor };
+}
+
+// ─────────────────────────────────────────
 // POST COUNT MERGING (same pattern as Instagram)
 // ─────────────────────────────────────────
 

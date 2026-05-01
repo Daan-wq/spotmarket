@@ -285,16 +285,19 @@ export function computeTikTokDailyInsights(
 
 export async function fetchTikTokVideos(
   accessToken: string,
-  maxCount = 20
-): Promise<TikTokVideo[]> {
+  maxCount = 20,
+  cursor?: number
+): Promise<{ videos: TikTokVideo[]; nextCursor: number | null; hasMore: boolean }> {
   const fields = "id,title,cover_image_url,share_url,view_count,like_count,comment_count,share_count,create_time,duration";
+  const body: Record<string, unknown> = { max_count: maxCount };
+  if (cursor !== undefined) body.cursor = cursor;
   const res = await fetch(`${TIKTOK_API_BASE}/video/list/?fields=${fields}`, {
     method: "POST",
     headers: {
       Authorization: `Bearer ${accessToken}`,
       "Content-Type": "application/json",
     },
-    body: JSON.stringify({ max_count: maxCount }),
+    body: JSON.stringify(body),
   });
 
   if (!res.ok) {
@@ -320,5 +323,8 @@ export async function fetchTikTokVideos(
     duration: (v.duration as number) ?? 0,
   }));
 
-  return videos;
+  const hasMore = data.data?.has_more === true;
+  const nextCursor = hasMore ? (data.data?.cursor ?? null) : null;
+
+  return { videos, nextCursor, hasMore };
 }

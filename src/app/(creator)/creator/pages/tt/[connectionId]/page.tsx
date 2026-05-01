@@ -42,7 +42,7 @@ export default async function TikTokPageDetailPage({ params }: PageDetailProps) 
   ]);
 
   const ttProfile = profileResult.status === "fulfilled" ? profileResult.value : null;
-  const videos = videosResult.status === "fulfilled" ? videosResult.value : [];
+  const videos = videosResult.status === "fulfilled" ? videosResult.value.videos : [];
 
   const [latestApproved, latestSubmission] = await Promise.all([
     prisma.tikTokDemographicSubmission.findFirst({
@@ -59,6 +59,12 @@ export default async function TikTokPageDetailPage({ params }: PageDetailProps) 
     displaySubmission && typeof displaySubmission.ageBuckets === "object" && displaySubmission.ageBuckets !== null
       ? (displaySubmission.ageBuckets as Record<string, number>)
       : {};
+  const displayCountries: { iso: string; percent: number }[] =
+    displaySubmission && Array.isArray(displaySubmission.topCountries) && displaySubmission.topCountries.length > 0
+      ? (displaySubmission.topCountries as { iso: string; percent: number }[])
+      : displaySubmission
+      ? [{ iso: displaySubmission.topCountry, percent: displaySubmission.topCountryPercent }]
+      : [];
 
   const activeApplications = await prisma.campaignApplication.findMany({
     where: {
@@ -197,20 +203,32 @@ export default async function TikTokPageDetailPage({ params }: PageDetailProps) 
           {displaySubmission?.status === "VERIFIED" ? (
             <>
               <div className="mb-4">
-                <div className="text-xs uppercase tracking-wide mb-1" style={{ color: "var(--text-muted)" }}>Top Country</div>
-                <div className="text-base font-semibold" style={{ color: "var(--text-primary)" }}>
-                  {displaySubmission.topCountry} ({displaySubmission.topCountryPercent}%)
+                <div className="text-xs uppercase tracking-wide mb-2" style={{ color: "var(--text-muted)" }}>Top Countries</div>
+                <div className="space-y-1">
+                  {displayCountries.map((c) => (
+                    <div key={c.iso} className="flex items-center gap-2">
+                      <span className="text-xs w-10" style={{ color: "var(--text-secondary)" }}>{c.iso}</span>
+                      <div className="flex-1 h-2.5 rounded-full overflow-hidden" style={{ background: "var(--bg-primary)" }}>
+                        <div className="h-full rounded-full" style={{ width: `${c.percent}%`, background: "#14b8a6" }} />
+                      </div>
+                      <span className="text-xs w-10 text-right" style={{ color: "var(--text-muted)" }}>{c.percent}%</span>
+                    </div>
+                  ))}
                 </div>
               </div>
               <div className="mb-4">
                 <div className="text-xs uppercase tracking-wide mb-2" style={{ color: "var(--text-muted)" }}>Gender</div>
-                <div className="flex gap-1 h-3 rounded-full overflow-hidden">
-                  <div className="rounded-full" style={{ width: `${displaySubmission.malePercent}%`, background: "#6366F1" }} />
-                  <div className="rounded-full flex-1" style={{ background: "#EC4899" }} />
+                <div className="flex gap-0.5 h-3 rounded-full overflow-hidden">
+                  <div style={{ width: `${displaySubmission.malePercent}%`, background: "#6366F1" }} />
+                  <div style={{ width: `${displaySubmission.femalePercent}%`, background: "#EC4899" }} />
+                  {displaySubmission.otherPercent > 0 && (
+                    <div style={{ width: `${displaySubmission.otherPercent}%`, background: "#A78BFA" }} />
+                  )}
                 </div>
                 <div className="flex justify-between text-xs mt-1" style={{ color: "var(--text-secondary)" }}>
                   <span>Male {displaySubmission.malePercent}%</span>
                   <span>Female {displaySubmission.femalePercent}%</span>
+                  {displaySubmission.otherPercent > 0 && <span>Other {displaySubmission.otherPercent}%</span>}
                 </div>
               </div>
               <div>
@@ -245,9 +263,10 @@ export default async function TikTokPageDetailPage({ params }: PageDetailProps) 
               initialValues={
                 displaySubmission
                   ? {
-                      topCountry: displaySubmission.topCountry,
-                      topCountryPercent: displaySubmission.topCountryPercent,
+                      topCountries: displayCountries,
                       malePercent: displaySubmission.malePercent,
+                      femalePercent: displaySubmission.femalePercent,
+                      otherPercent: displaySubmission.otherPercent,
                       ageBuckets: displayAges,
                     }
                   : undefined
