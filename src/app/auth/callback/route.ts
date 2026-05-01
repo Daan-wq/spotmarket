@@ -1,5 +1,6 @@
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { prisma } from "@/lib/prisma";
+import { extractDiscordIdentity } from "@/lib/discord-identity";
 import { NextResponse } from "next/server";
 
 const DISCORD_GUILD_ID = process.env.DISCORD_GUILD_ID ?? "1486482870272000102";
@@ -55,14 +56,11 @@ export async function GET(request: Request) {
 
   const { session } = data;
   const user = session.user;
-  const provider = user.app_metadata?.provider;
+  const discordIdentity = extractDiscordIdentity(user);
 
   // Discord OAuth: auto-join guild (must happen now while provider_token is available)
-  if (provider === "discord" && session.provider_token) {
-    const discordId = user.user_metadata?.provider_id ?? user.user_metadata?.sub;
-    if (discordId) {
-      await joinDiscordGuild(discordId, session.provider_token);
-    }
+  if (discordIdentity && session.provider_token && user.app_metadata?.provider === "discord") {
+    await joinDiscordGuild(discordIdentity.discordId, session.provider_token);
   }
 
   // Check if Prisma user record exists
@@ -71,16 +69,16 @@ export async function GET(request: Request) {
   });
 
   if (existingUser) {
-    // Update Discord info if signing in via Discord and not yet stored
-    if (provider === "discord" && !existingUser.discordId) {
-      const discordId = user.user_metadata?.provider_id ?? user.user_metadata?.sub;
-      const discordUsername = user.user_metadata?.full_name ?? user.user_metadata?.name;
-      if (discordId) {
-        await prisma.user.update({
-          where: { id: existingUser.id },
-          data: { discordId, discordUsername: discordUsername ?? null },
-        });
-      }
+    // Sync Discord info from auth.identities whenever it's missing — works regardless of
+    // which provider was used for this particular sign-in.
+    if (discordIdentity && existingUser.discordId !== discordIdentity.discordId) {
+      await prisma.user.update({
+        where: { id: existingUser.id },
+        data: {
+          discordId: discordIdentity.discordId,
+          discordUsername: discordIdentity.discordUsername,
+        },
+      });
     }
 
     // Existing user → go to requested page or role-based dashboard

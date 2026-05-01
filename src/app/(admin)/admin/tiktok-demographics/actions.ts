@@ -1,8 +1,7 @@
 "use server";
 
 import { requireAuth } from "@/lib/auth";
-import { prisma } from "@/lib/prisma";
-import { VerificationStatus } from "@prisma/client";
+import { reviewDemographicsSubmission } from "@/lib/submission-review";
 import { revalidatePath } from "next/cache";
 
 export async function reviewTikTokDemographic(
@@ -12,15 +11,12 @@ export async function reviewTikTokDemographic(
 ) {
   const { userId } = await requireAuth("admin");
 
-  await prisma.tikTokDemographicSubmission.update({
-    where: { id: submissionId },
-    data: {
-      status: decision === "APPROVED" ? VerificationStatus.VERIFIED : VerificationStatus.FAILED,
-      reviewNotes: reviewNotes?.trim() || null,
-      reviewedBy: userId,
-      reviewedAt: new Date(),
-    },
+  await reviewDemographicsSubmission({
+    submissionId,
+    decision: decision === "APPROVED" ? "APPROVE" : "REJECT",
+    reason: reviewNotes,
+    reviewerSupabaseId: userId,
   });
 
-  revalidatePath("/admin/tiktok-demographics");
+  revalidatePath("/admin/review/demographics");
 }

@@ -149,15 +149,16 @@ export async function postCampaignAnnouncement(campaign: CampaignAnnouncement): 
   }).catch((err) => console.error("[discord bot]", err));
 }
 
-interface SubmissionReviewNotification {
+interface ReviewOutcomeNotification {
   creatorDiscordId: string | null;
   status: "APPROVED" | "REJECTED";
-  campaignName: string;
+  label: string;          // human-readable submission type, e.g. "submission", "TikTok demographics", "campaign join request"
+  reference?: string;     // contextual name (campaign name, page handle)
   earnedAmount?: number;
   rejectionNote?: string;
 }
 
-export async function notifySubmissionReview(params: SubmissionReviewNotification): Promise<void> {
+export async function notifyReviewOutcome(params: ReviewOutcomeNotification): Promise<void> {
   if (!params.creatorDiscordId) {
     console.warn("[discord notify] Creator has no Discord linked");
     return;
@@ -170,7 +171,6 @@ export async function notifySubmissionReview(params: SubmissionReviewNotificatio
   }
 
   try {
-    // Create DM channel
     const dmRes = await fetch("https://discord.com/api/v10/users/@me/channels", {
       method: "POST",
       headers: {
@@ -187,9 +187,15 @@ export async function notifySubmissionReview(params: SubmissionReviewNotificatio
 
     const { id: dmChannelId } = await dmRes.json();
 
+    const subject = params.reference
+      ? `Your ${params.label} for **${params.reference}**`
+      : `Your ${params.label}`;
+
     const content = params.status === "APPROVED"
-      ? `Your submission for **${params.campaignName}** was approved! You earned **$${(params.earnedAmount ?? 0).toFixed(2)}**.`
-      : `Your submission for **${params.campaignName}** was not approved.\n\nReason: ${params.rejectionNote || "Not specified"}`;
+      ? params.earnedAmount != null
+        ? `${subject} was approved! You earned **$${params.earnedAmount.toFixed(2)}**.`
+        : `${subject} was approved.`
+      : `${subject} was not approved.\n\nReason: ${params.rejectionNote || "Not specified"}`;
 
     await fetch(`https://discord.com/api/v10/channels/${dmChannelId}/messages`, {
       method: "POST",
@@ -203,3 +209,4 @@ export async function notifySubmissionReview(params: SubmissionReviewNotificatio
     console.error("[discord notify]", err);
   }
 }
+

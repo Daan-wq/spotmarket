@@ -34,7 +34,7 @@ const NAV: NavSection[] = [
     label: "CAMPAIGNS",
     items: [
       { href: "/admin/campaigns", label: "All Campaigns", icon: "🎯" },
-      { href: "/admin/submissions", label: "Submissions", icon: "📤" },
+      { href: "/admin/review", label: "Review queue", icon: "📤", description: "Videos, demographics, join requests" },
     ],
   },
   {
@@ -47,7 +47,6 @@ const NAV: NavSection[] = [
     label: "OPERATIONS",
     items: [
       { href: "/admin/verifications", label: "Verifications", icon: "✓", description: "Instagram account reviews" },
-      { href: "/admin/tiktok-demographics", label: "TikTok Demos", icon: "🎯", description: "Self-reported TikTok audience reviews" },
       { href: "/admin/payouts", label: "Payouts", icon: "💰", description: "Creator payment processing" },
       { href: "/admin/withdrawals", label: "Withdrawals", icon: "🏦", description: "USDT withdrawal requests" },
     ],

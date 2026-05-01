@@ -3,6 +3,7 @@ import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { nanoid } from "nanoid";
+import { extractDiscordIdentity } from "@/lib/discord-identity";
 
 const TRON_REGEX = /^T[1-9A-HJ-NP-Z]{33}$/;
 const VALID_ROLES = ["creator"] as const;
@@ -75,25 +76,27 @@ export async function POST(req: Request) {
     user_metadata: { role: selectedRole },
   });
 
-  // Extract Discord info from OAuth metadata if available
-  const provider = authUser.app_metadata?.provider;
-  const discordId = provider === "discord"
-    ? (authUser.user_metadata?.provider_id ?? authUser.user_metadata?.sub ?? null)
-    : null;
-  const discordUsername = provider === "discord"
-    ? (authUser.user_metadata?.full_name ?? authUser.user_metadata?.name ?? null)
-    : null;
+  // Pull Discord identity from auth.identities (canonical) — works whether the user
+  // signed up with Discord directly or linked it later via the /api/auth/discord flow.
+  const discordIdentity = extractDiscordIdentity(authUser);
 
   const user = await prisma.user.upsert({
     where: { supabaseId: authUser.id },
-    update: { role: selectedRole },
+    update: {
+      role: selectedRole,
+      ...(discordIdentity
+        ? { discordId: discordIdentity.discordId, discordUsername: discordIdentity.discordUsername }
+        : {}),
+    },
     create: {
       supabaseId: authUser.id,
       email: authUser.email ?? "",
       role: selectedRole,
       referralCode,
       referredBy: referredById,
-      ...(discordId ? { discordId, discordUsername } : {}),
+      ...(discordIdentity
+        ? { discordId: discordIdentity.discordId, discordUsername: discordIdentity.discordUsername }
+        : {}),
     },
     include: { creatorProfile: true },
   });

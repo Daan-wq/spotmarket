@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
 
-export default function SubmissionsRedirect() {
+export default function ReviewIndex() {
   redirect("/admin/review/videos");
 }

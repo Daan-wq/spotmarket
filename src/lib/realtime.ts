@@ -3,6 +3,11 @@ import { createSupabaseAdminClient } from "./supabase/admin";
 export const REALTIME_EVENTS = {
   APPLICATION_APPROVED: "application:approved",
   APPLICATION_REJECTED: "application:rejected",
+  SUBMISSION_APPROVED: "submission:approved",
+  SUBMISSION_REJECTED: "submission:rejected",
+  DEMOGRAPHICS_VERIFIED: "demographics:verified",
+  DEMOGRAPHICS_REJECTED: "demographics:rejected",
+  NOTIFICATION_NEW: "notification:new",
   NEW_MESSAGE: "message:new",
   FRAUD_ALERT: "fraud:alert",
   CAMPAIGN_COMPLETED: "campaign:completed",

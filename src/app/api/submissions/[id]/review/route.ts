@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireAuth } from "@/lib/auth";
-import { notifySubmissionReview } from "@/lib/discord";
+import { notifyVideoSubmissionReviewed } from "@/lib/submission-review";
 import { calculateReferralSplit } from "@/lib/referral";
 import { z } from "zod";
 
@@ -133,30 +133,20 @@ export async function POST(
         });
       }
 
-      await tx.notification.create({
-        data: {
-          userId: submission.creatorId,
-          type: status === "APPROVED" ? "SUBMISSION_APPROVED" : "SUBMISSION_REJECTED",
-          data: {
-            campaignName: submission.campaign.name,
-            submissionId: submission.id,
-            earnedAmount: status === "APPROVED" ? earnedAmount : null,
-            rejectionNote,
-          },
-        },
-      });
-
       return sub;
     });
 
-    // Send Discord DM to creator (non-blocking)
-    notifySubmissionReview({
+    // Fire the unified notifier (in-app notification + Realtime + Discord DM)
+    notifyVideoSubmissionReviewed({
+      submissionId: updated.id,
+      creatorUserId: updated.creatorId,
+      creatorSupabaseId: updated.creator.supabaseId ?? null,
       creatorDiscordId: updated.creator.discordId ?? null,
-      status,
       campaignName: updated.campaign.name,
+      decision: status === "APPROVED" ? "APPROVE" : "REJECT",
       earnedAmount: status === "APPROVED" ? earnedAmount : undefined,
       rejectionNote,
-    }).catch((err) => console.error("[discord dm notify]", err));
+    }).catch((err) => console.error("[video review notifier]", err));
 
     return NextResponse.json({ submission: updated });
   } catch (err: any) {

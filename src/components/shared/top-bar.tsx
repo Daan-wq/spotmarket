@@ -2,6 +2,7 @@
 
 import { usePathname } from "next/navigation";
 import Link from "next/link";
+import { NotificationBell } from "@/components/notification-bell";
 
 const SEGMENT_LABELS: Record<string, string> = {
   creator: "",
@@ -15,7 +16,11 @@ const SEGMENT_LABELS: Record<string, string> = {
   applications: "Applications",
 };
 
-export function TopBar() {
+interface TopBarProps {
+  supabaseId: string | null;
+}
+
+export function TopBar({ supabaseId }: TopBarProps) {
   const pathname = usePathname();
 
   // Build breadcrumb segments from pathname
@@ -79,22 +84,7 @@ export function TopBar() {
 
       {/* Right side */}
       <div className="flex items-center gap-3">
-        <Link
-          href="/creator/notifications"
-          className="flex items-center justify-center rounded-lg transition-colors"
-          style={{
-            width: 36,
-            height: 36,
-            color: pathname.startsWith("/creator/notifications") ? "var(--sidebar-active-text)" : "var(--text-muted)",
-            background: pathname.startsWith("/creator/notifications") ? "var(--sidebar-active-bg)" : "transparent",
-          }}
-          title="Notifications"
-        >
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9" />
-            <path d="M10.3 21a1.94 1.94 0 0 0 3.4 0" />
-          </svg>
-        </Link>
+        <NotificationBell supabaseId={supabaseId} />
         <button
           className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors cursor-pointer"
           style={{
