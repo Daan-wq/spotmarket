@@ -96,7 +96,7 @@ export default async function ApplicationDetailPage({
           }}
         >
           <p style={{ color: "var(--text-secondary)" }} className="text-sm mb-2">
-            CPV
+            CPM
           </p>
           <p
             style={{ color: "var(--primary)" }}
