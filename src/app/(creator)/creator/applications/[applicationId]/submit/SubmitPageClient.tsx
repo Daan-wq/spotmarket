@@ -51,9 +51,6 @@ export default function SubmitPageClient({
   const defaultPlatform: Platform = platforms[0] ?? "ig";
   const defaultConnectionId = connections[defaultPlatform]?.[0]?.id ?? "";
 
-  const [mode, setMode] = useState<"select" | "manual">(
-    platforms.length === 0 ? "manual" : "select"
-  );
   const [activePlatform, setActivePlatform] = useState<Platform>(defaultPlatform);
   const [activeConnectionId, setActiveConnectionId] = useState<string>(defaultConnectionId);
 
@@ -80,10 +77,6 @@ export default function SubmitPageClient({
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
-
-  // Manual mode
-  const [postUrl, setPostUrl] = useState("");
-  const [screenshotUrl, setScreenshotUrl] = useState("");
 
   const fetchPage = useCallback(
     async (
@@ -200,7 +193,6 @@ export default function SubmitPageClient({
     fetchPage(activePlatform, activeConnectionId, prevIndex);
   };
 
-  // Derived: whether there's a next page available
   const hasMore =
     (cursorCache.current.get(activeConnectionId)?.length ?? 0) > currentPageIndex + 1;
 
@@ -271,33 +263,6 @@ export default function SubmitPageClient({
     }
   };
 
-  const submitManual = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setSubmitting(true);
-    setError(null);
-    try {
-      const res = await fetch("/api/submissions", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          applicationId,
-          postUrl,
-          screenshotUrl: screenshotUrl || undefined,
-        }),
-      });
-      if (!res.ok) {
-        const data = await res.json();
-        setError(data.error || "Failed to submit");
-        return;
-      }
-      router.push(`/creator/applications/${applicationId}`);
-    } catch {
-      setError("An error occurred");
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
   const activeConnections = connections[activePlatform] ?? [];
   const allPlatforms: Platform[] = ["ig", "tt", "fb"];
 
@@ -327,7 +292,6 @@ export default function SubmitPageClient({
         </div>
       )}
 
-      {/* Rate limit banner */}
       {isRateLimited && (
         <div
           className="p-3 rounded-lg mb-4 text-sm"
@@ -337,205 +301,85 @@ export default function SubmitPageClient({
         </div>
       )}
 
-      {mode === "select" ? (
+      <div
+        className="rounded-lg border"
+        style={{ background: "var(--bg-card)", borderColor: "var(--border)" }}
+      >
+        {/* Platform tabs + submit button */}
         <div
-          className="rounded-lg border"
-          style={{ background: "var(--bg-card)", borderColor: "var(--border)" }}
+          className="flex items-center justify-between px-5 py-3 border-b gap-3"
+          style={{ borderColor: "var(--border)" }}
         >
-          {/* Header row */}
-          <div
-            className="flex items-center justify-between px-5 py-3 border-b gap-3"
-            style={{ borderColor: "var(--border)" }}
+          <PlatformTabs
+            platforms={allPlatforms}
+            active={activePlatform}
+            onChange={handlePlatformChange}
+          />
+          <button
+            onClick={submitSelected}
+            disabled={selectedPostUrls.size === 0 || submitting}
+            className="flex items-center gap-1.5 px-4 py-1.5 rounded-lg text-sm font-medium transition-all disabled:opacity-30 cursor-pointer"
+            style={{ background: "var(--primary)", color: "#fff" }}
           >
-            <PlatformTabs
-              platforms={allPlatforms}
-              active={activePlatform}
-              onChange={handlePlatformChange}
-            />
-            <div className="flex items-center gap-3">
-              <button
-                onClick={submitSelected}
-                disabled={selectedPostUrls.size === 0 || submitting}
-                className="flex items-center gap-1.5 px-4 py-1.5 rounded-lg text-sm font-medium transition-all disabled:opacity-30 cursor-pointer"
-                style={{ background: "var(--primary)", color: "#fff" }}
-              >
-                {submitting
-                  ? "Submitting…"
-                  : `Submit${selectedPostUrls.size > 0 ? ` (${selectedPostUrls.size})` : ""}`}
-              </button>
-              <button
-                onClick={() => setMode("manual")}
-                className="text-xs transition-colors cursor-pointer"
-                style={{ color: "var(--text-muted)" }}
-              >
-                Manual →
-              </button>
-            </div>
-          </div>
+            {submitting
+              ? "Submitting…"
+              : `Submit${selectedPostUrls.size > 0 ? ` (${selectedPostUrls.size})` : ""}`}
+          </button>
+        </div>
 
-          {/* Account switcher + filters */}
-          <div
-            className="flex flex-wrap items-center gap-3 px-5 py-2 border-b"
-            style={{ borderColor: "var(--border)" }}
-          >
-            <AccountSwitcher
-              accounts={activeConnections}
-              activeId={activeConnectionId}
-              onChange={handleConnectionChange}
-            />
-            <div className="flex-1" />
-            <SearchBar value={searchQuery} onChange={setSearchQuery} />
-            <DateFilterControl
-              filter={dateFilter}
-              campaignStartDate={campaign.startsAt}
-              onChange={setDateFilter}
-            />
-          </div>
+        {/* Account tabs + filters */}
+        <div
+          className="flex flex-wrap items-center gap-3 px-5 py-2 border-b"
+          style={{ borderColor: "var(--border)" }}
+        >
+          <AccountSwitcher
+            accounts={activeConnections}
+            activeId={activeConnectionId}
+            onChange={handleConnectionChange}
+          />
+          <div className="flex-1" />
+          <SearchBar value={searchQuery} onChange={setSearchQuery} />
+          <DateFilterControl
+            filter={dateFilter}
+            campaignStartDate={campaign.startsAt}
+            onChange={setDateFilter}
+          />
+        </div>
 
-          {/* Selection hint */}
-          <div className="px-5 pt-4 pb-1">
-            <p className="text-sm" style={{ color: "var(--text-secondary)" }}>
-              {selectedPostUrls.size > 0
-                ? `${selectedPostUrls.size} post${selectedPostUrls.size !== 1 ? "s" : ""} selected`
-                : "Select the posts you want to submit"}
-            </p>
-          </div>
+        {/* Selection hint */}
+        <div className="px-5 pt-4 pb-1">
+          <p className="text-sm" style={{ color: "var(--text-secondary)" }}>
+            {selectedPostUrls.size > 0
+              ? `${selectedPostUrls.size} post${selectedPostUrls.size !== 1 ? "s" : ""} selected`
+              : "Select the posts you want to submit"}
+          </p>
+        </div>
 
-          {/* Grid */}
-          <div className="p-5">
-            <PostGrid
-              posts={filteredPosts}
+        {/* Grid */}
+        <div className="p-5">
+          <PostGrid
+            posts={filteredPosts}
+            isLoading={isLoading}
+            selectedUrls={selectedPostUrls}
+            submittedUrls={submittedPostUrls}
+            requiredHashtags={campaign.requiredHashtags}
+            hasConnectedAccount={activeConnections.length > 0}
+            platform={activePlatform}
+            onToggle={togglePost}
+          />
+
+          {!isLoading && activeConnections.length > 0 && currentPosts.length > 0 && (
+            <PaginationControls
+              pageIndex={currentPageIndex}
+              hasMore={hasMore}
               isLoading={isLoading}
-              selectedUrls={selectedPostUrls}
-              submittedUrls={submittedPostUrls}
-              requiredHashtags={campaign.requiredHashtags}
-              hasConnectedAccount={activeConnections.length > 0}
-              platform={activePlatform}
-              onToggle={togglePost}
+              isRateLimited={isRateLimited}
+              onPrev={handlePrev}
+              onNext={handleNext}
             />
-
-            {/* Pagination */}
-            {!isLoading && activeConnections.length > 0 && currentPosts.length > 0 && (
-              <PaginationControls
-                pageIndex={currentPageIndex}
-                hasMore={hasMore}
-                isLoading={isLoading}
-                isRateLimited={isRateLimited}
-                onPrev={handlePrev}
-                onNext={handleNext}
-              />
-            )}
-          </div>
-        </div>
-      ) : (
-        /* Manual mode */
-        <div
-          className="rounded-lg border"
-          style={{ background: "var(--bg-card)", borderColor: "var(--border)" }}
-        >
-          {platforms.length > 0 && (
-            <div
-              className="flex items-center justify-between px-5 py-3 border-b"
-              style={{ borderColor: "var(--border)" }}
-            >
-              <span className="text-sm font-medium" style={{ color: "var(--text-primary)" }}>
-                Manual Submission
-              </span>
-              <button
-                onClick={() => setMode("select")}
-                className="text-xs transition-colors cursor-pointer"
-                style={{ color: "var(--primary)" }}
-              >
-                ← Select from page
-              </button>
-            </div>
           )}
-
-          {platforms.length === 0 && (
-            <div
-              className="m-5 mb-0 p-3 rounded-lg text-sm border"
-              style={{
-                background: "rgba(99, 102, 241, 0.08)",
-                borderColor: "rgba(99, 102, 241, 0.3)",
-                color: "var(--text-secondary)",
-              }}
-            >
-              <p className="font-medium" style={{ color: "var(--text-primary)" }}>
-                Submitting via link in bio
-              </p>
-              <p className="text-xs mt-1">
-                Paste the public URL of your post. The clip&apos;s author handle must match one
-                of your verified accounts. We&apos;ll track views automatically once approved.
-              </p>
-            </div>
-          )}
-
-          <form onSubmit={submitManual} className="p-5 space-y-5">
-            <div>
-              <label
-                className="block text-sm font-medium mb-2"
-                style={{ color: "var(--text-primary)" }}
-              >
-                Post URL
-              </label>
-              <input
-                type="url"
-                value={postUrl}
-                onChange={(e) => setPostUrl(e.target.value)}
-                placeholder="https://www.tiktok.com/@you/video/… or https://instagram.com/reel/…"
-                required
-                className="w-full px-4 py-2 rounded-lg border text-sm focus:outline-none focus:ring-2"
-                style={{
-                  background: "var(--bg-primary)",
-                  borderColor: "var(--border)",
-                  color: "var(--text-primary)",
-                }}
-              />
-            </div>
-
-            <div>
-              <label
-                className="block text-sm font-medium mb-2"
-                style={{ color: "var(--text-primary)" }}
-              >
-                Screenshot URL{" "}
-                <span style={{ color: "var(--text-muted)", fontWeight: 400 }}>(optional)</span>
-              </label>
-              <input
-                type="url"
-                value={screenshotUrl}
-                onChange={(e) => setScreenshotUrl(e.target.value)}
-                placeholder="https://example.com/screenshot.png"
-                className="w-full px-4 py-2 rounded-lg border text-sm focus:outline-none focus:ring-2"
-                style={{
-                  background: "var(--bg-primary)",
-                  borderColor: "var(--border)",
-                  color: "var(--text-primary)",
-                }}
-              />
-            </div>
-
-            <div className="flex gap-3 pt-2">
-              <button
-                type="submit"
-                disabled={submitting || !postUrl}
-                className="flex-1 py-2.5 rounded-lg font-medium text-sm transition-all disabled:opacity-40 cursor-pointer"
-                style={{ background: "var(--primary)", color: "#fff" }}
-              >
-                {submitting ? "Submitting…" : "Submit Post"}
-              </button>
-              <button
-                type="button"
-                onClick={() => router.back()}
-                className="flex-1 py-2.5 rounded-lg font-medium text-sm border transition-colors cursor-pointer"
-                style={{ borderColor: "var(--border)", color: "var(--text-primary)" }}
-              >
-                Cancel
-              </button>
-            </div>
-          </form>
         </div>
-      )}
+      </div>
     </div>
   );
 }
