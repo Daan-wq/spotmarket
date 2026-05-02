@@ -22,6 +22,8 @@ const NAV: NavSection[] = [
     label: "OVERVIEW",
     items: [
       { href: "/admin", label: "Dashboard", icon: "📊" },
+      { href: "/admin/signals", label: "Signals", icon: "🚨", description: "WARN+ alerts inbox" },
+      { href: "/admin/analytics", label: "Analytics", icon: "📈", description: "CPV, OAuth, demographics" },
     ],
   },
   {
@@ -35,6 +37,7 @@ const NAV: NavSection[] = [
     items: [
       { href: "/admin/campaigns", label: "All Campaigns", icon: "🎯" },
       { href: "/admin/submissions", label: "Submissions", icon: "📤" },
+      { href: "/admin/review/videos", label: "Video review", icon: "🎬", description: "Logo verification queue" },
     ],
   },
   {
@@ -46,7 +49,6 @@ const NAV: NavSection[] = [
   {
     label: "OPERATIONS",
     items: [
-      { href: "/admin/verifications", label: "Verifications", icon: "✓", description: "Instagram account reviews" },
       { href: "/admin/payouts", label: "Payouts", icon: "💰", description: "Creator payment processing" },
       { href: "/admin/withdrawals", label: "Withdrawals", icon: "🏦", description: "USDT withdrawal requests" },
     ],

@@ -15,3 +15,5 @@ States: `in-progress` | `blocked` | `merged` | `paused`
 2026-05-02  B  ready-for-review  scoring + benchmarks + viral/underperform detectors + 2 crons; tsc + build green; synthetic harness passes
 2026-05-02  B  merged  PR #7 squashed into master
 2026-05-02  C  in-progress  campaign leaderboard, live-earnings ticker + API, ScoreCard widget, "why it's flopping" notice — tsc + build green
+2026-05-02  C  merged  PR #8 squashed into master
+2026-05-02  D  in-progress  admin overhaul: KPI dashboard, signals inbox, logo widget, analytics, campaign/creator detail pages — tsc clean, build succeeds
