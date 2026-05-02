@@ -1,5 +1,4 @@
 {
-  "//": "Hobby plan caps Vercel crons at once-per-day. Hot/warm/dispatch crons that need higher cadence run via Supabase pg_cron — see docs/cron-cadence.md. When you upgrade to Vercel Pro, swap the schedules below back to the values in docs/cron-cadence.md and remove the corresponding Supabase pg_cron jobs.",
   "crons": [
     {
       "path": "/api/cron/poll-metrics-hot",
