@@ -502,16 +502,32 @@ model CampaignSubmission {
 
   earnedAmount Decimal @default(0) @db.Decimal(10, 2)
 
+  // ── Subsystem A: tracking foundation ──
+  logoStatus     LogoStatus?
+  logoVerifiedAt DateTime?
+  logoVerifiedBy String?
+  velocityScore  Float?
+  trustScore     Float?
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  referralPayouts ReferralPayout[] @relation("ReferralPayouts")
+  referralPayouts   ReferralPayout[]   @relation("ReferralPayouts")
+  metricSnapshots   MetricSnapshot[]
+  submissionSignals SubmissionSignal[]
 
   @@index([applicationId])
   @@index([creatorId])
   @@index([campaignId])
   @@index([status])
   @@index([settledAt])
+  @@index([logoStatus])
+}
+
+enum LogoStatus {
+  PENDING
+  PRESENT
+  MISSING
 }
 
 enum SubmissionStatus {
@@ -631,6 +647,12 @@ enum NotificationType {
   REFERRAL_EARNED
   EARNINGS_CREDITED
   WITHDRAWAL_PROCESSED
+  // ── Subsystem E additions (foundation) ──
+  PERFORMANCE_VIRAL
+  PERFORMANCE_UNDERPERFORM
+  EARNINGS_MILESTONE
+  SIGNAL_FLAGGED
+  TOKEN_BROKEN
 }
 
 // ─────────────────────────────────────────
@@ -710,4 +732,163 @@ enum WithdrawalStatus {
   SENT
   CONFIRMED
   REJECTED
+}
+
+// ─────────────────────────────────────────
+// SUBSYSTEM A — TRACKING FOUNDATION
+// (owned by feat/A-tracking after foundation merges)
+// ─────────────────────────────────────────
+
+model MetricSnapshot {
+  id           String             @id @default(cuid())
+  submissionId String
+  submission   CampaignSubmission @relation(fields: [submissionId], references: [id], onDelete: Cascade)
+  capturedAt   DateTime           @default(now())
+  source       MetricSource
+  viewCount    BigInt
+  likeCount    Int                @default(0)
+  commentCount Int                @default(0)
+  shareCount   Int                @default(0)
+  saveCount    Int?
+  watchTimeSec Int?
+  reachCount   Int?
+  raw          Json?
+
+  @@index([submissionId, capturedAt])
+  @@index([source])
+}
+
+enum MetricSource {
+  OAUTH_IG
+  OAUTH_TT
+  OAUTH_YT
+  OAUTH_FB
+  OAUTH_FAILED
+}
+
+model SubmissionSignal {
+  id           String             @id @default(cuid())
+  submissionId String
+  submission   CampaignSubmission @relation(fields: [submissionId], references: [id], onDelete: Cascade)
+  type         SignalType
+  severity     SignalSeverity
+  payload      Json
+  createdAt    DateTime           @default(now())
+  resolvedAt   DateTime?
+  resolvedBy   String?
+
+  @@index([submissionId, type])
+  @@index([severity, createdAt])
+  @@index([resolvedAt])
+}
+
+enum SignalType {
+  VELOCITY_SPIKE
+  VELOCITY_DROP
+  RATIO_ANOMALY
+  BOT_SUSPECTED
+  LOGO_MISSING
+  DUPLICATE
+  TOKEN_BROKEN
+}
+
+enum SignalSeverity {
+  INFO
+  WARN
+  CRITICAL
+}
+
+model AudienceSnapshot {
+  id             String            @id @default(cuid())
+  connectionType ConnectionType
+  connectionId   String
+  capturedAt     DateTime          @default(now())
+  source         DemographicSource
+  ageBuckets     Json
+  genderSplit    Json
+  topCountries   Json
+  totalReach     Int?
+
+  @@index([connectionType, connectionId, capturedAt])
+}
+
+enum ConnectionType {
+  IG
+  TT
+  YT
+  FB
+}
+
+enum DemographicSource {
+  PLATFORM_API
+  SELF_REPORT
+}
+
+// ─────────────────────────────────────────
+// SUBSYSTEM B — PERFORMANCE INTELLIGENCE
+// (owned by feat/B-intelligence after foundation merges)
+// ─────────────────────────────────────────
+
+model ClipperPerformanceScore {
+  id               String   @id @default(cuid())
+  creatorProfileId String
+  computedAt       DateTime @default(now())
+  // Weighted composite, 0..100
+  score            Float
+  // Component scores, all 0..100
+  approvalRate     Float
+  benchmarkRatio   Float
+  trustScore       Float
+  deliveryScore    Float
+  audienceFit      Float
+  sampleSize       Int
+  payload          Json?
+
+  @@index([creatorProfileId, computedAt])
+  @@index([score])
+}
+
+model CampaignBenchmark {
+  id              String   @id @default(cuid())
+  campaignId      String
+  computedAt      DateTime @default(now())
+  // Velocity: views per hour
+  velocityP10     Float
+  velocityP50     Float
+  velocityP90     Float
+  // Engagement ratios
+  likeRatioP50    Float
+  likeRatioP90    Float
+  commentRatioP50 Float
+  commentRatioP90 Float
+  // Sample size used to compute
+  sampleSize      Int
+  windowHours     Int
+  payload         Json?
+
+  @@index([campaignId, computedAt])
+}
+
+// ─────────────────────────────────────────
+// SUBSYSTEM E — NOTIFICATION RULES
+// (owned by feat/E-notifications after foundation merges)
+// ─────────────────────────────────────────
+
+model NotificationRule {
+  id        String                @id @default(cuid())
+  userId    String
+  type      NotificationType
+  channels  NotificationChannel[]
+  enabled   Boolean               @default(true)
+  createdAt DateTime              @default(now())
+  updatedAt DateTime              @updatedAt
+
+  @@unique([userId, type])
+  @@index([userId])
+}
+
+enum NotificationChannel {
+  IN_APP
+  EMAIL
+  DISCORD
 }
