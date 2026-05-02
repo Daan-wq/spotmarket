@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useRef } from "react";
 
 interface NotificationItem {
   id: string;
@@ -42,6 +42,7 @@ function relativeTime(dateStr: string) {
 export function NotificationsClient({ notifications, unreadCount }: NotificationsClientProps) {
   const [activeTab, setActiveTab] = useState<"all" | "unread">("all");
   const [markedRead, setMarkedRead] = useState<Set<string>>(new Set());
+  const inFlight = useRef(false);
 
   const filtered = useMemo(() => {
     if (activeTab === "unread") {
@@ -51,12 +52,20 @@ export function NotificationsClient({ notifications, unreadCount }: Notification
   }, [notifications, activeTab, markedRead]);
 
   const handleMarkAllRead = async () => {
+    if (inFlight.current) return;
+    inFlight.current = true;
+
+    const previous = markedRead;
+    const allIds = new Set(notifications.filter((n) => !n.read).map((n) => n.id));
+    setMarkedRead(new Set([...previous, ...allIds]));
+
     try {
-      await fetch("/api/notifications/mark-read", { method: "PATCH" });
-      const allIds = new Set(notifications.filter((n) => !n.read).map((n) => n.id));
-      setMarkedRead(allIds);
+      const res = await fetch("/api/notifications/mark-read", { method: "PATCH" });
+      if (!res.ok) throw new Error("mark-read failed");
     } catch {
-      // silent fail
+      setMarkedRead(previous);
+    } finally {
+      inFlight.current = false;
     }
   };
 

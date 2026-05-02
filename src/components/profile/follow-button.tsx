@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 
 interface Props {
   userId: string;
@@ -11,24 +11,33 @@ interface Props {
 export function FollowButton({ userId, initialFollowing, initialCount }: Props) {
   const [following, setFollowing] = useState(initialFollowing);
   const [count, setCount] = useState(initialCount);
-  const [loading, setLoading] = useState(false);
+  const inFlight = useRef(false);
 
   async function toggle() {
-    setLoading(true);
-    const method = following ? "DELETE" : "POST";
-    const res = await fetch(`/api/users/${userId}/follow`, { method });
-    if (res.ok) {
-      setFollowing(!following);
-      setCount(c => following ? c - 1 : c + 1);
+    if (inFlight.current) return;
+    inFlight.current = true;
+
+    const wasFollowing = following;
+    setFollowing(!wasFollowing);
+    setCount((c) => (wasFollowing ? c - 1 : c + 1));
+
+    try {
+      const res = await fetch(`/api/users/${userId}/follow`, {
+        method: wasFollowing ? "DELETE" : "POST",
+      });
+      if (!res.ok) throw new Error("follow request failed");
+    } catch {
+      setFollowing(wasFollowing);
+      setCount((c) => (wasFollowing ? c + 1 : c - 1));
+    } finally {
+      inFlight.current = false;
     }
-    setLoading(false);
   }
 
   return (
     <button
       onClick={toggle}
-      disabled={loading}
-      className="px-4 py-1.5 rounded-lg text-sm font-medium transition-opacity disabled:opacity-50 cursor-pointer"
+      className="px-4 py-1.5 rounded-lg text-sm font-medium transition-opacity cursor-pointer"
       style={
         following
           ? { background: "var(--muted)", color: "var(--text-primary)", border: "1px solid var(--border)" }
