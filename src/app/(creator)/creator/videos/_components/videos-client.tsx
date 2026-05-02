@@ -1,8 +1,13 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { Fragment, useState, useMemo } from "react";
 import Link from "next/link";
 import PlatformIcon from "@/components/shared/PlatformIcon";
+
+interface UnderperformInfo {
+  weakDimensions: string[];
+  reason: string | null;
+}
 
 interface VideoData {
   id: string;
@@ -14,6 +19,7 @@ interface VideoData {
   campaignName: string;
   brandName: string;
   platform: string;
+  underperform?: UnderperformInfo | null;
 }
 
 interface VideosClientProps {
@@ -102,10 +108,10 @@ export function VideosClient({ videos, statusCounts }: VideosClientProps) {
             </thead>
             <tbody>
               {filtered.map((video) => (
+                <Fragment key={video.id}>
                 <tr
-                  key={video.id}
                   className="transition-colors cursor-pointer"
-                  style={{ borderBottom: "1px solid var(--border-default)" }}
+                  style={{ borderBottom: video.underperform ? undefined : "1px solid var(--border-default)" }}
                 >
                   <td className="py-3 px-2">
                     <Link href={`/creator/videos/${video.id}`} className="block" style={{ color: "var(--text-secondary)" }}>
@@ -150,6 +156,14 @@ export function VideosClient({ videos, statusCounts }: VideosClientProps) {
                     </Link>
                   </td>
                 </tr>
+                {video.underperform && (
+                  <tr style={{ borderBottom: "1px solid var(--border-default)" }}>
+                    <td colSpan={6} className="py-2 px-2">
+                      <UnderperformNotice info={video.underperform} />
+                    </td>
+                  </tr>
+                )}
+                </Fragment>
               ))}
             </tbody>
           </table>
@@ -171,6 +185,72 @@ function StatusBadge({ status }: { status: string }) {
     <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium" style={{ background: s.bg, color: s.color }}>
       {s.label}
     </span>
+  );
+}
+
+const DIMENSION_LABEL: Record<string, string> = {
+  views: "Low view velocity",
+  likeRatio: "Low like ratio",
+  commentRatio: "Low comment ratio",
+  watchTime: "Short watch time",
+};
+
+const DIMENSION_HINT: Record<string, string> = {
+  views: "Try a stronger hook in the first 2 seconds.",
+  likeRatio: "Hook the emotion — surprise, awe, controversy.",
+  commentRatio: "End with a question or a take that invites replies.",
+  watchTime: "Tighten the edit, drop the slow opening.",
+};
+
+function UnderperformNotice({ info }: { info: UnderperformInfo }) {
+  const dims = info.weakDimensions.length > 0 ? info.weakDimensions : ["views"];
+  return (
+    <div
+      className="flex gap-3 px-3 py-2.5 rounded-lg"
+      style={{
+        background: "rgba(245, 158, 11, 0.08)",
+        border: "1px solid rgba(245, 158, 11, 0.3)",
+      }}
+    >
+      <svg
+        width="18"
+        height="18"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="#f59e0b"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        style={{ flexShrink: 0, marginTop: 2 }}
+      >
+        <path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
+        <line x1="12" y1="9" x2="12" y2="13" />
+        <line x1="12" y1="17" x2="12.01" y2="17" />
+      </svg>
+      <div className="flex-1">
+        <p className="text-xs font-semibold mb-1" style={{ color: "#b45309" }}>
+          Why it&apos;s flopping
+        </p>
+        <div className="flex flex-wrap gap-1.5 mb-1">
+          {dims.map((d) => (
+            <span
+              key={d}
+              className="text-xs px-2 py-0.5 rounded-full font-medium"
+              style={{ background: "rgba(245, 158, 11, 0.15)", color: "#b45309" }}
+            >
+              {DIMENSION_LABEL[d] ?? d}
+            </span>
+          ))}
+        </div>
+        <p className="text-xs" style={{ color: "var(--text-secondary)" }}>
+          {info.reason ??
+            dims
+              .map((d) => DIMENSION_HINT[d])
+              .filter(Boolean)
+              .join(" ")}
+        </p>
+      </div>
+    </div>
   );
 }
 

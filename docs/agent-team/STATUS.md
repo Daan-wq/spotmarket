@@ -13,3 +13,5 @@ States: `in-progress` | `blocked` | `merged` | `paused`
 2026-05-02  A  ready-for-review  OAuth-only metric router, hot/warm/demographics crons, velocity scorer, duplicate detector, OAuth submission gate; tsc + build + tests + apify-zero all pass
 2026-05-02  A  merged  PR #11 squashed into master
 2026-05-02  B  ready-for-review  scoring + benchmarks + viral/underperform detectors + 2 crons; tsc + build green; synthetic harness passes
+2026-05-02  B  merged  PR #7 squashed into master
+2026-05-02  C  in-progress  campaign leaderboard, live-earnings ticker + API, ScoreCard widget, "why it's flopping" notice — tsc + build green
