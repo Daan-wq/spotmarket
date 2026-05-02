@@ -17,3 +17,5 @@ States: `in-progress` | `blocked` | `merged` | `paused`
 2026-05-02  C  in-progress  campaign leaderboard, live-earnings ticker + API, ScoreCard widget, "why it's flopping" notice — tsc + build green
 2026-05-02  C  merged  PR #8 squashed into master
 2026-05-02  D  in-progress  admin overhaul: KPI dashboard, signals inbox, logo widget, analytics, campaign/creator detail pages — tsc clean, build succeeds
+2026-05-02  D  merged  PR #10 squashed into master
+2026-05-02  E  in-progress  dispatcher + templates + event-subscriber + settings UI + retry cron; tsc + build pass
