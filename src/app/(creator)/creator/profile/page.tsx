@@ -1,4 +1,4 @@
-import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { getCachedAuthUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { redirect } from "next/navigation";
 import { ProfileClient } from "./_components/profile-client";
@@ -9,32 +9,32 @@ export default async function ProfilePage({
 }: {
   searchParams: Promise<{ tab?: string }>;
 }) {
-  const supabase = await createSupabaseServerClient();
-  const { data: { user: authUser } } = await supabase.auth.getUser();
+  const authUser = await getCachedAuthUser();
   if (!authUser) redirect("/sign-in");
 
-  const params = await searchParams;
-
-  const user = await prisma.user.findUnique({
-    where: { supabaseId: authUser.id },
-    include: {
-      creatorProfile: {
-        include: {
-          payouts: {
-            select: {
-              id: true,
-              amount: true,
-              status: true,
-              currency: true,
-              paymentMethod: true,
-              createdAt: true,
+  const [params, user] = await Promise.all([
+    searchParams,
+    prisma.user.findUnique({
+      where: { supabaseId: authUser.id },
+      include: {
+        creatorProfile: {
+          include: {
+            payouts: {
+              select: {
+                id: true,
+                amount: true,
+                status: true,
+                currency: true,
+                paymentMethod: true,
+                createdAt: true,
+              },
+              orderBy: { createdAt: "desc" },
             },
-            orderBy: { createdAt: "desc" },
           },
         },
       },
-    },
-  });
+    }),
+  ]);
 
   const profile = user?.creatorProfile;
   if (!profile) redirect("/onboarding");

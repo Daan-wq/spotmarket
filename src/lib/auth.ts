@@ -10,7 +10,7 @@ function isValidRole(value: unknown): value is UserRole {
 }
 
 // Deduplicated per request — Supabase getUser() called at most once per request lifecycle
-const getCachedAuthUser = cache(async () => {
+export const getCachedAuthUser = cache(async () => {
   const supabase = await createSupabaseServerClient();
   const { data: { user } } = await supabase.auth.getUser();
   return user;
@@ -66,3 +66,20 @@ export async function requireAuth(
 
   return { userId: authUser.id, role: role! };
 }
+
+// Per-request cached lookup of the creator-side header info (db user id +
+// creator profile id/displayName). Used by the creator layout AND by pages
+// that previously re-queried the same data — React.cache dedupes them all
+// to a single round-trip.
+export const getCreatorHeader = cache(async (supabaseId: string) => {
+  return prisma.user.findUnique({
+    where: { supabaseId },
+    select: {
+      id: true,
+      email: true,
+      creatorProfile: {
+        select: { id: true, displayName: true },
+      },
+    },
+  });
+});

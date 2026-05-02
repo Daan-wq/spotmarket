@@ -1,11 +1,6 @@
 import Link from "next/link";
-import { requireAuth } from "@/lib/auth";
+import { requireAuth, getCreatorHeader } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { decrypt } from "@/lib/crypto";
-import { fetchInstagramProfile } from "@/lib/instagram";
-import { fetchFacebookPageProfile } from "@/lib/facebook";
-import { fetchChannelProfile as fetchYtProfile } from "@/lib/youtube";
-import { fetchTikTokProfile } from "@/lib/tiktok";
 import { RemovePageButton } from "./_components/remove-page-button";
 import { RemoveFbPageButton } from "./_components/remove-fb-page-button";
 import { RemoveYtPageButton } from "./_components/remove-yt-page-button";
@@ -16,89 +11,47 @@ import { YoutubeConnectButton } from "./_components/youtube-connect-button";
 import { TikTokConnectButton } from "./_components/tiktok-connect-button";
 
 export default async function PagesPage() {
-  const { userId } = await requireAuth("creator");
+  const { userId: supabaseId } = await requireAuth("creator");
 
-  const user = await prisma.user.findUnique({
-    where: { supabaseId: userId },
-    select: { id: true },
-  });
-  if (!user) throw new Error("User not found");
+  const header = await getCreatorHeader(supabaseId);
+  if (!header) throw new Error("User not found");
+  if (!header.creatorProfile) throw new Error("Creator profile not found");
 
-  const profile = await prisma.creatorProfile.findUnique({
-    where: { userId: user.id },
-    include: {
-      igConnections: {
-        orderBy: { createdAt: "desc" },
-      },
-      fbConnections: {
-        orderBy: { createdAt: "desc" },
-      },
-      ytConnections: {
-        orderBy: { createdAt: "desc" },
-      },
-      ttConnections: {
-        orderBy: { createdAt: "desc" },
-      },
-    },
-  });
-  if (!profile) throw new Error("Creator profile not found");
-
-  // Fetch profile pictures for connections that have tokens
-  const profilePics = new Map<string, string>();
-  await Promise.all([
-    ...profile.igConnections
-      .filter((c) => c.accessToken && c.accessTokenIv && c.igUserId)
-      .map(async (c) => {
-        try {
-          const token = decrypt(c.accessToken!, c.accessTokenIv!);
-          const igProfile = await fetchInstagramProfile(token, c.igUserId!);
-          if (igProfile.profilePictureUrl) {
-            profilePics.set(c.id, igProfile.profilePictureUrl);
-          }
-        } catch {
-          if (c.profilePicUrl) profilePics.set(c.id, c.profilePicUrl);
-        }
-      }),
-    ...profile.fbConnections
-      .filter((c) => c.accessToken && c.accessTokenIv && c.fbPageId)
-      .map(async (c) => {
-        try {
-          const token = decrypt(c.accessToken!, c.accessTokenIv!);
-          const fbProfile = await fetchFacebookPageProfile(c.fbPageId!, token);
-          if (fbProfile.profilePictureUrl) {
-            profilePics.set(c.id, fbProfile.profilePictureUrl);
-          }
-        } catch {
-          if (c.profilePicUrl) profilePics.set(c.id, c.profilePicUrl);
-        }
-      }),
-    ...profile.ytConnections
-      .filter((c) => c.accessToken && c.accessTokenIv)
-      .map(async (c) => {
-        try {
-          const token = decrypt(c.accessToken!, c.accessTokenIv!);
-          const ytProfile = await fetchYtProfile(token);
-          if (ytProfile.profilePictureUrl) {
-            profilePics.set(c.id, ytProfile.profilePictureUrl);
-          }
-        } catch {
-          if (c.profilePicUrl) profilePics.set(c.id, c.profilePicUrl);
-        }
-      }),
-    ...profile.ttConnections
-      .filter((c) => c.accessToken && c.accessTokenIv)
-      .map(async (c) => {
-        try {
-          const token = decrypt(c.accessToken!, c.accessTokenIv!);
-          const ttProfile = await fetchTikTokProfile(token);
-          if (ttProfile.avatarUrl) {
-            profilePics.set(c.id, ttProfile.avatarUrl);
-          }
-        } catch {
-          if (c.profilePicUrl) profilePics.set(c.id, c.profilePicUrl);
-        }
-      }),
+  // All four connection lists in one parallel batch
+  const [igConnections, fbConnections, ytConnections, ttConnections] = await Promise.all([
+    prisma.creatorIgConnection.findMany({
+      where: { creatorProfileId: header.creatorProfile.id },
+      orderBy: { createdAt: "desc" },
+    }),
+    prisma.creatorFbConnection.findMany({
+      where: { creatorProfileId: header.creatorProfile.id },
+      orderBy: { createdAt: "desc" },
+    }),
+    prisma.creatorYtConnection.findMany({
+      where: { creatorProfileId: header.creatorProfile.id },
+      orderBy: { createdAt: "desc" },
+    }),
+    prisma.creatorTikTokConnection.findMany({
+      where: { creatorProfileId: header.creatorProfile.id },
+      orderBy: { createdAt: "desc" },
+    }),
   ]);
+
+  const profile = {
+    igConnections,
+    fbConnections,
+    ytConnections,
+    ttConnections,
+  };
+
+  // Profile pictures come from the DB column populated at connect time.
+  // Live refresh from each platform's API was removed because it added 1-3s
+  // to every page render. A background cron can refresh `profilePicUrl`.
+  const profilePics = new Map<string, string>();
+  for (const c of igConnections) if (c.profilePicUrl) profilePics.set(c.id, c.profilePicUrl);
+  for (const c of fbConnections) if (c.profilePicUrl) profilePics.set(c.id, c.profilePicUrl);
+  for (const c of ytConnections) if (c.profilePicUrl) profilePics.set(c.id, c.profilePicUrl);
+  for (const c of ttConnections) if (c.profilePicUrl) profilePics.set(c.id, c.profilePicUrl);
 
   return (
     <div className="p-6 w-full space-y-6">
