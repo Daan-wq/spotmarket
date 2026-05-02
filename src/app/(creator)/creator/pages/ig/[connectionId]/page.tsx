@@ -15,6 +15,16 @@ import type { MediaInsights } from "@/lib/instagram";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { PostGrid } from "./_components/post-grid";
+import DailyInsightsCard from "@/components/insights/DailyInsightsCard";
+
+const IG_DAILY_INSIGHTS_METRICS = [
+  { key: "reach", label: "Reach", color: "#6366F1" },
+  { key: "followerCount", label: "Followers", color: "#8B5CF6" },
+  { key: "reelsPosted", label: "Reels", color: "#10B981" },
+  { key: "carouselsPosted", label: "Carousels", color: "#F59E0B" },
+  { key: "storiesPosted", label: "Stories", color: "#EF4444" },
+  { key: "imagesPosted", label: "Images", color: "#06B6D4" },
+];
 
 interface PageDetailProps {
   params: Promise<{ connectionId: string }>;
@@ -287,65 +297,58 @@ export default async function PageDetailPage({ params }: PageDetailProps) {
         </div>
 
         {/* Daily Insights */}
-        <div
-          className="rounded-lg p-6 border"
-          style={{ background: "var(--bg-card)", borderColor: "var(--border)" }}
+        <DailyInsightsCard
+          data={insightsData}
+          metrics={IG_DAILY_INSIGHTS_METRICS}
+          isEmpty={insightsData.length === 0}
+          emptyMessage="No insights data available yet."
         >
-          <h3 className="text-lg font-semibold mb-4" style={{ color: "var(--text-primary)" }}>
-            Daily Insights
-          </h3>
-          {insightsData.length > 0 ? (
-            <div className="max-h-80 overflow-y-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr style={{ color: "var(--text-secondary)" }} className="border-b">
-                    <th className="text-left py-2 px-1 sticky top-0 text-xs" style={{ background: "var(--bg-card)" }}>Date</th>
-                    <th className="text-right py-2 px-1 sticky top-0 text-xs" style={{ background: "var(--bg-card)" }}>Reach</th>
-                    <th className="text-right py-2 px-1 sticky top-0 text-xs" style={{ background: "var(--bg-card)" }}>Followers</th>
-                    <th className="text-right py-2 px-1 sticky top-0 text-xs" style={{ background: "var(--bg-card)" }}>Reels</th>
-                    <th className="text-right py-2 px-1 sticky top-0 text-xs" style={{ background: "var(--bg-card)" }}>Carousels</th>
-                    <th className="text-right py-2 px-1 sticky top-0 text-xs" style={{ background: "var(--bg-card)" }}>Stories</th>
-                    <th className="text-right py-2 px-1 sticky top-0 text-xs" style={{ background: "var(--bg-card)" }}>Images</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {insightsData.slice().reverse().map((day) => {
-                    const totalPosts = day.reelsPosted + day.carouselsPosted + day.storiesPosted + day.imagesPosted;
-                    return (
-                      <tr key={day.date} className="border-b" style={{ borderColor: "var(--border)" }}>
-                        <td className="py-1.5 px-1 text-xs" style={{ color: "var(--text-primary)" }}>
-                          {new Date(day.date).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
-                        </td>
-                        <td className="py-1.5 px-1 text-right text-xs" style={{ color: "var(--text-secondary)" }}>
-                          {(day.reach ?? 0).toLocaleString()}
-                        </td>
-                        <td className="py-1.5 px-1 text-right text-xs" style={{ color: "var(--text-secondary)" }}>
-                          {(day.followerCount ?? 0).toLocaleString()}
-                        </td>
-                        <td className="py-1.5 px-1 text-right text-xs" style={{ color: totalPosts > 0 ? "var(--text-primary)" : "var(--text-muted)" }}>
-                          {day.reelsPosted || "–"}
-                        </td>
-                        <td className="py-1.5 px-1 text-right text-xs" style={{ color: totalPosts > 0 ? "var(--text-primary)" : "var(--text-muted)" }}>
-                          {day.carouselsPosted || "–"}
-                        </td>
-                        <td className="py-1.5 px-1 text-right text-xs" style={{ color: totalPosts > 0 ? "var(--text-primary)" : "var(--text-muted)" }}>
-                          {day.storiesPosted || "–"}
-                        </td>
-                        <td className="py-1.5 px-1 text-right text-xs" style={{ color: totalPosts > 0 ? "var(--text-primary)" : "var(--text-muted)" }}>
-                          {day.imagesPosted || "–"}
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-          ) : (
-            <p className="text-sm" style={{ color: "var(--text-muted)" }}>
-              No insights data available yet.
-            </p>
-          )}
-        </div>
+          <div className="max-h-80 overflow-y-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr style={{ color: "var(--text-secondary)" }} className="border-b">
+                  <th className="text-left py-2 px-1 sticky top-0 text-xs" style={{ background: "var(--bg-card)" }}>Date</th>
+                  <th className="text-right py-2 px-1 sticky top-0 text-xs" style={{ background: "var(--bg-card)" }}>Reach</th>
+                  <th className="text-right py-2 px-1 sticky top-0 text-xs" style={{ background: "var(--bg-card)" }}>Followers</th>
+                  <th className="text-right py-2 px-1 sticky top-0 text-xs" style={{ background: "var(--bg-card)" }}>Reels</th>
+                  <th className="text-right py-2 px-1 sticky top-0 text-xs" style={{ background: "var(--bg-card)" }}>Carousels</th>
+                  <th className="text-right py-2 px-1 sticky top-0 text-xs" style={{ background: "var(--bg-card)" }}>Stories</th>
+                  <th className="text-right py-2 px-1 sticky top-0 text-xs" style={{ background: "var(--bg-card)" }}>Images</th>
+                </tr>
+              </thead>
+              <tbody>
+                {insightsData.slice().reverse().map((day) => {
+                  const totalPosts = day.reelsPosted + day.carouselsPosted + day.storiesPosted + day.imagesPosted;
+                  return (
+                    <tr key={day.date} className="border-b" style={{ borderColor: "var(--border)" }}>
+                      <td className="py-1.5 px-1 text-xs" style={{ color: "var(--text-primary)" }}>
+                        {new Date(day.date).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
+                      </td>
+                      <td className="py-1.5 px-1 text-right text-xs" style={{ color: "var(--text-secondary)" }}>
+                        {(day.reach ?? 0).toLocaleString()}
+                      </td>
+                      <td className="py-1.5 px-1 text-right text-xs" style={{ color: "var(--text-secondary)" }}>
+                        {(day.followerCount ?? 0).toLocaleString()}
+                      </td>
+                      <td className="py-1.5 px-1 text-right text-xs" style={{ color: totalPosts > 0 ? "var(--text-primary)" : "var(--text-muted)" }}>
+                        {day.reelsPosted || "–"}
+                      </td>
+                      <td className="py-1.5 px-1 text-right text-xs" style={{ color: totalPosts > 0 ? "var(--text-primary)" : "var(--text-muted)" }}>
+                        {day.carouselsPosted || "–"}
+                      </td>
+                      <td className="py-1.5 px-1 text-right text-xs" style={{ color: totalPosts > 0 ? "var(--text-primary)" : "var(--text-muted)" }}>
+                        {day.storiesPosted || "–"}
+                      </td>
+                      <td className="py-1.5 px-1 text-right text-xs" style={{ color: totalPosts > 0 ? "var(--text-primary)" : "var(--text-muted)" }}>
+                        {day.imagesPosted || "–"}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </DailyInsightsCard>
       </div>
 
       {/* Recent Posts Grid */}

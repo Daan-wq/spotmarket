@@ -14,6 +14,16 @@ import {
 import { VideoGrid } from "@/components/shared/VideoGrid";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import DailyInsightsCard from "@/components/insights/DailyInsightsCard";
+
+const FB_DAILY_INSIGHTS_METRICS = [
+  { key: "reach", label: "Reach", color: "#6366F1" },
+  { key: "followers", label: "Followers", color: "#8B5CF6" },
+  { key: "photosPosted", label: "Photos", color: "#10B981" },
+  { key: "videosPosted", label: "Videos", color: "#F59E0B" },
+  { key: "linksPosted", label: "Links", color: "#EF4444" },
+  { key: "statusesPosted", label: "Status", color: "#06B6D4" },
+];
 
 interface PageDetailProps {
   params: Promise<{ connectionId: string }>;
@@ -260,14 +270,12 @@ export default async function FbPageDetailPage({ params }: PageDetailProps) {
         </div>
 
         {/* Daily Insights */}
-        <div
-          className="rounded-lg p-6 border"
-          style={{ background: "var(--bg-card)", borderColor: "var(--border)" }}
+        <DailyInsightsCard
+          data={insightsData}
+          metrics={FB_DAILY_INSIGHTS_METRICS}
+          isEmpty={insightsData.length === 0}
+          emptyMessage="No insights data available yet."
         >
-          <h3 className="text-lg font-semibold mb-4" style={{ color: "var(--text-primary)" }}>
-            Daily Insights
-          </h3>
-        {insightsData.length > 0 ? (
           <div className="max-h-80 overflow-y-auto">
             <table className="w-full text-sm">
               <thead>
@@ -313,12 +321,7 @@ export default async function FbPageDetailPage({ params }: PageDetailProps) {
               </tbody>
             </table>
           </div>
-          ) : (
-            <p className="text-sm" style={{ color: "var(--text-muted)" }}>
-              No insights data available yet.
-            </p>
-          )}
-        </div>
+        </DailyInsightsCard>
       </div>
 
       {/* Recent Posts */}

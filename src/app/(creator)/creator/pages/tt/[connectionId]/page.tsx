@@ -5,6 +5,15 @@ import { getFreshTikTokAccessToken } from "@/lib/token-refresh";
 import { VideoGrid } from "@/components/shared/VideoGrid";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import DailyInsightsCard from "@/components/insights/DailyInsightsCard";
+
+const TT_DAILY_INSIGHTS_METRICS = [
+  { key: "views", label: "Views", color: "#6366F1" },
+  { key: "likes", label: "Likes", color: "#EF4444" },
+  { key: "comments", label: "Comments", color: "#F59E0B" },
+  { key: "shares", label: "Shares", color: "#10B981" },
+  { key: "videosPosted", label: "Posts", color: "#8B5CF6" },
+];
 
 interface PageDetailProps {
   params: Promise<{ connectionId: string }>;
@@ -240,14 +249,12 @@ export default async function TikTokPageDetailPage({ params }: PageDetailProps) 
         </div>
 
         {/* Daily Insights */}
-        <div
-          className="rounded-lg p-6 border"
-          style={{ background: "var(--bg-card)", borderColor: "var(--border)" }}
+        <DailyInsightsCard
+          data={dailyInsights}
+          metrics={TT_DAILY_INSIGHTS_METRICS}
+          isEmpty={dailyInsights.length === 0}
+          emptyMessage="No insights data available yet."
         >
-          <h3 className="text-lg font-semibold mb-4" style={{ color: "var(--text-primary)" }}>
-            Daily Insights
-          </h3>
-        {dailyInsights.some((d) => d.videosPosted > 0) ? (
           <div className="max-h-80 overflow-y-auto">
             <table className="w-full text-sm">
               <thead>
@@ -286,12 +293,7 @@ export default async function TikTokPageDetailPage({ params }: PageDetailProps) 
               </tbody>
             </table>
           </div>
-        ) : (
-          <p className="text-sm" style={{ color: "var(--text-muted)" }}>
-            No videos posted in the last 30 days.
-          </p>
-        )}
-        </div>
+        </DailyInsightsCard>
       </div>
 
       {/* Recent Videos Grid */}

@@ -11,6 +11,14 @@ import { getFreshYoutubeAccessToken } from "@/lib/token-refresh";
 import { VideoGrid } from "@/components/shared/VideoGrid";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import DailyInsightsCard from "@/components/insights/DailyInsightsCard";
+
+const YT_DAILY_INSIGHTS_METRICS = [
+  { key: "views", label: "Views", color: "#6366F1" },
+  { key: "estimatedMinutesWatched", label: "Watch (min)", color: "#10B981" },
+  { key: "subscribersNet", label: "Subs net", color: "#8B5CF6" },
+  { key: "likes", label: "Likes", color: "#EF4444" },
+];
 
 interface PageDetailProps {
   params: Promise<{ connectionId: string }>;
@@ -251,55 +259,51 @@ export default async function YtPageDetailPage({ params }: PageDetailProps) {
         </div>
 
         {/* Daily Insights */}
-        <div
-          className="rounded-lg p-6 border"
-          style={{ background: "var(--bg-card)", borderColor: "var(--border)" }}
+        <DailyInsightsCard
+          data={(analytics?.daily ?? []).map((d) => ({
+            ...d,
+            subscribersNet: d.subscribersGained - d.subscribersLost,
+          }))}
+          metrics={YT_DAILY_INSIGHTS_METRICS}
+          isEmpty={!analytics || analytics.daily.length === 0}
+          emptyMessage="No insights data available yet."
         >
-          <h3 className="text-lg font-semibold mb-4" style={{ color: "var(--text-primary)" }}>
-            Daily Insights
-          </h3>
-          {analytics && analytics.daily.length > 0 ? (
-            <div className="max-h-80 overflow-y-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr style={{ color: "var(--text-secondary)" }} className="border-b">
-                    <th className="text-left py-2 px-1 sticky top-0 text-xs" style={{ background: "var(--bg-card)" }}>Date</th>
-                    <th className="text-right py-2 px-1 sticky top-0 text-xs" style={{ background: "var(--bg-card)" }}>Views</th>
-                    <th className="text-right py-2 px-1 sticky top-0 text-xs" style={{ background: "var(--bg-card)" }}>Watch (min)</th>
-                    <th className="text-right py-2 px-1 sticky top-0 text-xs" style={{ background: "var(--bg-card)" }}>Subs +/-</th>
-                    <th className="text-right py-2 px-1 sticky top-0 text-xs" style={{ background: "var(--bg-card)" }}>Likes</th>
+          <div className="max-h-80 overflow-y-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr style={{ color: "var(--text-secondary)" }} className="border-b">
+                  <th className="text-left py-2 px-1 sticky top-0 text-xs" style={{ background: "var(--bg-card)" }}>Date</th>
+                  <th className="text-right py-2 px-1 sticky top-0 text-xs" style={{ background: "var(--bg-card)" }}>Views</th>
+                  <th className="text-right py-2 px-1 sticky top-0 text-xs" style={{ background: "var(--bg-card)" }}>Watch (min)</th>
+                  <th className="text-right py-2 px-1 sticky top-0 text-xs" style={{ background: "var(--bg-card)" }}>Subs +/-</th>
+                  <th className="text-right py-2 px-1 sticky top-0 text-xs" style={{ background: "var(--bg-card)" }}>Likes</th>
+                </tr>
+              </thead>
+              <tbody>
+                {(analytics?.daily ?? []).slice().reverse().map((day) => (
+                  <tr key={day.date} className="border-b" style={{ borderColor: "var(--border)" }}>
+                    <td className="py-1.5 px-1 text-xs" style={{ color: "var(--text-primary)" }}>
+                      {new Date(day.date).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
+                    </td>
+                    <td className="py-1.5 px-1 text-right text-xs" style={{ color: "var(--text-secondary)" }}>
+                      {day.views.toLocaleString()}
+                    </td>
+                    <td className="py-1.5 px-1 text-right text-xs" style={{ color: "var(--text-secondary)" }}>
+                      {Math.round(day.estimatedMinutesWatched).toLocaleString()}
+                    </td>
+                    <td className="py-1.5 px-1 text-right text-xs" style={{ color: day.subscribersGained - day.subscribersLost > 0 ? "#16a34a" : "var(--text-muted)" }}>
+                      {day.subscribersGained - day.subscribersLost > 0 ? "+" : ""}
+                      {day.subscribersGained - day.subscribersLost}
+                    </td>
+                    <td className="py-1.5 px-1 text-right text-xs" style={{ color: "var(--text-secondary)" }}>
+                      {day.likes.toLocaleString()}
+                    </td>
                   </tr>
-                </thead>
-                <tbody>
-                  {analytics.daily.slice().reverse().map((day) => (
-                    <tr key={day.date} className="border-b" style={{ borderColor: "var(--border)" }}>
-                      <td className="py-1.5 px-1 text-xs" style={{ color: "var(--text-primary)" }}>
-                        {new Date(day.date).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
-                      </td>
-                      <td className="py-1.5 px-1 text-right text-xs" style={{ color: "var(--text-secondary)" }}>
-                        {day.views.toLocaleString()}
-                      </td>
-                      <td className="py-1.5 px-1 text-right text-xs" style={{ color: "var(--text-secondary)" }}>
-                        {Math.round(day.estimatedMinutesWatched).toLocaleString()}
-                      </td>
-                      <td className="py-1.5 px-1 text-right text-xs" style={{ color: day.subscribersGained - day.subscribersLost > 0 ? "#16a34a" : "var(--text-muted)" }}>
-                        {day.subscribersGained - day.subscribersLost > 0 ? "+" : ""}
-                        {day.subscribersGained - day.subscribersLost}
-                      </td>
-                      <td className="py-1.5 px-1 text-right text-xs" style={{ color: "var(--text-secondary)" }}>
-                        {day.likes.toLocaleString()}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          ) : (
-            <p className="text-sm" style={{ color: "var(--text-muted)" }}>
-              No insights data available yet.
-            </p>
-          )}
-        </div>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </DailyInsightsCard>
       </div>
 
       {/* Recent Shorts Grid */}
