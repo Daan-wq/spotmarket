@@ -51,7 +51,11 @@ export default async function CampaignsPage() {
           <tbody>
             {campaigns.map((c) => (
               <tr key={c.id} style={{ borderBottom: "1px solid var(--border)" }}>
-                <td className="px-6 py-3 text-sm" style={{ color: "var(--text-primary)" }}>{c.name}</td>
+                <td className="px-6 py-3 text-sm" style={{ color: "var(--text-primary)" }}>
+                  <Link href={`/admin/campaigns/${c.id}`} className="underline">
+                    {c.name}
+                  </Link>
+                </td>
                 <td className="px-6 py-3 text-sm" style={{ color: "var(--text-primary)" }}>{c.createdBy?.email ?? "-"}</td>
                 <td className="px-6 py-3 text-sm">
                   <span className="px-2 py-1 rounded text-xs" style={{ background: c.status === "active" ? "var(--success-bg)" : "var(--warning-bg)", color: c.status === "active" ? "var(--success-text)" : "var(--warning-text)" }}>
