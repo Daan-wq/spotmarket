@@ -3,7 +3,6 @@ import { prisma } from "@/lib/prisma";
 import { fetchTikTokProfile, fetchTikTokVideos, computeTikTokDailyInsights } from "@/lib/tiktok";
 import { getFreshTikTokAccessToken } from "@/lib/token-refresh";
 import { VideoGrid } from "@/components/shared/VideoGrid";
-import { DemographicForm } from "./_components/demographic-form";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
@@ -44,26 +43,25 @@ export default async function TikTokPageDetailPage({ params }: PageDetailProps) 
   const ttProfile = profileResult.status === "fulfilled" ? profileResult.value : null;
   const videos = videosResult.status === "fulfilled" ? videosResult.value.videos : [];
 
-  const [latestApproved, latestSubmission] = await Promise.all([
-    prisma.tikTokDemographicSubmission.findFirst({
-      where: { connectionId: conn.id, status: "VERIFIED" },
-      orderBy: { createdAt: "desc" },
-    }),
-    prisma.tikTokDemographicSubmission.findFirst({
-      where: { connectionId: conn.id },
-      orderBy: { createdAt: "desc" },
-    }),
-  ]);
-  const displaySubmission = latestApproved ?? latestSubmission;
-  const displayAges =
-    displaySubmission && typeof displaySubmission.ageBuckets === "object" && displaySubmission.ageBuckets !== null
-      ? (displaySubmission.ageBuckets as Record<string, number>)
+  // Demographics auto-pull replaces the prior screenshot review flow.
+  // The latest AudienceSnapshot for this connection is rendered below;
+  // populated by the `poll-demographics` cron via TikTok Business API
+  // (gated on TIKTOK_BUSINESS_API approval).
+  const latestAudience = await prisma.audienceSnapshot.findFirst({
+    where: { connectionType: "TT", connectionId: conn.id },
+    orderBy: { capturedAt: "desc" },
+  });
+  const audienceAges =
+    latestAudience && typeof latestAudience.ageBuckets === "object" && latestAudience.ageBuckets !== null
+      ? (latestAudience.ageBuckets as Record<string, number>)
       : {};
-  const displayCountries: { iso: string; percent: number }[] =
-    displaySubmission && Array.isArray(displaySubmission.topCountries) && displaySubmission.topCountries.length > 0
-      ? (displaySubmission.topCountries as { iso: string; percent: number }[])
-      : displaySubmission
-      ? [{ iso: displaySubmission.topCountry, percent: displaySubmission.topCountryPercent }]
+  const audienceGenders =
+    latestAudience && typeof latestAudience.genderSplit === "object" && latestAudience.genderSplit !== null
+      ? (latestAudience.genderSplit as { male?: number; female?: number; other?: number })
+      : {};
+  const audienceCountries: { code: string; share: number }[] =
+    latestAudience && Array.isArray(latestAudience.topCountries)
+      ? (latestAudience.topCountries as { code: string; share: number }[])
       : [];
 
   const activeApplications = await prisma.campaignApplication.findMany({
@@ -183,95 +181,61 @@ export default async function TikTokPageDetailPage({ params }: PageDetailProps) 
             <h3 className="text-lg font-semibold" style={{ color: "var(--text-primary)" }}>
               Audience
             </h3>
-            {displaySubmission && (
-              <span
-                className="text-[10px] px-2 py-0.5 rounded-full font-medium uppercase"
-                style={{
-                  background:
-                    displaySubmission.status === "VERIFIED" ? "var(--success-bg)" :
-                    displaySubmission.status === "FAILED" ? "var(--error-bg)" : "var(--warning-bg)",
-                  color:
-                    displaySubmission.status === "VERIFIED" ? "var(--success-text)" :
-                    displaySubmission.status === "FAILED" ? "var(--error-text)" : "var(--warning-text)",
-                }}
-              >
-                {displaySubmission.status === "VERIFIED" ? "APPROVED" : displaySubmission.status === "FAILED" ? "REJECTED" : "PENDING"}
+            {latestAudience && (
+              <span className="text-[10px] px-2 py-0.5 rounded-full font-medium uppercase"
+                style={{ background: "var(--success-bg)", color: "var(--success-text)" }}>
+                AUTO-PULL
               </span>
             )}
           </div>
 
-          {displaySubmission?.status === "VERIFIED" ? (
+          {latestAudience && audienceCountries.length > 0 ? (
             <>
               <div className="mb-4">
                 <div className="text-xs uppercase tracking-wide mb-2" style={{ color: "var(--text-muted)" }}>Top Countries</div>
                 <div className="space-y-1">
-                  {displayCountries.map((c) => (
-                    <div key={c.iso} className="flex items-center gap-2">
-                      <span className="text-xs w-10" style={{ color: "var(--text-secondary)" }}>{c.iso}</span>
+                  {audienceCountries.slice(0, 5).map((c) => (
+                    <div key={c.code} className="flex items-center gap-2">
+                      <span className="text-xs w-10" style={{ color: "var(--text-secondary)" }}>{c.code}</span>
                       <div className="flex-1 h-2.5 rounded-full overflow-hidden" style={{ background: "var(--bg-primary)" }}>
-                        <div className="h-full rounded-full" style={{ width: `${c.percent}%`, background: "#14b8a6" }} />
+                        <div className="h-full rounded-full" style={{ width: `${Math.round(c.share * 100)}%`, background: "#14b8a6" }} />
                       </div>
-                      <span className="text-xs w-10 text-right" style={{ color: "var(--text-muted)" }}>{c.percent}%</span>
+                      <span className="text-xs w-10 text-right" style={{ color: "var(--text-muted)" }}>{Math.round(c.share * 100)}%</span>
                     </div>
                   ))}
                 </div>
               </div>
               <div className="mb-4">
                 <div className="text-xs uppercase tracking-wide mb-2" style={{ color: "var(--text-muted)" }}>Gender</div>
-                <div className="flex gap-0.5 h-3 rounded-full overflow-hidden">
-                  <div style={{ width: `${displaySubmission.malePercent}%`, background: "#6366F1" }} />
-                  <div style={{ width: `${displaySubmission.femalePercent}%`, background: "#EC4899" }} />
-                  {displaySubmission.otherPercent > 0 && (
-                    <div style={{ width: `${displaySubmission.otherPercent}%`, background: "#A78BFA" }} />
-                  )}
-                </div>
-                <div className="flex justify-between text-xs mt-1" style={{ color: "var(--text-secondary)" }}>
-                  <span>Male {displaySubmission.malePercent}%</span>
-                  <span>Female {displaySubmission.femalePercent}%</span>
-                  {displaySubmission.otherPercent > 0 && <span>Other {displaySubmission.otherPercent}%</span>}
+                <div className="flex justify-between text-xs" style={{ color: "var(--text-secondary)" }}>
+                  <span>Male {Math.round((audienceGenders.male ?? 0) * 100)}%</span>
+                  <span>Female {Math.round((audienceGenders.female ?? 0) * 100)}%</span>
+                  {audienceGenders.other ? <span>Other {Math.round(audienceGenders.other * 100)}%</span> : null}
                 </div>
               </div>
               <div>
                 <div className="text-xs uppercase tracking-wide mb-2" style={{ color: "var(--text-muted)" }}>Age</div>
                 <div className="space-y-1">
-                  {Object.entries(displayAges)
+                  {Object.entries(audienceAges)
                     .filter(([, pct]) => pct > 0)
                     .sort(([a], [b]) => a.localeCompare(b))
                     .map(([age, pct]) => (
                       <div key={age} className="flex items-center gap-2">
                         <span className="text-xs w-14 text-right" style={{ color: "var(--text-secondary)" }}>{age}</span>
                         <div className="flex-1 h-2.5 rounded-full overflow-hidden" style={{ background: "var(--bg-primary)" }}>
-                          <div className="h-full rounded-full" style={{ width: `${pct}%`, background: "#6366F1" }} />
+                          <div className="h-full rounded-full" style={{ width: `${Math.round(pct * 100)}%`, background: "#6366F1" }} />
                         </div>
-                        <span className="text-xs w-8" style={{ color: "var(--text-muted)" }}>{pct}%</span>
+                        <span className="text-xs w-8" style={{ color: "var(--text-muted)" }}>{Math.round(pct * 100)}%</span>
                       </div>
                     ))}
                 </div>
               </div>
             </>
           ) : (
-            <DemographicForm
-              connectionId={conn.id}
-              readOnly={displaySubmission?.status === "PENDING"}
-              pendingNote={
-                displaySubmission?.status === "PENDING"
-                  ? "Your submission is under review. You'll see the approved values here once an admin verifies the recording."
-                  : displaySubmission?.status === "FAILED"
-                  ? `Previous submission rejected${displaySubmission.reviewNotes ? `: ${displaySubmission.reviewNotes}` : ""}. Please resubmit with corrected data.`
-                  : undefined
-              }
-              initialValues={
-                displaySubmission
-                  ? {
-                      topCountries: displayCountries,
-                      malePercent: displaySubmission.malePercent,
-                      femalePercent: displaySubmission.femalePercent,
-                      otherPercent: displaySubmission.otherPercent,
-                      ageBuckets: displayAges,
-                    }
-                  : undefined
-              }
-            />
+            <p className="text-sm" style={{ color: "var(--text-muted)" }}>
+              Audience demographics will appear here automatically once TikTok Business API
+              data is available for this account.
+            </p>
           )}
         </div>
 

@@ -1,11 +1,14 @@
 "use client";
 
-import Link from "next/link";
 import type { ReactNode } from "react";
+
+// NOTE: name kept for backwards compatibility with existing imports. The
+// bio-verify path was deprecated by Subsystem A (tracking foundation) — this
+// is now an OAuth-only connect card.
 
 export type BioVerifyPlatform = "instagram" | "tiktok" | "facebook";
 
-interface BioVerifyCardProps {
+interface ConnectCardProps {
   platform: BioVerifyPlatform;
   brand: { color: string; gradient?: string; name: string };
   icon: ReactNode;
@@ -13,7 +16,7 @@ interface BioVerifyCardProps {
   oauthAvailable: boolean;
 }
 
-export function BioVerifyCard({ platform, brand, icon, oauthHref, oauthAvailable }: BioVerifyCardProps) {
+export function BioVerifyCard({ brand, icon, oauthHref, oauthAvailable }: ConnectCardProps) {
   return (
     <div
       className="rounded-lg border p-4 flex flex-col gap-3"
@@ -31,42 +34,29 @@ export function BioVerifyCard({ platform, brand, icon, oauthHref, oauthAvailable
             {brand.name}
           </p>
           <p className="text-xs" style={{ color: "var(--text-muted)" }}>
-            Choose how to connect
+            Connect via OAuth to start submitting clips
           </p>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-        <Link
-          href={`/creator/verify?platform=${platform}`}
+      {oauthAvailable ? (
+        <a
+          href={oauthHref}
           className="flex items-center justify-center gap-1.5 px-3 py-2 rounded-md text-xs font-semibold transition-all"
           style={{ background: "var(--primary)", color: "#fff" }}
         >
-          Verify via link in bio
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M5 12h14" /><path d="m12 5 7 7-7 7" />
-          </svg>
-        </Link>
-
-        {oauthAvailable ? (
-          <a
-            href={oauthHref}
-            className="flex items-center justify-center gap-1.5 px-3 py-2 rounded-md text-xs font-medium border transition-all"
-            style={{ borderColor: "var(--border)", color: "var(--text-primary)" }}
-          >
-            Connect via login
-          </a>
-        ) : (
-          <button
-            type="button"
-            disabled
-            className="flex items-center justify-center gap-1.5 px-3 py-2 rounded-md text-xs font-medium border cursor-not-allowed opacity-50"
-            style={{ borderColor: "var(--border)", color: "var(--text-muted)", background: "var(--bg-card)" }}
-          >
-            Login
-          </button>
-        )}
-      </div>
+          Connect {brand.name}
+        </a>
+      ) : (
+        <button
+          type="button"
+          disabled
+          className="flex items-center justify-center gap-1.5 px-3 py-2 rounded-md text-xs font-medium border cursor-not-allowed opacity-50"
+          style={{ borderColor: "var(--border)", color: "var(--text-muted)", background: "var(--bg-card)" }}
+        >
+          Coming soon
+        </button>
+      )}
     </div>
   );
 }

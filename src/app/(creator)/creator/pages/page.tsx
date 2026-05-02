@@ -28,7 +28,6 @@ export default async function PagesPage() {
     where: { userId: user.id },
     include: {
       igConnections: {
-        include: { bioVerifications: { orderBy: { createdAt: "desc" }, take: 1 } },
         orderBy: { createdAt: "desc" },
       },
       fbConnections: {
@@ -154,10 +153,7 @@ export default async function PagesPage() {
         ) : (
           <div className="space-y-2">
             {profile.igConnections.map((conn) => {
-              const bio = conn.bioVerifications[0];
-              const status = conn.isVerified
-                ? "verified"
-                : bio?.status?.toLowerCase() ?? "pending";
+              const status = conn.isVerified ? "verified" : "pending";
               const hasToken = !!conn.accessToken && !!conn.igUserId;
 
               return (
@@ -168,7 +164,7 @@ export default async function PagesPage() {
                 >
                   <div className="flex items-center justify-between gap-4 p-4">
                     <Link
-                      href={hasToken ? `/creator/pages/ig/${conn.id}` : "/creator/verify"}
+                      href={hasToken ? `/creator/pages/ig/${conn.id}` : "/creator/pages"}
                       className="flex items-center gap-3 min-w-0 flex-1 group"
                     >
                       {profilePics.get(conn.id) ? (
@@ -223,22 +219,13 @@ export default async function PagesPage() {
                         >
                           Verified
                         </span>
-                      ) : status === "failed" ? (
-                        <Link
-                          href="/creator/verify"
-                          className="text-xs px-2 py-1 rounded-full font-medium"
-                          style={{ background: "var(--error-bg)", color: "var(--error-text)" }}
-                        >
-                          Failed — retry
-                        </Link>
                       ) : (
-                        <Link
-                          href="/creator/verify"
+                        <span
                           className="text-xs px-2 py-1 rounded-full font-medium"
                           style={{ background: "var(--warning-bg)", color: "var(--warning-text)" }}
                         >
-                          Pending — verify
-                        </Link>
+                          Pending OAuth
+                        </span>
                       )}
                       <RemovePageButton connectionId={conn.id} />
                     </div>
