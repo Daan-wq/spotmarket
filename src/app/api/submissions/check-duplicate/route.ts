@@ -1,33 +1,34 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAuth } from "@/lib/auth";
-import { prisma } from "@/lib/prisma";
+import { findDuplicate } from "@/lib/duplicate-detector";
 
 export async function GET(req: NextRequest) {
   try {
-    const { userId } = await requireAuth("creator");
+    await requireAuth("creator");
 
     const campaignId = req.nextUrl.searchParams.get("campaignId");
     const postUrl = req.nextUrl.searchParams.get("postUrl");
 
-    if (!campaignId || !postUrl) {
+    if (!postUrl) {
       return NextResponse.json({ isDuplicate: false });
     }
 
-    const user = await prisma.user.findUnique({
-      where: { supabaseId: userId },
-      select: { id: true },
-    });
-    if (!user) return NextResponse.json({ isDuplicate: false });
-
-    const existing = await prisma.campaignSubmission.findFirst({
-      where: {
-        campaignId,
-        creatorId: user.id,
-        postUrl,
-      },
+    const dup = await findDuplicate({
+      postUrl,
+      ...(campaignId ? { campaignId } : {}),
     });
 
-    return NextResponse.json({ isDuplicate: !!existing });
+    return NextResponse.json({
+      isDuplicate: !!dup,
+      ...(dup
+        ? {
+            match: {
+              submissionId: dup.submissionId,
+              matchType: dup.matchType,
+            },
+          }
+        : {}),
+    });
   } catch {
     return NextResponse.json({ isDuplicate: false });
   }

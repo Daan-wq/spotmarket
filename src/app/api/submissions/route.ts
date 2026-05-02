@@ -3,6 +3,8 @@ import { prisma } from "@/lib/prisma";
 import { requireAuth } from "@/lib/auth";
 import { z } from "zod";
 import { parseClipUrl, normalizeHandle, type ClipPlatform } from "@/lib/parse-clip-url";
+import { findDuplicate } from "@/lib/duplicate-detector";
+import { publishEvent } from "@/lib/event-bus";
 
 const createSubmissionSchema = z.object({
   applicationId: z.string().min(1),
@@ -15,6 +17,14 @@ const PLATFORM_TO_BIO: Record<ClipPlatform, "INSTAGRAM" | "TIKTOK" | "FACEBOOK" 
   TIKTOK: "TIKTOK",
   FACEBOOK: "FACEBOOK",
   YOUTUBE: null,
+  UNKNOWN: null,
+};
+
+const PLATFORM_TO_EVENT: Record<ClipPlatform, "INSTAGRAM" | "TIKTOK" | "YOUTUBE_SHORTS" | "FACEBOOK" | null> = {
+  INSTAGRAM: "INSTAGRAM",
+  TIKTOK: "TIKTOK",
+  FACEBOOK: "FACEBOOK",
+  YOUTUBE: "YOUTUBE_SHORTS",
   UNKNOWN: null,
 };
 
@@ -64,9 +74,18 @@ export async function POST(req: NextRequest) {
       include: {
         creatorProfile: {
           include: {
-            igConnections: { where: { isVerified: true } },
-            ttConnections: { where: { isVerified: true } },
-            fbConnections: { where: { isVerified: true } },
+            igConnections: {
+              where: { isVerified: true, accessToken: { not: null } },
+            },
+            ttConnections: {
+              where: { isVerified: true, accessToken: { not: null } },
+            },
+            fbConnections: {
+              where: { isVerified: true, accessToken: { not: null } },
+            },
+            ytConnections: {
+              where: { isVerified: true, accessToken: { not: null } },
+            },
           },
         },
       },
@@ -77,17 +96,6 @@ export async function POST(req: NextRequest) {
     }
 
     const profile = creator.creatorProfile;
-    const verifiedIg = profile.igConnections;
-    const verifiedTt = profile.ttConnections;
-    const verifiedFb = profile.fbConnections;
-
-    const hasAnyVerified = verifiedIg.length > 0 || verifiedTt.length > 0 || verifiedFb.length > 0;
-    if (!hasAnyVerified) {
-      return NextResponse.json(
-        { error: "Verify at least one social account before submitting clips" },
-        { status: 400 },
-      );
-    }
 
     const parsed = parseClipUrl(postUrl);
 
@@ -98,47 +106,50 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    // ───────────────────────────────────────────────────────────────────
+    // OAuth-only gate — reject if creator has no verified OAuth connection
+    // on the submission platform. Direct creator to /creator/pages.
+    // ───────────────────────────────────────────────────────────────────
+    const hasOAuthForPlatform =
+      parsed.platform === "INSTAGRAM"
+        ? profile.igConnections.length > 0
+        : parsed.platform === "TIKTOK"
+          ? profile.ttConnections.length > 0
+          : parsed.platform === "FACEBOOK"
+            ? profile.fbConnections.length > 0
+            : parsed.platform === "YOUTUBE"
+              ? profile.ytConnections.length > 0
+              : false;
+
+    if (!hasOAuthForPlatform) {
+      return NextResponse.json(
+        {
+          error: `Connect your ${parsed.platform.toLowerCase()} account before submitting clips.`,
+          action: { label: "Connect account", href: "/creator/pages" },
+        },
+        { status: 400 },
+      );
+    }
+
     // Anti-fraud: confirm the URL author is one of the creator's verified handles
-    // for that platform. Skip when we can't extract the handle from the URL
-    // (short links, IG reel URLs without handle) — admin review covers those.
+    // for that platform when extractable.
     if (parsed.authorHandle) {
       const author = normalizeHandle(parsed.authorHandle);
       let match: string[] = [];
       if (parsed.platform === "INSTAGRAM") {
-        match = verifiedIg.map((c) => c.igUsername.toLowerCase());
+        match = profile.igConnections.map((c) => c.igUsername.toLowerCase());
       } else if (parsed.platform === "TIKTOK") {
-        match = verifiedTt.map((c) => c.username.toLowerCase());
+        match = profile.ttConnections.map((c) => c.username.toLowerCase());
       } else if (parsed.platform === "FACEBOOK") {
         match = [
-          ...verifiedFb.map((c) => (c.pageHandle ?? "").toLowerCase()),
-          ...verifiedFb.map((c) => c.pageName.toLowerCase()),
+          ...profile.fbConnections.map((c) => (c.pageHandle ?? "").toLowerCase()),
+          ...profile.fbConnections.map((c) => c.pageName.toLowerCase()),
         ].filter(Boolean);
       }
 
       if (author && match.length > 0 && !match.includes(author)) {
         return NextResponse.json(
           { error: `URL author @${author} does not match any of your verified ${parsed.platform.toLowerCase()} accounts` },
-          { status: 400 },
-        );
-      }
-    }
-
-    // For platforms we *do* know how to bio-verify (IG/TT/FB), require a
-    // matching verified handle on that platform. For YouTube we only require
-    // *any* verified handle (existing OAuth path).
-    const requiredBioPlatform = PLATFORM_TO_BIO[parsed.platform];
-    if (requiredBioPlatform) {
-      const verifiedForPlatform =
-        requiredBioPlatform === "INSTAGRAM"
-          ? verifiedIg.length > 0
-          : requiredBioPlatform === "TIKTOK"
-            ? verifiedTt.length > 0
-            : verifiedFb.length > 0;
-      if (!verifiedForPlatform) {
-        return NextResponse.json(
-          {
-            error: `Verify at least one ${parsed.platform.toLowerCase()} account before submitting clips from this platform`,
-          },
           { status: 400 },
         );
       }
@@ -153,17 +164,20 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Application not found or unauthorized" }, { status: 404 });
     }
 
-    // Determine submission method: did the creator use OAuth (token present)
-    // for this platform, or only bio-verify?
-    const oauthForPlatform =
-      parsed.platform === "INSTAGRAM"
-        ? verifiedIg.some((c) => c.accessToken)
-        : parsed.platform === "TIKTOK"
-          ? verifiedTt.some((c) => c.accessToken)
-          : parsed.platform === "FACEBOOK"
-            ? verifiedFb.some((c) => c.accessToken)
-            : false;
-    const sourceMethod = oauthForPlatform ? "OAUTH" : "BIO_VERIFY";
+    // Duplicate detection — URL + author handle. Same clip cannot be submitted
+    // twice across the platform (any creator, any campaign).
+    const dup = await findDuplicate({ postUrl });
+    if (dup) {
+      return NextResponse.json(
+        {
+          error: "This clip has already been submitted.",
+          duplicate: { submissionId: dup.submissionId, matchType: dup.matchType },
+        },
+        { status: 409 },
+      );
+    }
+
+    const sourcePlatform = PLATFORM_TO_BIO[parsed.platform];
 
     const submission = await prisma.campaignSubmission.create({
       data: {
@@ -174,9 +188,10 @@ export async function POST(req: NextRequest) {
         screenshotUrl: screenshotUrl ?? null,
         claimedViews: 0,
         status: "PENDING",
-        sourcePlatform: requiredBioPlatform,
-        sourceMethod,
+        sourcePlatform,
+        sourceMethod: "OAUTH",
         authorHandle: parsed.authorHandle,
+        logoStatus: "PENDING",
       },
       select: {
         id: true,
@@ -187,8 +202,21 @@ export async function POST(req: NextRequest) {
         campaignId: true,
         sourcePlatform: true,
         sourceMethod: true,
+        logoStatus: true,
       },
     });
+
+    const eventPlatform = PLATFORM_TO_EVENT[parsed.platform];
+    if (eventPlatform) {
+      await publishEvent({
+        type: "submission.created",
+        submissionId: submission.id,
+        campaignId: app.campaignId,
+        creatorId: creator.id,
+        sourcePlatform: eventPlatform,
+        occurredAt: submission.createdAt.toISOString(),
+      });
+    }
 
     return NextResponse.json({ submission }, { status: 201 });
   } catch (err) {
