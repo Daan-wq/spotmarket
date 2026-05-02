@@ -10,6 +10,9 @@
 -- route handler `verifyCron()` (src/lib/cron-auth.ts) accepts that as a
 -- fallback when no `x-vercel-cron` header is present.
 --
+-- Method: GET. The route handlers under /api/cron/* are GET-only (Vercel cron
+-- triggers GET by default). pg_net.http_get matches.
+--
 -- Reversal (when upgrading to Vercel Pro):
 --   SELECT cron.unschedule('clipprofit-poll-metrics-hot');
 --   SELECT cron.unschedule('clipprofit-poll-metrics-warm');
@@ -17,10 +20,8 @@
 --   SELECT cron.unschedule('clipprofit-notification-dispatch');
 -- Then restore the schedules in vercel.json (see docs/cron-cadence.md).
 --
--- Setup notes:
---   * Replace <CRON_SECRET> below with the real value before running, OR
---     create the vault secret first (already done in the live db on 2026-05-02).
---   * Already-applied to project qdcgmsaaxjylnhrrbvvx on 2026-05-02.
+-- Already-applied to project qdcgmsaaxjylnhrrbvvx on 2026-05-02.
+-- Replace <CRON_SECRET> below with the real value before running on a fresh DB.
 -- ─────────────────────────────────────────────────────────────────────────────
 
 CREATE EXTENSION IF NOT EXISTS pg_cron WITH SCHEMA pg_catalog;
@@ -44,16 +45,14 @@ SELECT cron.schedule(
   'clipprofit-poll-metrics-hot',
   '*/15 * * * *',
   $$
-    SELECT net.http_post(
+    SELECT net.http_get(
       url := 'https://app.clipprofit.com/api/cron/poll-metrics-hot',
       headers := jsonb_build_object(
-        'Content-Type', 'application/json',
         'Authorization', 'Bearer ' || (
           SELECT decrypted_secret FROM vault.decrypted_secrets
           WHERE name = 'clipprofit_cron_secret'
         )
-      ),
-      body := '{}'::jsonb
+      )
     );
   $$
 );
@@ -63,16 +62,14 @@ SELECT cron.schedule(
   'clipprofit-poll-metrics-warm',
   '0 * * * *',
   $$
-    SELECT net.http_post(
+    SELECT net.http_get(
       url := 'https://app.clipprofit.com/api/cron/poll-metrics-warm',
       headers := jsonb_build_object(
-        'Content-Type', 'application/json',
         'Authorization', 'Bearer ' || (
           SELECT decrypted_secret FROM vault.decrypted_secrets
           WHERE name = 'clipprofit_cron_secret'
         )
-      ),
-      body := '{}'::jsonb
+      )
     );
   $$
 );
@@ -82,16 +79,14 @@ SELECT cron.schedule(
   'clipprofit-recompute-benchmarks',
   '0 */6 * * *',
   $$
-    SELECT net.http_post(
+    SELECT net.http_get(
       url := 'https://app.clipprofit.com/api/cron/recompute-benchmarks',
       headers := jsonb_build_object(
-        'Content-Type', 'application/json',
         'Authorization', 'Bearer ' || (
           SELECT decrypted_secret FROM vault.decrypted_secrets
           WHERE name = 'clipprofit_cron_secret'
         )
-      ),
-      body := '{}'::jsonb
+      )
     );
   $$
 );
@@ -101,16 +96,14 @@ SELECT cron.schedule(
   'clipprofit-notification-dispatch',
   '*/15 * * * *',
   $$
-    SELECT net.http_post(
+    SELECT net.http_get(
       url := 'https://app.clipprofit.com/api/cron/notification-dispatch',
       headers := jsonb_build_object(
-        'Content-Type', 'application/json',
         'Authorization', 'Bearer ' || (
           SELECT decrypted_secret FROM vault.decrypted_secrets
           WHERE name = 'clipprofit_cron_secret'
         )
-      ),
-      body := '{}'::jsonb
+      )
     );
   $$
 );
