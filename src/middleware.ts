@@ -52,11 +52,12 @@ export async function middleware(request: NextRequest) {
     }
   );
 
-  // Refresh session — required for Server Components to read auth state
-  const { data: { user } } = await supabase.auth.getUser();
+  // Local JWT verification (no network round-trip to Supabase auth)
+  const { data } = await supabase.auth.getClaims();
+  const claims = data?.claims ?? null;
 
   // Redirect unauthenticated users away from protected routes
-  if (!user && !isPublicRoute(pathname) && pathname !== "/") {
+  if (!claims && !isPublicRoute(pathname) && pathname !== "/") {
     const signInUrl = request.nextUrl.clone();
     signInUrl.pathname = "/sign-in";
     signInUrl.searchParams.set("redirect_url", pathname);
