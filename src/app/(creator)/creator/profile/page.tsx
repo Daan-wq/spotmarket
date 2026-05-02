@@ -2,6 +2,7 @@ import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { prisma } from "@/lib/prisma";
 import { redirect } from "next/navigation";
 import { ProfileClient } from "./_components/profile-client";
+import { ScoreCard } from "@/components/clipper-score/score-card";
 
 export default async function ProfilePage({
   searchParams,
@@ -56,22 +57,27 @@ export default async function ProfilePage({
   }));
 
   return (
-    <ProfileClient
-      initialTab={params.tab ?? "general"}
-      profileData={{
-        displayName: profile.displayName,
-        email: authUser.email ?? "",
-        avatarUrl: profile.avatarUrl,
-        bio: profile.bio,
-        primaryGeo: profile.primaryGeo,
-        experienceLevel: profile.experienceLevel,
-        memberSince: user.createdAt.toISOString(),
-      }}
-      balanceData={{
-        available: availableBalance,
-        pending: pendingBalance,
-        withdrawalHistory,
-      }}
-    />
+    <div className="w-full">
+      <div className="px-6 pt-6">
+        <ScoreCard creatorProfileId={profile.id} />
+      </div>
+      <ProfileClient
+        initialTab={params.tab ?? "general"}
+        profileData={{
+          displayName: profile.displayName,
+          email: authUser.email ?? "",
+          avatarUrl: profile.avatarUrl,
+          bio: profile.bio,
+          primaryGeo: profile.primaryGeo,
+          experienceLevel: profile.experienceLevel,
+          memberSince: user.createdAt.toISOString(),
+        }}
+        balanceData={{
+          available: availableBalance,
+          pending: pendingBalance,
+          withdrawalHistory,
+        }}
+      />
+    </div>
   );
 }

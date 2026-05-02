@@ -1,5 +1,7 @@
 import { requireAuth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { LiveEarnings } from "./_components/live-earnings";
+import { ScoreCard } from "@/components/clipper-score/score-card";
 
 export default async function DashboardPage() {
   const { userId } = await requireAuth("creator");
@@ -71,6 +73,14 @@ export default async function DashboardPage() {
       <h1 className="text-3xl font-bold" style={{ color: "var(--text-primary)" }}>
         Creator Dashboard
       </h1>
+
+      {/* Live Earnings + Performance Score */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+        <div className="lg:col-span-2">
+          <LiveEarnings />
+        </div>
+        <ScoreCard creatorProfileId={profile.id} variant="compact" />
+      </div>
 
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
