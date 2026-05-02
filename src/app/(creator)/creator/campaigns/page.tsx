@@ -1,70 +1,61 @@
-import { requireAuth } from "@/lib/auth";
+import { requireAuth, getCreatorHeader } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { CampaignsClient } from "./_components/campaigns-client";
 
 export default async function CampaignsPage() {
-  const { userId } = await requireAuth("creator");
+  const { userId: supabaseId } = await requireAuth("creator");
 
-  const supabase = await createSupabaseServerClient();
-  const { data: { user: authUser } } = await supabase.auth.getUser();
+  const header = await getCreatorHeader(supabaseId);
+  const creatorProfileId = header?.creatorProfile?.id;
 
-  const user = await prisma.user.findUnique({
-    where: { supabaseId: authUser!.id },
-    select: { creatorProfile: { select: { id: true } } },
-  });
-
-  const creatorProfileId = user?.creatorProfile?.id;
-
-  // Fetch marketplace campaigns
-  const marketplaceCampaigns = await prisma.campaign.findMany({
-    where: { status: "active" },
-    select: {
-      id: true,
-      name: true,
-      description: true,
-      creatorCpv: true,
-      totalBudget: true,
-      platform: true,
-      contentType: true,
-      niche: true,
-      bannerUrl: true,
-      campaignSubmissions: {
-        select: { earnedAmount: true },
+  // Both queries are independent — fetch in parallel
+  const [marketplaceCampaigns, myCampaignApplications] = await Promise.all([
+    prisma.campaign.findMany({
+      where: { status: "active" },
+      select: {
+        id: true,
+        name: true,
+        description: true,
+        creatorCpv: true,
+        totalBudget: true,
+        platform: true,
+        contentType: true,
+        niche: true,
+        bannerUrl: true,
+        campaignSubmissions: {
+          select: { earnedAmount: true },
+        },
       },
-    },
-    orderBy: { createdAt: "desc" },
-  });
-
-  // Fetch "my campaigns" — campaigns the creator has applied to
-  const myCampaignApplications = creatorProfileId
-    ? await prisma.campaignApplication.findMany({
-        where: { creatorProfileId },
-        select: {
-          id: true,
-          status: true,
-          campaign: {
-            select: {
-              id: true,
-              name: true,
-              description: true,
-              creatorCpv: true,
-              totalBudget: true,
-              platform: true,
-              contentType: true,
-              niche: true,
-              bannerUrl: true,
-              campaignSubmissions: {
-                select: { earnedAmount: true },
+      orderBy: { createdAt: "desc" },
+    }),
+    creatorProfileId
+      ? prisma.campaignApplication.findMany({
+          where: { creatorProfileId },
+          select: {
+            id: true,
+            status: true,
+            campaign: {
+              select: {
+                id: true,
+                name: true,
+                description: true,
+                creatorCpv: true,
+                totalBudget: true,
+                platform: true,
+                contentType: true,
+                niche: true,
+                bannerUrl: true,
+                campaignSubmissions: {
+                  select: { earnedAmount: true },
+                },
               },
             },
           },
-        },
-        orderBy: { appliedAt: "desc" },
-      })
-    : [];
+          orderBy: { appliedAt: "desc" },
+        })
+      : Promise.resolve([]),
+  ]);
 
-  // Transform data for client
   const marketplace = marketplaceCampaigns.map((c) => {
     const totalPaid = c.campaignSubmissions.reduce(
       (sum, s) => sum + Number(s.earnedAmount),

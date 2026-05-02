@@ -1,8 +1,6 @@
 import { Suspense } from "react";
 import { redirect } from "next/navigation";
-import { checkRole } from "@/lib/auth";
-import { createSupabaseServerClient } from "@/lib/supabase/server";
-import { prisma } from "@/lib/prisma";
+import { getCurrentRole, getCachedAuthUser, getCreatorHeader } from "@/lib/auth";
 import { CreatorSidebar } from "../_components/creator-sidebar";
 import { BalanceWidget } from "../_components/balance-widget";
 import { BalanceSkeleton } from "../_components/page-skeletons";
@@ -14,25 +12,19 @@ export default async function CreatorLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const isCreator = await checkRole("creator");
-  if (!isCreator) redirect("/unauthorized");
+  const role = await getCurrentRole();
+  if (role !== "creator") redirect("/unauthorized");
 
-  const supabase = await createSupabaseServerClient();
-  const { data: { user: authUser } } = await supabase.auth.getUser();
+  const authUser = await getCachedAuthUser();
 
   let userName = "Creator";
   let creatorProfileId: string | null = null;
 
   if (authUser) {
-    const user = await prisma.user.findUnique({
-      where: { supabaseId: authUser.id },
-      select: {
-        creatorProfile: { select: { displayName: true, id: true } },
-      },
-    });
-    if (user?.creatorProfile) {
-      userName = user.creatorProfile.displayName;
-      creatorProfileId = user.creatorProfile.id;
+    const header = await getCreatorHeader(authUser.id);
+    if (header?.creatorProfile) {
+      userName = header.creatorProfile.displayName;
+      creatorProfileId = header.creatorProfile.id;
     }
   }
 
