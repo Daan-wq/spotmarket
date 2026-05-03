@@ -3,6 +3,7 @@
 import { Fragment, useState, useMemo } from "react";
 import Link from "next/link";
 import PlatformIcon from "@/components/shared/PlatformIcon";
+import { EmptyState } from "@/components/ui/empty-state";
 
 interface UnderperformInfo {
   weakDimensions: string[];
@@ -47,18 +48,32 @@ function relativeTime(dateStr: string) {
   return `${days} day${days > 1 ? "s" : ""} ago`;
 }
 
+type SortKey = "newest" | "most-views" | "highest-earned";
+
+const SORT_OPTIONS: Array<{ key: SortKey; label: string }> = [
+  { key: "newest", label: "Newest" },
+  { key: "most-views", label: "Most views" },
+  { key: "highest-earned", label: "Highest earned" },
+];
+
 export function VideosClient({ videos, statusCounts }: VideosClientProps) {
   const [activeTab, setActiveTab] = useState("ALL");
+  const [sort, setSort] = useState<SortKey>("newest");
 
   const filtered = useMemo(() => {
-    if (activeTab === "ALL") return videos;
-    return videos.filter((v) => v.status === activeTab);
-  }, [videos, activeTab]);
+    const base = activeTab === "ALL" ? videos : videos.filter((v) => v.status === activeTab);
+    const sorted = [...base];
+    if (sort === "most-views") sorted.sort((a, b) => b.views - a.views);
+    else if (sort === "highest-earned") sorted.sort((a, b) => b.earned - a.earned);
+    else sorted.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+    return sorted;
+  }, [videos, activeTab, sort]);
 
   return (
     <div className="p-6 w-full">
-      {/* Status Tabs */}
-      <div className="flex items-center gap-1 mb-6 flex-wrap">
+      {/* Status Tabs + Sort */}
+      <div className="flex items-center gap-3 mb-6 flex-wrap">
+        <div className="flex items-center gap-1 flex-wrap">
         {STATUS_TABS.map((tab) => {
           const active = activeTab === tab.key;
           const count = statusCounts[tab.key] ?? 0;
@@ -86,13 +101,47 @@ export function VideosClient({ videos, statusCounts }: VideosClientProps) {
             </button>
           );
         })}
+        </div>
+        <div className="ml-auto flex items-center gap-2 text-sm">
+          <span style={{ color: "var(--text-muted)" }}>Sort</span>
+          <select
+            value={sort}
+            onChange={(e) => setSort(e.target.value as SortKey)}
+            className="px-3 py-1.5 rounded-md text-sm outline-none cursor-pointer"
+            style={{
+              background: "var(--bg-card)",
+              border: "1px solid var(--border-default)",
+              color: "var(--text-primary)",
+            }}
+          >
+            {SORT_OPTIONS.map((o) => (
+              <option key={o.key} value={o.key}>{o.label}</option>
+            ))}
+          </select>
+        </div>
       </div>
 
       {/* Table */}
       {filtered.length === 0 ? (
-        <div className="text-center py-16">
-          <p className="text-lg font-semibold" style={{ color: "var(--text-primary)" }}>No submissions yet</p>
-        </div>
+        videos.length === 0 ? (
+          <EmptyState
+            icon={
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <polygon points="23 7 16 12 23 17 23 7" />
+                <rect x="1" y="5" width="15" height="14" rx="2" ry="2" />
+              </svg>
+            }
+            title="No clips yet"
+            description="Submit your first clip from a campaign you've joined to start earning."
+            primaryCta={{ label: "Browse campaigns", href: "/creator/campaigns" }}
+            secondaryCta={{ label: "Connect an account", href: "/creator/connections" }}
+          />
+        ) : (
+          <EmptyState
+            title={`No ${activeTab.toLowerCase()} clips`}
+            description="Try a different status tab or sort."
+          />
+        )
       ) : (
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
@@ -104,6 +153,7 @@ export function VideosClient({ videos, statusCounts }: VideosClientProps) {
                 <th className="text-left py-3 px-2 font-medium" style={{ color: "var(--text-muted)" }}>Money earned</th>
                 <th className="text-left py-3 px-2 font-medium" style={{ color: "var(--text-muted)" }}>Views</th>
                 <th className="text-left py-3 px-2 font-medium" style={{ color: "var(--text-muted)" }}>Platform</th>
+                <th className="text-right py-3 px-2 font-medium" style={{ color: "var(--text-muted)" }}></th>
               </tr>
             </thead>
             <tbody>
@@ -155,10 +205,30 @@ export function VideosClient({ videos, statusCounts }: VideosClientProps) {
                       <PlatformIcon platform={video.platform} size={28} />
                     </Link>
                   </td>
+                  <td className="py-3 px-2 text-right">
+                    {video.postUrl ? (
+                      <a
+                        href={video.postUrl}
+                        target="_blank"
+                        rel="noreferrer noopener"
+                        onClick={(e) => e.stopPropagation()}
+                        className="inline-flex items-center gap-1 text-xs font-medium underline-offset-2 hover:underline"
+                        style={{ color: "var(--accent-foreground)" }}
+                        title="Open post in new tab"
+                      >
+                        Open
+                        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
+                          <polyline points="15 3 21 3 21 9" />
+                          <line x1="10" y1="14" x2="21" y2="3" />
+                        </svg>
+                      </a>
+                    ) : null}
+                  </td>
                 </tr>
                 {video.underperform && (
                   <tr style={{ borderBottom: "1px solid var(--border-default)" }}>
-                    <td colSpan={6} className="py-2 px-2">
+                    <td colSpan={7} className="py-2 px-2">
                       <UnderperformNotice info={video.underperform} />
                     </td>
                   </tr>
