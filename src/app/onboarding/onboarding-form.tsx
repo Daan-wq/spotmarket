@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { StepIndicator } from "@/components/onboarding/step-indicator";
 
@@ -33,8 +34,9 @@ interface FormData {
   experienceLevel: string;
 }
 
-const STEP_LABELS = ["Source", "Info", "Niche", "Experience"];
+const STEP_LABELS = ["Source", "Info", "Niche", "Experience", "Done"];
 const TOTAL_STEPS = STEP_LABELS.length;
+const FORM_STEPS = STEP_LABELS.length - 1; // last step is the completion screen
 
 export function OnboardingForm() {
   const router = useRouter();
@@ -88,8 +90,9 @@ export function OnboardingForm() {
         const data = await res.json();
         throw new Error(data.error ?? "Failed to complete setup");
       }
-      const data = await res.json();
-      router.push(data.redirect ?? "/");
+      // Advance to the completion screen instead of redirecting immediately —
+      // gives the user a clear "what next" moment with explicit CTAs.
+      setStep(TOTAL_STEPS);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Something went wrong");
     } finally {
@@ -98,7 +101,7 @@ export function OnboardingForm() {
   }
 
   function handleNext() {
-    if (step === TOTAL_STEPS) {
+    if (step === FORM_STEPS) {
       handleSubmit();
     } else {
       setStep(step + 1);
@@ -240,6 +243,53 @@ export function OnboardingForm() {
         </div>
       )}
 
+      {/* Step 5: Completion */}
+      {step === TOTAL_STEPS && (
+        <div className="text-center">
+          <div
+            className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full"
+            style={{ background: "var(--success-bg)", color: "var(--success-text)" }}
+          >
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <polyline points="20 6 9 17 4 12" />
+            </svg>
+          </div>
+          <h2 className="text-xl font-bold text-gray-900">You&apos;re set up</h2>
+          <p className="mt-1.5 text-sm text-gray-600 max-w-sm mx-auto">
+            Two more things unlock your first payout: connecting a social
+            account and joining a campaign. Pick one to start.
+          </p>
+
+          <div className="mt-6 grid gap-2.5">
+            <Link
+              href="/creator/connections"
+              className="block py-3 rounded-xl text-sm font-semibold text-white transition-colors"
+              style={{ background: "var(--accent)" }}
+            >
+              Connect a social account
+            </Link>
+            <Link
+              href="/creator/campaigns"
+              className="block py-3 rounded-xl text-sm font-semibold transition-colors"
+              style={{
+                border: "1.5px solid #e2e8f0",
+                color: "#374151",
+                background: "#fff",
+              }}
+            >
+              Browse campaigns
+            </Link>
+            <button
+              type="button"
+              onClick={() => router.push("/creator/dashboard")}
+              className="text-xs font-medium text-gray-500 hover:text-gray-700 mt-1"
+            >
+              Skip for now — go to dashboard
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Error */}
       {error && (
         <p className="text-sm px-3 py-2 rounded-lg mt-4" style={{ color: "var(--error)", background: "var(--error-bg)" }}>
@@ -247,25 +297,27 @@ export function OnboardingForm() {
         </p>
       )}
 
-      {/* Navigation */}
-      <div className="flex gap-3 mt-6">
-        {step > 1 && (
+      {/* Navigation — hidden on the completion step (it has its own CTAs) */}
+      {step < TOTAL_STEPS && (
+        <div className="flex gap-3 mt-6">
+          {step > 1 && (
+            <button
+              onClick={() => setStep(step - 1)}
+              className="flex-1 py-3 rounded-xl text-sm font-semibold transition-colors cursor-pointer text-gray-600 bg-gray-100 hover:bg-gray-200"
+            >
+              Back
+            </button>
+          )}
           <button
-            onClick={() => setStep(step - 1)}
-            className="flex-1 py-3 rounded-xl text-sm font-semibold transition-colors cursor-pointer text-gray-600 bg-gray-100 hover:bg-gray-200"
+            onClick={handleNext}
+            disabled={!canProceed() || loading}
+            className="flex-1 py-3 rounded-xl text-sm font-semibold text-white transition-colors disabled:opacity-40 cursor-pointer"
+            style={{ background: "var(--accent)" }}
           >
-            Back
+            {loading ? "Setting up..." : step === FORM_STEPS ? "Get started" : "Next"}
           </button>
-        )}
-        <button
-          onClick={handleNext}
-          disabled={!canProceed() || loading}
-          className="flex-1 py-3 rounded-xl text-sm font-semibold text-white transition-colors disabled:opacity-40 cursor-pointer"
-          style={{ background: "var(--accent)" }}
-        >
-          {loading ? "Setting up..." : step === TOTAL_STEPS ? "Get started" : "Next"}
-        </button>
-      </div>
+        </div>
+      )}
     </div>
   );
 }

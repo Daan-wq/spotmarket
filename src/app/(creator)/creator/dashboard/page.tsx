@@ -4,6 +4,10 @@ import { prisma } from "@/lib/prisma";
 import { Skeleton } from "@/components/ui/skeleton";
 import { LiveEarnings } from "./_components/live-earnings";
 import { ScoreCard } from "@/components/clipper-score/score-card";
+import { getActivationStatus } from "@/lib/activation";
+import { WelcomeHeader } from "./_components/welcome-header";
+import { DashboardAlerts } from "./_components/dashboard-alerts";
+import { ActivationCard } from "./_components/activation-card";
 
 export default async function DashboardPage() {
   const { userId: supabaseId } = await requireAuth("creator");
@@ -14,20 +18,27 @@ export default async function DashboardPage() {
 
   const userId = header.id;
   const profileId = header.creatorProfile.id;
+  const displayName = header.creatorProfile.displayName;
 
   // All independent — single round-trip to the DB pool
   const [
     earningsResult,
+    paidResult,
     activeCampaigns,
     pendingSubmissions,
     igConnections,
     fbConnections,
     ytConnections,
     ttConnections,
+    activation,
   ] = await Promise.all([
     prisma.campaignSubmission.aggregate({
       where: { creatorId: userId, status: "APPROVED" },
       _sum: { earnedAmount: true },
+    }),
+    prisma.payout.aggregate({
+      where: { creatorProfile: { userId }, status: { in: ["confirmed", "sent"] } },
+      _sum: { amount: true },
     }),
     prisma.campaignApplication.count({
       where: {
@@ -42,9 +53,16 @@ export default async function DashboardPage() {
     prisma.creatorFbConnection.findMany({ where: { creatorProfileId: profileId }, select: { isVerified: true } }),
     prisma.creatorYtConnection.findMany({ where: { creatorProfileId: profileId }, select: { isVerified: true } }),
     prisma.creatorTikTokConnection.findMany({ where: { creatorProfileId: profileId }, select: { isVerified: true } }),
+    getActivationStatus(userId),
   ]);
 
-  const totalEarnings = earningsResult._sum.earnedAmount || 0;
+  const totalEarnings = Number(earningsResult._sum.earnedAmount || 0);
+  const totalPaid = Number(paidResult._sum.amount || 0);
+  const hasUnpaidBalance = totalEarnings - totalPaid > 0;
+
+  const statusLine = activation.fullyActivated
+    ? `${pendingSubmissions} ${pendingSubmissions === 1 ? "clip" : "clips"} awaiting review.`
+    : "Finish setup so you can start earning.";
 
   const platforms = [
     { connected: igConnections.length > 0, verified: igConnections.some(c => c.isVerified) },
@@ -58,9 +76,14 @@ export default async function DashboardPage() {
 
   return (
     <div className="p-6 space-y-6">
-      <h1 className="text-3xl font-bold" style={{ color: "var(--text-primary)" }}>
-        Creator Dashboard
-      </h1>
+      <WelcomeHeader displayName={displayName} status={statusLine} />
+
+      <DashboardAlerts
+        activation={activation}
+        hasUnpaidBalance={hasUnpaidBalance}
+      />
+
+      <ActivationCard activation={activation} />
 
       {/* Live Earnings + Performance Score */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
