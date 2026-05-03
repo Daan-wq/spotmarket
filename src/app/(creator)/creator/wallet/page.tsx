@@ -12,6 +12,7 @@ interface Withdrawal {
 
 export default function WalletPage() {
   const [balance, setBalance] = useState<number>(0);
+  const [totalEarnings, setTotalEarnings] = useState<number>(0);
   const [withdrawals, setWithdrawals] = useState<Withdrawal[]>([]);
   const [loading, setLoading] = useState(true);
   const [showWithdraw, setShowWithdraw] = useState(false);
@@ -30,6 +31,7 @@ export default function WalletPage() {
       if (res.ok) {
         const data = await res.json();
         setBalance(data.balance);
+        setTotalEarnings(data.totalEarnings ?? data.balance);
         setWithdrawals(data.withdrawals);
       }
     } catch (err) {
@@ -100,12 +102,15 @@ export default function WalletPage() {
         className="rounded-lg p-6 border mb-6"
         style={{ background: "var(--bg-card)", borderColor: "var(--border)" }}
       >
-        <p className="text-sm mb-1" style={{ color: "var(--text-secondary)" }}>Available Balance</p>
+        <p className="text-sm mb-1" style={{ color: "var(--text-secondary)" }}>Total Earnings</p>
         <p className="text-4xl font-bold" style={{ color: "var(--text-primary)" }}>
-          ${balance.toFixed(2)}
+          ${totalEarnings.toFixed(2)}
+        </p>
+        <p className="text-sm mt-3" style={{ color: "var(--text-secondary)" }}>
+          Available to withdraw: <strong style={{ color: "var(--text-primary)" }}>${balance.toFixed(2)}</strong>
         </p>
         <p className="text-xs mt-2" style={{ color: "var(--text-secondary)" }}>
-          Campaign earnings are credited to your wallet after a campaign has ended.
+          Campaign earnings are credited to your withdrawable balance after a campaign has ended.
         </p>
 
         <div className="mt-4">

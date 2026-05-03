@@ -6,6 +6,7 @@ import { VideoGrid } from "@/components/shared/VideoGrid";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import DailyInsightsCard from "@/components/insights/DailyInsightsCard";
+import { DemographicForm } from "./_components/demographic-form";
 
 const TT_DAILY_INSIGHTS_METRICS = [
   { key: "views", label: "Views", color: "#6366F1" },
@@ -52,13 +53,14 @@ export default async function TikTokPageDetailPage({ params }: PageDetailProps) 
   const ttProfile = profileResult.status === "fulfilled" ? profileResult.value : null;
   const videos = videosResult.status === "fulfilled" ? videosResult.value.videos : [];
 
-  // Demographics auto-pull replaces the prior screenshot review flow.
-  // The latest AudienceSnapshot for this connection is rendered below;
-  // populated by the `poll-demographics` cron via TikTok Business API
-  // (gated on TIKTOK_BUSINESS_API approval).
   const latestAudience = await prisma.audienceSnapshot.findFirst({
     where: { connectionType: "TT", connectionId: conn.id },
     orderBy: { capturedAt: "desc" },
+  });
+  const latestSubmission = await prisma.tikTokDemographicSubmission.findFirst({
+    where: { connectionId: conn.id },
+    orderBy: { createdAt: "desc" },
+    select: { id: true, status: true, reviewNotes: true, createdAt: true },
   });
   const audienceAges =
     latestAudience && typeof latestAudience.ageBuckets === "object" && latestAudience.ageBuckets !== null
@@ -193,7 +195,7 @@ export default async function TikTokPageDetailPage({ params }: PageDetailProps) 
             {latestAudience && (
               <span className="text-[10px] px-2 py-0.5 rounded-full font-medium uppercase"
                 style={{ background: "var(--success-bg)", color: "var(--success-text)" }}>
-                AUTO-PULL
+                {latestAudience.source === "SELF_REPORT" ? "VERIFIED" : "AUTO-PULL"}
               </span>
             )}
           </div>
@@ -240,11 +242,22 @@ export default async function TikTokPageDetailPage({ params }: PageDetailProps) 
                 </div>
               </div>
             </>
+          ) : latestSubmission?.status === "PENDING" ? (
+            <div
+              className="text-sm px-3 py-3 rounded-md"
+              style={{ background: "var(--warning-bg)", color: "var(--warning-text)" }}
+            >
+              <p className="font-semibold">Submission under review</p>
+              <p className="text-xs mt-1 opacity-80">
+                Submitted {new Date(latestSubmission.createdAt).toLocaleString()}. We&rsquo;ll
+                notify you once an admin reviews your recording.
+              </p>
+            </div>
           ) : (
-            <p className="text-sm" style={{ color: "var(--text-muted)" }}>
-              Audience demographics will appear here automatically once TikTok Business API
-              data is available for this account.
-            </p>
+            <DemographicForm
+              connectionId={conn.id}
+              declineReason={latestSubmission?.status === "FAILED" ? latestSubmission.reviewNotes ?? undefined : undefined}
+            />
           )}
         </div>
 

@@ -38,6 +38,7 @@ const NAV: NavSection[] = [
       { href: "/admin/campaigns", label: "All Campaigns", icon: "🎯" },
       { href: "/admin/submissions", label: "Submissions", icon: "📤" },
       { href: "/admin/review/videos", label: "Video review", icon: "🎬", description: "Logo verification queue" },
+      { href: "/admin/tiktok-demographics", label: "TT demographics", icon: "📊", description: "Creator-submitted TikTok audience" },
     ],
   },
   {

@@ -33,6 +33,12 @@ export interface MetricFetcherSuccess {
   watchTimeSec: number | null;
   reachCount: number | null;
   raw?: unknown;
+  // Track-everything Phase 1 — per-media breakdowns when the platform exposes them.
+  totalInteractions?: number | null;
+  followsFromMedia?: number | null;
+  profileVisits?: number | null;
+  profileActivity?: Record<string, number | null> | null;
+  reactionsByType?: Record<string, number> | null;
 }
 
 export interface MetricFetcherFailure {
@@ -99,7 +105,7 @@ export async function routeMetric(
         (c) => (c.igUsername ?? "").toLowerCase(),
       );
       if (!conn) return failure("NO_CONNECTION", "No verified IG OAuth connection", null);
-      return await fetchInstagramMetric(conn, parsed);
+      return await fetchInstagramMetric(conn, parsed, submission.id);
     }
     case "TIKTOK": {
       const conn = await pickConnection(parsed, async () =>
@@ -114,7 +120,7 @@ export async function routeMetric(
         (c) => (c.username ?? "").toLowerCase(),
       );
       if (!conn) return failure("NO_CONNECTION", "No verified TT OAuth connection", null);
-      return await fetchTikTokMetric(conn, parsed);
+      return await fetchTikTokMetric(conn, parsed, submission.id);
     }
     case "YOUTUBE": {
       const conns = await prisma.creatorYtConnection.findMany({
@@ -145,7 +151,7 @@ export async function routeMetric(
         (c) => [(c.pageHandle ?? "").toLowerCase(), (c.pageName ?? "").toLowerCase()].filter(Boolean).join("|"),
       );
       if (!conn) return failure("NO_CONNECTION", "No verified FB OAuth connection", null);
-      return await fetchFacebookMetric(conn, parsed);
+      return await fetchFacebookMetric(conn, parsed, submission.id);
     }
   }
 }

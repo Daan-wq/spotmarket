@@ -17,7 +17,8 @@ import {
   fetchFbAudience,
   type AudienceFetchResult,
 } from "@/lib/audience-fetcher";
-import { Prisma } from "@prisma/client";
+import { recordRawApiResponse } from "@/lib/metrics/raw-storage";
+import { Prisma, type AudienceKind } from "@prisma/client";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 300;
@@ -114,27 +115,59 @@ async function persist(
   type: "IG" | "TT" | "YT" | "FB",
   connectionId: string,
 ): Promise<boolean> {
-  if (!result.ok || !result.audience) return false;
+  if (!result.ok) return false;
 
-  const snap = await prisma.audienceSnapshot.create({
-    data: {
-      connectionType: type,
+  // Multi-variant flow (e.g. IG returns FOLLOWER + ENGAGED). Falls back to the
+  // single `audience` field for platforms that only return one variant.
+  const variants =
+    result.variants && result.variants.length > 0
+      ? result.variants
+      : result.audience
+        ? [{ kind: "FOLLOWER" as AudienceKind, audience: result.audience, raw: undefined }]
+        : [];
+
+  if (variants.length === 0) return false;
+
+  for (const v of variants) {
+    const snap = await prisma.audienceSnapshot.create({
+      data: {
+        connectionType: type,
+        connectionId,
+        source: "PLATFORM_API",
+        kind: v.kind,
+        ageBuckets: v.audience.ageBuckets as Prisma.InputJsonValue,
+        genderSplit: v.audience.genderSplit as Prisma.InputJsonValue,
+        topCountries: v.audience.topCountries as unknown as Prisma.InputJsonValue,
+        cities:
+          v.audience.cities == null
+            ? Prisma.JsonNull
+            : (v.audience.cities as Prisma.InputJsonValue),
+        totalReach: v.audience.totalReach,
+        raw: v.raw == null ? Prisma.JsonNull : (v.raw as Prisma.InputJsonValue),
+      },
+      select: { id: true, capturedAt: true },
+    });
+
+    if (v.raw != null) {
+      await recordRawApiResponse({
+        connectionType: type,
+        connectionId,
+        endpoint:
+          v.kind === "ENGAGED"
+            ? `${type.toLowerCase()}.user.demographics.engaged`
+            : `${type.toLowerCase()}.user.demographics.followers`,
+        payload: v.raw,
+      });
+    }
+
+    await publishEvent({
+      type: "submission.demographics.refreshed",
       connectionId,
-      source: "PLATFORM_API",
-      ageBuckets: result.audience.ageBuckets as Prisma.InputJsonValue,
-      genderSplit: result.audience.genderSplit as Prisma.InputJsonValue,
-      topCountries: result.audience.topCountries as unknown as Prisma.InputJsonValue,
-      totalReach: result.audience.totalReach,
-    },
-    select: { id: true, capturedAt: true },
-  });
+      connectionType: type,
+      snapshotId: snap.id,
+      occurredAt: snap.capturedAt.toISOString(),
+    });
+  }
 
-  await publishEvent({
-    type: "submission.demographics.refreshed",
-    connectionId,
-    connectionType: type,
-    snapshotId: snap.id,
-    occurredAt: snap.capturedAt.toISOString(),
-  });
   return true;
 }

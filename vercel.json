@@ -35,6 +35,22 @@
     {
       "path": "/api/cron/notification-dispatch",
       "schedule": "20 0 * * *"
+    },
+    {
+      "path": "/api/cron/prune-raw-responses",
+      "schedule": "30 4 * * *"
+    },
+    {
+      "path": "/api/cron/poll-stories",
+      "schedule": "0 4 * * *"
+    },
+    {
+      "path": "/api/cron/poll-yt-analytics",
+      "schedule": "45 1 * * *"
+    },
+    {
+      "path": "/api/cron/poll-platform-account-snapshots",
+      "schedule": "10 2 * * *"
     }
   ]
 }

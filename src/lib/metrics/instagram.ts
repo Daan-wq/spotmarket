@@ -2,15 +2,26 @@
  * Instagram OAuth metric fetcher.
  *
  * Owner: A. Resolves a submission's post URL against the creator's recent
- * media list (Instagram Graph API v25), returning structured metrics or an
- * OAUTH_FAILED result with a reason code.
+ * media list (Instagram Graph API v25), classifies the media (FEED / REEL /
+ * STORY), pulls the media-type-aware lifetime insights via `fetchMediaInsights`,
+ * archives the full payload via `recordRawApiResponse`, and returns structured
+ * metrics including the per-media breakdowns (`total_interactions`, `follows`,
+ * `profile_visits`, `profile_activity`).
+ *
+ * The legacy `getSingleMediaInsights` path used `impressions` + `video_views`,
+ * both deprecated 2025-04-21 for v22.0+. Do not reintroduce it.
  */
 
 import type { CreatorIgConnection } from "@prisma/client";
 import { decrypt } from "@/lib/crypto";
-import { fetchRecentMedia, getSingleMediaInsights } from "@/lib/instagram";
+import {
+  fetchRecentMedia,
+  fetchMediaInsights,
+  type MediaInsightType,
+} from "@/lib/instagram";
 import type { ParsedClipUrl } from "@/lib/parse-clip-url";
 import { failure, type MetricFetcherResult } from "./router";
+import { recordRawApiResponse } from "./raw-storage";
 
 /**
  * IG media list returns up to 100 recent posts at once. We page until we either
@@ -18,9 +29,28 @@ import { failure, type MetricFetcherResult } from "./router";
  */
 const MAX_PAGES = 3;
 
+interface MatchedMedia {
+  id: string;
+  mediaType: string;
+  mediaProductType: string;
+  permalink: string;
+  timestamp: string;
+  caption: string | null;
+  likeCount: number;
+  commentCount: number;
+}
+
+function classifyMedia(m: { mediaType: string; mediaProductType: string }): MediaInsightType {
+  const product = (m.mediaProductType ?? "").toUpperCase();
+  if (product === "REELS" || product === "REEL") return "REEL";
+  if (product === "STORY") return "STORY";
+  return "FEED";
+}
+
 export async function fetchInstagramMetric(
   conn: CreatorIgConnection,
   parsed: ParsedClipUrl,
+  submissionId?: string,
 ): Promise<MetricFetcherResult> {
   if (!conn.accessToken || !conn.accessTokenIv) {
     return failure("NO_TOKEN", "IG connection missing access token", { type: "IG", id: conn.id });
@@ -44,8 +74,7 @@ export async function fetchInstagramMetric(
   // the parsed URL. IG permalinks look like https://www.instagram.com/reel/<shortcode>/.
   const targetPostId = parsed.postId?.toLowerCase();
   let cursor: string | undefined = undefined;
-  let foundMediaId: string | null = null;
-  let summary: { likes: number; comments: number } | null = null;
+  let matched: MatchedMedia | null = null;
 
   for (let page = 0; page < MAX_PAGES; page++) {
     let result: Awaited<ReturnType<typeof fetchRecentMedia>>;
@@ -61,48 +90,117 @@ export async function fetchInstagramMetric(
     for (const media of result.media) {
       const permalink = (media.permalink ?? "").toLowerCase();
       if (
-        (targetPostId && permalink.includes(`/${targetPostId}/`)) ||
-        (targetPostId && permalink.includes(targetPostId))
+        targetPostId &&
+        (permalink.includes(`/${targetPostId}/`) || permalink.includes(targetPostId))
       ) {
-        foundMediaId = media.id;
-        summary = { likes: media.like_count ?? 0, comments: media.comments_count ?? 0 };
+        matched = {
+          id: media.id,
+          mediaType: media.media_type ?? "",
+          mediaProductType: media.media_product_type ?? "",
+          permalink: media.permalink ?? "",
+          timestamp: media.timestamp ?? "",
+          caption: media.caption ?? null,
+          likeCount: media.like_count ?? 0,
+          commentCount: media.comments_count ?? 0,
+        };
         break;
       }
     }
-    if (foundMediaId) break;
+    if (matched) break;
     if (!result.nextCursor) break;
     cursor = result.nextCursor;
   }
 
-  if (!foundMediaId || !summary) {
+  if (!matched) {
     return failure("POST_NOT_FOUND", `IG post ${parsed.postId} not found in recent media`, {
       type: "IG",
       id: conn.id,
     });
   }
 
-  // Pull video views / reach via insights when available. Non-fatal on failure.
-  let viewCount = 0;
-  let reachCount: number | null = null;
-  try {
-    const insights = await getSingleMediaInsights(foundMediaId, token);
-    viewCount = insights.videoViews || insights.impressions || 0;
-    reachCount = insights.reach || null;
-  } catch {
-    // Stories/non-video media may not return video_views. Fall back to 0.
-  }
+  const mediaType = classifyMedia(matched);
+  const insights = await fetchMediaInsights(matched.id, token, mediaType);
+
+  // Build the profile_activity breakdown only when at least one bucket is non-null,
+  // so we don't bloat MetricSnapshot rows with empty `{}` for REEL media.
+  const profileActivity =
+    insights.profileActivityBioLink == null &&
+    insights.profileActivityCall == null &&
+    insights.profileActivityDirection == null &&
+    insights.profileActivityEmail == null &&
+    insights.profileActivityText == null
+      ? null
+      : {
+          BIO_LINK_CLICKED: insights.profileActivityBioLink,
+          CALL: insights.profileActivityCall,
+          DIRECTION: insights.profileActivityDirection,
+          EMAIL: insights.profileActivityEmail,
+          TEXT: insights.profileActivityText,
+        };
+
+  // Watch time seconds — prefer total_watch_time, fall back to avg_watch_time
+  const watchTimeSec =
+    insights.totalWatchTime != null
+      ? Math.round(insights.totalWatchTime)
+      : insights.avgWatchTime != null
+        ? Math.round(insights.avgWatchTime)
+        : null;
+
+  // Best-effort views — REEL/FEED return `views`; STORY also returns `views`.
+  const viewCount = insights.views ?? 0;
+  const likeCount = insights.likes ?? matched.likeCount;
+  const commentCount = insights.comments ?? matched.commentCount;
+  const shareCount = insights.shares ?? 0;
+  const saveCount = insights.saved ?? null;
+  const reachCount = insights.reach ?? null;
+
+  const rawPayload = {
+    media: matched,
+    mediaType,
+    insights,
+  };
+
+  // Fire-and-forget archival; failures are logged but never block the poll.
+  await recordRawApiResponse({
+    submissionId: submissionId ?? null,
+    connectionType: "IG",
+    connectionId: conn.id,
+    endpoint: "instagram.media.insights",
+    payload: rawPayload,
+  });
 
   return {
     ok: true,
     source: "OAUTH_IG",
     viewCount: BigInt(viewCount),
-    likeCount: summary.likes,
-    commentCount: summary.comments,
-    shareCount: 0,
-    saveCount: null,
-    watchTimeSec: null,
+    likeCount,
+    commentCount,
+    shareCount,
+    saveCount,
+    watchTimeSec,
     reachCount,
-    raw: { mediaId: foundMediaId },
+    totalInteractions: insights.totalInteractions ?? null,
+    followsFromMedia: insights.follows ?? null,
+    profileVisits: insights.profileVisits ?? null,
+    profileActivity,
+    reactionsByType: null,
+    // Keep `raw` lightweight — full payload lives in RawApiResponse.
+    raw: {
+      mediaId: matched.id,
+      mediaType,
+      mediaProductType: matched.mediaProductType,
+      permalink: matched.permalink,
+      timestamp: matched.timestamp,
+      navigation:
+        mediaType === "STORY"
+          ? {
+              TAP_FORWARD: insights.navigationForward,
+              TAP_BACK: insights.navigationBack,
+              TAP_EXIT: insights.navigationExit,
+              SWIPE_FORWARD: insights.navigationNextStory,
+            }
+          : null,
+      replies: insights.replies ?? null,
+    },
   };
 }
-

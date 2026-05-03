@@ -753,6 +753,12 @@ model MetricSnapshot {
   watchTimeSec Int?
   reachCount   Int?
   raw          Json?
+  // Track-everything extensions (PR1 — additive, populated by per-platform PRs)
+  totalInteractions Int?
+  followsFromMedia  Int?
+  profileVisits     Int?
+  profileActivity   Json?
+  reactionsByType   Json?
 
   @@index([submissionId, capturedAt])
   @@index([source])
@@ -804,12 +810,16 @@ model AudienceSnapshot {
   connectionId   String
   capturedAt     DateTime          @default(now())
   source         DemographicSource
+  kind           AudienceKind      @default(FOLLOWER)
   ageBuckets     Json
   genderSplit    Json
   topCountries   Json
+  cities         Json?
   totalReach     Int?
+  raw            Json?
 
   @@index([connectionType, connectionId, capturedAt])
+  @@index([connectionType, connectionId, kind, capturedAt])
 }
 
 enum ConnectionType {
@@ -822,6 +832,143 @@ enum ConnectionType {
 enum DemographicSource {
   PLATFORM_API
   SELF_REPORT
+}
+
+enum AudienceKind {
+  FOLLOWER
+  ENGAGED
+}
+
+/// Escape hatch for full raw API payloads. Pruned by daily cron at 90 days.
+/// Keeps `MetricSnapshot` lean while preserving the original API response so
+/// we can re-derive metrics if Meta/YouTube/TikTok rename or deprecate fields.
+model RawApiResponse {
+  id             String         @id @default(cuid())
+  submissionId   String?
+  connectionType ConnectionType
+  connectionId   String
+  endpoint       String
+  capturedAt     DateTime       @default(now())
+  payload        Json
+
+  @@index([submissionId, capturedAt])
+  @@index([connectionType, connectionId, capturedAt])
+  @@index([capturedAt])
+}
+
+/// Instagram Stories — captured by `/api/cron/poll-stories` (hourly) and the
+/// webhook handler (when active). Stories expire 24h after posting via API,
+/// so we poll within the live window and snapshot lifetime metrics.
+/// `postedAt` is the moment the story went live; engagement on a Reel posted
+/// near that time is correlated via `StoryReelCorrelation`.
+model StoryPost {
+  id                String                 @id @default(cuid())
+  connectionId      String
+  mediaId           String                 @unique
+  postedAt          DateTime
+  expiresAt         DateTime?
+  mediaType         String
+  mediaProductType  String
+  permalink         String?
+  reach             Int?
+  views             Int?
+  replies           Int?
+  follows           Int?
+  profileVisits     Int?
+  totalInteractions Int?
+  shares            Int?
+  tapsForward       Int?
+  tapsBack          Int?
+  tapsExit          Int?
+  swipeForward      Int?
+  profileActivity   Json?
+  lastPolledAt      DateTime               @default(now())
+  raw               Json?
+  correlations      StoryReelCorrelation[]
+
+  @@index([connectionId, postedAt])
+  @@index([postedAt])
+}
+
+/// Daily snapshot of platform account state (follower count, video count,
+/// totalLikes for TikTok, etc.). Created by the daily
+/// `/api/cron/poll-platform-account-snapshots` cron — one row per verified
+/// connection per day. Lets us reconstruct "FB page followers over the last
+/// 90 days" / "TT followerCount trend" without diffing connection rows.
+model PlatformAccountSnapshot {
+  id              String         @id @default(cuid())
+  connectionType  ConnectionType
+  connectionId    String
+  capturedAt      DateTime       @default(now())
+  followerCount   Int?
+  followingCount  Int?
+  totalLikes      BigInt?
+  videoCount      Int?
+  isVerified      Boolean?
+  raw             Json?
+
+  @@index([connectionType, connectionId, capturedAt])
+  @@index([capturedAt])
+}
+
+/// Daily YouTube channel-level analytics from the Analytics API. Replaces the
+/// data we used to compute on-demand and discard. One row per (connection, date).
+/// Filled by the daily `/api/cron/poll-yt-analytics` cron.
+model YtDailyChannelInsight {
+  id                          String   @id @default(cuid())
+  connectionId                String
+  date                        DateTime @db.Date
+  views                       BigInt
+  engagedViews                BigInt?
+  estimatedMinutesWatched     Int
+  averageViewDuration         Int
+  averageViewPercentage       Float?
+  subscribersGained           Int
+  subscribersLost             Int
+  likes                       Int
+  comments                    Int
+  shares                      Int
+  redViews                    BigInt?
+  estimatedRedMinutesWatched  Int?
+  trafficSourceBreakdown      Json?
+  playbackLocationBreakdown   Json?
+  deviceTypeBreakdown         Json?
+  contentTypeBreakdown        Json?
+  subscribedStatusBreakdown   Json?
+  raw                         Json?
+
+  @@unique([connectionId, date])
+  @@index([connectionId, date])
+}
+
+/// Per-snapshot video retention curve (Facebook Reels / Instagram Reels).
+/// `curve` is an ordered array of {tSec, retentionPct} datapoints. Stored as
+/// its own table because each snapshot may carry 30+ datapoints — keeping it
+/// out of MetricSnapshot makes those rows lighter.
+model VideoRetentionCurve {
+  id           String       @id @default(cuid())
+  submissionId String
+  capturedAt   DateTime     @default(now())
+  source       MetricSource
+  curve        Json
+
+  @@index([submissionId, capturedAt])
+}
+
+/// Links a Story to a Reel posted within ±2h by the same creator's IG account.
+/// Populated by the daily `correlate-stories-to-reels` job. `deltaMinutes` is
+/// signed: negative = story posted before the reel, positive = after.
+model StoryReelCorrelation {
+  id           String    @id @default(cuid())
+  storyId      String
+  story        StoryPost @relation(fields: [storyId], references: [id], onDelete: Cascade)
+  submissionId String
+  deltaMinutes Int
+  createdAt    DateTime  @default(now())
+
+  @@unique([storyId, submissionId])
+  @@index([submissionId])
+  @@index([storyId])
 }
 
 // ─────────────────────────────────────────

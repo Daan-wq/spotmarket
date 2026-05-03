@@ -89,6 +89,17 @@ export async function pollSubmissions(opts: RunOptions): Promise<PollResult> {
             watchTimeSec: fetched.watchTimeSec,
             reachCount: fetched.reachCount,
             raw: fetched.raw == null ? Prisma.JsonNull : (fetched.raw as Prisma.InputJsonValue),
+            totalInteractions: fetched.totalInteractions ?? null,
+            followsFromMedia: fetched.followsFromMedia ?? null,
+            profileVisits: fetched.profileVisits ?? null,
+            profileActivity:
+              fetched.profileActivity == null
+                ? Prisma.JsonNull
+                : (fetched.profileActivity as Prisma.InputJsonValue),
+            reactionsByType:
+              fetched.reactionsByType == null
+                ? Prisma.JsonNull
+                : (fetched.reactionsByType as Prisma.InputJsonValue),
           },
           select: { id: true, viewCount: true, capturedAt: true },
         });

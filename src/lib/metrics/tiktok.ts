@@ -3,20 +3,25 @@
  *
  * Resolves a submission via the creator's video list (Display API) — we page
  * up to MAX_PAGES looking for a video whose share URL contains the parsed
- * post id. Returns OAUTH_FAILED with a reason code on miss.
+ * post id. Persists the **full** TikTokVideo metadata in `MetricSnapshot.raw`
+ * (title, cover image, shareUrl, duration, height/width when available,
+ * createTime) plus archives the unmodified API page in `RawApiResponse` so
+ * we have an escape hatch when TikTok renames or removes fields.
  */
 
 import type { CreatorTikTokConnection } from "@prisma/client";
-import { fetchTikTokVideos } from "@/lib/tiktok";
+import { fetchTikTokVideos, type TikTokVideo } from "@/lib/tiktok";
 import { getFreshTikTokAccessToken } from "@/lib/token-refresh";
 import type { ParsedClipUrl } from "@/lib/parse-clip-url";
 import { failure, type MetricFetcherResult } from "./router";
+import { recordRawApiResponse } from "./raw-storage";
 
 const MAX_PAGES = 4; // ~80 most-recent videos
 
 export async function fetchTikTokMetric(
   conn: CreatorTikTokConnection,
   parsed: ParsedClipUrl,
+  submissionId?: string,
 ): Promise<MetricFetcherResult> {
   if (!conn.accessToken || !conn.accessTokenIv) {
     return failure("NO_TOKEN", "TT connection missing access token", { type: "TT", id: conn.id });
@@ -57,25 +62,23 @@ export async function fetchTikTokMetric(
       return failure("PLATFORM_ERROR", (err as Error).message, { type: "TT", id: conn.id });
     }
 
+    // Archive every page we fetch so we keep the surrounding video set,
+    // not just the matched video. Useful for cohort analysis ("what other
+    // videos did this creator post around the same time?").
+    await recordRawApiResponse({
+      submissionId: submissionId ?? null,
+      connectionType: "TT",
+      connectionId: conn.id,
+      endpoint: "tiktok.video.list",
+      payload: chunk,
+    });
+
     const match = chunk.videos.find(
-      (v) =>
-        v.id === targetId ||
-        (v.shareUrl ?? "").includes(targetId),
+      (v) => v.id === targetId || (v.shareUrl ?? "").includes(targetId),
     );
 
     if (match) {
-      return {
-        ok: true,
-        source: "OAUTH_TT",
-        viewCount: BigInt(match.viewCount ?? 0),
-        likeCount: match.likeCount ?? 0,
-        commentCount: match.commentCount ?? 0,
-        shareCount: match.shareCount ?? 0,
-        saveCount: null,
-        watchTimeSec: null,
-        reachCount: null,
-        raw: { videoId: match.id },
-      };
+      return buildSuccess(match);
     }
 
     if (!chunk.hasMore || chunk.nextCursor == null) break;
@@ -86,4 +89,26 @@ export async function fetchTikTokMetric(
     type: "TT",
     id: conn.id,
   });
+}
+
+function buildSuccess(match: TikTokVideo): MetricFetcherResult {
+  return {
+    ok: true,
+    source: "OAUTH_TT",
+    viewCount: BigInt(match.viewCount ?? 0),
+    likeCount: match.likeCount ?? 0,
+    commentCount: match.commentCount ?? 0,
+    shareCount: match.shareCount ?? 0,
+    saveCount: null,
+    watchTimeSec: null,
+    reachCount: null,
+    raw: {
+      videoId: match.id,
+      title: match.title,
+      coverImageUrl: match.coverImageUrl,
+      shareUrl: match.shareUrl,
+      duration: match.duration,
+      createTime: match.createTime,
+    },
+  };
 }

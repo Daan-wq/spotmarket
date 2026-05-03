@@ -336,6 +336,51 @@ export async function fetchRecentMedia(
 }
 
 // ─────────────────────────────────────────
+// ACTIVE STORIES (v25.0)
+// ─────────────────────────────────────────
+
+export interface IgStoryItem {
+  id: string;
+  media_type: string;
+  media_product_type: string;
+  permalink: string | null;
+  timestamp: string;
+  caption: string | null;
+  thumbnail_url: string | null;
+}
+
+/**
+ * Returns currently-active stories for the IG user (those in the live 24h
+ * window). Stories that have already expired are not returned by this endpoint
+ * — capture insights via the cron poll BEFORE expiry.
+ */
+export async function fetchActiveStories(
+  accessToken: string,
+  igUserId: string,
+): Promise<IgStoryItem[]> {
+  const params = new URLSearchParams({
+    fields: "id,media_type,media_product_type,permalink,timestamp,caption,thumbnail_url",
+    access_token: accessToken,
+  });
+  const res = await fetch(`${GRAPH_BASE}/${igUserId}/stories?${params}`);
+  if (!res.ok) {
+    const errText = await res.text();
+    console.warn(`fetchActiveStories ${res.status}: ${errText.slice(0, 120)}`);
+    return [];
+  }
+  const data = await res.json();
+  return ((data.data ?? []) as Record<string, unknown>[]).map((m) => ({
+    id: m.id as string,
+    media_type: (m.media_type as string) ?? "",
+    media_product_type: (m.media_product_type as string) ?? "",
+    permalink: (m.permalink as string | null) ?? null,
+    timestamp: (m.timestamp as string) ?? "",
+    caption: (m.caption as string | null) ?? null,
+    thumbnail_url: (m.thumbnail_url as string | null) ?? null,
+  }));
+}
+
+// ─────────────────────────────────────────
 // DAILY ACCOUNT INSIGHTS (v25.0 — no deprecated metrics)
 // ─────────────────────────────────────────
 

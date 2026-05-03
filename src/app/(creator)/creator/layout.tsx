@@ -18,13 +18,15 @@ export default async function CreatorLayout({
   const authUser = await getCachedAuthUser();
 
   let userName = "Creator";
-  let creatorProfileId: string | null = null;
+  let userId: string | null = null;
 
   if (authUser) {
     const header = await getCreatorHeader(authUser.id);
-    if (header?.creatorProfile) {
-      userName = header.creatorProfile.displayName;
-      creatorProfileId = header.creatorProfile.id;
+    if (header) {
+      userId = header.id;
+      if (header.creatorProfile) {
+        userName = header.creatorProfile.displayName;
+      }
     }
   }
 
@@ -33,9 +35,9 @@ export default async function CreatorLayout({
       <CreatorSidebar
         userName={userName}
         balanceSlot={
-          creatorProfileId ? (
+          userId ? (
             <Suspense fallback={<BalanceSkeleton />}>
-              <BalanceWidget creatorProfileId={creatorProfileId} />
+              <BalanceWidget userId={userId} />
             </Suspense>
           ) : (
             <BalanceSkeleton />
