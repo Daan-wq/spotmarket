@@ -16,6 +16,15 @@ export const getCachedAuthUser = cache(async () => {
   return user;
 });
 
+// Fast per-request auth — local JWT decode, no network call (~1ms vs 300ms+).
+// Sufficient for layouts: provides sub (= Supabase user ID) and app_metadata.
+// Security: middleware already validates the JWT at the edge on every request.
+export const getCachedAuthClaims = cache(async () => {
+  const supabase = await createSupabaseServerClient();
+  const { data } = await supabase.auth.getClaims();
+  return data?.claims ?? null;
+});
+
 // Fallback DB lookup — only used when role is not in JWT claims
 const getCachedDbRole = cache(async (supabaseId: string): Promise<UserRole | null> => {
   const user = await prisma.user.findUnique({
@@ -25,17 +34,21 @@ const getCachedDbRole = cache(async (supabaseId: string): Promise<UserRole | nul
   return user?.role ?? null;
 });
 
-async function resolveRole(authUser: NonNullable<Awaited<ReturnType<typeof getCachedAuthUser>>>): Promise<UserRole | null> {
+// Accepts both a full Supabase User (id) and raw JWT claims (sub).
+type AuthLike = { id?: string; sub?: string; app_metadata?: Record<string, unknown> | null };
+
+async function resolveRole(authUser: AuthLike): Promise<UserRole | null> {
   // If the JWT hook is active, role is in app_metadata — no DB round-trip needed
   const jwtRole = authUser.app_metadata?.user_role;
   if (isValidRole(jwtRole)) return jwtRole;
 
   // Fallback: look up role from database (used before hook is enabled)
-  return getCachedDbRole(authUser.id);
+  const uid = authUser.id ?? authUser.sub;
+  if (!uid) return null;
+  return getCachedDbRole(uid);
 }
 
-// Public form of resolveRole — lets layouts that already awaited getCachedAuthUser
-// run the role check in parallel with their own queries via Promise.all.
+// Public form — lets layouts run the role check in parallel with their own queries.
 export const resolveRoleFor = resolveRole;
 
 export async function checkRole(

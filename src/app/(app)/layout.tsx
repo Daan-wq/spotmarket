@@ -1,12 +1,12 @@
 import { redirect } from "next/navigation";
-import { getCachedAuthUser, resolveRoleFor } from "@/lib/auth";
+import { getCachedAuthClaims, resolveRoleFor } from "@/lib/auth";
 
 // Legacy route group — redirect to the correct role-based dashboard
 export default async function AppLayout() {
-  const user = await getCachedAuthUser();
-  if (!user) redirect("/sign-in");
+  const claims = await getCachedAuthClaims();
+  if (!claims) redirect("/sign-in");
 
-  const role = await resolveRoleFor(user);
+  const role = await resolveRoleFor(claims);
   if (role === "admin") redirect("/admin");
   redirect("/creator/dashboard");
 }

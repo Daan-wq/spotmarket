@@ -11,6 +11,8 @@ const lexend = Lexend({
   weight: ["300", "400", "500", "600", "700", "800"],
 });
 
+export const preferredRegion = "fra1";
+
 export const metadata: Metadata = {
   title: "ClipProfit — Casino Influencer Campaign Marketplace",
   description:

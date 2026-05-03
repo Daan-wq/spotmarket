@@ -1,6 +1,6 @@
 import { Suspense } from "react";
 import { redirect } from "next/navigation";
-import { resolveRoleFor, getCachedAuthUser, getCreatorHeader } from "@/lib/auth";
+import { resolveRoleFor, getCachedAuthClaims, getCreatorHeader } from "@/lib/auth";
 import { timed } from "@/lib/timing";
 import { CreatorSidebar } from "../_components/creator-sidebar";
 import { BalanceWidget } from "../_components/balance-widget";
@@ -13,11 +13,11 @@ export default async function CreatorLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const authUser = await timed("creator-layout/auth", () => getCachedAuthUser());
-  if (!authUser) redirect("/sign-in");
+  const claims = await timed("creator-layout/auth", () => getCachedAuthClaims());
+  if (!claims) redirect("/sign-in");
 
   const [role, header] = await timed("creator-layout/role+header", () =>
-    Promise.all([resolveRoleFor(authUser), getCreatorHeader(authUser.id)]),
+    Promise.all([resolveRoleFor(claims), getCreatorHeader(claims.sub)]),
   );
 
   if (role !== "creator") redirect("/unauthorized");
