@@ -1,328 +1,402 @@
 import Link from "next/link";
-import { prisma } from "@/lib/prisma";
-import { KpiCard } from "@/components/admin/kpi-card";
+import { KpiCard, type KpiCardProps } from "@/components/admin/kpi-card";
 import { CreatorScoreCell } from "@/components/admin/creator-score-cell";
+import {
+  getAgencyOsDashboardSnapshot,
+  type OperatingArea,
+  type RecentRiskSignal,
+} from "@/lib/admin/agency-os";
 
 export const dynamic = "force-dynamic";
 
-function startOfDay(d = new Date()) {
-  const x = new Date(d);
-  x.setHours(0, 0, 0, 0);
-  return x;
+const euroFormatter = new Intl.NumberFormat("en-US", {
+  style: "currency",
+  currency: "EUR",
+  maximumFractionDigits: 0,
+});
+
+const numberFormatter = new Intl.NumberFormat("en-US");
+
+const SIGNAL_LABEL: Record<RecentRiskSignal["type"], string> = {
+  VELOCITY_SPIKE: "Velocity spike",
+  VELOCITY_DROP: "Velocity drop",
+  RATIO_ANOMALY: "Ratio anomaly",
+  BOT_SUSPECTED: "Bot suspected",
+  LOGO_MISSING: "Logo missing",
+  DUPLICATE: "Duplicate",
+  TOKEN_BROKEN: "Token broken",
+};
+
+function formatEuro(value: number) {
+  return euroFormatter.format(value);
 }
 
-function daysAgo(n: number) {
-  const x = new Date();
-  x.setDate(x.getDate() - n);
-  x.setHours(0, 0, 0, 0);
-  return x;
+function formatNumber(value: number) {
+  return numberFormatter.format(value);
 }
 
-async function loadCampaignsAtRisk() {
-  // "At risk" = active, deadline within 7 days, less than 70% of goalViews captured.
-  const now = new Date();
-  const in7d = new Date();
-  in7d.setDate(now.getDate() + 7);
-
-  const campaigns = await prisma.campaign.findMany({
-    where: {
-      status: "active",
-      deadline: { lte: in7d },
-    },
-    select: {
-      id: true,
-      name: true,
-      goalViews: true,
-      deadline: true,
-      campaignSubmissions: {
-        where: { status: "APPROVED" },
-        select: { eligibleViews: true },
-      },
-    },
-    take: 50,
-  });
-
-  const ranked = campaigns
-    .map((c) => {
-      const captured = c.campaignSubmissions.reduce((s: number, x: { eligibleViews: number | null }) => s + (x.eligibleViews ?? 0), 0);
-      const goal = c.goalViews ? Number(c.goalViews) : 0;
-      const pct = goal > 0 ? captured / goal : 1;
-      return { id: c.id, name: c.name, deadline: c.deadline, captured, goal, pct };
-    })
-    .filter((c) => c.goal === 0 || c.pct < 0.7)
-    .sort((a, b) => a.deadline.getTime() - b.deadline.getTime())
-    .slice(0, 5);
-
-  return { count: ranked.length, items: ranked };
+function formatPercent(value: number | null) {
+  return value == null ? "No reviews" : `${value.toFixed(0)}%`;
 }
 
-async function loadSignalsToday() {
-  const start = startOfDay();
-  const [total, critical, tokenBroken] = await Promise.all([
-    prisma.submissionSignal.count({
-      where: { createdAt: { gte: start }, severity: { in: ["WARN", "CRITICAL"] } },
-    }),
-    prisma.submissionSignal.count({
-      where: { createdAt: { gte: start }, severity: "CRITICAL" },
-    }),
-    prisma.submissionSignal.count({
-      where: { type: "TOKEN_BROKEN", resolvedAt: null },
-    }),
-  ]);
-  return { total, critical, tokenBroken };
+function formatDate(date: Date) {
+  return date.toLocaleDateString(undefined, { month: "short", day: "numeric" });
 }
 
-async function loadFraudFlagged() {
-  return prisma.submissionSignal.count({
-    where: {
-      type: { in: ["BOT_SUSPECTED", "DUPLICATE", "RATIO_ANOMALY"] },
-      resolvedAt: null,
-    },
-  });
-}
+function OperatingAreaCard({ area }: { area: OperatingArea }) {
+  const isLive = area.status === "live";
+  const body = (
+    <div
+      className="h-full rounded-lg p-4 transition-colors"
+      style={{
+        background: "var(--bg-card)",
+        border: `1px solid ${isLive ? "var(--success-text)" : "var(--border)"}`,
+      }}
+    >
+      <div className="flex items-start justify-between gap-3">
+        <h3 className="text-sm font-semibold leading-tight" style={{ color: "var(--text-primary)" }}>
+          {area.name}
+        </h3>
+        <span
+          className="shrink-0 rounded px-2 py-0.5 text-[10px] font-semibold uppercase"
+          style={{
+            background: isLive ? "var(--success-bg)" : "var(--bg-primary)",
+            color: isLive ? "var(--success-text)" : "var(--text-secondary)",
+          }}
+        >
+          {isLive ? "Live" : "Manual"}
+        </span>
+      </div>
+      <p className="mt-2 text-xs leading-relaxed" style={{ color: "var(--text-secondary)" }}>
+        {area.detail}
+      </p>
+    </div>
+  );
 
-async function loadWeeklyViews() {
-  // Sum eligibleViews approved in the last 7 days vs the prior 7 days.
-  const start7 = daysAgo(7);
-  const start14 = daysAgo(14);
-  const [thisWeek, lastWeek] = await Promise.all([
-    prisma.campaignSubmission.aggregate({
-      where: { status: "APPROVED", reviewedAt: { gte: start7 } },
-      _sum: { eligibleViews: true },
-    }),
-    prisma.campaignSubmission.aggregate({
-      where: {
-        status: "APPROVED",
-        reviewedAt: { gte: start14, lt: start7 },
-      },
-      _sum: { eligibleViews: true },
-    }),
-  ]);
-  const a = thisWeek._sum.eligibleViews ?? 0;
-  const b = lastWeek._sum.eligibleViews ?? 0;
-  const trend = b > 0 ? ((a - b) / b) * 100 : null;
-  return { thisWeek: a, lastWeek: b, trend };
-}
+  if (!area.href) return body;
 
-async function loadTopCreators() {
-  // Most recent score per creator. Cheap fallback if B hasn't shipped scores yet.
-  const scores = await prisma.clipperPerformanceScore.findMany({
-    orderBy: [{ score: "desc" }, { computedAt: "desc" }],
-    take: 50,
-  });
-  // Dedupe to latest per creator
-  const seen = new Set<string>();
-  const top: typeof scores = [];
-  for (const s of scores) {
-    if (seen.has(s.creatorProfileId)) continue;
-    seen.add(s.creatorProfileId);
-    top.push(s);
-    if (top.length >= 5) break;
-  }
-  if (top.length === 0) return [];
-  const profiles = await prisma.creatorProfile.findMany({
-    where: { id: { in: top.map((s) => s.creatorProfileId) } },
-    select: { id: true, displayName: true, user: { select: { id: true, email: true } } },
-  });
-  const byId = new Map(profiles.map((p) => [p.id, p]));
-  return top.map((s) => ({
-    score: s.score,
-    sampleSize: s.sampleSize,
-    profile: byId.get(s.creatorProfileId) ?? null,
-  }));
-}
-
-async function loadOauthTokenHealth() {
-  const now = new Date();
-  const [igExpired, ttExpired, ytExpired, fbExpired, total] = await Promise.all([
-    prisma.creatorIgConnection.count({ where: { tokenExpiresAt: { lt: now } } }),
-    prisma.creatorTikTokConnection.count({ where: { tokenExpiresAt: { lt: now } } }),
-    prisma.creatorYtConnection.count({ where: { tokenExpiresAt: { lt: now } } }),
-    prisma.creatorFbConnection.count({ where: { tokenExpiresAt: { lt: now } } }),
-    Promise.all([
-      prisma.creatorIgConnection.count(),
-      prisma.creatorTikTokConnection.count(),
-      prisma.creatorYtConnection.count(),
-      prisma.creatorFbConnection.count(),
-    ]).then((arr) => arr.reduce((s, x) => s + x, 0)),
-  ]);
-  const broken = igExpired + ttExpired + ytExpired + fbExpired;
-  return { broken, total };
+  return (
+    <Link href={area.href} className="block h-full hover:opacity-90 transition-opacity">
+      {body}
+    </Link>
+  );
 }
 
 export default async function AdminDashboard() {
-  const [risk, signals, fraud, views, top, oauth, totals] = await Promise.all([
-    loadCampaignsAtRisk(),
-    loadSignalsToday(),
-    loadFraudFlagged(),
-    loadWeeklyViews(),
-    loadTopCreators(),
-    loadOauthTokenHealth(),
-    Promise.all([
-      prisma.creatorProfile.count(),
-      prisma.campaign.count({ where: { status: "active" } }),
-    ]),
-  ]);
-  const [creators, activeCampaigns] = totals;
+  const snapshot = await getAgencyOsDashboardSnapshot();
+  const { metrics } = snapshot;
+
+  const metricCards: KpiCardProps[] = [
+    {
+      label: "Revenue this month",
+      value: formatEuro(metrics.totalRevenueThisMonth),
+      hint: "booked campaign budget",
+      tone: metrics.totalRevenueThisMonth > 0 ? "success" : "default",
+      href: "/admin/campaigns",
+    },
+    {
+      label: "Expected next month",
+      value: formatEuro(metrics.expectedRevenueNextMonth),
+      hint: "campaigns due next month",
+      href: "/admin/campaigns",
+    },
+    {
+      label: "Active brands",
+      value: metrics.activeBrands,
+      hint: "active campaigns as brand proxy",
+      href: "/admin/campaigns",
+    },
+    {
+      label: "Brand pipeline",
+      value: metrics.pipelineBrands,
+      hint: "draft / payment / review",
+      tone: metrics.pipelineBrands > 0 ? "success" : "default",
+      href: "/admin/campaigns",
+    },
+    {
+      label: "Active clippers",
+      value: metrics.activeClippers,
+      hint: "verified or active assignment",
+      href: "/admin/creators",
+    },
+    {
+      label: "Delivered this week",
+      value: metrics.clipsDeliveredThisWeek,
+      hint: "new submissions in 7d",
+      href: "/admin/submissions",
+    },
+    {
+      label: "Clips approved",
+      value: metrics.clipsApprovedThisWeek,
+      hint: `${formatPercent(metrics.approvalRate)} approval rate`,
+      tone: metrics.approvalRate != null && metrics.approvalRate >= 80 ? "success" : "default",
+      href: "/admin/submissions",
+    },
+    {
+      label: "Rejected / revised",
+      value: metrics.clipsRejectedOrRevisedThisWeek,
+      hint: "rejected or flagged in 7d",
+      tone: metrics.clipsRejectedOrRevisedThisWeek > 0 ? "warning" : "default",
+      href: "/admin/submissions",
+    },
+    {
+      label: "Needs review",
+      value: metrics.clipsNeedsReview,
+      hint: "pending submission queue",
+      tone: metrics.clipsNeedsReview > 0 ? "warning" : "default",
+      href: "/admin/review/videos",
+    },
+    {
+      label: "Payouts owed",
+      value: formatEuro(metrics.payoutsOwed),
+      hint: "non-confirmed payouts",
+      tone: metrics.payoutsOwed > 0 ? "warning" : "success",
+      href: "/admin/payouts",
+    },
+    {
+      label: "Est. gross profit",
+      value: formatEuro(metrics.estimatedGrossProfit),
+      hint: "budget minus creator cost",
+      tone: metrics.estimatedGrossProfit >= 0 ? "success" : "danger",
+    },
+    {
+      label: "Open risk signals",
+      value: metrics.openRiskSignals,
+      hint:
+        metrics.criticalRiskSignals > 0
+          ? `${metrics.criticalRiskSignals} critical`
+          : `${metrics.tokenBrokenSignals} token-broken`,
+      tone: metrics.criticalRiskSignals > 0 ? "danger" : metrics.openRiskSignals > 0 ? "warning" : "success",
+      href: "/admin/signals",
+    },
+  ];
+
+  const liveAreaCount = snapshot.operatingAreas.filter((area) => area.status === "live").length;
 
   return (
-    <div className="w-full p-8">
-      <div className="mb-6">
-        <h1 className="text-3xl font-bold mb-1" style={{ color: "var(--text-primary)" }}>
-          Command center
-        </h1>
-        <p style={{ color: "var(--text-secondary)" }}>
-          Live operational health — what needs your attention right now.
-        </p>
-      </div>
+    <div className="w-full px-5 py-7 sm:px-8 space-y-7">
+      <header className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
+        <div className="max-w-3xl">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.18em]" style={{ color: "var(--accent)" }}>
+            Agency Operating System
+          </p>
+          <h1 className="mt-2 text-3xl font-bold leading-tight" style={{ color: "var(--text-primary)" }}>
+            CEO Dashboard
+          </h1>
+          <p className="mt-2 max-w-2xl text-sm leading-6" style={{ color: "var(--text-secondary)" }}>
+            Daily control for brands, clippers, delivery, payouts, risk, and weekly founder KPIs. Missing agency
+            modules stay visible as manual setup areas until the process is ready for software.
+          </p>
+        </div>
+        <div
+          className="rounded-lg px-4 py-3 text-sm"
+          style={{ background: "var(--bg-card)", border: "1px solid var(--border)", color: "var(--text-primary)" }}
+        >
+          <span className="block text-[11px] font-semibold uppercase" style={{ color: "var(--text-secondary)" }}>
+            OS Coverage
+          </span>
+          <span className="text-2xl font-semibold">{liveAreaCount}/12</span>
+          <span className="ml-2 text-xs" style={{ color: "var(--text-secondary)" }}>
+            live modules
+          </span>
+        </div>
+      </header>
 
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 mb-8">
-        <KpiCard
-          label="Campaigns at risk"
-          value={risk.count}
-          hint="active · ≤7d to deadline · <70% of goal"
-          tone={risk.count > 0 ? "warning" : "default"}
-          href="/admin/campaigns"
-        />
-        <KpiCard
-          label="Signals today"
-          value={signals.total}
-          hint={signals.critical > 0 ? `${signals.critical} critical` : "WARN+ severity"}
-          tone={signals.critical > 0 ? "danger" : signals.total > 0 ? "warning" : "default"}
-          href="/admin/signals"
-        />
-        <KpiCard
-          label="Fraud flags"
-          value={fraud}
-          hint="bot / duplicate / ratio · open"
-          tone={fraud > 0 ? "warning" : "default"}
-          href="/admin/signals?type=BOT_SUSPECTED"
-        />
-        <KpiCard
-          label="Token broken"
-          value={signals.tokenBroken}
-          hint={`${oauth.broken}/${oauth.total} OAuth tokens expired`}
-          tone={signals.tokenBroken > 0 || oauth.broken > 0 ? "warning" : "success"}
-          href="/admin/signals?type=TOKEN_BROKEN"
-        />
-        <KpiCard
-          label="Weekly views"
-          value={views.thisWeek.toLocaleString()}
-          hint={`prior 7d: ${views.lastWeek.toLocaleString()}`}
-          trend={views.trend}
-        />
-        <KpiCard
-          label="Active platform"
-          value={`${activeCampaigns} / ${creators}`}
-          hint="active campaigns / total creators"
-        />
-      </div>
+      <section className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+        {metricCards.map((card) => (
+          <KpiCard key={card.label} {...card} />
+        ))}
+      </section>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        <section
-          className="rounded-xl overflow-hidden"
+      <section>
+        <div className="mb-3 flex items-end justify-between gap-3">
+          <div>
+            <h2 className="text-lg font-semibold" style={{ color: "var(--text-primary)" }}>
+              Operating Areas
+            </h2>
+            <p className="text-sm" style={{ color: "var(--text-secondary)" }}>
+              The 12 agency OS tabs mapped onto the current app state.
+            </p>
+          </div>
+        </div>
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+          {snapshot.operatingAreas.map((area) => (
+            <OperatingAreaCard key={area.name} area={area} />
+          ))}
+        </div>
+      </section>
+
+      <section className="grid grid-cols-1 gap-4 xl:grid-cols-3">
+        <div
+          className="rounded-lg overflow-hidden"
           style={{ background: "var(--bg-card)", border: "1px solid var(--border)" }}
         >
           <div className="px-5 py-4 flex items-center justify-between" style={{ borderBottom: "1px solid var(--border)" }}>
-            <h2 className="text-base font-semibold" style={{ color: "var(--text-primary)" }}>
-              Campaigns at risk
-            </h2>
-            <Link
-              href="/admin/campaigns"
-              className="text-xs underline"
-              style={{ color: "var(--primary, var(--accent))" }}
-            >
-              All campaigns →
+            <div>
+              <h2 className="text-base font-semibold" style={{ color: "var(--text-primary)" }}>
+                Delivery Control
+              </h2>
+              <p className="text-xs" style={{ color: "var(--text-secondary)" }}>
+                Active campaigns nearing deadline or missing goal pace.
+              </p>
+            </div>
+            <Link href="/admin/campaigns" className="text-xs underline" style={{ color: "var(--primary, var(--accent))" }}>
+              View all
             </Link>
           </div>
-          {risk.items.length === 0 ? (
+          {snapshot.deliveryRisks.length === 0 ? (
             <p className="px-5 py-8 text-sm" style={{ color: "var(--text-secondary)" }}>
-              No campaigns at risk right now.
+              No delivery risks right now.
             </p>
           ) : (
             <ul>
-              {risk.items.map((c) => (
+              {snapshot.deliveryRisks.map((campaign) => (
                 <li
-                  key={c.id}
-                  className="px-5 py-3 flex items-center justify-between"
+                  key={campaign.id}
+                  className="px-5 py-3 flex items-center justify-between gap-3"
                   style={{ borderBottom: "1px solid var(--border)" }}
                 >
                   <div className="min-w-0">
                     <Link
-                      href={`/admin/campaigns/${c.id}`}
-                      className="text-sm font-medium block truncate"
+                      href={`/admin/campaigns/${campaign.id}`}
+                      className="block truncate text-sm font-medium underline-offset-2 hover:underline"
                       style={{ color: "var(--text-primary)" }}
                     >
-                      {c.name}
+                      {campaign.name}
                     </Link>
                     <p className="text-[11px]" style={{ color: "var(--text-secondary)" }}>
-                      Deadline {c.deadline.toLocaleDateString()} ·{" "}
-                      {c.goal > 0
-                        ? `${c.captured.toLocaleString()} / ${c.goal.toLocaleString()} views (${Math.round(
-                            c.pct * 100
-                          )}%)`
-                        : `${c.captured.toLocaleString()} views captured (no goal set)`}
+                      Due {formatDate(campaign.deadline)} -{" "}
+                      {campaign.goal > 0
+                        ? `${formatNumber(campaign.captured)} / ${formatNumber(campaign.goal)} views`
+                        : `${formatNumber(campaign.captured)} views, no goal set`}
                     </p>
                   </div>
                   <span
-                    className="px-2 py-0.5 rounded text-[11px] font-medium ml-2 shrink-0"
+                    className="shrink-0 rounded px-2 py-0.5 text-[11px] font-semibold"
                     style={{ background: "var(--warning-bg)", color: "var(--warning-text)" }}
                   >
-                    {c.goal > 0 ? `${Math.round((1 - c.pct) * 100)}% gap` : "no goal"}
+                    {campaign.goal > 0 ? `${Math.round((1 - campaign.pct) * 100)}% gap` : "No goal"}
                   </span>
                 </li>
               ))}
             </ul>
           )}
-        </section>
+        </div>
 
-        <section
-          className="rounded-xl overflow-hidden"
+        <div
+          className="rounded-lg overflow-hidden"
           style={{ background: "var(--bg-card)", border: "1px solid var(--border)" }}
         >
           <div className="px-5 py-4 flex items-center justify-between" style={{ borderBottom: "1px solid var(--border)" }}>
-            <h2 className="text-base font-semibold" style={{ color: "var(--text-primary)" }}>
-              Top performing creators
-            </h2>
-            <Link
-              href="/admin/creators"
-              className="text-xs underline"
-              style={{ color: "var(--primary, var(--accent))" }}
-            >
-              All creators →
+            <div>
+              <h2 className="text-base font-semibold" style={{ color: "var(--text-primary)" }}>
+                Clipper Performance
+              </h2>
+              <p className="text-xs" style={{ color: "var(--text-secondary)" }}>
+                Highest current performance scores.
+              </p>
+            </div>
+            <Link href="/admin/creators" className="text-xs underline" style={{ color: "var(--primary, var(--accent))" }}>
+              View all
             </Link>
           </div>
-          {top.length === 0 ? (
+          {snapshot.topClippers.length === 0 ? (
             <p className="px-5 py-8 text-sm" style={{ color: "var(--text-secondary)" }}>
-              No performance scores computed yet. Subsystem B will populate these once benchmarks run.
+              No performance scores computed yet.
             </p>
           ) : (
             <ul>
-              {top.map((row) => (
+              {snapshot.topClippers.map((clipper) => (
                 <li
-                  key={row.profile?.id ?? Math.random()}
-                  className="px-5 py-3 flex items-center justify-between"
+                  key={clipper.profileId ?? clipper.displayName}
+                  className="px-5 py-3 flex items-center justify-between gap-3"
                   style={{ borderBottom: "1px solid var(--border)" }}
                 >
                   <div className="min-w-0">
-                    <Link
-                      href={row.profile ? `/admin/creators/${row.profile.id}` : "#"}
-                      className="text-sm font-medium block truncate"
-                      style={{ color: "var(--text-primary)" }}
-                    >
-                      {row.profile?.displayName ?? "Unknown creator"}
-                    </Link>
-                    <p className="text-[11px]" style={{ color: "var(--text-secondary)" }}>
-                      {row.profile?.user?.email ?? "—"}
+                    {clipper.profileId ? (
+                      <Link
+                        href={`/admin/creators/${clipper.profileId}`}
+                        className="block truncate text-sm font-medium underline-offset-2 hover:underline"
+                        style={{ color: "var(--text-primary)" }}
+                      >
+                        {clipper.displayName}
+                      </Link>
+                    ) : (
+                      <p className="truncate text-sm font-medium" style={{ color: "var(--text-primary)" }}>
+                        {clipper.displayName}
+                      </p>
+                    )}
+                    <p className="truncate text-[11px]" style={{ color: "var(--text-secondary)" }}>
+                      {clipper.email ?? "No email"}
                     </p>
                   </div>
-                  <CreatorScoreCell score={row.score} sampleSize={row.sampleSize} />
+                  <CreatorScoreCell score={clipper.score} sampleSize={clipper.sampleSize} />
                 </li>
               ))}
             </ul>
           )}
-        </section>
-      </div>
+        </div>
+
+        <div
+          className="rounded-lg overflow-hidden"
+          style={{ background: "var(--bg-card)", border: "1px solid var(--border)" }}
+        >
+          <div className="px-5 py-4 flex items-center justify-between" style={{ borderBottom: "1px solid var(--border)" }}>
+            <div>
+              <h2 className="text-base font-semibold" style={{ color: "var(--text-primary)" }}>
+                Quality / Risk Control
+              </h2>
+              <p className="text-xs" style={{ color: "var(--text-secondary)" }}>
+                Open WARN and CRITICAL signals.
+              </p>
+            </div>
+            <Link href="/admin/signals" className="text-xs underline" style={{ color: "var(--primary, var(--accent))" }}>
+              View all
+            </Link>
+          </div>
+          {snapshot.recentRiskSignals.length === 0 ? (
+            <p className="px-5 py-8 text-sm" style={{ color: "var(--text-secondary)" }}>
+              No open risk signals.
+            </p>
+          ) : (
+            <ul>
+              {snapshot.recentRiskSignals.map((signal) => {
+                const critical = signal.severity === "CRITICAL";
+                return (
+                  <li key={signal.id} className="px-5 py-3" style={{ borderBottom: "1px solid var(--border)" }}>
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <Link
+                          href={`/admin/signals?type=${signal.type}`}
+                          className="block truncate text-sm font-medium underline-offset-2 hover:underline"
+                          style={{ color: "var(--text-primary)" }}
+                        >
+                          {SIGNAL_LABEL[signal.type]}
+                        </Link>
+                        <p className="truncate text-[11px]" style={{ color: "var(--text-secondary)" }}>
+                          {signal.campaignName ?? "Unknown campaign"} - {signal.creatorEmail ?? "Unknown creator"}
+                        </p>
+                      </div>
+                      <span
+                        className="shrink-0 rounded px-2 py-0.5 text-[10px] font-semibold uppercase"
+                        style={{
+                          background: critical ? "var(--error-bg)" : "var(--warning-bg)",
+                          color: critical ? "var(--error-text)" : "var(--warning-text)",
+                        }}
+                      >
+                        {signal.severity}
+                      </span>
+                    </div>
+                    <p className="mt-1 text-[11px]" style={{ color: "var(--text-muted, var(--text-secondary))" }}>
+                      Opened {formatDate(signal.createdAt)}
+                    </p>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+        </div>
+      </section>
     </div>
   );
 }
