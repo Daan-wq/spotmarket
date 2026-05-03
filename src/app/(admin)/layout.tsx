@@ -1,8 +1,10 @@
+import type { ReactNode } from "react";
 import { redirect } from "next/navigation";
 import { getCachedAuthClaims, resolveRoleFor } from "@/lib/auth";
 import { AdminSidebar } from "./_components/admin-sidebar";
+import { DashboardShell } from "@/components/layout/dashboard-shell";
 
-export default async function AdminLayout({ children }: { children: React.ReactNode }) {
+export default async function AdminLayout({ children }: { children: ReactNode }) {
   const claims = await getCachedAuthClaims();
   if (!claims) redirect("/sign-in");
 
@@ -13,9 +15,8 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   const initials = email.slice(0, 1).toUpperCase() || "A";
 
   return (
-    <div className="flex h-screen" style={{ background: "var(--bg-primary)" }}>
-      <AdminSidebar initials={initials} email={email} />
-      <main className="flex-1 overflow-auto admin-content">{children}</main>
-    </div>
+    <DashboardShell sidebar={<AdminSidebar initials={initials} email={email} />} mainClassName="admin-content">
+      {children}
+    </DashboardShell>
   );
 }

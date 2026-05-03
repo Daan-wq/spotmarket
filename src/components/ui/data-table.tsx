@@ -34,26 +34,21 @@ export function DataTable<T>({
   return (
     <div
       className={cn(
-        "overflow-hidden rounded-lg border",
+        "overflow-hidden rounded-2xl border border-neutral-200 bg-white",
         className,
       )}
-      style={{ borderColor: "var(--border)", background: "var(--bg-card)" }}
     >
       <div className="overflow-x-auto">
         <table className="w-full text-sm">
           <thead>
             <tr
-              className="text-left text-[11px] uppercase tracking-wide"
-              style={{
-                color: "var(--text-muted)",
-                background: "var(--bg-secondary)",
-              }}
+              className="bg-neutral-50 text-left text-[11px] uppercase tracking-[0.14em] text-neutral-500"
             >
               {columns.map((col) => (
                 <th
                   key={col.key}
                   className={cn(
-                    "px-4 py-2.5 font-medium",
+                    "px-4 py-3 font-semibold",
                     col.align === "right" && "text-right",
                     col.align === "center" && "text-center",
                     col.className,
@@ -70,10 +65,9 @@ export function DataTable<T>({
                 key={rowKey(row, i)}
                 onClick={onRowClick ? () => onRowClick(row) : undefined}
                 className={cn(
-                  "border-t transition-colors",
-                  onRowClick && "cursor-pointer hover:opacity-90",
+                  "border-t border-neutral-100 transition-colors",
+                  onRowClick && "cursor-pointer hover:bg-neutral-50",
                 )}
-                style={{ borderColor: "var(--border)" }}
               >
                 {columns.map((col) => (
                   <td
@@ -84,7 +78,6 @@ export function DataTable<T>({
                       col.align === "center" && "text-center",
                       col.className,
                     )}
-                    style={{ color: "var(--text-primary)" }}
                   >
                     {col.cell(row, i)}
                   </td>

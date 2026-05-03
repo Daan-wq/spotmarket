@@ -1,57 +1,61 @@
 "use client";
 
-import { memo, useState, useTransition } from "react";
-import { usePathname, useRouter } from "next/navigation";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
+import {
+  Banknote,
+  BookOpen,
+  BriefcaseBusiness,
+  ClipboardCheck,
+  FileText,
+  Gauge,
+  GitPullRequestArrow,
+  LayoutDashboard,
+  ListChecks,
+  Search,
+  Send,
+  ShieldCheck,
+  Sparkles,
+  Users,
+} from "lucide-react";
+import type { LucideIcon } from "lucide-react";
 import { Logo } from "@/components/shared/logo";
+import { cn } from "@/lib/cn";
 
 interface NavItem {
   href: string;
   label: string;
-  icon: string;
+  icon: LucideIcon;
   description?: string;
 }
 
-interface NavSection {
-  label: string;
-  items: NavItem[];
-}
-
-const NAV: NavSection[] = [
+const NAV: Array<{ label: string; items: NavItem[] }> = [
   {
-    label: "OVERVIEW",
+    label: "Operate",
     items: [
-      { href: "/admin", label: "Dashboard", icon: "📊" },
-      { href: "/admin/signals", label: "Signals", icon: "🚨", description: "WARN+ alerts inbox" },
-      { href: "/admin/stats", label: "Stats", icon: "📈", description: "Fleet performance & breakdowns" },
+      { href: "/admin", label: "Command Center", icon: LayoutDashboard },
+      { href: "/admin/crm", label: "CRM", icon: BriefcaseBusiness },
+      { href: "/admin/brands", label: "Brands", icon: FileText },
+      { href: "/admin/onboarding", label: "Onboarding", icon: ListChecks },
     ],
   },
   {
-    label: "USERS",
+    label: "Delivery",
     items: [
-      { href: "/admin/creators", label: "Creators", icon: "👥" },
+      { href: "/admin/clippers", label: "Clippers", icon: Users },
+      { href: "/admin/recruitment", label: "Recruitment", icon: Sparkles },
+      { href: "/admin/campaigns", label: "Campaigns", icon: Send },
+      { href: "/admin/production", label: "Production", icon: GitPullRequestArrow },
+      { href: "/admin/review", label: "Review", icon: ClipboardCheck },
     ],
   },
   {
-    label: "CAMPAIGNS",
+    label: "Control",
     items: [
-      { href: "/admin/campaigns", label: "All Campaigns", icon: "🎯" },
-      { href: "/admin/submissions", label: "Submissions", icon: "📤" },
-      { href: "/admin/review/videos", label: "Video review", icon: "🎬", description: "Logo verification queue" },
-      { href: "/admin/tiktok-demographics", label: "TT demographics", icon: "📊", description: "Creator-submitted TikTok audience" },
-    ],
-  },
-  {
-    label: "NETWORK",
-    items: [
-      { href: "/admin/networks", label: "Networks", icon: "🌐", description: "Referrers & revenue share" },
-    ],
-  },
-  {
-    label: "OPERATIONS",
-    items: [
-      { href: "/admin/payouts", label: "Payouts", icon: "💰", description: "Creator payment processing" },
-      { href: "/admin/withdrawals", label: "Withdrawals", icon: "🏦", description: "USDT withdrawal requests" },
+      { href: "/admin/payouts", label: "Payouts", icon: Banknote },
+      { href: "/admin/reports", label: "Reports", icon: Gauge },
+      { href: "/admin/sops", label: "SOP Library", icon: BookOpen },
+      { href: "/admin/signals", label: "Signals", icon: ShieldCheck },
     ],
   },
 ];
@@ -61,174 +65,74 @@ interface AdminSidebarProps {
   email: string;
 }
 
-interface SidebarLinkProps {
-  href: string;
-  label: string;
-  icon: string;
-  description?: string;
-  active: boolean;
-  pending: boolean;
-  collapsed: boolean;
-  onNavigate: (href: string) => void;
-}
-
-const SidebarLink = memo(function SidebarLink({
-  href,
-  label,
-  icon,
-  description,
-  active,
-  pending,
-  collapsed,
-  onNavigate,
-}: SidebarLinkProps) {
-  // Show active styling instantly when user clicks, even before route resolves
-  const showActive = active || pending;
-  return (
-    <Link
-      prefetch
-      href={href}
-      onClick={(e) => {
-        // Intercept to trigger optimistic active-state via useTransition in parent
-        if (!e.metaKey && !e.ctrlKey && !e.shiftKey && e.button === 0) {
-          e.preventDefault();
-          onNavigate(href);
-        }
-      }}
-      className="flex items-center gap-2.5 rounded-md text-[13px] font-medium transition-all"
-      style={{
-        padding: collapsed ? "8px" : "7px 10px",
-        justifyContent: collapsed ? "center" : "flex-start",
-        color: showActive ? "var(--sidebar-active-text)" : "var(--sidebar-item)",
-        background: showActive ? "var(--sidebar-active-bg)" : "transparent",
-        opacity: pending && !active ? 0.7 : 1,
-      }}
-    >
-      <span>{icon}</span>
-      {!collapsed && (
-        <div className="flex flex-col gap-0.5">
-          <span>{label}</span>
-          {description && (
-            <span
-              className="text-[10px]"
-              style={{
-                color: "var(--text-muted, var(--text-secondary))",
-                lineHeight: "1.2",
-              }}
-            >
-              {description}
-            </span>
-          )}
-        </div>
-      )}
-    </Link>
-  );
-});
-
 export function AdminSidebar({ initials, email }: AdminSidebarProps) {
   const pathname = usePathname();
-  const router = useRouter();
-  const [collapsed, setCollapsed] = useState(false);
-  const [isPending, startTransition] = useTransition();
-  const [pendingHref, setPendingHref] = useState<string | null>(null);
 
   function isActive(href: string) {
     if (href === "/admin") return pathname === "/admin";
+    if (href === "/admin/review") return pathname.startsWith("/admin/review") || pathname.startsWith("/admin/tiktok-demographics");
+    if (href === "/admin/clippers") return pathname.startsWith("/admin/clippers") || pathname.startsWith("/admin/creators");
     return pathname.startsWith(href);
   }
 
-  function handleNavigate(href: string) {
-    if (isActive(href)) return;
-    setPendingHref(href);
-    startTransition(() => {
-      router.push(href);
-    });
-  }
-
-  // Reset pending indicator once navigation completes
-  if (!isPending && pendingHref && pathname.startsWith(pendingHref)) {
-    queueMicrotask(() => setPendingHref(null));
-  }
-
   return (
-    <aside
-      className="flex flex-col shrink-0 transition-all duration-200"
-      style={{
-        width: collapsed ? 60 : 200,
-        background: "var(--sidebar-bg)",
-        borderRight: "1px solid var(--sidebar-border)",
-      }}
-    >
-      <div
-        className="flex items-center justify-between px-3 py-5"
-        style={{ borderBottom: "1px solid var(--sidebar-border)" }}
-      >
-        {!collapsed && (
-          <div className="pl-1">
-            <Logo variant="light" size="sm" />
-            <p className="text-[11px] mt-1" style={{ color: "var(--text-muted)" }}>Admin</p>
-          </div>
-        )}
-        <button
-          onClick={() => setCollapsed(!collapsed)}
-          className="flex items-center justify-center w-7 h-7 rounded-md transition-colors cursor-pointer shrink-0"
-          style={{ color: "var(--sidebar-item)" }}
-          onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = "var(--sidebar-hover-bg)"; }}
-          onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = "transparent"; }}
-        >
-          {collapsed ? ">" : "<"}
-        </button>
+    <aside className="fixed left-8 top-0 hidden h-screen w-56 flex-col py-10 lg:flex">
+      <div className="mb-7">
+        <Logo variant="light" size="sm" />
+        <p className="mt-1 text-xs text-neutral-500">Admin</p>
       </div>
 
-      <nav className="flex-1 px-2 py-3 space-y-3 overflow-y-auto">
-        {NAV.map(({ label, items }) => (
-          <div key={label}>
-            {!collapsed && (
-              <p
-                className="px-2 mb-1 text-[11px] font-semibold uppercase tracking-[0.4px]"
-                style={{ color: "var(--text-muted)" }}
-              >
-                {label}
-              </p>
-            )}
-            {items.map((item) => (
-              <SidebarLink
-                key={item.href}
-                href={item.href}
-                label={item.label}
-                icon={item.icon}
-                description={item.description}
-                active={isActive(item.href)}
-                pending={pendingHref === item.href && isPending}
-                collapsed={collapsed}
-                onNavigate={handleNavigate}
-              />
-            ))}
+      <label className="relative mb-7 block">
+        <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-neutral-400" />
+        <input
+          className="h-11 w-full rounded-xl border border-neutral-200 bg-white pl-10 pr-3 text-sm outline-none placeholder:text-neutral-400 focus:border-neutral-400"
+          placeholder="Search"
+        />
+      </label>
+
+      <nav className="flex-1 space-y-6 overflow-y-auto pr-1">
+        {NAV.map((section) => (
+          <div key={section.label}>
+            <p className="mb-2 px-2 text-[11px] font-semibold uppercase tracking-[0.16em] text-neutral-400">
+              {section.label}
+            </p>
+            <div className="space-y-1">
+              {section.items.map((item) => {
+                const active = isActive(item.href);
+                const Icon = item.icon;
+                return (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    className={cn(
+                      "flex h-11 items-center gap-3 rounded-xl px-4 text-sm font-medium transition",
+                      active
+                        ? "bg-neutral-200 text-neutral-950"
+                        : "text-neutral-600 hover:bg-neutral-100 hover:text-neutral-950",
+                    )}
+                  >
+                    <Icon className="h-[18px] w-[18px]" strokeWidth={2} />
+                    <span className="truncate">{item.label}</span>
+                  </Link>
+                );
+              })}
+            </div>
           </div>
         ))}
       </nav>
 
-      <div className="px-2 py-3 space-y-1" style={{ borderTop: "1px solid var(--sidebar-border)" }}>
-        <div className="flex items-center gap-2 rounded-md" style={{ padding: "7px 10px" }}>
-          <div
-            className="w-6 h-6 rounded-full flex items-center justify-center text-white text-[11px] font-medium shrink-0"
-            style={{ background: "var(--accent)" }}
-          >
+      <div className="mt-6 space-y-3">
+        <div className="flex items-center gap-3 rounded-xl border border-neutral-200 bg-neutral-100/70 p-3">
+          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-neutral-950 text-sm font-semibold text-white">
             {initials}
           </div>
-          {!collapsed && <p className="text-[12px] truncate" style={{ color: "var(--sidebar-item)" }}>{email}</p>}
+          <div className="min-w-0">
+            <p className="truncate text-sm font-semibold text-neutral-950">Admin</p>
+            <p className="truncate text-xs text-neutral-500">{email}</p>
+          </div>
         </div>
-        <a
-          href="/api/auth/signout"
-          className="flex items-center gap-2.5 rounded-md text-[13px] transition-colors"
-          style={{
-            padding: collapsed ? "8px" : "7px 10px",
-            justifyContent: collapsed ? "center" : "flex-start",
-            color: "var(--sidebar-item)",
-          }}
-        >
-          <span>↪</span>
-          {!collapsed && "Log out"}
+        <a href="/api/auth/signout" className="block px-2 text-sm font-medium text-neutral-500 hover:text-neutral-950">
+          Log out
         </a>
       </div>
     </aside>

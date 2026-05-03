@@ -55,7 +55,7 @@ export function CreatorPageHeader({
             {eyebrow}
           </p>
         ) : null}
-        <h1 className="text-[32px] font-semibold leading-tight tracking-[-0.03em] text-neutral-950 md:text-[36px]">
+        <h1 className="text-[32px] font-semibold leading-tight tracking-normal text-neutral-950 md:text-[36px]">
           {title}
         </h1>
         <p className="mt-2 text-sm leading-6 text-neutral-500">
@@ -86,7 +86,7 @@ export function CreatorJourney({
         <p className="text-xs font-semibold uppercase tracking-[0.14em] text-neutral-400">
           {eyebrow}
         </p>
-        <h2 className="text-lg font-semibold tracking-[-0.02em] text-neutral-950">
+        <h2 className="text-lg font-semibold tracking-normal text-neutral-950">
           {title}
         </h2>
         <p className="max-w-2xl text-sm leading-6 text-neutral-500">
@@ -139,7 +139,7 @@ function JourneyStep({
         <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
           <div className="min-w-0">
             <div className="flex flex-wrap items-center gap-2">
-              <h3 className="text-base font-semibold tracking-[-0.01em] text-neutral-950">
+              <h3 className="text-base font-semibold tracking-normal text-neutral-950">
                 {step.label}
               </h3>
               <span
@@ -243,7 +243,7 @@ export function SoftStat({
   return (
     <div className="rounded-2xl border border-neutral-200 bg-neutral-50 p-5">
       <p className="text-sm text-neutral-500">{label}</p>
-      <p className="mt-1 text-3xl font-semibold tracking-[-0.03em] text-neutral-950">
+      <p className="mt-1 text-3xl font-semibold tracking-normal text-neutral-950">
         {value}
       </p>
       {detail ? <p className="mt-1 text-xs text-neutral-500">{detail}</p> : null}

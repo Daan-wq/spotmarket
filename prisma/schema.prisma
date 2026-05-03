@@ -33,6 +33,9 @@ model User {
   notifications       Notification[]
   campaignSubmissions CampaignSubmission[]
   wallet              Wallet?
+  lessonProgress      LessonProgress[]
+  quizAttempts        QuizAttempt[]
+  badges              UserBadge[]
 
   @@index([supabaseId])
   @@index([role])
@@ -70,12 +73,16 @@ model CreatorProfile {
   createdAt          DateTime @default(now())
   updatedAt          DateTime @updatedAt
 
-  igConnections CreatorIgConnection[]
-  fbConnections CreatorFbConnection[]
-  ytConnections CreatorYtConnection[]
-  ttConnections CreatorTikTokConnection[]
-  applications  CampaignApplication[]
-  payouts       Payout[]
+  igConnections            CreatorIgConnection[]
+  fbConnections            CreatorFbConnection[]
+  ytConnections            CreatorYtConnection[]
+  ttConnections            CreatorTikTokConnection[]
+  applications             CampaignApplication[]
+  payouts                  Payout[]
+  operationalProfile       ClipperOperationalProfile?
+  approvedCandidateRecords ClipperCandidate[]         @relation("ApprovedCandidateProfile")
+  productionAssignments    ProductionAssignment[]
+  payoutRunItems           PayoutRunItem[]
 
   @@index([primaryGeo])
   @@index([engagementRate])
@@ -305,6 +312,112 @@ enum Niche {
   OTHER
 }
 
+// AGENCY OS: BRANDS & CRM
+
+model Brand {
+  id              String      @id @default(cuid())
+  name            String
+  niche           String?
+  website         String?
+  instagramHandle String?
+  tiktokHandle    String?
+  contactName     String?
+  contactEmail    String?
+  status          BrandStatus @default(PROSPECT)
+  owner           String?
+  monthlyValue    Decimal     @default(0) @db.Decimal(12, 2)
+  currency        String      @default("EUR")
+  notes           String?     @db.Text
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+
+  onboarding            BrandOnboarding?
+  campaigns             Campaign[]
+  convertedLeads        BrandLead[]            @relation("ConvertedBrand")
+  productionAssignments ProductionAssignment[]
+
+  @@index([status])
+  @@index([owner])
+}
+
+model BrandLead {
+  id               String         @id @default(cuid())
+  brandName        String
+  contactName      String?
+  contactEmail     String?
+  source           String?
+  stage            BrandLeadStage @default(LEAD)
+  priority         LeadPriority   @default(MEDIUM)
+  owner            String?
+  lastContactedAt  DateTime?
+  nextFollowUpAt   DateTime?
+  estimatedValue   Decimal        @default(0) @db.Decimal(12, 2)
+  probability      Int            @default(0)
+  notes            String?        @db.Text
+  convertedBrandId String?
+  convertedBrand   Brand?         @relation("ConvertedBrand", fields: [convertedBrandId], references: [id])
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
+
+  @@index([stage])
+  @@index([priority])
+  @@index([nextFollowUpAt])
+  @@index([convertedBrandId])
+}
+
+model BrandOnboarding {
+  id                      String    @id @default(cuid())
+  brandId                 String    @unique
+  brand                   Brand     @relation(fields: [brandId], references: [id], onDelete: Cascade)
+  packageName             String?
+  monthlyPrice            Decimal   @default(0) @db.Decimal(12, 2)
+  contractSigned          Boolean   @default(false)
+  paymentReceived         Boolean   @default(false)
+  kickoffCallDone         Boolean   @default(false)
+  brandBriefReceived      Boolean   @default(false)
+  contentExamplesReceived Boolean   @default(false)
+  driveFolderCreated      Boolean   @default(false)
+  targetAudience          String?
+  mainProductOrService    String?
+  hooksAngles             String?   @db.Text
+  dosAndDonts             String?   @db.Text
+  assignedClipperIds      String[]  @default([])
+  startDate               DateTime?
+  accountManager          String?
+  createdAt               DateTime  @default(now())
+  updatedAt               DateTime  @updatedAt
+
+  @@index([accountManager])
+  @@index([startDate])
+}
+
+enum BrandStatus {
+  PROSPECT
+  ONBOARDING
+  ACTIVE
+  PAUSED
+  CHURNED
+}
+
+enum BrandLeadStage {
+  LEAD
+  CONTACTED
+  REPLIED
+  CALL_BOOKED
+  CALL_DONE
+  PROPOSAL_SENT
+  NEGOTIATION
+  WON
+  LOST
+  NURTURE_LATER
+}
+
+enum LeadPriority {
+  LOW
+  MEDIUM
+  HIGH
+}
+
 // ─────────────────────────────────────────
 // CAMPAIGNS
 // ─────────────────────────────────────────
@@ -363,18 +476,22 @@ model Campaign {
   // Creator/owner
   createdByUserId String?
   createdBy       User?   @relation("OwnedCampaigns", fields: [createdByUserId], references: [id])
+  brandId         String?
+  brand           Brand?  @relation(fields: [brandId], references: [id])
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  applications        CampaignApplication[]
-  campaignSubmissions CampaignSubmission[]
-  inviteLinks         CampaignInviteLink[]
+  applications          CampaignApplication[]
+  campaignSubmissions   CampaignSubmission[]
+  inviteLinks           CampaignInviteLink[]
+  productionAssignments ProductionAssignment[]
 
   @@index([status])
   @@index([deadline])
   @@index([niche])
   @@index([createdByUserId])
+  @@index([brandId])
 }
 
 enum CampaignStatus {
@@ -467,13 +584,15 @@ enum ClaimType {
 // ─────────────────────────────────────────
 
 model CampaignSubmission {
-  id            String              @id @default(cuid())
-  applicationId String
-  application   CampaignApplication @relation(fields: [applicationId], references: [id], onDelete: Cascade)
-  creatorId     String
-  creator       User                @relation(fields: [creatorId], references: [id])
-  campaignId    String
-  campaign      Campaign            @relation(fields: [campaignId], references: [id])
+  id                     String                @id @default(cuid())
+  applicationId          String
+  application            CampaignApplication   @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  creatorId              String
+  creator                User                  @relation(fields: [creatorId], references: [id])
+  campaignId             String
+  campaign               Campaign              @relation(fields: [campaignId], references: [id])
+  productionAssignmentId String?               @unique
+  productionAssignment   ProductionAssignment? @relation(fields: [productionAssignmentId], references: [id])
 
   postUrl       String
   videoUrl      String?
@@ -515,6 +634,8 @@ model CampaignSubmission {
   referralPayouts   ReferralPayout[]   @relation("ReferralPayouts")
   metricSnapshots   MetricSnapshot[]
   submissionSignals SubmissionSignal[]
+  qcReviews         QcReview[]
+  payoutRunItems    PayoutRunItem[]
 
   @@index([applicationId])
   @@index([creatorId])
@@ -522,6 +643,7 @@ model CampaignSubmission {
   @@index([status])
   @@index([settledAt])
   @@index([logoStatus])
+  @@index([productionAssignmentId])
 }
 
 enum LogoStatus {
@@ -533,6 +655,7 @@ enum LogoStatus {
 enum SubmissionStatus {
   PENDING
   APPROVED
+  NEEDS_REVISION
   REJECTED
   FLAGGED
 }
@@ -553,6 +676,10 @@ model Payout {
   creatorProfile   CreatorProfile?      @relation(fields: [creatorProfileId], references: [id])
   applicationId    String?
   application      CampaignApplication? @relation(fields: [applicationId], references: [id])
+  payoutRunId      String?
+  payoutRun        PayoutRun?           @relation(fields: [payoutRunId], references: [id])
+  payoutRunItemId  String?              @unique
+  payoutRunItem    PayoutRunItem?       @relation(fields: [payoutRunItemId], references: [id])
   amount           Decimal              @db.Decimal(12, 6)
   currency         String               @default("USD")
   status           PayoutStatus         @default(pending)
@@ -575,6 +702,7 @@ model Payout {
   @@index([applicationId])
   @@index([status])
   @@index([creatorProfileId])
+  @@index([payoutRunId])
 }
 
 enum PayoutType {
@@ -594,6 +722,239 @@ enum PayoutStatus {
 enum PaymentMethod {
   CRYPTO
   STRIPE
+}
+
+// AGENCY OS: CLIPPERS, PRODUCTION, QC, PAYOUT RUNS, SOPs
+
+model ClipperOperationalProfile {
+  id               String             @id @default(cuid())
+  creatorProfileId String             @unique
+  creatorProfile   CreatorProfile     @relation(fields: [creatorProfileId], references: [id], onDelete: Cascade)
+  status           ClipperStatus      @default(APPLICANT)
+  reliability      ClipperReliability @default(UNKNOWN)
+  maxClipsPerWeek  Int?
+  ratePerClip      Decimal            @default(0) @db.Decimal(10, 2)
+  editingStyle     String?
+  niches           String[]           @default([])
+  assignedBrandIds String[]           @default([])
+  notes            String?            @db.Text
+  createdAt        DateTime           @default(now())
+  updatedAt        DateTime           @updatedAt
+
+  @@index([status])
+  @@index([reliability])
+}
+
+model ClipperCandidate {
+  id                       String                @id @default(cuid())
+  name                     String
+  source                   String?
+  contact                  String?
+  portfolioUrl             String?
+  stage                    ClipperCandidateStage @default(FOUND)
+  contactedBy              String?
+  trialSentAt              DateTime?
+  trialDueAt               DateTime?
+  trialSubmittedAt         DateTime?
+  score                    Int?
+  approvedCreatorProfileId String?
+  approvedCreatorProfile   CreatorProfile?       @relation("ApprovedCandidateProfile", fields: [approvedCreatorProfileId], references: [id])
+  notes                    String?               @db.Text
+  createdAt                DateTime              @default(now())
+  updatedAt                DateTime              @updatedAt
+
+  @@index([stage])
+  @@index([trialDueAt])
+  @@index([approvedCreatorProfileId])
+}
+
+model ProductionAssignment {
+  id               String                     @id @default(cuid())
+  campaignId       String
+  campaign         Campaign                   @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  brandId          String?
+  brand            Brand?                     @relation(fields: [brandId], references: [id])
+  creatorProfileId String?
+  creatorProfile   CreatorProfile?            @relation(fields: [creatorProfileId], references: [id])
+  contentAngle     String?
+  sourceUrl        String?
+  assignedAt       DateTime                   @default(now())
+  dueAt            DateTime?
+  status           ProductionAssignmentStatus @default(NOT_STARTED)
+  revisionNotes    String?                    @db.Text
+  submittedAt      DateTime?
+  submission       CampaignSubmission?
+  payoutRunItems   PayoutRunItem[]
+  createdAt        DateTime                   @default(now())
+  updatedAt        DateTime                   @updatedAt
+
+  @@index([campaignId])
+  @@index([brandId])
+  @@index([creatorProfileId])
+  @@index([status])
+  @@index([dueAt])
+}
+
+model QcReview {
+  id                 String             @id @default(cuid())
+  submissionId       String
+  submission         CampaignSubmission @relation(fields: [submissionId], references: [id], onDelete: Cascade)
+  reviewerId         String?
+  hookScore          Int?
+  pacingScore        Int?
+  captionsScore      Int?
+  brandFitScore      Int?
+  logoPresent        Boolean?
+  noSpellingMistakes Boolean            @default(false)
+  correctFormat      Boolean            @default(false)
+  audioQuality       Boolean            @default(false)
+  ctaIncluded        Boolean            @default(false)
+  decision           QcDecision         @default(REVISION)
+  notes              String?            @db.Text
+  createdAt          DateTime           @default(now())
+  updatedAt          DateTime           @updatedAt
+
+  @@index([submissionId])
+  @@index([decision])
+}
+
+model PayoutRun {
+  id             String          @id @default(cuid())
+  name           String
+  periodStart    DateTime
+  periodEnd      DateTime
+  status         PayoutRunStatus @default(DRAFT)
+  currency       String          @default("EUR")
+  totalGross     Decimal         @default(0) @db.Decimal(12, 2)
+  totalBonus     Decimal         @default(0) @db.Decimal(12, 2)
+  totalDeduction Decimal         @default(0) @db.Decimal(12, 2)
+  totalNet       Decimal         @default(0) @db.Decimal(12, 2)
+  proofUrl       String?
+  createdBy      String?
+  finalizedAt    DateTime?
+  paidAt         DateTime?
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+
+  items   PayoutRunItem[]
+  payouts Payout[]
+
+  @@index([status])
+  @@index([periodStart, periodEnd])
+}
+
+model PayoutRunItem {
+  id                     String                @id @default(cuid())
+  payoutRunId            String
+  payoutRun              PayoutRun             @relation(fields: [payoutRunId], references: [id], onDelete: Cascade)
+  creatorProfileId       String?
+  creatorProfile         CreatorProfile?       @relation(fields: [creatorProfileId], references: [id])
+  submissionId           String?
+  submission             CampaignSubmission?   @relation(fields: [submissionId], references: [id])
+  productionAssignmentId String?
+  productionAssignment   ProductionAssignment? @relation(fields: [productionAssignmentId], references: [id])
+  approvedClips          Int                   @default(0)
+  ratePerClip            Decimal               @default(0) @db.Decimal(10, 2)
+  bonus                  Decimal               @default(0) @db.Decimal(10, 2)
+  deduction              Decimal               @default(0) @db.Decimal(10, 2)
+  total                  Decimal               @default(0) @db.Decimal(12, 2)
+  notes                  String?               @db.Text
+  payout                 Payout?
+  createdAt              DateTime              @default(now())
+  updatedAt              DateTime              @updatedAt
+
+  @@index([payoutRunId])
+  @@index([creatorProfileId])
+  @@index([submissionId])
+  @@index([productionAssignmentId])
+}
+
+model SopDocument {
+  id             String      @id @default(cuid())
+  title          String
+  category       SopCategory
+  status         SopStatus   @default(DRAFT)
+  owner          String?
+  summary        String?
+  body           String      @db.Text
+  lastReviewedAt DateTime?
+  nextReviewAt   DateTime?
+  createdAt      DateTime    @default(now())
+  updatedAt      DateTime    @updatedAt
+
+  @@index([category])
+  @@index([status])
+  @@index([nextReviewAt])
+}
+
+enum ClipperStatus {
+  APPLICANT
+  TRIAL_SENT
+  TRIAL_SUBMITTED
+  APPROVED
+  ACTIVE
+  PAUSED
+  REMOVED
+}
+
+enum ClipperReliability {
+  UNKNOWN
+  LOW
+  MEDIUM
+  HIGH
+}
+
+enum ClipperCandidateStage {
+  FOUND
+  CONTACTED
+  PORTFOLIO_RECEIVED
+  TRIAL_SENT
+  TRIAL_SUBMITTED
+  APPROVED
+  REJECTED
+  ADDED_TO_DATABASE
+}
+
+enum ProductionAssignmentStatus {
+  NOT_STARTED
+  IN_PROGRESS
+  SUBMITTED
+  NEEDS_REVISION
+  APPROVED
+  POSTED
+  REJECTED
+  PAID
+}
+
+enum QcDecision {
+  APPROVED
+  REVISION
+  REJECTED
+}
+
+enum PayoutRunStatus {
+  DRAFT
+  FINALIZED
+  PROCESSING
+  SENT
+  CONFIRMED
+}
+
+enum SopCategory {
+  SALES
+  BRAND_ONBOARDING
+  CLIPPER_RECRUITMENT
+  PRODUCTION
+  QC
+  PAYOUTS
+  REPORTING
+}
+
+enum SopStatus {
+  DRAFT
+  ACTIVE
+  NEEDS_REVIEW
+  ARCHIVED
 }
 
 // ─────────────────────────────────────────
@@ -740,19 +1101,19 @@ enum WithdrawalStatus {
 // ─────────────────────────────────────────
 
 model MetricSnapshot {
-  id           String             @id @default(cuid())
-  submissionId String
-  submission   CampaignSubmission @relation(fields: [submissionId], references: [id], onDelete: Cascade)
-  capturedAt   DateTime           @default(now())
-  source       MetricSource
-  viewCount    BigInt
-  likeCount    Int                @default(0)
-  commentCount Int                @default(0)
-  shareCount   Int                @default(0)
-  saveCount    Int?
-  watchTimeSec Int?
-  reachCount   Int?
-  raw          Json?
+  id                String             @id @default(cuid())
+  submissionId      String
+  submission        CampaignSubmission @relation(fields: [submissionId], references: [id], onDelete: Cascade)
+  capturedAt        DateTime           @default(now())
+  source            MetricSource
+  viewCount         BigInt
+  likeCount         Int                @default(0)
+  commentCount      Int                @default(0)
+  shareCount        Int                @default(0)
+  saveCount         Int?
+  watchTimeSec      Int?
+  reachCount        Int?
+  raw               Json?
   // Track-everything extensions (PR1 — additive, populated by per-platform PRs)
   totalInteractions Int?
   followsFromMedia  Int?
@@ -896,16 +1257,16 @@ model StoryPost {
 /// connection per day. Lets us reconstruct "FB page followers over the last
 /// 90 days" / "TT followerCount trend" without diffing connection rows.
 model PlatformAccountSnapshot {
-  id              String         @id @default(cuid())
-  connectionType  ConnectionType
-  connectionId    String
-  capturedAt      DateTime       @default(now())
-  followerCount   Int?
-  followingCount  Int?
-  totalLikes      BigInt?
-  videoCount      Int?
-  isVerified      Boolean?
-  raw             Json?
+  id             String         @id @default(cuid())
+  connectionType ConnectionType
+  connectionId   String
+  capturedAt     DateTime       @default(now())
+  followerCount  Int?
+  followingCount Int?
+  totalLikes     BigInt?
+  videoCount     Int?
+  isVerified     Boolean?
+  raw            Json?
 
   @@index([connectionType, connectionId, capturedAt])
   @@index([capturedAt])
@@ -915,27 +1276,27 @@ model PlatformAccountSnapshot {
 /// data we used to compute on-demand and discard. One row per (connection, date).
 /// Filled by the daily `/api/cron/poll-yt-analytics` cron.
 model YtDailyChannelInsight {
-  id                          String   @id @default(cuid())
-  connectionId                String
-  date                        DateTime @db.Date
-  views                       BigInt
-  engagedViews                BigInt?
-  estimatedMinutesWatched     Int
-  averageViewDuration         Int
-  averageViewPercentage       Float?
-  subscribersGained           Int
-  subscribersLost             Int
-  likes                       Int
-  comments                    Int
-  shares                      Int
-  redViews                    BigInt?
-  estimatedRedMinutesWatched  Int?
-  trafficSourceBreakdown      Json?
-  playbackLocationBreakdown   Json?
-  deviceTypeBreakdown         Json?
-  contentTypeBreakdown        Json?
-  subscribedStatusBreakdown   Json?
-  raw                         Json?
+  id                         String   @id @default(cuid())
+  connectionId               String
+  date                       DateTime @db.Date
+  views                      BigInt
+  engagedViews               BigInt?
+  estimatedMinutesWatched    Int
+  averageViewDuration        Int
+  averageViewPercentage      Float?
+  subscribersGained          Int
+  subscribersLost            Int
+  likes                      Int
+  comments                   Int
+  shares                     Int
+  redViews                   BigInt?
+  estimatedRedMinutesWatched Int?
+  trafficSourceBreakdown     Json?
+  playbackLocationBreakdown  Json?
+  deviceTypeBreakdown        Json?
+  contentTypeBreakdown       Json?
+  subscribedStatusBreakdown  Json?
+  raw                        Json?
 
   @@unique([connectionId, date])
   @@index([connectionId, date])
@@ -1038,4 +1399,129 @@ enum NotificationChannel {
   IN_APP
   EMAIL
   DISCORD
+}
+
+// ─────────────────────────────────────────
+// COURSES (Duolingo-style routemap)
+// ─────────────────────────────────────────
+
+enum CoursePlatform {
+  FOUNDATIONS
+  TIKTOK
+  INSTAGRAM
+  YOUTUBE
+  X
+}
+
+enum BadgeKind {
+  LESSON
+  SECTION
+  COURSE
+}
+
+model Course {
+  id          String         @id @default(cuid())
+  slug        String         @unique
+  platform    CoursePlatform
+  title       String
+  description String?
+  order       Int
+  isPublished Boolean        @default(false)
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+
+  sections CourseSection[]
+
+  @@index([platform, order])
+}
+
+model CourseSection {
+  id          String  @id @default(cuid())
+  courseId    String
+  slug        String
+  title       String
+  order       Int
+  isPublished Boolean @default(false)
+  badgeSlug   String
+  badgeTitle  String
+
+  course  Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  lessons Lesson[]
+
+  @@unique([courseId, slug])
+  @@index([courseId, order])
+}
+
+model Lesson {
+  id          String  @id @default(cuid())
+  sectionId   String
+  slug        String
+  title       String
+  contentMd   String
+  order       Int
+  estMinutes  Int     @default(5)
+  isPublished Boolean @default(false)
+
+  section   CourseSection    @relation(fields: [sectionId], references: [id], onDelete: Cascade)
+  questions QuizQuestion[]
+  progress  LessonProgress[]
+  attempts  QuizAttempt[]
+
+  @@unique([sectionId, slug])
+  @@index([sectionId, order])
+}
+
+model QuizQuestion {
+  id           String @id @default(cuid())
+  lessonId     String
+  prompt       String
+  optionsJson  Json
+  correctIndex Int
+  order        Int
+
+  lesson Lesson @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+
+  @@index([lessonId, order])
+}
+
+model LessonProgress {
+  id          String   @id @default(cuid())
+  userId      String
+  lessonId    String
+  completedAt DateTime
+  earnedBadge Boolean  @default(false)
+  quizSkipped Boolean  @default(false)
+
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  lesson Lesson @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, lessonId])
+  @@index([userId])
+}
+
+model QuizAttempt {
+  id          String   @id @default(cuid())
+  userId      String
+  lessonId    String
+  score       Int
+  total       Int
+  attemptedAt DateTime @default(now())
+
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  lesson Lesson @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+
+  @@index([userId, lessonId])
+}
+
+model UserBadge {
+  id       String    @id @default(cuid())
+  userId   String
+  kind     BadgeKind
+  refId    String
+  earnedAt DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, kind, refId])
+  @@index([userId])
 }

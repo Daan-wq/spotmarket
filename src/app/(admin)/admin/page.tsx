@@ -1,469 +1,276 @@
 import Link from "next/link";
-import { CreatorScoreCell } from "@/components/admin/creator-score-cell";
-import { getAgencyOsDashboardSnapshot, type RecentRiskSignal } from "@/lib/admin/agency-os";
+import { AlertTriangle, ArrowRight, BadgeEuro, ClipboardCheck, Plus } from "lucide-react";
+import { ActionQueue, PageHeader, SectionHeader, StatCard } from "@/components/ui/page";
+import { Badge } from "@/components/ui/badge";
+import { prisma } from "@/lib/prisma";
+import { getAgencyOsDashboardSnapshot } from "@/lib/admin/agency-os";
+import { formatCurrency, formatNumber, toNumber } from "@/lib/admin/agency-format";
 
 export const dynamic = "force-dynamic";
 
-const euroFormatter = new Intl.NumberFormat("en-US", {
-  style: "currency",
-  currency: "EUR",
-  maximumFractionDigits: 0,
-});
+const PIPELINE = [
+  { label: "Lead", href: "/admin/crm" },
+  { label: "Onboarding", href: "/admin/onboarding" },
+  { label: "Campaign", href: "/admin/campaigns" },
+  { label: "Production", href: "/admin/production" },
+  { label: "QC", href: "/admin/review" },
+  { label: "Payout", href: "/admin/payouts" },
+  { label: "Report", href: "/admin/reports" },
+];
 
-const numberFormatter = new Intl.NumberFormat("en-US");
-
-const SIGNAL_LABEL: Record<RecentRiskSignal["type"], string> = {
-  VELOCITY_SPIKE: "Velocity spike",
-  VELOCITY_DROP: "Velocity drop",
-  RATIO_ANOMALY: "Ratio anomaly",
-  BOT_SUSPECTED: "Bot suspected",
-  LOGO_MISSING: "Logo missing",
-  DUPLICATE: "Duplicate",
-  TOKEN_BROKEN: "Token broken",
-};
-
-interface FlowStep {
-  step: string;
-  title: string;
-  purpose: string;
-  status: "good" | "attention" | "manual";
-  metric: string;
-  subMetric: string;
-  href: string;
-  action: string;
-}
-
-interface ActionItem {
-  title: string;
-  detail: string;
-  href: string;
-  tone: "attention" | "good";
-}
-
-function formatEuro(value: number) {
-  return euroFormatter.format(value);
-}
-
-function formatNumber(value: number) {
-  return numberFormatter.format(value);
-}
-
-function formatDate(date: Date) {
-  return date.toLocaleDateString(undefined, { month: "short", day: "numeric" });
-}
-
-function statusStyle(status: FlowStep["status"] | ActionItem["tone"]) {
-  if (status === "good") {
-    return {
-      border: "var(--success-text)",
-      badgeBg: "var(--success-bg)",
-      badgeText: "var(--success-text)",
-      label: "Clear",
-    };
-  }
-  if (status === "manual") {
-    return {
-      border: "var(--border)",
-      badgeBg: "var(--bg-primary)",
-      badgeText: "var(--text-secondary)",
-      label: "Manual",
-    };
-  }
-  return {
-    border: "var(--warning-text)",
-    badgeBg: "var(--warning-bg)",
-    badgeText: "var(--warning-text)",
-    label: "Needs work",
-  };
-}
-
-function FlowStepCard({ item }: { item: FlowStep }) {
-  const style = statusStyle(item.status);
-
-  return (
-    <Link
-      href={item.href}
-      className="block rounded-lg p-4 transition-opacity hover:opacity-90"
-      style={{ background: "var(--bg-card)", border: `1px solid ${style.border}` }}
-    >
-      <div className="flex items-start justify-between gap-3">
-        <p className="text-[11px] font-semibold uppercase tracking-wide" style={{ color: "var(--text-secondary)" }}>
-          {item.step}
-        </p>
-        <span
-          className="rounded px-2 py-0.5 text-[10px] font-semibold uppercase"
-          style={{ background: style.badgeBg, color: style.badgeText }}
-        >
-          {style.label}
-        </span>
-      </div>
-      <h2 className="mt-3 text-lg font-semibold leading-tight" style={{ color: "var(--text-primary)" }}>
-        {item.title}
-      </h2>
-      <p className="mt-1 min-h-10 text-xs leading-5" style={{ color: "var(--text-secondary)" }}>
-        {item.purpose}
-      </p>
-      <div className="mt-5">
-        <p className="text-3xl font-semibold leading-none" style={{ color: "var(--text-primary)" }}>
-          {item.metric}
-        </p>
-        <p className="mt-1 text-xs" style={{ color: "var(--text-secondary)" }}>
-          {item.subMetric}
-        </p>
-      </div>
-      <p className="mt-4 text-xs font-semibold" style={{ color: "var(--primary, var(--accent))" }}>
-        {item.action}
-      </p>
-    </Link>
-  );
-}
-
-function SummaryPanel({
-  label,
-  value,
-  detail,
-  tone = "neutral",
-}: {
-  label: string;
-  value: string;
-  detail: string;
-  tone?: "neutral" | "attention" | "good";
-}) {
-  const border =
-    tone === "attention" ? "var(--warning-text)" : tone === "good" ? "var(--success-text)" : "var(--border)";
-
-  return (
-    <div className="rounded-lg px-4 py-3" style={{ background: "var(--bg-card)", border: `1px solid ${border}` }}>
-      <p className="text-[11px] font-semibold uppercase tracking-wide" style={{ color: "var(--text-secondary)" }}>
-        {label}
-      </p>
-      <p className="mt-2 text-2xl font-semibold" style={{ color: "var(--text-primary)" }}>
-        {value}
-      </p>
-      <p className="mt-1 text-xs leading-5" style={{ color: "var(--text-secondary)" }}>
-        {detail}
-      </p>
-    </div>
-  );
-}
-
-function buildActions(snapshot: Awaited<ReturnType<typeof getAgencyOsDashboardSnapshot>>): ActionItem[] {
-  const { metrics } = snapshot;
-  const actions: ActionItem[] = [];
-
-  if (metrics.clipsNeedsReview > 0) {
-    actions.push({
-      title: `Review ${metrics.clipsNeedsReview} pending clips`,
-      detail: "This is the current delivery bottleneck. Approve, reject, or mark missing logo before anything else.",
-      href: "/admin/review/videos",
-      tone: "attention",
-    });
-  }
-
-  if (snapshot.deliveryRisks.length > 0) {
-    const firstRisk = snapshot.deliveryRisks[0];
-    actions.push({
-      title: `Fix campaign pace: ${firstRisk.name}`,
-      detail:
-        firstRisk.goal > 0
-          ? `${formatNumber(firstRisk.captured)} of ${formatNumber(firstRisk.goal)} views captured.`
-          : "This campaign has no view goal set, so delivery health is unclear.",
-      href: `/admin/campaigns/${firstRisk.id}`,
-      tone: "attention",
-    });
-  }
-
-  if (metrics.payoutsOwed > 0) {
-    actions.push({
-      title: `Process ${formatEuro(metrics.payoutsOwed)} in payouts`,
-      detail: "Keep creator payments out of chat threads and close the payout loop in admin.",
-      href: "/admin/payouts",
-      tone: "attention",
-    });
-  }
-
-  if (metrics.openRiskSignals > 0) {
-    actions.push({
-      title: `Resolve ${metrics.openRiskSignals} open risk signals`,
-      detail:
-        metrics.criticalRiskSignals > 0
-          ? `${metrics.criticalRiskSignals} critical signals need owner attention.`
-          : "Review WARN signals before they become delivery problems.",
-      href: "/admin/signals",
-      tone: "attention",
-    });
-  }
-
-  if (actions.length === 0) {
-    actions.push({
-      title: "No urgent operations blocked",
-      detail: "Use the flow below to plan sales, production capacity, and the next weekly review.",
-      href: "/admin/campaigns",
-      tone: "good",
-    });
-  }
-
-  return actions.slice(0, 4);
-}
-
-export default async function AdminDashboard() {
-  const snapshot = await getAgencyOsDashboardSnapshot();
+export default async function AdminCommandCenter() {
+  const now = new Date();
+  const snapshot = await getAgencyOsDashboardSnapshot(now);
   const { metrics } = snapshot;
 
-  const flow: FlowStep[] = [
-    {
-      step: "Step 1",
-      title: "Sell brands",
-      purpose: "Track closed campaigns and the brand pipeline. CRM work is still manual outside the app.",
-      status: metrics.pipelineBrands > 0 || metrics.activeBrands > 0 ? "good" : "attention",
-      metric: `${metrics.activeBrands} active`,
-      subMetric: `${metrics.pipelineBrands} in pipeline - ${formatEuro(metrics.totalRevenueThisMonth)} booked this month`,
-      href: "/admin/campaigns",
-      action: "Open campaign pipeline",
-    },
-    {
-      step: "Step 2",
-      title: "Staff clippers",
-      purpose: "Know whether there are enough active creators to deliver the work you sold.",
-      status: metrics.activeClippers > 0 ? "good" : "attention",
-      metric: String(metrics.activeClippers),
-      subMetric: "verified or assigned clippers",
-      href: "/admin/creators",
-      action: "Open clipper database",
-    },
-    {
-      step: "Step 3",
-      title: "Produce clips",
-      purpose: "Follow production volume from submission to campaign delivery.",
-      status: snapshot.deliveryRisks.length > 0 ? "attention" : "good",
-      metric: String(metrics.clipsDeliveredThisWeek),
-      subMetric: `${snapshot.deliveryRisks.length} campaigns at risk`,
-      href: "/admin/submissions",
-      action: "Open production tracker",
-    },
-    {
-      step: "Step 4",
-      title: "Quality control",
-      purpose: "Clear pending reviews, logo checks, rejected clips, and delivery risk signals.",
-      status: metrics.clipsNeedsReview > 0 || metrics.openRiskSignals > 0 ? "attention" : "good",
-      metric: String(metrics.clipsNeedsReview),
-      subMetric: `${metrics.clipsApprovedThisWeek} approved - ${metrics.clipsRejectedOrRevisedThisWeek} rejected or flagged`,
-      href: "/admin/review/videos",
-      action: "Open review queue",
-    },
-    {
-      step: "Step 5",
-      title: "Pay and review",
-      purpose: "Close the money loop and use the weekly KPI rhythm to decide what to fix next.",
-      status: metrics.payoutsOwed > 0 ? "attention" : "good",
-      metric: formatEuro(metrics.payoutsOwed),
-      subMetric: `${formatEuro(metrics.estimatedGrossProfit)} estimated gross profit`,
-      href: "/admin/payouts",
-      action: "Open payouts",
-    },
+  const [
+    crmFollowUps,
+    pipelineValue,
+    onboardingBlockers,
+    overdueAssignments,
+    revisionAssignments,
+    pendingQc,
+    missingLogo,
+    activeBrands,
+    activeClippers,
+    payoutRuns,
+    sopNeedsReview,
+    clipsDue,
+  ] = await Promise.all([
+    prisma.brandLead.count({
+      where: {
+        convertedBrandId: null,
+        stage: { notIn: ["WON", "LOST"] },
+        nextFollowUpAt: { lte: now },
+      },
+    }),
+    prisma.brandLead.aggregate({
+      where: { convertedBrandId: null, stage: { notIn: ["WON", "LOST"] } },
+      _sum: { estimatedValue: true },
+    }),
+    prisma.brandOnboarding.count({
+      where: {
+        OR: [
+          { contractSigned: false },
+          { paymentReceived: false },
+          { kickoffCallDone: false },
+          { brandBriefReceived: false },
+          { contentExamplesReceived: false },
+          { driveFolderCreated: false },
+          { targetAudience: null },
+          { mainProductOrService: null },
+          { startDate: null },
+        ],
+      },
+    }),
+    prisma.productionAssignment.count({
+      where: {
+        dueAt: { lt: now },
+        status: { notIn: ["APPROVED", "POSTED", "PAID", "REJECTED"] },
+      },
+    }),
+    prisma.productionAssignment.count({ where: { status: "NEEDS_REVISION" } }),
+    prisma.campaignSubmission.count({ where: { status: { in: ["PENDING", "FLAGGED", "NEEDS_REVISION"] } } }),
+    prisma.campaignSubmission.count({ where: { logoStatus: "MISSING" } }),
+    prisma.brand.count({ where: { status: "ACTIVE" } }),
+    prisma.clipperOperationalProfile.count({ where: { status: { in: ["APPROVED", "ACTIVE"] } } }),
+    prisma.payoutRun.count({ where: { status: { in: ["DRAFT", "FINALIZED", "PROCESSING"] } } }),
+    prisma.sopDocument.count({
+      where: {
+        OR: [
+          { status: "NEEDS_REVIEW" },
+          { nextReviewAt: { lte: now } },
+        ],
+      },
+    }),
+    prisma.productionAssignment.count({
+      where: { status: { in: ["NOT_STARTED", "IN_PROGRESS", "NEEDS_REVISION"] } },
+    }),
+  ]);
+
+  const rawQueue = [
+    crmFollowUps > 0
+      ? {
+          title: `Follow up with ${crmFollowUps} brand lead${crmFollowUps === 1 ? "" : "s"}`,
+          detail: "CRM follow-ups are due now. Move the lead, book the call, or nurture it cleanly.",
+          href: "/admin/crm",
+          label: "CRM",
+          tone: "warning" as const,
+        }
+      : null,
+    onboardingBlockers > 0
+      ? {
+          title: `${onboardingBlockers} onboarding checklist${onboardingBlockers === 1 ? "" : "s"} blocked`,
+          detail: "Contract, payment, brief, assets, audience, and assigned clippers must be complete before production.",
+          href: "/admin/onboarding",
+          label: "Onboarding",
+          tone: "warning" as const,
+        }
+      : null,
+    overdueAssignments > 0
+      ? {
+          title: `${overdueAssignments} overdue production assignment${overdueAssignments === 1 ? "" : "s"}`,
+          detail: "Production starts at assigned clip, not after the creator submits. Clear overdue work first.",
+          href: "/admin/production",
+          label: "Production",
+          tone: "danger" as const,
+        }
+      : null,
+    pendingQc > 0
+      ? {
+          title: `Review ${pendingQc} clip${pendingQc === 1 ? "" : "s"}`,
+          detail: `${missingLogo} missing-logo item${missingLogo === 1 ? "" : "s"}, ${revisionAssignments} revision assignment${revisionAssignments === 1 ? "" : "s"}.`,
+          href: "/admin/review",
+          label: "QC",
+          tone: "warning" as const,
+        }
+      : null,
+    payoutRuns > 0 || metrics.payoutsOwed > 0
+      ? {
+          title: "Close the payout loop",
+          detail: `${payoutRuns} payout run${payoutRuns === 1 ? "" : "s"} in progress, ${formatCurrency(metrics.payoutsOwed)} owed from legacy payouts.`,
+          href: "/admin/payouts",
+          label: "Money",
+          tone: "warning" as const,
+        }
+      : null,
+    sopNeedsReview > 0
+      ? {
+          title: `${sopNeedsReview} SOP${sopNeedsReview === 1 ? "" : "s"} need review`,
+          detail: "Keep sales, onboarding, recruitment, production, QC, payouts, and reporting procedures current.",
+          href: "/admin/sops",
+          label: "SOP",
+          tone: "neutral" as const,
+        }
+      : null,
+    metrics.openRiskSignals > 0
+      ? {
+          title: `Resolve ${metrics.openRiskSignals} open risk signal${metrics.openRiskSignals === 1 ? "" : "s"}`,
+          detail: `${metrics.criticalRiskSignals} critical, ${metrics.tokenBrokenSignals} token-related. These feed delivery risk.`,
+          href: "/admin/signals",
+          label: "Risk",
+          tone: "danger" as const,
+        }
+      : null,
   ];
-
-  const actions = buildActions(snapshot);
-  const primaryAction = actions[0];
+  const queue = rawQueue.filter((item): item is NonNullable<(typeof rawQueue)[number]> => Boolean(item));
 
   return (
-    <div className="w-full px-5 py-7 sm:px-8">
-      <header className="grid gap-5 xl:grid-cols-[1fr_360px]">
-        <div>
-          <p className="text-[11px] font-semibold uppercase tracking-[0.18em]" style={{ color: "var(--accent)" }}>
-            Agency Operating System
-          </p>
-          <h1 className="mt-2 text-3xl font-bold leading-tight" style={{ color: "var(--text-primary)" }}>
-            Admin dashboard
-          </h1>
-          <p className="mt-2 max-w-3xl text-sm leading-6" style={{ color: "var(--text-secondary)" }}>
-            One flow: sell brands, staff clippers, produce clips, check quality, then pay and review. Start with the
-            bottleneck, not the menu.
-          </p>
-        </div>
-        <Link
-          href={primaryAction.href}
-          className="rounded-lg p-4 transition-opacity hover:opacity-90"
-          style={{
-            background: primaryAction.tone === "attention" ? "var(--warning-bg)" : "var(--success-bg)",
-            border: `1px solid ${primaryAction.tone === "attention" ? "var(--warning-text)" : "var(--success-text)"}`,
-          }}
-        >
-          <p
-            className="text-[11px] font-semibold uppercase tracking-wide"
-            style={{ color: primaryAction.tone === "attention" ? "var(--warning-text)" : "var(--success-text)" }}
-          >
-            Start here
-          </p>
-          <h2 className="mt-2 text-lg font-semibold" style={{ color: "var(--text-primary)" }}>
-            {primaryAction.title}
-          </h2>
-          <p className="mt-1 text-xs leading-5" style={{ color: "var(--text-secondary)" }}>
-            {primaryAction.detail}
-          </p>
-        </Link>
-      </header>
+    <div className="space-y-9">
+      <PageHeader
+        eyebrow="Agency OS"
+        title="Command Center"
+        description="Start here. Daily actions, CEO numbers, and the full agency pipeline are now one operating surface."
+        actions={[{ label: "New lead", href: "/admin/crm", icon: Plus }]}
+      />
 
-      <section className="mt-6 grid grid-cols-1 gap-3 md:grid-cols-3">
-        <SummaryPanel
-          label="Money"
-          value={formatEuro(metrics.estimatedGrossProfit)}
-          detail={`${formatEuro(metrics.bookedCampaignBudget)} booked budget minus creator cost and open payouts.`}
-          tone={metrics.estimatedGrossProfit >= 0 ? "good" : "attention"}
-        />
-        <SummaryPanel
-          label="Delivery"
-          value={`${metrics.clipsNeedsReview} to review`}
-          detail={`${metrics.clipsDeliveredThisWeek} clips submitted this week, ${snapshot.deliveryRisks.length} campaigns need pace checks.`}
-          tone={metrics.clipsNeedsReview > 0 || snapshot.deliveryRisks.length > 0 ? "attention" : "good"}
-        />
-        <SummaryPanel
-          label="Risk"
-          value={`${metrics.openRiskSignals} open`}
-          detail={
-            metrics.criticalRiskSignals > 0
-              ? `${metrics.criticalRiskSignals} critical signals.`
-              : `${metrics.tokenBrokenSignals} token issues.`
-          }
-          tone={metrics.openRiskSignals > 0 ? "attention" : "good"}
+      <section>
+        <SectionHeader title="Daily Action Queue" description="Sorted by operational urgency, not by menu order." />
+        <ActionQueue
+          items={queue.length > 0 ? queue : [{
+            title: "No urgent blockers",
+            detail: "Use the pipeline strip and KPI reporting to decide the next sales, production, or payout move.",
+            href: "/admin/reports",
+            label: "Clear",
+            tone: "success",
+          }]}
         />
       </section>
 
-      <section className="mt-8">
-        <div className="mb-3">
-          <h2 className="text-xl font-semibold" style={{ color: "var(--text-primary)" }}>
-            Agency flow
-          </h2>
-          <p className="text-sm" style={{ color: "var(--text-secondary)" }}>
-            Each block is one part of the operating system. Follow it left to right.
-          </p>
+      <section>
+        <SectionHeader title="CEO KPI Reporting" description="Money, delivery, staffing, quality, payout, and risk in one strip." />
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
+          <StatCard label="Revenue" value={formatCurrency(metrics.totalRevenueThisMonth)} detail="Booked this month" />
+          <StatCard label="Expected revenue" value={formatCurrency(metrics.expectedRevenueNextMonth)} detail="Campaign deadlines next month" />
+          <StatCard label="Active brands" value={String(activeBrands || metrics.activeBrands)} detail={`${formatCurrency(toNumber(pipelineValue._sum.estimatedValue))} open pipeline`} />
+          <StatCard label="Active clippers" value={String(activeClippers || metrics.activeClippers)} detail={`${clipsDue} clips due or in progress`} />
+          <StatCard label="QC approvals" value={`${metrics.clipsApprovedThisWeek}/${metrics.clipsRejectedOrRevisedThisWeek}`} detail="Approved / rejected this week" />
+          <StatCard label="Payouts owed" value={formatCurrency(metrics.payoutsOwed)} detail="Legacy payout obligations" tone={metrics.payoutsOwed > 0 ? "warning" : "neutral"} />
+          <StatCard label="Estimated profit" value={formatCurrency(metrics.estimatedGrossProfit)} detail="Booked minus creator cost and open payouts" />
+          <StatCard label="Risk" value={`${metrics.openRiskSignals} open`} detail={`${metrics.tokenBrokenSignals} broken token signals`} tone={metrics.openRiskSignals > 0 ? "danger" : "neutral"} />
         </div>
-        <div className="grid grid-cols-1 gap-3 lg:grid-cols-5">
-          {flow.map((item) => (
-            <FlowStepCard key={item.step} item={item} />
+      </section>
+
+      <section>
+        <SectionHeader title="Pipeline Visibility" description="Compact CLIPPING flow from sales to weekly reporting." />
+        <div className="grid grid-cols-1 gap-3 lg:grid-cols-7">
+          {PIPELINE.map((step, index) => (
+            <Link
+              key={step.href}
+              href={step.href}
+              className="group rounded-2xl border border-neutral-200 bg-white p-4 transition hover:border-neutral-300 hover:bg-neutral-50"
+            >
+              <div className="flex items-center justify-between">
+                <span className="text-[11px] font-semibold uppercase tracking-[0.14em] text-neutral-400">
+                  Step {index + 1}
+                </span>
+                <ArrowRight className="h-4 w-4 text-neutral-300 transition group-hover:text-neutral-950" />
+              </div>
+              <p className="mt-4 text-base font-semibold text-neutral-950">{step.label}</p>
+            </Link>
           ))}
         </div>
       </section>
 
-      <section className="mt-8 grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1fr)_380px]">
-        <div
-          className="rounded-lg overflow-hidden"
-          style={{ background: "var(--bg-card)", border: "1px solid var(--border)" }}
-        >
-          <div className="px-5 py-4" style={{ borderBottom: "1px solid var(--border)" }}>
-            <h2 className="text-lg font-semibold" style={{ color: "var(--text-primary)" }}>
-              Next actions
-            </h2>
-            <p className="text-sm" style={{ color: "var(--text-secondary)" }}>
-              The dashboard should tell you what to do first. This list is sorted by operational urgency.
-            </p>
-          </div>
-          <div className="divide-y" style={{ borderColor: "var(--border)" }}>
-            {actions.map((action) => {
-              const style = statusStyle(action.tone);
-              return (
-                <Link
-                  key={action.title}
-                  href={action.href}
-                  className="flex items-start justify-between gap-4 px-5 py-4 transition-colors hover:opacity-90"
-                >
+      <section className="grid grid-cols-1 gap-5 xl:grid-cols-[1.5fr_1fr]">
+        <div>
+          <SectionHeader title="Module Status" description="The real modules are live; pricing and contracts stay tracked inside onboarding for now." />
+          <div className="overflow-hidden rounded-2xl border border-neutral-200 bg-white">
+            <div className="divide-y divide-neutral-100">
+              {snapshot.operatingAreas.map((area) => (
+                <Link key={area.name} href={area.href ?? "/admin/sops"} className="flex items-center justify-between gap-4 px-5 py-4 transition hover:bg-neutral-50">
                   <div>
-                    <h3 className="text-sm font-semibold" style={{ color: "var(--text-primary)" }}>
-                      {action.title}
-                    </h3>
-                    <p className="mt-1 text-xs leading-5" style={{ color: "var(--text-secondary)" }}>
-                      {action.detail}
-                    </p>
+                    <p className="text-sm font-semibold text-neutral-950">{area.name}</p>
+                    <p className="mt-1 text-xs text-neutral-500">{area.detail}</p>
                   </div>
-                  <span
-                    className="shrink-0 rounded px-2 py-0.5 text-[10px] font-semibold uppercase"
-                    style={{ background: style.badgeBg, color: style.badgeText }}
-                  >
-                    {style.label}
-                  </span>
+                  <Badge variant={area.status === "live" ? "verified" : "neutral"}>{area.status}</Badge>
                 </Link>
-              );
-            })}
+              ))}
+            </div>
           </div>
         </div>
 
-        <div className="space-y-4">
-          <div
-            className="rounded-lg overflow-hidden"
-            style={{ background: "var(--bg-card)", border: "1px solid var(--border)" }}
-          >
-            <div className="px-5 py-4" style={{ borderBottom: "1px solid var(--border)" }}>
-              <h2 className="text-lg font-semibold" style={{ color: "var(--text-primary)" }}>
-                Best clipper right now
-              </h2>
-            </div>
-            {snapshot.topClippers[0] ? (
-              <div className="px-5 py-4">
-                <div className="flex items-center justify-between gap-4">
-                  <div className="min-w-0">
-                    <Link
-                      href={snapshot.topClippers[0].profileId ? `/admin/creators/${snapshot.topClippers[0].profileId}` : "/admin/creators"}
-                      className="block truncate text-sm font-semibold underline-offset-2 hover:underline"
-                      style={{ color: "var(--text-primary)" }}
-                    >
-                      {snapshot.topClippers[0].displayName}
-                    </Link>
-                    <p className="truncate text-xs" style={{ color: "var(--text-secondary)" }}>
-                      {snapshot.topClippers[0].email ?? "No email"}
-                    </p>
-                  </div>
-                  <CreatorScoreCell
-                    score={snapshot.topClippers[0].score}
-                    sampleSize={snapshot.topClippers[0].sampleSize}
-                  />
-                </div>
+        <div>
+          <SectionHeader title="Delivery Risk" />
+          <div className="space-y-3">
+            {snapshot.deliveryRisks.length === 0 ? (
+              <div className="rounded-2xl border border-neutral-200 bg-white p-5 text-sm text-neutral-500">
+                No campaign pace risks in the next 7 days.
               </div>
             ) : (
-              <p className="px-5 py-5 text-sm" style={{ color: "var(--text-secondary)" }}>
-                No performance scores yet.
-              </p>
+              snapshot.deliveryRisks.map((risk) => (
+                <Link key={risk.id} href={`/admin/campaigns/${risk.id}`} className="block rounded-2xl border border-orange-200 bg-white p-4 transition hover:bg-orange-50/40">
+                  <div className="flex items-start justify-between gap-4">
+                    <div>
+                      <p className="text-sm font-semibold text-neutral-950">{risk.name}</p>
+                      <p className="mt-1 text-xs text-neutral-500">
+                        {formatNumber(risk.captured)} / {formatNumber(risk.goal)} views captured.
+                      </p>
+                    </div>
+                    <AlertTriangle className="h-4 w-4 text-orange-500" />
+                  </div>
+                </Link>
+              ))
             )}
           </div>
 
-          <div
-            className="rounded-lg overflow-hidden"
-            style={{ background: "var(--bg-card)", border: "1px solid var(--border)" }}
-          >
-            <div className="px-5 py-4" style={{ borderBottom: "1px solid var(--border)" }}>
-              <h2 className="text-lg font-semibold" style={{ color: "var(--text-primary)" }}>
-                Latest risk
-              </h2>
+          <div className="mt-5 rounded-2xl border border-neutral-200 bg-neutral-50 p-5">
+            <div className="flex items-center gap-2 text-sm font-semibold text-neutral-950">
+              <BadgeEuro className="h-4 w-4" />
+              Weekly close
             </div>
-            {snapshot.recentRiskSignals[0] ? (
-              <Link href={`/admin/signals?type=${snapshot.recentRiskSignals[0].type}`} className="block px-5 py-4">
-                <p className="text-sm font-semibold" style={{ color: "var(--text-primary)" }}>
-                  {SIGNAL_LABEL[snapshot.recentRiskSignals[0].type]}
-                </p>
-                <p className="mt-1 text-xs leading-5" style={{ color: "var(--text-secondary)" }}>
-                  {snapshot.recentRiskSignals[0].campaignName ?? "Unknown campaign"} -{" "}
-                  {snapshot.recentRiskSignals[0].creatorEmail ?? "Unknown creator"} - opened{" "}
-                  {formatDate(snapshot.recentRiskSignals[0].createdAt)}
-                </p>
-              </Link>
-            ) : (
-              <p className="px-5 py-5 text-sm" style={{ color: "var(--text-secondary)" }}>
-                No open risk signals.
-              </p>
-            )}
-          </div>
-
-          <div
-            className="rounded-lg px-5 py-4"
-            style={{ background: "var(--bg-card)", border: "1px solid var(--border)" }}
-          >
-            <h2 className="text-lg font-semibold" style={{ color: "var(--text-primary)" }}>
-              Still manual
-            </h2>
-            <p className="mt-1 text-xs leading-5" style={{ color: "var(--text-secondary)" }}>
-              Brand CRM, onboarding, recruitment, pricing, contracts, and SOPs are not real software modules yet. They
-              should stay in the manual sheet until the process is stable.
+            <p className="mt-2 text-sm leading-6 text-neutral-500">
+              Confirm approved clips, finalize payout runs, then log SOP updates before the next reporting cycle.
             </p>
           </div>
+
+          <Link
+            href="/admin/review"
+            className="mt-3 inline-flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-neutral-950 px-5 text-sm font-semibold text-white shadow-[0_8px_18px_rgba(0,0,0,0.16)] hover:bg-neutral-800"
+          >
+            <ClipboardCheck className="h-4 w-4" />
+            Open QC workbench
+          </Link>
         </div>
       </section>
     </div>
