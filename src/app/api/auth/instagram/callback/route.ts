@@ -25,7 +25,7 @@ export async function GET(req: NextRequest) {
   }
 
   // Decode state
-  let returnTo = "/creator/pages";
+  let returnTo = "/creator/connections";
   try {
     const state = JSON.parse(Buffer.from(stateRaw, "base64url").toString());
     if (state.sub !== authUser.id) {

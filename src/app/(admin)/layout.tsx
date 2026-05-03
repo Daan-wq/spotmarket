@@ -1,15 +1,13 @@
-import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
-import { checkRole } from "@/lib/auth";
+import { getCachedAuthUser, resolveRoleFor } from "@/lib/auth";
 import { AdminSidebar } from "./_components/admin-sidebar";
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
-  const supabase = await createSupabaseServerClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const user = await getCachedAuthUser();
   if (!user) redirect("/sign-in");
 
-  const isAdmin = await checkRole("admin");
-  if (!isAdmin) redirect("/unauthorized");
+  const role = await resolveRoleFor(user);
+  if (role !== "admin") redirect("/unauthorized");
 
   const initials = user.email?.slice(0, 1).toUpperCase() ?? "A";
 

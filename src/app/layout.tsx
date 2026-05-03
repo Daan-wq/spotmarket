@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Lexend } from "next/font/google";
+import { SpeedInsights } from "@vercel/speed-insights/next";
 import { AuthErrorHandler } from "./auth-error-handler";
 import { Toaster } from "@/components/ui/toaster";
 import "./globals.css";
@@ -27,6 +28,7 @@ export default function RootLayout({
         <AuthErrorHandler />
         {children}
         <Toaster />
+        <SpeedInsights />
       </body>
     </html>
   );

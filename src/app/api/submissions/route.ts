@@ -108,7 +108,7 @@ export async function POST(req: NextRequest) {
 
     // ───────────────────────────────────────────────────────────────────
     // OAuth-only gate — reject if creator has no verified OAuth connection
-    // on the submission platform. Direct creator to /creator/pages.
+    // on the submission platform. Direct creator to /creator/connections.
     // ───────────────────────────────────────────────────────────────────
     const hasOAuthForPlatform =
       parsed.platform === "INSTAGRAM"
@@ -125,7 +125,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json(
         {
           error: `Connect your ${parsed.platform.toLowerCase()} account before submitting clips.`,
-          action: { label: "Connect account", href: "/creator/pages" },
+          action: { label: "Connect account", href: "/creator/connections" },
         },
         { status: 400 },
       );

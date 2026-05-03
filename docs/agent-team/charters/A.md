@@ -10,7 +10,7 @@ Trustworthy, fresh, automated metric data for every active submission, sourced *
 
 - **No Apify.** Delete `src/lib/apify.ts`, `apify-client` from `package.json`, all `APIFY_*` env vars, every import. CI grep must return zero hits.
 - **No scraping of any kind.** No headless browsers, no fetch-and-parse-HTML, no third-party scraping APIs.
-- **OAuth required to submit.** Reject submissions where the creator lacks a verified OAuth connection on `sourcePlatform`. Error response points to `/creator/pages`.
+- **OAuth required to submit.** Reject submissions where the creator lacks a verified OAuth connection on `sourcePlatform`. Error response points to `/creator/connections`.
 - **BIO_VERIFY flow deprecated.** Delete the bio-verify path, the bio cron, the `/creator/verify` bio surfaces. Keep the `BioVerification` Prisma model — drop in next cleanup.
 - **Logo verification is manual.** Surface in admin UI (D builds the widget). A only sets `logoStatus = PENDING` at submission create.
 
@@ -109,7 +109,7 @@ Trustworthy, fresh, automated metric data for every active submission, sourced *
 1. **Apify-zero check** — `grep -r -i apify src/ prisma/ vercel.json package.json .env.example` → zero hits.
 2. **Unit** — velocity scorer with synthetic time-series; duplicate detector with URL + handle collisions.
 3. **Integration** — seed 5 submissions across IG/TT/YT/FB on real OAuth'd accounts, run `poll-metrics-hot` locally, confirm `MetricSnapshot` rows with `source = OAUTH_*` and `submission.metrics.updated` events on the bus.
-4. **OAuth gate** — attempt submission without OAuth on the platform; expect 4xx pointing to `/creator/pages`.
+4. **OAuth gate** — attempt submission without OAuth on the platform; expect 4xx pointing to `/creator/connections`.
 5. **Token-broken path** — expire a token, run cron, confirm `MetricSnapshot.source = OAUTH_FAILED` and `submission.flagged` event with `TOKEN_BROKEN`.
 6. **Demographics** — connect real IG, run `poll-demographics`, confirm `AudienceSnapshot` matches IG Insights UI.
 7. **Bio-verify-zero** — `/creator/verify` only renders OAuth flows; `/api/cron/check-bio` returns 404.

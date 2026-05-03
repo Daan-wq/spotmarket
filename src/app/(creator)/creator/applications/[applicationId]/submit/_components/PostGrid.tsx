@@ -34,11 +34,11 @@ export default function PostGrid({
           No {PLATFORM_NAMES[platform]} account connected.
         </p>
         <Link
-          href="/creator/pages"
+          href="/creator/connections"
           className="text-sm font-medium underline"
           style={{ color: "var(--primary)" }}
         >
-          Connect on My Pages →
+          Connect on Connections →
         </Link>
       </div>
     );

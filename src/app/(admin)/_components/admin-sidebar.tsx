@@ -23,7 +23,7 @@ const NAV: NavSection[] = [
     items: [
       { href: "/admin", label: "Dashboard", icon: "📊" },
       { href: "/admin/signals", label: "Signals", icon: "🚨", description: "WARN+ alerts inbox" },
-      { href: "/admin/analytics", label: "Analytics", icon: "📈", description: "CPV, OAuth, demographics" },
+      { href: "/admin/stats", label: "Stats", icon: "📈", description: "Fleet performance & breakdowns" },
     ],
   },
   {

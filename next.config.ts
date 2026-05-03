@@ -1,4 +1,9 @@
 import type { NextConfig } from "next";
+import bundleAnalyzer from "@next/bundle-analyzer";
+
+const withBundleAnalyzer = bundleAnalyzer({
+  enabled: process.env.ANALYZE === "true",
+});
 
 const securityHeaders = [
   { key: "X-Content-Type-Options", value: "nosniff" },
@@ -42,7 +47,7 @@ const nextConfig: NextConfig = {
       { source: "/campaigns/:path*", destination: "/creator/campaigns/:path*", permanent: false },
       { source: "/profile", destination: "/creator/profile", permanent: false },
       { source: "/creator/payouts", destination: "/creator/profile?tab=balance", permanent: true },
-      { source: "/creator/instagram", destination: "/creator/pages", permanent: true },
+      { source: "/creator/instagram", destination: "/creator/connections", permanent: true },
     ];
   },
   async headers() {
@@ -50,4 +55,4 @@ const nextConfig: NextConfig = {
   },
 };
 
-export default nextConfig;
+export default withBundleAnalyzer(nextConfig);

@@ -61,7 +61,7 @@ export function CampaignDetailClient({
           Connect at least one social account (Instagram, YouTube, TikTok, or Facebook) to join campaigns.
         </p>
         <a
-          href="/creator/pages"
+          href="/creator/connections"
           className="shrink-0 px-4 py-2 rounded-lg font-semibold text-sm text-white"
           style={{ background: "var(--primary)" }}
         >

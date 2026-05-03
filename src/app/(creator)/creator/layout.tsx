@@ -1,6 +1,7 @@
 import { Suspense } from "react";
 import { redirect } from "next/navigation";
-import { getCurrentRole, getCachedAuthUser, getCreatorHeader } from "@/lib/auth";
+import { resolveRoleFor, getCachedAuthUser, getCreatorHeader } from "@/lib/auth";
+import { timed } from "@/lib/timing";
 import { CreatorSidebar } from "../_components/creator-sidebar";
 import { BalanceWidget } from "../_components/balance-widget";
 import { BalanceSkeleton } from "../_components/page-skeletons";
@@ -12,21 +13,22 @@ export default async function CreatorLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const role = await getCurrentRole();
-  if (role !== "creator") redirect("/unauthorized");
+  const authUser = await timed("creator-layout/auth", () => getCachedAuthUser());
+  if (!authUser) redirect("/sign-in");
 
-  const authUser = await getCachedAuthUser();
+  const [role, header] = await timed("creator-layout/role+header", () =>
+    Promise.all([resolveRoleFor(authUser), getCreatorHeader(authUser.id)]),
+  );
+
+  if (role !== "creator") redirect("/unauthorized");
 
   let userName = "Creator";
   let userId: string | null = null;
 
-  if (authUser) {
-    const header = await getCreatorHeader(authUser.id);
-    if (header) {
-      userId = header.id;
-      if (header.creatorProfile) {
-        userName = header.creatorProfile.displayName;
-      }
+  if (header) {
+    userId = header.id;
+    if (header.creatorProfile) {
+      userName = header.creatorProfile.displayName;
     }
   }
 

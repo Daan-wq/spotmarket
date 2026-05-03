@@ -34,6 +34,10 @@ async function resolveRole(authUser: NonNullable<Awaited<ReturnType<typeof getCa
   return getCachedDbRole(authUser.id);
 }
 
+// Public form of resolveRole — lets layouts that already awaited getCachedAuthUser
+// run the role check in parallel with their own queries via Promise.all.
+export const resolveRoleFor = resolveRole;
+
 export async function checkRole(
   ...allowedRoles: UserRole[]
 ): Promise<boolean> {

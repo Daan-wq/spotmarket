@@ -10,11 +10,11 @@ export async function GET(req: NextRequest) {
   const error = req.nextUrl.searchParams.get("error");
 
   if (error) {
-    return NextResponse.redirect(new URL(`/creator/pages?error=yt_denied`, req.url));
+    return NextResponse.redirect(new URL(`/creator/connections?error=yt_denied`, req.url));
   }
 
   if (!code || !stateRaw) {
-    return NextResponse.redirect(new URL("/creator/pages?error=yt_failed", req.url));
+    return NextResponse.redirect(new URL("/creator/connections?error=yt_failed", req.url));
   }
 
   // Verify user is logged in
@@ -25,11 +25,11 @@ export async function GET(req: NextRequest) {
   }
 
   // Decode state
-  let returnTo = "/creator/pages";
+  let returnTo = "/creator/connections";
   try {
     const state = JSON.parse(Buffer.from(stateRaw, "base64url").toString());
     if (state.sub !== authUser.id) {
-      return NextResponse.redirect(new URL("/creator/pages?error=yt_state_mismatch", req.url));
+      return NextResponse.redirect(new URL("/creator/connections?error=yt_state_mismatch", req.url));
     }
     returnTo = state.returnTo ?? returnTo;
   } catch {

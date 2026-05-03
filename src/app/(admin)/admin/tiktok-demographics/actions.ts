@@ -116,5 +116,5 @@ export async function reviewTikTokDemographic(
   }
 
   revalidatePath("/admin/tiktok-demographics");
-  revalidatePath(`/creator/pages/tt/${submission.connectionId}`);
+  revalidatePath(`/creator/stats/tt/${submission.connectionId}`);
 }

@@ -117,7 +117,7 @@ export default async function PagesPage() {
                 >
                   <div className="flex items-center justify-between gap-4 p-4">
                     <Link
-                      href={hasToken ? `/creator/pages/ig/${conn.id}` : "/creator/pages"}
+                      href={hasToken ? `/creator/stats/ig/${conn.id}` : "/creator/connections"}
                       className="flex items-center gap-3 min-w-0 flex-1 group"
                     >
                       {profilePics.get(conn.id) ? (
@@ -222,7 +222,7 @@ export default async function PagesPage() {
                 >
                   <div className="flex items-center justify-between gap-4 p-4">
                     <Link
-                      href={hasToken ? `/creator/pages/fb/${conn.id}` : "/creator/pages"}
+                      href={hasToken ? `/creator/stats/fb/${conn.id}` : "/creator/connections"}
                       className="flex items-center gap-3 min-w-0 flex-1 group"
                     >
                       {profilePics.get(conn.id) ? (
@@ -321,7 +321,7 @@ export default async function PagesPage() {
                 >
                   <div className="flex items-center justify-between gap-4 p-4">
                     <Link
-                      href={hasToken ? `/creator/pages/yt/${conn.id}` : "/creator/pages"}
+                      href={hasToken ? `/creator/stats/yt/${conn.id}` : "/creator/connections"}
                       className="flex items-center gap-3 min-w-0 flex-1 group"
                     >
                       {profilePics.get(conn.id) ? (
@@ -408,7 +408,7 @@ export default async function PagesPage() {
               >
                 <div className="flex items-center justify-between gap-4 p-4">
                   <Link
-                    href={`/creator/pages/tt/${conn.id}`}
+                    href={`/creator/stats/tt/${conn.id}`}
                     className="flex items-center gap-3 min-w-0 flex-1 group"
                   >
                     {(profilePics.get(conn.id) ?? conn.profilePicUrl) ? (

@@ -35,7 +35,7 @@ export async function removePage(connectionId: string) {
     });
   }
 
-  revalidatePath("/creator/pages");
+  revalidatePath("/creator/connections");
 }
 
 export async function removeYtPage(connectionId: string) {
@@ -56,7 +56,7 @@ export async function removeYtPage(connectionId: string) {
 
   await prisma.creatorYtConnection.delete({ where: { id: connectionId } });
 
-  revalidatePath("/creator/pages");
+  revalidatePath("/creator/connections");
 }
 
 export async function removeTikTokPage(connectionId: string) {
@@ -77,7 +77,7 @@ export async function removeTikTokPage(connectionId: string) {
 
   await prisma.creatorTikTokConnection.delete({ where: { id: connectionId } });
 
-  revalidatePath("/creator/pages");
+  revalidatePath("/creator/connections");
 }
 
 export async function removeFbPage(connectionId: string) {
@@ -98,5 +98,5 @@ export async function removeFbPage(connectionId: string) {
 
   await prisma.creatorFbConnection.delete({ where: { id: connectionId } });
 
-  revalidatePath("/creator/pages");
+  revalidatePath("/creator/connections");
 }
