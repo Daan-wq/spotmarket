@@ -46,7 +46,6 @@ const nextConfig: NextConfig = {
       { source: "/campaigns", destination: "/creator/campaigns", permanent: false },
       { source: "/campaigns/:path*", destination: "/creator/campaigns/:path*", permanent: false },
       { source: "/profile", destination: "/creator/profile", permanent: false },
-      { source: "/creator/payouts", destination: "/creator/profile?tab=balance", permanent: true },
       { source: "/creator/instagram", destination: "/creator/connections", permanent: true },
     ];
   },

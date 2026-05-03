@@ -5,9 +5,14 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { LiveEarnings } from "./_components/live-earnings";
 import { ScoreCard } from "@/components/clipper-score/score-card";
 import { getActivationStatus } from "@/lib/activation";
-import { WelcomeHeader } from "./_components/welcome-header";
 import { DashboardAlerts } from "./_components/dashboard-alerts";
-import { ActivationCard } from "./_components/activation-card";
+import {
+  CreatorJourney,
+  CreatorPageHeader,
+  CreatorSectionHeader,
+  SoftStat,
+  type JourneyStepItem,
+} from "../_components/creator-journey";
 
 export default async function DashboardPage() {
   const { userId: supabaseId } = await requireAuth("creator");
@@ -20,7 +25,6 @@ export default async function DashboardPage() {
   const profileId = header.creatorProfile.id;
   const displayName = header.creatorProfile.displayName;
 
-  // All independent — single round-trip to the DB pool
   const [
     earningsResult,
     paidResult,
@@ -58,66 +62,115 @@ export default async function DashboardPage() {
 
   const totalEarnings = Number(earningsResult._sum.earnedAmount || 0);
   const totalPaid = Number(paidResult._sum.amount || 0);
-  const hasUnpaidBalance = totalEarnings - totalPaid > 0;
+  const availableBalance = Math.max(totalEarnings - totalPaid, 0);
+  const hasUnpaidBalance = availableBalance > 0;
 
+  const firstName = displayName.split(/\s+/)[0] || displayName;
   const statusLine = activation.fullyActivated
     ? `${pendingSubmissions} ${pendingSubmissions === 1 ? "clip" : "clips"} awaiting review.`
-    : "Finish setup so you can start earning.";
+    : "Finish the next step in the creator workflow before making more moves.";
 
   const platforms = [
-    { connected: igConnections.length > 0, verified: igConnections.some(c => c.isVerified) },
-    { connected: fbConnections.length > 0, verified: fbConnections.some(c => c.isVerified) },
-    { connected: ytConnections.length > 0, verified: ytConnections.some(c => c.isVerified) },
-    { connected: ttConnections.length > 0, verified: ttConnections.some(c => c.isVerified) },
+    { connected: igConnections.length > 0, verified: igConnections.some((c) => c.isVerified) },
+    { connected: fbConnections.length > 0, verified: fbConnections.some((c) => c.isVerified) },
+    { connected: ytConnections.length > 0, verified: ytConnections.some((c) => c.isVerified) },
+    { connected: ttConnections.length > 0, verified: ttConnections.some((c) => c.isVerified) },
   ];
-  const connectedCount = platforms.filter(p => p.connected).length;
-  const verifiedCount = platforms.filter(p => p.verified).length;
+  const connectedCount = platforms.filter((p) => p.connected).length;
+  const verifiedCount = platforms.filter((p) => p.verified).length;
   const allVerified = connectedCount > 0 && verifiedCount === connectedCount;
 
-  return (
-    <div className="p-6 space-y-6">
-      <WelcomeHeader displayName={displayName} status={statusLine} />
+  const workflowSteps: JourneyStepItem[] = [
+    {
+      id: "profile",
+      label: "Set up your creator profile",
+      description: "Keep your creator identity ready before joining paid campaigns.",
+      status: activation.profileComplete ? "complete" : "current",
+      meta: activation.profileComplete ? "Profile ready" : "Required first step",
+      cta: activation.profileComplete ? undefined : { label: "Edit profile", href: "/creator/profile" },
+    },
+    {
+      id: "pages",
+      label: "Connect a tracked page",
+      description: "OAuth-connected pages let ClipProfit verify views and match clips to campaigns.",
+      status: activation.accountConnected ? "complete" : activation.profileComplete ? "current" : "blocked",
+      meta: connectedCount > 0 ? `${verifiedCount}/${connectedCount} verified platforms` : "No connected pages yet",
+      cta: activation.accountConnected ? undefined : { label: "Open Pages", href: "/creator/connections" },
+    },
+    {
+      id: "campaign",
+      label: "Find a campaign to work on",
+      description: "Pick an eligible campaign, read the brief, and join before creating content.",
+      status: activeCampaigns > 0 ? "complete" : activation.accountConnected ? "current" : "blocked",
+      meta: activeCampaigns > 0 ? `${activeCampaigns} active or pending campaign${activeCampaigns === 1 ? "" : "s"}` : "Waiting for a connected page",
+      cta: activeCampaigns > 0 ? undefined : { label: "Browse campaigns", href: "/creator/campaigns" },
+    },
+    {
+      id: "submit",
+      label: "Submit your clip",
+      description: "Send the post URL from a joined campaign so review and tracking can start.",
+      status: activation.firstClipSubmitted ? "complete" : activeCampaigns > 0 ? "current" : "blocked",
+      meta: activation.firstClipSubmitted ? "First clip submitted" : "Requires a joined campaign",
+      cta: activation.firstClipSubmitted ? undefined : { label: "Go to campaigns", href: "/creator/campaigns" },
+    },
+    {
+      id: "review",
+      label: "Track review and performance",
+      description: "Watch pending clips, fix rejected ones, and use performance notes to improve the next edit.",
+      status: activation.firstApproval ? "complete" : activation.firstClipSubmitted ? "current" : "blocked",
+      meta: pendingSubmissions > 0 ? `${pendingSubmissions} awaiting review` : "No pending clips",
+      cta: activation.firstClipSubmitted && !activation.firstApproval ? { label: "Check clips", href: "/creator/videos" } : undefined,
+    },
+    {
+      id: "paid",
+      label: "Get paid",
+      description: "Once earnings are approved, keep payout details ready and request withdrawals from Payments.",
+      status: activation.paymentMethodAdded && !hasUnpaidBalance ? "complete" : activation.firstApproval || hasUnpaidBalance ? "current" : "blocked",
+      meta: hasUnpaidBalance ? `$${availableBalance.toFixed(2)} available` : activation.paymentMethodAdded ? "Payout setup ready" : "Unlocks after approved clips",
+      cta: activation.firstApproval || hasUnpaidBalance ? { label: "Open payments", href: "/creator/payouts" } : undefined,
+    },
+  ];
 
-      <DashboardAlerts
-        activation={activation}
-        hasUnpaidBalance={hasUnpaidBalance}
+  return (
+    <div className="w-full space-y-8 px-6 py-8">
+      <CreatorPageHeader
+        eyebrow="Creator workflow"
+        title={`Good to see you, ${firstName}`}
+        description={statusLine}
       />
 
-      <ActivationCard activation={activation} />
+      <DashboardAlerts activation={activation} hasUnpaidBalance={hasUnpaidBalance} />
 
-      {/* Live Earnings + Performance Score */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-        <div className="lg:col-span-2">
+      <CreatorJourney
+        title="Your path to the next payout"
+        description="Move through the creator process in order. Each step unlocks the next one, so the dashboard stays focused on what to do now."
+        steps={workflowSteps}
+      />
+
+      <section>
+        <CreatorSectionHeader
+          title="Operating snapshot"
+          description="The numbers support the workflow instead of competing with the next action."
+        />
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
+          <SoftStat label="Total earnings" value={`$${totalEarnings.toFixed(2)}`} detail="Approved creator earnings" />
+          <SoftStat label="Active campaigns" value={activeCampaigns.toString()} detail="Pending, approved, or active" />
+          <SoftStat label="Pending submissions" value={pendingSubmissions.toString()} detail="Clips awaiting review" />
+          <SoftStat
+            label="Verified platforms"
+            value={connectedCount === 0 ? "-" : `${verifiedCount}/${connectedCount}`}
+            detail={allVerified ? "All connected pages verified" : "Pages ready for tracking"}
+          />
+        </div>
+      </section>
+
+      <section className="grid grid-cols-1 gap-5 xl:grid-cols-3">
+        <div className="xl:col-span-2">
           <LiveEarnings />
         </div>
         <ScoreCard creatorProfileId={profileId} variant="compact" />
-      </div>
+      </section>
 
-      {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        <StatCard
-          label="Total Earnings"
-          value={`$${Number(totalEarnings).toFixed(2)}`}
-          color="#22c55e"
-        />
-        <StatCard
-          label="Active Campaigns"
-          value={activeCampaigns.toString()}
-          color="#6366F1"
-        />
-        <StatCard
-          label="Pending Submissions"
-          value={pendingSubmissions.toString()}
-          color="#f59e0b"
-        />
-        <StatCard
-          label="Verified Platforms"
-          value={connectedCount === 0 ? "—" : `${verifiedCount}/${connectedCount}`}
-          color={connectedCount === 0 ? "#64748b" : allVerified ? "#22c55e" : "#f59e0b"}
-        />
-      </div>
-
-      {/* Recent Submissions — streamed via Suspense so the stat cards above don't wait */}
       <Suspense fallback={<RecentSubmissionsSkeleton />}>
         <RecentSubmissions creatorId={userId} />
       </Suspense>
@@ -134,78 +187,62 @@ async function RecentSubmissions({ creatorId }: { creatorId: string }) {
   });
 
   return (
-    <div
-      className="rounded-lg p-6 border"
-      style={{
-        background: "var(--bg-card)",
-        borderColor: "var(--border)",
-      }}
-    >
-      <h2
-        className="text-xl font-semibold mb-4"
-        style={{ color: "var(--text-primary)" }}
-      >
-        Recent Submissions
-      </h2>
-      <table className="w-full text-sm">
-        <thead>
-          <tr
-            style={{ borderBottomColor: "var(--border)", color: "var(--text-secondary)" }}
-            className="border-b"
-          >
-            <th className="text-left py-3 px-4">Campaign</th>
-            <th className="text-left py-3 px-4">Claimed Views</th>
-            <th className="text-left py-3 px-4">Status</th>
-            <th className="text-left py-3 px-4">Earned</th>
-          </tr>
-        </thead>
-        <tbody>
-          {recentSubmissions.length === 0 ? (
-            <tr>
-              <td colSpan={4} className="py-4 px-4 text-center" style={{ color: "var(--text-secondary)" }}>
-                No submissions yet
-              </td>
+    <section className="rounded-2xl border border-neutral-200 bg-white p-5 md:p-6">
+      <CreatorSectionHeader
+        title="Recent submissions"
+        description="Latest clips moving through review, approval, and payout."
+      />
+      <div className="overflow-x-auto">
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="border-b border-neutral-200 text-neutral-500">
+              <th className="px-4 py-3 text-left font-medium">Campaign</th>
+              <th className="px-4 py-3 text-left font-medium">Claimed views</th>
+              <th className="px-4 py-3 text-left font-medium">Status</th>
+              <th className="px-4 py-3 text-left font-medium">Earned</th>
             </tr>
-          ) : (
-            recentSubmissions.map((sub) => (
-              <tr
-                key={sub.id}
-                style={{ borderBottomColor: "var(--border)" }}
-                className="border-b"
-              >
-                <td className="py-3 px-4" style={{ color: "var(--text-primary)" }}>
-                  {sub.campaign.name}
-                </td>
-                <td className="py-3 px-4" style={{ color: "var(--text-secondary)" }}>
-                  {sub.claimedViews.toLocaleString()}
-                </td>
-                <td className="py-3 px-4">
-                  <span
-                    className="px-2 py-1 rounded text-xs font-medium"
-                    style={{ color: getStatusColor(sub.status), backgroundColor: `${getStatusColor(sub.status)}20` }}
-                  >
-                    {sub.status}
-                  </span>
-                </td>
-                <td className="py-3 px-4" style={{ color: "var(--text-secondary)" }}>
-                  ${Number(sub.earnedAmount).toFixed(2)}
+          </thead>
+          <tbody>
+            {recentSubmissions.length === 0 ? (
+              <tr>
+                <td colSpan={4} className="px-4 py-6 text-center text-sm text-neutral-500">
+                  No submissions yet
                 </td>
               </tr>
-            ))
-          )}
-        </tbody>
-      </table>
-    </div>
+            ) : (
+              recentSubmissions.map((sub) => (
+                <tr key={sub.id} className="border-b border-neutral-100 last:border-0">
+                  <td className="px-4 py-3 font-medium text-neutral-950">
+                    {sub.campaign.name}
+                  </td>
+                  <td className="px-4 py-3 text-neutral-600">
+                    {sub.claimedViews.toLocaleString()}
+                  </td>
+                  <td className="px-4 py-3">
+                    <span
+                      className="rounded-full px-2.5 py-1 text-xs font-medium"
+                      style={{ color: getStatusColor(sub.status), backgroundColor: `${getStatusColor(sub.status)}18` }}
+                    >
+                      {sub.status}
+                    </span>
+                  </td>
+                  <td className="px-4 py-3 text-neutral-600">
+                    ${Number(sub.earnedAmount).toFixed(2)}
+                  </td>
+                </tr>
+              ))
+            )}
+          </tbody>
+        </table>
+      </div>
+    </section>
   );
 }
 
 function RecentSubmissionsSkeleton() {
   return (
-    <div
-      className="rounded-lg p-6 border space-y-3"
-      style={{ background: "var(--bg-card)", borderColor: "var(--border)" }}
-    >
-      <Skeleton className="h-6 w-44 mb-2" />
+    <div className="space-y-3 rounded-2xl border border-neutral-200 bg-white p-6">
+      <Skeleton className="mb-2 h-6 w-44" />
       {Array.from({ length: 5 }).map((_, i) => (
         <div key={i} className="flex gap-4">
           <Skeleton className="h-4 flex-1" />
@@ -219,27 +256,8 @@ function RecentSubmissionsSkeleton() {
 }
 
 function getStatusColor(status: string) {
-  if (status === "APPROVED" || status === "active" || status === "verified") return "#22c55e";
-  if (status === "PENDING") return "#f59e0b";
-  if (status === "REJECTED" || status === "failed") return "#ef4444";
+  if (status === "APPROVED" || status === "active" || status === "verified") return "#16a34a";
+  if (status === "PENDING") return "#d97706";
+  if (status === "REJECTED" || status === "failed") return "#dc2626";
   return "#64748b";
-}
-
-function StatCard({ label, value, color }: { label: string; value: string; color: string }) {
-  return (
-    <div
-      className="rounded-lg p-6 border"
-      style={{
-        background: "var(--bg-card)",
-        borderColor: "var(--border)",
-      }}
-    >
-      <p style={{ color: "var(--text-secondary)" }} className="text-sm mb-2">
-        {label}
-      </p>
-      <p style={{ color, fontSize: "32px" }} className="font-bold">
-        {value}
-      </p>
-    </div>
-  );
 }

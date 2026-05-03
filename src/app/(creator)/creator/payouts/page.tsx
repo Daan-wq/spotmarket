@@ -1,9 +1,13 @@
 import { requireAuth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { Badge } from "@/components/ui/badge";
-import { AlertBanner } from "@/components/ui/alert-banner";
 import { EmptyState } from "@/components/ui/empty-state";
 import { PaymentsTabs } from "./_components/payments-tabs";
+import {
+  CreatorPageHeader,
+  CreatorSectionHeader,
+  SoftStat,
+} from "../_components/creator-journey";
 
 export const metadata = {
   title: "Payments",
@@ -53,7 +57,6 @@ export default async function PaymentsPage() {
     profile.walletAddress || profile.tronsAddress || profile.stripeAccountId,
   );
 
-  // Group approved submissions by campaign for the Overview tab.
   const byCampaign: Record<
     string,
     { campaignId: string; campaignName: string; totalViews: number; totalEarned: number; count: number }
@@ -77,26 +80,19 @@ export default async function PaymentsPage() {
   );
 
   return (
-    <div className="p-6 space-y-6">
-      <header>
-        <h1 className="text-3xl font-bold" style={{ color: "var(--text-primary)" }}>
-          Payments
-        </h1>
-        <p className="mt-1 text-sm" style={{ color: "var(--text-secondary)" }}>
-          Your earnings, withdrawals, and payout history in one place.
-        </p>
-      </header>
-
-      {balance > 0 && !hasPaymentMethod && (
-        <AlertBanner
-          tone="warning"
-          title="Add a payment method before your next withdrawal"
-          description={`You have $${balance.toFixed(2)} available but no destination set. Open the Withdraw tab to send it.`}
-          cta={{ label: "Withdraw", href: "?tab=withdraw" }}
-        />
-      )}
+    <div className="w-full space-y-8 px-6 py-8">
+      <CreatorPageHeader
+        eyebrow="Payout workflow"
+        title="Payments"
+        description="Follow earnings from approved clips into withdrawal requests and payout history."
+      />
 
       <PaymentsTabs
+        totalEarned={totalEarned}
+        totalPaid={totalPaid}
+        balance={balance}
+        pendingPayout={pendingPayout}
+        hasPaymentMethod={hasPaymentMethod}
         overviewSlot={
           <OverviewTab
             totalEarned={totalEarned}
@@ -134,74 +130,56 @@ function OverviewTab({
   earningsByCampaign,
 }: OverviewTabProps) {
   const cards = [
-    { label: "Available balance", value: `$${balance.toFixed(2)}`, color: balance > 0 ? "var(--warning-text)" : "var(--text-secondary)" },
-    { label: "Pending", value: `$${pendingPayout.toFixed(2)}`, color: "var(--accent-foreground)" },
-    { label: "Total paid", value: `$${totalPaid.toFixed(2)}`, color: "var(--success-text)" },
-    { label: "Total earned", value: `$${totalEarned.toFixed(2)}`, color: "var(--text-primary)" },
+    { label: "Available balance", value: `$${balance.toFixed(2)}`, detail: "Ready when withdrawal unlocks" },
+    { label: "Pending", value: `$${pendingPayout.toFixed(2)}`, detail: "Requests in progress" },
+    { label: "Total paid", value: `$${totalPaid.toFixed(2)}`, detail: "Confirmed or sent" },
+    { label: "Total earned", value: `$${totalEarned.toFixed(2)}`, detail: "Approved submissions" },
   ];
 
   return (
     <div className="space-y-5">
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        {cards.map((c) => (
-          <div
-            key={c.label}
-            className="rounded-xl border p-5"
-            style={{ background: "var(--bg-card)", borderColor: "var(--border)" }}
-          >
-            <p className="text-xs uppercase tracking-wide" style={{ color: "var(--text-muted)" }}>
-              {c.label}
-            </p>
-            <p className="mt-1.5 text-2xl font-bold" style={{ color: c.color }}>
-              {c.value}
-            </p>
-          </div>
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
+        {cards.map((card) => (
+          <SoftStat key={card.label} label={card.label} value={card.value} detail={card.detail} />
         ))}
       </div>
 
-      <section
-        className="rounded-xl border overflow-hidden"
-        style={{ background: "var(--bg-card)", borderColor: "var(--border)" }}
-      >
-        <div
-          className="px-5 py-3"
-          style={{ borderBottom: "1px solid var(--border)" }}
-        >
-          <h2 className="text-base font-semibold" style={{ color: "var(--text-primary)" }}>
-            Earnings by campaign
-          </h2>
-        </div>
+      <section className="rounded-2xl border border-neutral-200 bg-white p-5">
+        <CreatorSectionHeader
+          title="Earnings by campaign"
+          description="Approved clip earnings grouped by campaign."
+        />
         {earningsByCampaign.length === 0 ? (
-          <div className="p-5">
-            <EmptyState
-              title="No approved earnings yet"
-              description="Once your clips are approved, your campaign earnings will appear here."
-              primaryCta={{ label: "Browse campaigns", href: "/creator/campaigns" }}
-            />
-          </div>
+          <EmptyState
+            title="No approved earnings yet"
+            description="Once your clips are approved, your campaign earnings will appear here."
+            primaryCta={{ label: "Browse campaigns", href: "/creator/campaigns" }}
+          />
         ) : (
-          <table className="w-full text-sm">
-            <thead>
-              <tr style={{ background: "var(--bg-secondary)", color: "var(--text-muted)" }}>
-                <th className="text-left text-[11px] uppercase tracking-wide px-5 py-2 font-medium">Campaign</th>
-                <th className="text-left text-[11px] uppercase tracking-wide px-5 py-2 font-medium">Submissions</th>
-                <th className="text-left text-[11px] uppercase tracking-wide px-5 py-2 font-medium">Total views</th>
-                <th className="text-right text-[11px] uppercase tracking-wide px-5 py-2 font-medium">Earned</th>
-              </tr>
-            </thead>
-            <tbody>
-              {earningsByCampaign.map((row) => (
-                <tr key={row.campaignId} className="border-t" style={{ borderColor: "var(--border)" }}>
-                  <td className="px-5 py-3" style={{ color: "var(--text-primary)" }}>{row.campaignName}</td>
-                  <td className="px-5 py-3" style={{ color: "var(--text-secondary)" }}>{row.count}</td>
-                  <td className="px-5 py-3" style={{ color: "var(--text-secondary)" }}>{row.totalViews.toLocaleString()}</td>
-                  <td className="px-5 py-3 text-right font-semibold" style={{ color: "var(--success-text)" }}>
-                    ${row.totalEarned.toFixed(2)}
-                  </td>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-neutral-200 text-neutral-500">
+                  <th className="px-5 py-2 text-left text-[11px] font-medium uppercase tracking-wide">Campaign</th>
+                  <th className="px-5 py-2 text-left text-[11px] font-medium uppercase tracking-wide">Submissions</th>
+                  <th className="px-5 py-2 text-left text-[11px] font-medium uppercase tracking-wide">Total views</th>
+                  <th className="px-5 py-2 text-right text-[11px] font-medium uppercase tracking-wide">Earned</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {earningsByCampaign.map((row) => (
+                  <tr key={row.campaignId} className="border-b border-neutral-100 last:border-0">
+                    <td className="px-5 py-3 font-medium text-neutral-950">{row.campaignName}</td>
+                    <td className="px-5 py-3 text-neutral-600">{row.count}</td>
+                    <td className="px-5 py-3 text-neutral-600">{row.totalViews.toLocaleString()}</td>
+                    <td className="px-5 py-3 text-right font-semibold text-neutral-950">
+                      ${row.totalEarned.toFixed(2)}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         )}
       </section>
     </div>
@@ -224,43 +202,40 @@ function HistoryTab({
     return (
       <EmptyState
         title="No payouts yet"
-        description="Your balance is paid out weekly. Once we send a payout, it'll show up here."
+        description="Your balance is paid out weekly. Once we send a payout, it will show up here."
       />
     );
   }
 
   return (
-    <div
-      className="rounded-xl border overflow-hidden"
-      style={{ background: "var(--bg-card)", borderColor: "var(--border)" }}
-    >
+    <div className="overflow-hidden rounded-2xl border border-neutral-200 bg-white">
       <table className="w-full text-sm">
         <thead>
-          <tr style={{ background: "var(--bg-secondary)", color: "var(--text-muted)" }}>
-            <th className="text-left text-[11px] uppercase tracking-wide px-5 py-2 font-medium">Date</th>
-            <th className="text-left text-[11px] uppercase tracking-wide px-5 py-2 font-medium">Amount</th>
-            <th className="text-left text-[11px] uppercase tracking-wide px-5 py-2 font-medium">Type</th>
-            <th className="text-left text-[11px] uppercase tracking-wide px-5 py-2 font-medium">Status</th>
-            <th className="text-left text-[11px] uppercase tracking-wide px-5 py-2 font-medium">Method</th>
+          <tr className="border-b border-neutral-200 bg-neutral-50 text-neutral-500">
+            <th className="px-5 py-2 text-left text-[11px] font-medium uppercase tracking-wide">Date</th>
+            <th className="px-5 py-2 text-left text-[11px] font-medium uppercase tracking-wide">Amount</th>
+            <th className="px-5 py-2 text-left text-[11px] font-medium uppercase tracking-wide">Type</th>
+            <th className="px-5 py-2 text-left text-[11px] font-medium uppercase tracking-wide">Status</th>
+            <th className="px-5 py-2 text-left text-[11px] font-medium uppercase tracking-wide">Method</th>
           </tr>
         </thead>
         <tbody>
           {payouts.map((p) => (
-            <tr key={p.id} className="border-t" style={{ borderColor: "var(--border)" }}>
-              <td className="px-5 py-3" style={{ color: "var(--text-secondary)" }}>
+            <tr key={p.id} className="border-b border-neutral-100 last:border-0">
+              <td className="px-5 py-3 text-neutral-600">
                 {new Date(p.createdAt).toLocaleDateString()}
               </td>
-              <td className="px-5 py-3" style={{ color: "var(--text-primary)" }}>
+              <td className="px-5 py-3 font-medium text-neutral-950">
                 ${Number(p.amount).toFixed(2)}
               </td>
-              <td className="px-5 py-3" style={{ color: "var(--text-secondary)" }}>
+              <td className="px-5 py-3 text-neutral-600">
                 {p.type.charAt(0).toUpperCase() + p.type.slice(1)}
               </td>
               <td className="px-5 py-3">
                 <Badge variant={payoutBadge(p.status)}>{p.status}</Badge>
               </td>
-              <td className="px-5 py-3" style={{ color: "var(--text-secondary)" }}>
-                {p.paymentMethod || "—"}
+              <td className="px-5 py-3 text-neutral-600">
+                {p.paymentMethod || "-"}
               </td>
             </tr>
           ))}

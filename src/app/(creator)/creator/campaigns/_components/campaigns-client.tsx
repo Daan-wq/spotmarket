@@ -1,10 +1,18 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useMemo, useState } from "react";
+import type { ReactNode } from "react";
 import Link from "next/link";
 import PlatformIcon from "@/components/shared/PlatformIcon";
 import { Badge } from "@/components/ui/badge";
 import { EmptyState } from "@/components/ui/empty-state";
+import {
+  CreatorJourney,
+  CreatorPageHeader,
+  CreatorSectionHeader,
+  SoftStat,
+  type JourneyStepItem,
+} from "../../_components/creator-journey";
 
 interface Eligibility {
   status: "eligible" | "ineligible" | "unknown";
@@ -35,6 +43,7 @@ interface CampaignsClientProps {
   myCampaigns: CampaignData[];
 }
 
+type CampaignTab = "marketplace" | "my";
 type SortKey = "recommended" | "newest" | "highest-cpv" | "ending-soon";
 
 const SORTS: Array<{ key: SortKey; label: string }> = [
@@ -44,20 +53,36 @@ const SORTS: Array<{ key: SortKey; label: string }> = [
   { key: "ending-soon", label: "Ending soon" },
 ];
 
+const PLATFORM_OPTIONS = [
+  { value: "all", label: "All platforms" },
+  { value: "INSTAGRAM", label: "Instagram" },
+  { value: "TIKTOK", label: "TikTok" },
+  { value: "YOUTUBE_SHORTS", label: "YouTube" },
+  { value: "FACEBOOK", label: "Facebook" },
+];
+
 export function CampaignsClient({ marketplace, myCampaigns }: CampaignsClientProps) {
-  const [activeTab, setActiveTab] = useState<"my" | "marketplace">("marketplace");
+  const [activeTab, setActiveTab] = useState<CampaignTab>("marketplace");
   const [search, setSearch] = useState("");
   const [platformFilter, setPlatformFilter] = useState("all");
   const [typeFilter, setTypeFilter] = useState("all");
   const [sort, setSort] = useState<SortKey>("recommended");
+  const [filtersOpen, setFiltersOpen] = useState(false);
 
   const campaigns = activeTab === "my" ? myCampaigns : marketplace;
+  const filtersActive =
+    search.trim().length > 0 || platformFilter !== "all" || typeFilter !== "all";
+  const eligibleCount = marketplace.filter((c) => c.eligibility.status === "eligible").length;
+
+  const typeOptions = useMemo(() => {
+    const values = Array.from(new Set([...marketplace, ...myCampaigns].map((c) => c.contentType).filter(Boolean)));
+    return [{ value: "all", label: "All types" }, ...values.map((value) => ({ value, label: value }))];
+  }, [marketplace, myCampaigns]);
 
   const filtered = useMemo(() => {
     const result = campaigns.filter((c) => {
-      if (search && !c.name.toLowerCase().includes(search.toLowerCase()) && !c.description.toLowerCase().includes(search.toLowerCase())) {
-        return false;
-      }
+      const q = search.trim().toLowerCase();
+      if (q && !c.name.toLowerCase().includes(q) && !c.description.toLowerCase().includes(q)) return false;
       if (platformFilter !== "all" && !c.platforms.includes(platformFilter)) return false;
       if (typeFilter !== "all" && c.contentType !== typeFilter) return false;
       return true;
@@ -65,153 +90,180 @@ export function CampaignsClient({ marketplace, myCampaigns }: CampaignsClientPro
     return sortCampaigns(result, sort);
   }, [campaigns, search, platformFilter, typeFilter, sort]);
 
-  const filtersActive =
-    search.trim().length > 0 || platformFilter !== "all" || typeFilter !== "all";
+  const journeySteps: JourneyStepItem[] = [
+    {
+      id: "choose",
+      label: "Choose your campaign lane",
+      description: "Use Marketplace to find new work, or Joined Campaigns when you are ready to submit.",
+      status: activeTab === "my" && myCampaigns.length === 0 ? "attention" : "complete",
+      meta: activeTab === "marketplace" ? `${marketplace.length} campaigns available` : `${myCampaigns.length} joined campaigns`,
+      cta: activeTab === "marketplace"
+        ? { label: "View joined", onClick: () => setActiveTab("my") }
+        : { label: "Browse marketplace", onClick: () => setActiveTab("marketplace") },
+    },
+    {
+      id: "narrow",
+      label: "Narrow the list only when needed",
+      description: "Search stays visible. Platform, type, and sort stay tucked away until the list is too broad.",
+      status: filtersActive ? "complete" : "current",
+      meta: filtersActive ? "Filters active" : "Default recommendations shown",
+      cta: { label: filtersOpen ? "Hide filters" : "Open filters", onClick: () => setFiltersOpen((value) => !value) },
+    },
+    {
+      id: "review",
+      label: "Review eligibility and payout",
+      description: "Check qualification, CPV, budget progress, platform, and deadline before opening a brief.",
+      status: filtered.length > 0 ? "current" : "blocked",
+      meta: filtered.length > 0 ? `${filtered.length} campaign${filtered.length === 1 ? "" : "s"} in this view` : "No matching campaigns",
+    },
+    {
+      id: "act",
+      label: activeTab === "my" ? "Submit from a joined campaign" : "Open a campaign brief",
+      description: activeTab === "my"
+        ? "Joined campaigns show a submit action directly on the card."
+        : "Open the brief first, then apply or submit from the campaign flow.",
+      status: filtered.length > 0 ? "idle" : "blocked",
+      meta: activeTab === "my" ? "Submission happens after opening the joined card" : "Application happens inside the campaign brief",
+    },
+  ];
+
+  function resetFilters() {
+    setSearch("");
+    setPlatformFilter("all");
+    setTypeFilter("all");
+    setSort("recommended");
+  }
 
   return (
-    <div className="p-6 w-full space-y-6">
-      {/* Tab Toggle */}
-      <div className="flex justify-center">
-        <div
-          className="inline-flex rounded-lg p-1"
-          style={{ background: "var(--bg-card)", border: "1px solid var(--border-default)" }}
-        >
-          <button
-            onClick={() => setActiveTab("my")}
-            className="flex items-center gap-2 px-5 py-2 rounded-md text-sm font-medium transition-all cursor-pointer"
-            style={{
-              background: activeTab === "my" ? "var(--bg-primary)" : "transparent",
-              color: activeTab === "my" ? "var(--text-primary)" : "var(--text-secondary)",
-              boxShadow: activeTab === "my" ? "var(--shadow-card)" : "none",
-            }}
-          >
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z" />
-            </svg>
-            Joined Campaigns
-          </button>
-          <button
-            onClick={() => setActiveTab("marketplace")}
-            className="flex items-center gap-2 px-5 py-2 rounded-md text-sm font-medium transition-all cursor-pointer"
-            style={{
-              background: activeTab === "marketplace" ? "var(--bg-primary)" : "transparent",
-              color: activeTab === "marketplace" ? "var(--text-primary)" : "var(--text-secondary)",
-              boxShadow: activeTab === "marketplace" ? "var(--shadow-card)" : "none",
-            }}
-          >
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="m2 7 4.41-4.41A2 2 0 0 1 7.83 2h8.34a2 2 0 0 1 1.42.59L22 7" />
-              <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8" />
-              <path d="M15 22v-4a2 2 0 0 0-2-2h-2a2 2 0 0 0-2 2v4" />
-              <path d="M2 7h20" />
-            </svg>
-            Marketplace
-          </button>
+    <div className="w-full space-y-8 px-6 py-8">
+      <CreatorPageHeader
+        eyebrow="Campaign workflow"
+        title="Campaigns"
+        description="Move from marketplace discovery to a joined campaign, then submit from the campaign that actually fits your pages."
+      />
+
+      <CreatorJourney
+        title="Find the next campaign in order"
+        description="The page starts with the work sequence. Filters are available, but they no longer dominate the first screen."
+        steps={journeySteps}
+      />
+
+      <section>
+        <CreatorSectionHeader title="Campaign snapshot" />
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+          <SoftStat label="Marketplace" value={marketplace.length.toString()} detail="Active campaigns" />
+          <SoftStat label="You qualify for" value={eligibleCount.toString()} detail="Based on connected pages" />
+          <SoftStat label="Joined" value={myCampaigns.length.toString()} detail="Ready for brief or submit" />
         </div>
-      </div>
+      </section>
 
-      {/* Search Bar */}
-      <div className="relative">
-        <svg
-          className="absolute left-3 top-1/2 -translate-y-1/2"
-          width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
-          strokeLinecap="round" strokeLinejoin="round"
-          style={{ color: "var(--text-muted)" }}
-        >
-          <circle cx="11" cy="11" r="8" /><path d="m21 21-4.3-4.3" />
-        </svg>
-        <input
-          type="text"
-          placeholder="Find your perfect campaign..."
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          className="w-full pl-10 pr-4 py-2.5 rounded-lg text-sm outline-none transition-colors"
-          style={{
-            background: "var(--bg-card)",
-            border: "1px solid var(--border-default)",
-            color: "var(--text-primary)",
-          }}
-        />
-      </div>
+      <section className="rounded-2xl border border-neutral-200 bg-white p-5 md:p-6">
+        <div className="mb-5 flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
+          <div className="inline-flex w-full rounded-xl border border-neutral-200 bg-neutral-50 p-1 md:w-auto">
+            <TabButton active={activeTab === "marketplace"} onClick={() => setActiveTab("marketplace")}>
+              Marketplace
+            </TabButton>
+            <TabButton active={activeTab === "my"} onClick={() => setActiveTab("my")}>
+              Joined campaigns
+            </TabButton>
+          </div>
 
-      {/* Filter Row */}
-      <div className="flex items-center gap-4 flex-wrap text-sm">
-        <FilterSelect
-          label="Platform"
-          value={platformFilter}
-          onChange={setPlatformFilter}
-          options={[
-            { value: "all", label: "All platforms" },
-            { value: "INSTAGRAM", label: "Instagram" },
-            { value: "TIKTOK", label: "TikTok" },
-            { value: "YOUTUBE_SHORTS", label: "YouTube" },
-            { value: "FACEBOOK", label: "Facebook" },
-          ]}
-        />
-        <FilterSelect
-          label="Type"
-          value={typeFilter}
-          onChange={setTypeFilter}
-          options={[
-            { value: "all", label: "All types" },
-            { value: "UGC", label: "UGC" },
-            { value: "Promotion", label: "Promotion" },
-            { value: "Sponsored", label: "Sponsored" },
-          ]}
-        />
-        <div className="ml-auto">
-          <FilterSelect
-            label="Sort"
-            value={sort}
-            onChange={(v) => setSort(v as SortKey)}
-            options={SORTS.map((s) => ({ value: s.key, label: s.label }))}
-          />
+          <div className="flex w-full flex-col gap-3 md:flex-row xl:max-w-3xl">
+            <label className="relative flex-1">
+              <span className="sr-only">Search campaigns</span>
+              <SearchIcon className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400" />
+              <input
+                type="text"
+                placeholder="Search campaigns"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="h-11 w-full rounded-xl border border-neutral-200 bg-neutral-50 pl-10 pr-4 text-sm text-neutral-950 outline-none transition focus:border-neutral-400 focus:bg-white"
+              />
+            </label>
+            <button
+              type="button"
+              aria-expanded={filtersOpen}
+              onClick={() => setFiltersOpen((value) => !value)}
+              className="inline-flex h-11 items-center justify-center gap-2 rounded-xl border border-neutral-200 bg-white px-4 text-sm font-semibold text-neutral-950 transition hover:bg-neutral-50"
+            >
+              <FilterIcon />
+              Filters
+              {filtersActive ? (
+                <span className="rounded-full bg-neutral-950 px-2 py-0.5 text-[11px] text-white">
+                  On
+                </span>
+              ) : null}
+            </button>
+          </div>
         </div>
-      </div>
 
-      {/* Campaign Grid */}
-      {filtered.length === 0 ? (
-        activeTab === "my" && !filtersActive ? (
-          <EmptyState
-            icon={
-              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" />
-                <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" />
-              </svg>
-            }
-            title="No campaigns joined yet"
-            description="Browse the marketplace to find campaigns that match your platforms and niche."
-            primaryCta={{
-              label: "Browse marketplace",
-              onClick: () => setActiveTab("marketplace"),
-            }}
-          />
+        {filtersOpen ? (
+          <div className="mb-6 grid grid-cols-1 gap-3 rounded-2xl border border-neutral-200 bg-neutral-50 p-4 md:grid-cols-4">
+            <FilterSelect label="Platform" value={platformFilter} onChange={setPlatformFilter} options={PLATFORM_OPTIONS} />
+            <FilterSelect label="Type" value={typeFilter} onChange={setTypeFilter} options={typeOptions} />
+            <FilterSelect label="Sort" value={sort} onChange={(value) => setSort(value as SortKey)} options={SORTS.map((s) => ({ value: s.key, label: s.label }))} />
+            <div className="flex items-end">
+              <button
+                type="button"
+                onClick={resetFilters}
+                className="h-11 w-full rounded-xl border border-neutral-200 bg-white px-4 text-sm font-semibold text-neutral-700 transition hover:bg-neutral-100"
+              >
+                Reset
+              </button>
+            </div>
+          </div>
+        ) : null}
+
+        <CreatorSectionHeader
+          title={activeTab === "my" ? "Joined campaigns" : "Marketplace"}
+          description={activeTab === "my" ? "Campaigns you can act on next." : "Campaigns sorted by eligibility and payout by default."}
+        />
+
+        {filtered.length === 0 ? (
+          activeTab === "my" && !filtersActive ? (
+            <EmptyState
+              title="No campaigns joined yet"
+              description="Browse the marketplace to find campaigns that match your platforms and niche."
+              primaryCta={{ label: "Browse marketplace", onClick: () => setActiveTab("marketplace") }}
+            />
+          ) : (
+            <EmptyState
+              title="No campaigns match your filters"
+              description="Try clearing the filters or changing the search."
+              primaryCta={filtersActive ? { label: "Reset filters", onClick: resetFilters } : undefined}
+            />
+          )
         ) : (
-          <EmptyState
-            title="No campaigns match your filters"
-            description="Try clearing the platform or type filter, or change the sort."
-            primaryCta={
-              filtersActive
-                ? {
-                    label: "Reset filters",
-                    onClick: () => {
-                      setSearch("");
-                      setPlatformFilter("all");
-                      setTypeFilter("all");
-                    },
-                  }
-                : undefined
-            }
-          />
-        )
-      ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-          {filtered.map((campaign) => (
-            <CampaignCard key={campaign.id} campaign={campaign} />
-          ))}
-        </div>
-      )}
+          <div className="grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-3">
+            {filtered.map((campaign) => (
+              <CampaignCard key={campaign.id} campaign={campaign} />
+            ))}
+          </div>
+        )}
+      </section>
     </div>
+  );
+}
+
+function TabButton({
+  active,
+  onClick,
+  children,
+}: {
+  active: boolean;
+  onClick: () => void;
+  children: ReactNode;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`h-10 flex-1 rounded-lg px-4 text-sm font-semibold transition md:flex-none ${
+        active ? "bg-white text-neutral-950 shadow-sm" : "text-neutral-500 hover:text-neutral-950"
+      }`}
+    >
+      {children}
+    </button>
   );
 }
 
@@ -227,25 +279,22 @@ function FilterSelect({
   options: { value: string; label: string }[];
 }) {
   return (
-    <div className="flex items-center gap-2">
-      <span style={{ color: "var(--text-muted)" }}>{label}</span>
+    <label className="block">
+      <span className="text-xs font-semibold uppercase tracking-[0.14em] text-neutral-400">
+        {label}
+      </span>
       <select
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className="px-3 py-1.5 rounded-md text-sm outline-none cursor-pointer"
-        style={{
-          background: "var(--bg-card)",
-          border: "1px solid var(--border-default)",
-          color: "var(--text-primary)",
-        }}
+        className="mt-2 h-11 w-full rounded-xl border border-neutral-200 bg-white px-3 text-sm text-neutral-950 outline-none transition focus:border-neutral-400"
       >
-        {options.map((o) => (
-          <option key={o.value} value={o.value}>
-            {o.label}
+        {options.map((option) => (
+          <option key={option.value} value={option.value}>
+            {option.label}
           </option>
         ))}
       </select>
-    </div>
+    </label>
   );
 }
 
@@ -260,7 +309,6 @@ function sortCampaigns(list: CampaignData[], sort: SortKey): CampaignData[] {
       return arr.sort((a, b) => a.deadlineIso.localeCompare(b.deadlineIso));
     case "recommended":
     default:
-      // Eligible first, then highest CPV
       return arr.sort((a, b) => {
         const aEligible = a.eligibility.status === "eligible" ? 0 : 1;
         const bEligible = b.eligibility.status === "eligible" ? 0 : 1;
@@ -279,118 +327,104 @@ function daysUntil(iso: string): number | null {
 }
 
 function CampaignCard({ campaign }: { campaign: CampaignData }) {
-  const progress = campaign.totalBudget > 0
-    ? Math.min((campaign.totalPaid / campaign.totalBudget) * 100, 100)
-    : 0;
-
+  const progress = campaign.totalBudget > 0 ? Math.min((campaign.totalPaid / campaign.totalBudget) * 100, 100) : 0;
   const brandInitial = campaign.brandName.charAt(0).toUpperCase();
   const days = daysUntil(campaign.deadlineIso);
+  const primaryHref = campaign.applicationId
+    ? `/creator/applications/${campaign.applicationId}/submit`
+    : `/creator/campaigns/${campaign.id}`;
+  const primaryLabel = campaign.applicationId ? "Submit clip" : "Review brief";
 
-  const cardContent = (
-    <div
-      className="rounded-xl p-5 transition-all hover:shadow-md cursor-pointer h-full flex flex-col"
-      style={{
-        background: "var(--bg-card)",
-        border: "1px solid var(--border-default)",
-      }}
-    >
-      {/* Header: Brand logo + name + eligibility */}
-      <div className="flex items-start gap-3 mb-3">
+  return (
+    <article className="flex h-full flex-col rounded-2xl border border-neutral-200 bg-neutral-50 p-5 transition hover:border-neutral-300 hover:bg-white">
+      <div className="flex items-start gap-3">
         {campaign.bannerUrl ? (
-          <img src={campaign.bannerUrl} alt="" className="w-10 h-10 rounded-lg object-cover shrink-0" />
+          <img src={campaign.bannerUrl} alt="" className="h-11 w-11 shrink-0 rounded-xl object-cover" />
         ) : (
-          <div
-            className="w-10 h-10 rounded-lg flex items-center justify-center text-sm font-bold text-white shrink-0"
-            style={{ background: "var(--primary)" }}
-          >
+          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-neutral-950 text-sm font-bold text-white">
             {brandInitial}
           </div>
         )}
         <div className="min-w-0 flex-1">
-          <h3
-            className="text-sm font-semibold leading-tight line-clamp-2"
-            style={{ color: "var(--text-primary)" }}
-          >
+          <h3 className="line-clamp-2 text-lg font-semibold leading-tight tracking-[-0.02em] text-neutral-950">
             {campaign.name}
           </h3>
-          <div className="mt-1.5 flex flex-wrap items-center gap-1">
-            {campaign.eligibility.status === "eligible" && (
-              <Badge variant="eligible">You qualify</Badge>
-            )}
-            {campaign.eligibility.status === "ineligible" && campaign.eligibility.reason && (
+          <div className="mt-2 flex flex-wrap items-center gap-1.5">
+            {campaign.eligibility.status === "eligible" ? <Badge variant="eligible">You qualify</Badge> : null}
+            {campaign.eligibility.status === "ineligible" && campaign.eligibility.reason ? (
               <Badge variant="ineligible">{campaign.eligibility.reason}</Badge>
-            )}
-            {days !== null && days <= 7 && (
-              <Badge variant="ending-soon">
-                {days === 0 ? "Ends today" : `${days}d left`}
-              </Badge>
-            )}
+            ) : null}
+            {days !== null && days <= 7 ? (
+              <Badge variant="ending-soon">{days === 0 ? "Ends today" : `${days}d left`}</Badge>
+            ) : null}
           </div>
         </div>
       </div>
 
-      {/* Reward Rate */}
-      <div className="mb-3">
-        <span className="text-2xl font-bold" style={{ color: "var(--text-primary)" }}>
+      <p className="mt-5 text-xs font-medium text-neutral-500">Payout</p>
+      <div className="mt-1 flex items-baseline gap-1">
+        <span className="text-3xl font-semibold tracking-[-0.03em] text-neutral-950">
           ${campaign.rewardRate.toFixed(1)}
         </span>
-        <span className="text-sm ml-1" style={{ color: "var(--text-muted)" }}>/1K views</span>
+        <span className="text-sm text-neutral-500">/1K views</span>
       </div>
 
-      {/* Progress Bar */}
-      <div className="mb-3">
-        <div
-          className="w-full h-1.5 rounded-full overflow-hidden"
-          style={{ background: "var(--border-default)" }}
-        >
-          <div
-            className="h-full rounded-full transition-all"
-            style={{
-              width: `${progress}%`,
-              background: "var(--primary)",
-            }}
-          />
+      <div className="mt-5">
+        <div className="h-1.5 overflow-hidden rounded-full bg-neutral-200">
+          <div className="h-full rounded-full bg-neutral-950 transition-all" style={{ width: `${progress}%` }} />
         </div>
-        <div className="flex justify-between mt-1 text-xs" style={{ color: "var(--text-muted)" }}>
-          <span>${campaign.totalPaid.toFixed(0)} of ${campaign.totalBudget.toFixed(0)} paid out</span>
+        <div className="mt-2 flex justify-between text-xs text-neutral-500">
+          <span>${campaign.totalPaid.toFixed(0)} of ${campaign.totalBudget.toFixed(0)} paid</span>
           <span>{progress.toFixed(0)}%</span>
         </div>
       </div>
 
-      {/* Footer: Platform icons + Type badge */}
-      <div className="flex items-center justify-between mt-auto">
+      <div className="mt-5 flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-1.5">
-          <PlatformIcon platform={campaign.platform} size={24} />
+          {campaign.platforms.slice(0, 4).map((platform) => (
+            <PlatformIcon key={platform} platform={platform} size={24} />
+          ))}
         </div>
-        <span
-          className="text-xs font-medium px-2.5 py-0.5 rounded-full"
-          style={{ background: "var(--accent-bg)", color: "var(--primary)" }}
-        >
+        <span className="rounded-full bg-white px-2.5 py-1 text-xs font-medium text-neutral-600 ring-1 ring-neutral-200">
           {campaign.contentType}
         </span>
       </div>
 
-      {/* Submit button for joined campaigns */}
-      {campaign.applicationId && (
+      <div className="mt-5 flex flex-col gap-2 sm:flex-row">
         <Link
-          href={`/creator/applications/${campaign.applicationId}/submit`}
-          onClick={(e) => e.stopPropagation()}
-          className="flex items-center justify-center gap-2 mt-4 py-2.5 rounded-lg text-sm font-semibold text-white transition-all"
-          style={{ background: "var(--primary)" }}
+          href={primaryHref}
+          className="inline-flex h-10 flex-1 items-center justify-center rounded-xl bg-neutral-950 px-4 text-sm font-semibold text-white shadow-[0_8px_18px_rgba(0,0,0,0.14)] transition hover:bg-neutral-800"
         >
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <line x1="22" y1="2" x2="11" y2="13" />
-            <polygon points="22 2 15 22 11 13 2 9 22 2" />
-          </svg>
-          Submit Content
+          {primaryLabel}
         </Link>
-      )}
-    </div>
+        {campaign.applicationId ? (
+          <Link
+            href={`/creator/campaigns/${campaign.id}`}
+            className="inline-flex h-10 items-center justify-center rounded-xl border border-neutral-200 bg-white px-4 text-sm font-semibold text-neutral-950 transition hover:bg-neutral-100"
+          >
+            Brief
+          </Link>
+        ) : null}
+      </div>
+    </article>
   );
+}
 
+function SearchIcon({ className }: { className?: string }) {
   return (
-    <Link href={`/creator/campaigns/${campaign.id}`}>
-      {cardContent}
-    </Link>
+    <svg className={className} width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <circle cx="11" cy="11" r="8" />
+      <path d="m21 21-4.3-4.3" />
+    </svg>
+  );
+}
+
+function FilterIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <path d="M3 5h18" />
+      <path d="M6 12h12" />
+      <path d="M10 19h4" />
+    </svg>
   );
 }
