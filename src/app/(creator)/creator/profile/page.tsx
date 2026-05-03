@@ -39,6 +39,25 @@ export default async function ProfilePage({
   const profile = user?.creatorProfile;
   if (!profile) redirect("/onboarding");
 
+  // Activity heatmap: pull last 90 days of submissions and group by day.
+  const ninetyDaysAgo = new Date();
+  ninetyDaysAgo.setDate(ninetyDaysAgo.getDate() - 90);
+  ninetyDaysAgo.setHours(0, 0, 0, 0);
+
+  const recentSubmissions = await prisma.campaignSubmission.findMany({
+    where: { creatorId: user.id, createdAt: { gte: ninetyDaysAgo } },
+    select: { createdAt: true },
+  });
+  const activityCounts = new Map<string, number>();
+  for (const s of recentSubmissions) {
+    const key = s.createdAt.toISOString().slice(0, 10);
+    activityCounts.set(key, (activityCounts.get(key) ?? 0) + 1);
+  }
+  const activityDays = Array.from(activityCounts.entries()).map(([date, count]) => ({
+    date,
+    count,
+  }));
+
   // Calculate balances
   const payouts = profile.payouts ?? [];
   const availableBalance = payouts
@@ -77,6 +96,7 @@ export default async function ProfilePage({
           pending: pendingBalance,
           withdrawalHistory,
         }}
+        activityDays={activityDays}
       />
     </div>
   );
