@@ -1,11 +1,6 @@
 import Link from "next/link";
-import { KpiCard, type KpiCardProps } from "@/components/admin/kpi-card";
 import { CreatorScoreCell } from "@/components/admin/creator-score-cell";
-import {
-  getAgencyOsDashboardSnapshot,
-  type OperatingArea,
-  type RecentRiskSignal,
-} from "@/lib/admin/agency-os";
+import { getAgencyOsDashboardSnapshot, type RecentRiskSignal } from "@/lib/admin/agency-os";
 
 export const dynamic = "force-dynamic";
 
@@ -27,6 +22,24 @@ const SIGNAL_LABEL: Record<RecentRiskSignal["type"], string> = {
   TOKEN_BROKEN: "Token broken",
 };
 
+interface FlowStep {
+  step: string;
+  title: string;
+  purpose: string;
+  status: "good" | "attention" | "manual";
+  metric: string;
+  subMetric: string;
+  href: string;
+  action: string;
+}
+
+interface ActionItem {
+  title: string;
+  detail: string;
+  href: string;
+  tone: "attention" | "good";
+}
+
 function formatEuro(value: number) {
   return euroFormatter.format(value);
 }
@@ -35,366 +48,422 @@ function formatNumber(value: number) {
   return numberFormatter.format(value);
 }
 
-function formatPercent(value: number | null) {
-  return value == null ? "No reviews" : `${value.toFixed(0)}%`;
-}
-
 function formatDate(date: Date) {
   return date.toLocaleDateString(undefined, { month: "short", day: "numeric" });
 }
 
-function OperatingAreaCard({ area }: { area: OperatingArea }) {
-  const isLive = area.status === "live";
-  const body = (
-    <div
-      className="h-full rounded-lg p-4 transition-colors"
-      style={{
-        background: "var(--bg-card)",
-        border: `1px solid ${isLive ? "var(--success-text)" : "var(--border)"}`,
-      }}
+function statusStyle(status: FlowStep["status"] | ActionItem["tone"]) {
+  if (status === "good") {
+    return {
+      border: "var(--success-text)",
+      badgeBg: "var(--success-bg)",
+      badgeText: "var(--success-text)",
+      label: "Clear",
+    };
+  }
+  if (status === "manual") {
+    return {
+      border: "var(--border)",
+      badgeBg: "var(--bg-primary)",
+      badgeText: "var(--text-secondary)",
+      label: "Manual",
+    };
+  }
+  return {
+    border: "var(--warning-text)",
+    badgeBg: "var(--warning-bg)",
+    badgeText: "var(--warning-text)",
+    label: "Needs work",
+  };
+}
+
+function FlowStepCard({ item }: { item: FlowStep }) {
+  const style = statusStyle(item.status);
+
+  return (
+    <Link
+      href={item.href}
+      className="block rounded-lg p-4 transition-opacity hover:opacity-90"
+      style={{ background: "var(--bg-card)", border: `1px solid ${style.border}` }}
     >
       <div className="flex items-start justify-between gap-3">
-        <h3 className="text-sm font-semibold leading-tight" style={{ color: "var(--text-primary)" }}>
-          {area.name}
-        </h3>
+        <p className="text-[11px] font-semibold uppercase tracking-wide" style={{ color: "var(--text-secondary)" }}>
+          {item.step}
+        </p>
         <span
-          className="shrink-0 rounded px-2 py-0.5 text-[10px] font-semibold uppercase"
-          style={{
-            background: isLive ? "var(--success-bg)" : "var(--bg-primary)",
-            color: isLive ? "var(--success-text)" : "var(--text-secondary)",
-          }}
+          className="rounded px-2 py-0.5 text-[10px] font-semibold uppercase"
+          style={{ background: style.badgeBg, color: style.badgeText }}
         >
-          {isLive ? "Live" : "Manual"}
+          {style.label}
         </span>
       </div>
-      <p className="mt-2 text-xs leading-relaxed" style={{ color: "var(--text-secondary)" }}>
-        {area.detail}
+      <h2 className="mt-3 text-lg font-semibold leading-tight" style={{ color: "var(--text-primary)" }}>
+        {item.title}
+      </h2>
+      <p className="mt-1 min-h-10 text-xs leading-5" style={{ color: "var(--text-secondary)" }}>
+        {item.purpose}
+      </p>
+      <div className="mt-5">
+        <p className="text-3xl font-semibold leading-none" style={{ color: "var(--text-primary)" }}>
+          {item.metric}
+        </p>
+        <p className="mt-1 text-xs" style={{ color: "var(--text-secondary)" }}>
+          {item.subMetric}
+        </p>
+      </div>
+      <p className="mt-4 text-xs font-semibold" style={{ color: "var(--primary, var(--accent))" }}>
+        {item.action}
+      </p>
+    </Link>
+  );
+}
+
+function SummaryPanel({
+  label,
+  value,
+  detail,
+  tone = "neutral",
+}: {
+  label: string;
+  value: string;
+  detail: string;
+  tone?: "neutral" | "attention" | "good";
+}) {
+  const border =
+    tone === "attention" ? "var(--warning-text)" : tone === "good" ? "var(--success-text)" : "var(--border)";
+
+  return (
+    <div className="rounded-lg px-4 py-3" style={{ background: "var(--bg-card)", border: `1px solid ${border}` }}>
+      <p className="text-[11px] font-semibold uppercase tracking-wide" style={{ color: "var(--text-secondary)" }}>
+        {label}
+      </p>
+      <p className="mt-2 text-2xl font-semibold" style={{ color: "var(--text-primary)" }}>
+        {value}
+      </p>
+      <p className="mt-1 text-xs leading-5" style={{ color: "var(--text-secondary)" }}>
+        {detail}
       </p>
     </div>
   );
+}
 
-  if (!area.href) return body;
+function buildActions(snapshot: Awaited<ReturnType<typeof getAgencyOsDashboardSnapshot>>): ActionItem[] {
+  const { metrics } = snapshot;
+  const actions: ActionItem[] = [];
 
-  return (
-    <Link href={area.href} className="block h-full hover:opacity-90 transition-opacity">
-      {body}
-    </Link>
-  );
+  if (metrics.clipsNeedsReview > 0) {
+    actions.push({
+      title: `Review ${metrics.clipsNeedsReview} pending clips`,
+      detail: "This is the current delivery bottleneck. Approve, reject, or mark missing logo before anything else.",
+      href: "/admin/review/videos",
+      tone: "attention",
+    });
+  }
+
+  if (snapshot.deliveryRisks.length > 0) {
+    const firstRisk = snapshot.deliveryRisks[0];
+    actions.push({
+      title: `Fix campaign pace: ${firstRisk.name}`,
+      detail:
+        firstRisk.goal > 0
+          ? `${formatNumber(firstRisk.captured)} of ${formatNumber(firstRisk.goal)} views captured.`
+          : "This campaign has no view goal set, so delivery health is unclear.",
+      href: `/admin/campaigns/${firstRisk.id}`,
+      tone: "attention",
+    });
+  }
+
+  if (metrics.payoutsOwed > 0) {
+    actions.push({
+      title: `Process ${formatEuro(metrics.payoutsOwed)} in payouts`,
+      detail: "Keep creator payments out of chat threads and close the payout loop in admin.",
+      href: "/admin/payouts",
+      tone: "attention",
+    });
+  }
+
+  if (metrics.openRiskSignals > 0) {
+    actions.push({
+      title: `Resolve ${metrics.openRiskSignals} open risk signals`,
+      detail:
+        metrics.criticalRiskSignals > 0
+          ? `${metrics.criticalRiskSignals} critical signals need owner attention.`
+          : "Review WARN signals before they become delivery problems.",
+      href: "/admin/signals",
+      tone: "attention",
+    });
+  }
+
+  if (actions.length === 0) {
+    actions.push({
+      title: "No urgent operations blocked",
+      detail: "Use the flow below to plan sales, production capacity, and the next weekly review.",
+      href: "/admin/campaigns",
+      tone: "good",
+    });
+  }
+
+  return actions.slice(0, 4);
 }
 
 export default async function AdminDashboard() {
   const snapshot = await getAgencyOsDashboardSnapshot();
   const { metrics } = snapshot;
 
-  const metricCards: KpiCardProps[] = [
+  const flow: FlowStep[] = [
     {
-      label: "Revenue this month",
-      value: formatEuro(metrics.totalRevenueThisMonth),
-      hint: "booked campaign budget",
-      tone: metrics.totalRevenueThisMonth > 0 ? "success" : "default",
+      step: "Step 1",
+      title: "Sell brands",
+      purpose: "Track closed campaigns and the brand pipeline. CRM work is still manual outside the app.",
+      status: metrics.pipelineBrands > 0 || metrics.activeBrands > 0 ? "good" : "attention",
+      metric: `${metrics.activeBrands} active`,
+      subMetric: `${metrics.pipelineBrands} in pipeline - ${formatEuro(metrics.totalRevenueThisMonth)} booked this month`,
       href: "/admin/campaigns",
+      action: "Open campaign pipeline",
     },
     {
-      label: "Expected next month",
-      value: formatEuro(metrics.expectedRevenueNextMonth),
-      hint: "campaigns due next month",
-      href: "/admin/campaigns",
-    },
-    {
-      label: "Active brands",
-      value: metrics.activeBrands,
-      hint: "active campaigns as brand proxy",
-      href: "/admin/campaigns",
-    },
-    {
-      label: "Brand pipeline",
-      value: metrics.pipelineBrands,
-      hint: "draft / payment / review",
-      tone: metrics.pipelineBrands > 0 ? "success" : "default",
-      href: "/admin/campaigns",
-    },
-    {
-      label: "Active clippers",
-      value: metrics.activeClippers,
-      hint: "verified or active assignment",
+      step: "Step 2",
+      title: "Staff clippers",
+      purpose: "Know whether there are enough active creators to deliver the work you sold.",
+      status: metrics.activeClippers > 0 ? "good" : "attention",
+      metric: String(metrics.activeClippers),
+      subMetric: "verified or assigned clippers",
       href: "/admin/creators",
+      action: "Open clipper database",
     },
     {
-      label: "Delivered this week",
-      value: metrics.clipsDeliveredThisWeek,
-      hint: "new submissions in 7d",
+      step: "Step 3",
+      title: "Produce clips",
+      purpose: "Follow production volume from submission to campaign delivery.",
+      status: snapshot.deliveryRisks.length > 0 ? "attention" : "good",
+      metric: String(metrics.clipsDeliveredThisWeek),
+      subMetric: `${snapshot.deliveryRisks.length} campaigns at risk`,
       href: "/admin/submissions",
+      action: "Open production tracker",
     },
     {
-      label: "Clips approved",
-      value: metrics.clipsApprovedThisWeek,
-      hint: `${formatPercent(metrics.approvalRate)} approval rate`,
-      tone: metrics.approvalRate != null && metrics.approvalRate >= 80 ? "success" : "default",
-      href: "/admin/submissions",
-    },
-    {
-      label: "Rejected / revised",
-      value: metrics.clipsRejectedOrRevisedThisWeek,
-      hint: "rejected or flagged in 7d",
-      tone: metrics.clipsRejectedOrRevisedThisWeek > 0 ? "warning" : "default",
-      href: "/admin/submissions",
-    },
-    {
-      label: "Needs review",
-      value: metrics.clipsNeedsReview,
-      hint: "pending submission queue",
-      tone: metrics.clipsNeedsReview > 0 ? "warning" : "default",
+      step: "Step 4",
+      title: "Quality control",
+      purpose: "Clear pending reviews, logo checks, rejected clips, and delivery risk signals.",
+      status: metrics.clipsNeedsReview > 0 || metrics.openRiskSignals > 0 ? "attention" : "good",
+      metric: String(metrics.clipsNeedsReview),
+      subMetric: `${metrics.clipsApprovedThisWeek} approved - ${metrics.clipsRejectedOrRevisedThisWeek} rejected or flagged`,
       href: "/admin/review/videos",
+      action: "Open review queue",
     },
     {
-      label: "Payouts owed",
-      value: formatEuro(metrics.payoutsOwed),
-      hint: "non-confirmed payouts",
-      tone: metrics.payoutsOwed > 0 ? "warning" : "success",
+      step: "Step 5",
+      title: "Pay and review",
+      purpose: "Close the money loop and use the weekly KPI rhythm to decide what to fix next.",
+      status: metrics.payoutsOwed > 0 ? "attention" : "good",
+      metric: formatEuro(metrics.payoutsOwed),
+      subMetric: `${formatEuro(metrics.estimatedGrossProfit)} estimated gross profit`,
       href: "/admin/payouts",
-    },
-    {
-      label: "Est. gross profit",
-      value: formatEuro(metrics.estimatedGrossProfit),
-      hint: "budget minus creator cost",
-      tone: metrics.estimatedGrossProfit >= 0 ? "success" : "danger",
-    },
-    {
-      label: "Open risk signals",
-      value: metrics.openRiskSignals,
-      hint:
-        metrics.criticalRiskSignals > 0
-          ? `${metrics.criticalRiskSignals} critical`
-          : `${metrics.tokenBrokenSignals} token-broken`,
-      tone: metrics.criticalRiskSignals > 0 ? "danger" : metrics.openRiskSignals > 0 ? "warning" : "success",
-      href: "/admin/signals",
+      action: "Open payouts",
     },
   ];
 
-  const liveAreaCount = snapshot.operatingAreas.filter((area) => area.status === "live").length;
+  const actions = buildActions(snapshot);
+  const primaryAction = actions[0];
 
   return (
-    <div className="w-full px-5 py-7 sm:px-8 space-y-7">
-      <header className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
-        <div className="max-w-3xl">
+    <div className="w-full px-5 py-7 sm:px-8">
+      <header className="grid gap-5 xl:grid-cols-[1fr_360px]">
+        <div>
           <p className="text-[11px] font-semibold uppercase tracking-[0.18em]" style={{ color: "var(--accent)" }}>
             Agency Operating System
           </p>
           <h1 className="mt-2 text-3xl font-bold leading-tight" style={{ color: "var(--text-primary)" }}>
-            CEO Dashboard
+            Admin dashboard
           </h1>
-          <p className="mt-2 max-w-2xl text-sm leading-6" style={{ color: "var(--text-secondary)" }}>
-            Daily control for brands, clippers, delivery, payouts, risk, and weekly founder KPIs. Missing agency
-            modules stay visible as manual setup areas until the process is ready for software.
+          <p className="mt-2 max-w-3xl text-sm leading-6" style={{ color: "var(--text-secondary)" }}>
+            One flow: sell brands, staff clippers, produce clips, check quality, then pay and review. Start with the
+            bottleneck, not the menu.
           </p>
         </div>
-        <div
-          className="rounded-lg px-4 py-3 text-sm"
-          style={{ background: "var(--bg-card)", border: "1px solid var(--border)", color: "var(--text-primary)" }}
+        <Link
+          href={primaryAction.href}
+          className="rounded-lg p-4 transition-opacity hover:opacity-90"
+          style={{
+            background: primaryAction.tone === "attention" ? "var(--warning-bg)" : "var(--success-bg)",
+            border: `1px solid ${primaryAction.tone === "attention" ? "var(--warning-text)" : "var(--success-text)"}`,
+          }}
         >
-          <span className="block text-[11px] font-semibold uppercase" style={{ color: "var(--text-secondary)" }}>
-            OS Coverage
-          </span>
-          <span className="text-2xl font-semibold">{liveAreaCount}/12</span>
-          <span className="ml-2 text-xs" style={{ color: "var(--text-secondary)" }}>
-            live modules
-          </span>
-        </div>
+          <p
+            className="text-[11px] font-semibold uppercase tracking-wide"
+            style={{ color: primaryAction.tone === "attention" ? "var(--warning-text)" : "var(--success-text)" }}
+          >
+            Start here
+          </p>
+          <h2 className="mt-2 text-lg font-semibold" style={{ color: "var(--text-primary)" }}>
+            {primaryAction.title}
+          </h2>
+          <p className="mt-1 text-xs leading-5" style={{ color: "var(--text-secondary)" }}>
+            {primaryAction.detail}
+          </p>
+        </Link>
       </header>
 
-      <section className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-        {metricCards.map((card) => (
-          <KpiCard key={card.label} {...card} />
-        ))}
+      <section className="mt-6 grid grid-cols-1 gap-3 md:grid-cols-3">
+        <SummaryPanel
+          label="Money"
+          value={formatEuro(metrics.estimatedGrossProfit)}
+          detail={`${formatEuro(metrics.bookedCampaignBudget)} booked budget minus creator cost and open payouts.`}
+          tone={metrics.estimatedGrossProfit >= 0 ? "good" : "attention"}
+        />
+        <SummaryPanel
+          label="Delivery"
+          value={`${metrics.clipsNeedsReview} to review`}
+          detail={`${metrics.clipsDeliveredThisWeek} clips submitted this week, ${snapshot.deliveryRisks.length} campaigns need pace checks.`}
+          tone={metrics.clipsNeedsReview > 0 || snapshot.deliveryRisks.length > 0 ? "attention" : "good"}
+        />
+        <SummaryPanel
+          label="Risk"
+          value={`${metrics.openRiskSignals} open`}
+          detail={
+            metrics.criticalRiskSignals > 0
+              ? `${metrics.criticalRiskSignals} critical signals.`
+              : `${metrics.tokenBrokenSignals} token issues.`
+          }
+          tone={metrics.openRiskSignals > 0 ? "attention" : "good"}
+        />
       </section>
 
-      <section>
-        <div className="mb-3 flex items-end justify-between gap-3">
-          <div>
-            <h2 className="text-lg font-semibold" style={{ color: "var(--text-primary)" }}>
-              Operating Areas
-            </h2>
-            <p className="text-sm" style={{ color: "var(--text-secondary)" }}>
-              The 12 agency OS tabs mapped onto the current app state.
-            </p>
-          </div>
+      <section className="mt-8">
+        <div className="mb-3">
+          <h2 className="text-xl font-semibold" style={{ color: "var(--text-primary)" }}>
+            Agency flow
+          </h2>
+          <p className="text-sm" style={{ color: "var(--text-secondary)" }}>
+            Each block is one part of the operating system. Follow it left to right.
+          </p>
         </div>
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-          {snapshot.operatingAreas.map((area) => (
-            <OperatingAreaCard key={area.name} area={area} />
+        <div className="grid grid-cols-1 gap-3 lg:grid-cols-5">
+          {flow.map((item) => (
+            <FlowStepCard key={item.step} item={item} />
           ))}
         </div>
       </section>
 
-      <section className="grid grid-cols-1 gap-4 xl:grid-cols-3">
+      <section className="mt-8 grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1fr)_380px]">
         <div
           className="rounded-lg overflow-hidden"
           style={{ background: "var(--bg-card)", border: "1px solid var(--border)" }}
         >
-          <div className="px-5 py-4 flex items-center justify-between" style={{ borderBottom: "1px solid var(--border)" }}>
-            <div>
-              <h2 className="text-base font-semibold" style={{ color: "var(--text-primary)" }}>
-                Delivery Control
-              </h2>
-              <p className="text-xs" style={{ color: "var(--text-secondary)" }}>
-                Active campaigns nearing deadline or missing goal pace.
-              </p>
-            </div>
-            <Link href="/admin/campaigns" className="text-xs underline" style={{ color: "var(--primary, var(--accent))" }}>
-              View all
-            </Link>
-          </div>
-          {snapshot.deliveryRisks.length === 0 ? (
-            <p className="px-5 py-8 text-sm" style={{ color: "var(--text-secondary)" }}>
-              No delivery risks right now.
+          <div className="px-5 py-4" style={{ borderBottom: "1px solid var(--border)" }}>
+            <h2 className="text-lg font-semibold" style={{ color: "var(--text-primary)" }}>
+              Next actions
+            </h2>
+            <p className="text-sm" style={{ color: "var(--text-secondary)" }}>
+              The dashboard should tell you what to do first. This list is sorted by operational urgency.
             </p>
-          ) : (
-            <ul>
-              {snapshot.deliveryRisks.map((campaign) => (
-                <li
-                  key={campaign.id}
-                  className="px-5 py-3 flex items-center justify-between gap-3"
-                  style={{ borderBottom: "1px solid var(--border)" }}
+          </div>
+          <div className="divide-y" style={{ borderColor: "var(--border)" }}>
+            {actions.map((action) => {
+              const style = statusStyle(action.tone);
+              return (
+                <Link
+                  key={action.title}
+                  href={action.href}
+                  className="flex items-start justify-between gap-4 px-5 py-4 transition-colors hover:opacity-90"
                 >
-                  <div className="min-w-0">
-                    <Link
-                      href={`/admin/campaigns/${campaign.id}`}
-                      className="block truncate text-sm font-medium underline-offset-2 hover:underline"
-                      style={{ color: "var(--text-primary)" }}
-                    >
-                      {campaign.name}
-                    </Link>
-                    <p className="text-[11px]" style={{ color: "var(--text-secondary)" }}>
-                      Due {formatDate(campaign.deadline)} -{" "}
-                      {campaign.goal > 0
-                        ? `${formatNumber(campaign.captured)} / ${formatNumber(campaign.goal)} views`
-                        : `${formatNumber(campaign.captured)} views, no goal set`}
+                  <div>
+                    <h3 className="text-sm font-semibold" style={{ color: "var(--text-primary)" }}>
+                      {action.title}
+                    </h3>
+                    <p className="mt-1 text-xs leading-5" style={{ color: "var(--text-secondary)" }}>
+                      {action.detail}
                     </p>
                   </div>
                   <span
-                    className="shrink-0 rounded px-2 py-0.5 text-[11px] font-semibold"
-                    style={{ background: "var(--warning-bg)", color: "var(--warning-text)" }}
+                    className="shrink-0 rounded px-2 py-0.5 text-[10px] font-semibold uppercase"
+                    style={{ background: style.badgeBg, color: style.badgeText }}
                   >
-                    {campaign.goal > 0 ? `${Math.round((1 - campaign.pct) * 100)}% gap` : "No goal"}
+                    {style.label}
                   </span>
-                </li>
-              ))}
-            </ul>
-          )}
+                </Link>
+              );
+            })}
+          </div>
         </div>
 
-        <div
-          className="rounded-lg overflow-hidden"
-          style={{ background: "var(--bg-card)", border: "1px solid var(--border)" }}
-        >
-          <div className="px-5 py-4 flex items-center justify-between" style={{ borderBottom: "1px solid var(--border)" }}>
-            <div>
-              <h2 className="text-base font-semibold" style={{ color: "var(--text-primary)" }}>
-                Clipper Performance
+        <div className="space-y-4">
+          <div
+            className="rounded-lg overflow-hidden"
+            style={{ background: "var(--bg-card)", border: "1px solid var(--border)" }}
+          >
+            <div className="px-5 py-4" style={{ borderBottom: "1px solid var(--border)" }}>
+              <h2 className="text-lg font-semibold" style={{ color: "var(--text-primary)" }}>
+                Best clipper right now
               </h2>
-              <p className="text-xs" style={{ color: "var(--text-secondary)" }}>
-                Highest current performance scores.
-              </p>
             </div>
-            <Link href="/admin/creators" className="text-xs underline" style={{ color: "var(--primary, var(--accent))" }}>
-              View all
-            </Link>
-          </div>
-          {snapshot.topClippers.length === 0 ? (
-            <p className="px-5 py-8 text-sm" style={{ color: "var(--text-secondary)" }}>
-              No performance scores computed yet.
-            </p>
-          ) : (
-            <ul>
-              {snapshot.topClippers.map((clipper) => (
-                <li
-                  key={clipper.profileId ?? clipper.displayName}
-                  className="px-5 py-3 flex items-center justify-between gap-3"
-                  style={{ borderBottom: "1px solid var(--border)" }}
-                >
+            {snapshot.topClippers[0] ? (
+              <div className="px-5 py-4">
+                <div className="flex items-center justify-between gap-4">
                   <div className="min-w-0">
-                    {clipper.profileId ? (
-                      <Link
-                        href={`/admin/creators/${clipper.profileId}`}
-                        className="block truncate text-sm font-medium underline-offset-2 hover:underline"
-                        style={{ color: "var(--text-primary)" }}
-                      >
-                        {clipper.displayName}
-                      </Link>
-                    ) : (
-                      <p className="truncate text-sm font-medium" style={{ color: "var(--text-primary)" }}>
-                        {clipper.displayName}
-                      </p>
-                    )}
-                    <p className="truncate text-[11px]" style={{ color: "var(--text-secondary)" }}>
-                      {clipper.email ?? "No email"}
+                    <Link
+                      href={snapshot.topClippers[0].profileId ? `/admin/creators/${snapshot.topClippers[0].profileId}` : "/admin/creators"}
+                      className="block truncate text-sm font-semibold underline-offset-2 hover:underline"
+                      style={{ color: "var(--text-primary)" }}
+                    >
+                      {snapshot.topClippers[0].displayName}
+                    </Link>
+                    <p className="truncate text-xs" style={{ color: "var(--text-secondary)" }}>
+                      {snapshot.topClippers[0].email ?? "No email"}
                     </p>
                   </div>
-                  <CreatorScoreCell score={clipper.score} sampleSize={clipper.sampleSize} />
-                </li>
-              ))}
-            </ul>
-          )}
-        </div>
-
-        <div
-          className="rounded-lg overflow-hidden"
-          style={{ background: "var(--bg-card)", border: "1px solid var(--border)" }}
-        >
-          <div className="px-5 py-4 flex items-center justify-between" style={{ borderBottom: "1px solid var(--border)" }}>
-            <div>
-              <h2 className="text-base font-semibold" style={{ color: "var(--text-primary)" }}>
-                Quality / Risk Control
-              </h2>
-              <p className="text-xs" style={{ color: "var(--text-secondary)" }}>
-                Open WARN and CRITICAL signals.
+                  <CreatorScoreCell
+                    score={snapshot.topClippers[0].score}
+                    sampleSize={snapshot.topClippers[0].sampleSize}
+                  />
+                </div>
+              </div>
+            ) : (
+              <p className="px-5 py-5 text-sm" style={{ color: "var(--text-secondary)" }}>
+                No performance scores yet.
               </p>
-            </div>
-            <Link href="/admin/signals" className="text-xs underline" style={{ color: "var(--primary, var(--accent))" }}>
-              View all
-            </Link>
+            )}
           </div>
-          {snapshot.recentRiskSignals.length === 0 ? (
-            <p className="px-5 py-8 text-sm" style={{ color: "var(--text-secondary)" }}>
-              No open risk signals.
+
+          <div
+            className="rounded-lg overflow-hidden"
+            style={{ background: "var(--bg-card)", border: "1px solid var(--border)" }}
+          >
+            <div className="px-5 py-4" style={{ borderBottom: "1px solid var(--border)" }}>
+              <h2 className="text-lg font-semibold" style={{ color: "var(--text-primary)" }}>
+                Latest risk
+              </h2>
+            </div>
+            {snapshot.recentRiskSignals[0] ? (
+              <Link href={`/admin/signals?type=${snapshot.recentRiskSignals[0].type}`} className="block px-5 py-4">
+                <p className="text-sm font-semibold" style={{ color: "var(--text-primary)" }}>
+                  {SIGNAL_LABEL[snapshot.recentRiskSignals[0].type]}
+                </p>
+                <p className="mt-1 text-xs leading-5" style={{ color: "var(--text-secondary)" }}>
+                  {snapshot.recentRiskSignals[0].campaignName ?? "Unknown campaign"} -{" "}
+                  {snapshot.recentRiskSignals[0].creatorEmail ?? "Unknown creator"} - opened{" "}
+                  {formatDate(snapshot.recentRiskSignals[0].createdAt)}
+                </p>
+              </Link>
+            ) : (
+              <p className="px-5 py-5 text-sm" style={{ color: "var(--text-secondary)" }}>
+                No open risk signals.
+              </p>
+            )}
+          </div>
+
+          <div
+            className="rounded-lg px-5 py-4"
+            style={{ background: "var(--bg-card)", border: "1px solid var(--border)" }}
+          >
+            <h2 className="text-lg font-semibold" style={{ color: "var(--text-primary)" }}>
+              Still manual
+            </h2>
+            <p className="mt-1 text-xs leading-5" style={{ color: "var(--text-secondary)" }}>
+              Brand CRM, onboarding, recruitment, pricing, contracts, and SOPs are not real software modules yet. They
+              should stay in the manual sheet until the process is stable.
             </p>
-          ) : (
-            <ul>
-              {snapshot.recentRiskSignals.map((signal) => {
-                const critical = signal.severity === "CRITICAL";
-                return (
-                  <li key={signal.id} className="px-5 py-3" style={{ borderBottom: "1px solid var(--border)" }}>
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="min-w-0">
-                        <Link
-                          href={`/admin/signals?type=${signal.type}`}
-                          className="block truncate text-sm font-medium underline-offset-2 hover:underline"
-                          style={{ color: "var(--text-primary)" }}
-                        >
-                          {SIGNAL_LABEL[signal.type]}
-                        </Link>
-                        <p className="truncate text-[11px]" style={{ color: "var(--text-secondary)" }}>
-                          {signal.campaignName ?? "Unknown campaign"} - {signal.creatorEmail ?? "Unknown creator"}
-                        </p>
-                      </div>
-                      <span
-                        className="shrink-0 rounded px-2 py-0.5 text-[10px] font-semibold uppercase"
-                        style={{
-                          background: critical ? "var(--error-bg)" : "var(--warning-bg)",
-                          color: critical ? "var(--error-text)" : "var(--warning-text)",
-                        }}
-                      >
-                        {signal.severity}
-                      </span>
-                    </div>
-                    <p className="mt-1 text-[11px]" style={{ color: "var(--text-muted, var(--text-secondary))" }}>
-                      Opened {formatDate(signal.createdAt)}
-                    </p>
-                  </li>
-                );
-              })}
-            </ul>
-          )}
+          </div>
         </div>
       </section>
     </div>
