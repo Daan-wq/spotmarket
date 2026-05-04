@@ -1,4 +1,5 @@
-import { BookOpen, Search } from "lucide-react";
+import { BookOpen } from "lucide-react";
+import { Search } from "@/components/animate-ui/icons/search";
 import { Badge } from "@/components/ui/badge";
 import { DataTable } from "@/components/ui/data-table";
 import { EmptyState } from "@/components/ui/empty-state";

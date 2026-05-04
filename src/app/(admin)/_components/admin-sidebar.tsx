@@ -1,31 +1,33 @@
 "use client";
 
+import type { ComponentType, SVGProps } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   Banknote,
   BookOpen,
   BriefcaseBusiness,
-  ClipboardCheck,
   FileText,
-  Gauge,
   GitPullRequestArrow,
-  LayoutDashboard,
   ListChecks,
   Search,
-  Send,
   ShieldCheck,
-  Sparkles,
-  Users,
 } from "lucide-react";
-import type { LucideIcon } from "lucide-react";
+import { ClipboardCheck } from "@/components/animate-ui/icons/clipboard-check";
+import { Gauge } from "@/components/animate-ui/icons/gauge";
+import { LayoutDashboard } from "@/components/animate-ui/icons/layout-dashboard";
+import { Send } from "@/components/animate-ui/icons/send";
+import { Sparkles } from "@/components/animate-ui/icons/sparkles";
+import { Users } from "@/components/animate-ui/icons/users";
 import { Logo } from "@/components/shared/logo";
 import { cn } from "@/lib/cn";
+
+type NavIcon = ComponentType<SVGProps<SVGSVGElement> & { animateOnHover?: boolean }>;
 
 interface NavItem {
   href: string;
   label: string;
-  icon: LucideIcon;
+  icon: NavIcon;
   description?: string;
 }
 
@@ -111,7 +113,7 @@ export function AdminSidebar({ initials, email }: AdminSidebarProps) {
                         : "text-neutral-600 hover:bg-neutral-100 hover:text-neutral-950",
                     )}
                   >
-                    <Icon className="h-[18px] w-[18px]" strokeWidth={2} />
+                    <Icon className="h-[18px] w-[18px]" strokeWidth={2} animateOnHover />
                     <span className="truncate">{item.label}</span>
                   </Link>
                 );

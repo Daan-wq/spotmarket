@@ -1,4 +1,4 @@
-import { Gauge } from "lucide-react";
+import { Gauge } from "@/components/animate-ui/icons/gauge";
 import { Badge } from "@/components/ui/badge";
 import { DataTable } from "@/components/ui/data-table";
 import { EmptyState } from "@/components/ui/empty-state";

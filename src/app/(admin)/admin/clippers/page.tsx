@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Users } from "lucide-react";
+import { Users } from "@/components/animate-ui/icons/users";
 import { Badge } from "@/components/ui/badge";
 import { DataTable } from "@/components/ui/data-table";
 import { EmptyState } from "@/components/ui/empty-state";

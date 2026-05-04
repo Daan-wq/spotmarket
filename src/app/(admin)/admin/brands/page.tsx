@@ -1,4 +1,5 @@
-import { Building2, Plus } from "lucide-react";
+import { Building2 } from "lucide-react";
+import { Plus } from "@/components/animate-ui/icons/plus";
 import { Badge } from "@/components/ui/badge";
 import { DataTable } from "@/components/ui/data-table";
 import { EmptyState } from "@/components/ui/empty-state";

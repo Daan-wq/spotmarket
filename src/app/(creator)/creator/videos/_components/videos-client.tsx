@@ -5,12 +5,11 @@ import type { ReactNode } from "react";
 import Link from "next/link";
 import PlatformIcon from "@/components/shared/PlatformIcon";
 import { EmptyState } from "@/components/ui/empty-state";
+import { ProgressiveActionDrawer } from "@/components/ui/progressive-action-drawer";
 import {
-  CreatorJourney,
   CreatorPageHeader,
   CreatorSectionHeader,
   SoftStat,
-  type JourneyStepItem,
 } from "../../_components/creator-journey";
 
 interface UnderperformInfo {
@@ -79,53 +78,12 @@ export function VideosClient({ videos, statusCounts }: VideosClientProps) {
     return sorted;
   }, [videos, queue, sort]);
 
-  const steps: JourneyStepItem[] = [
-    {
-      id: "submit",
-      label: "Submit clips from joined campaigns",
-      description: "Clips enter this pipeline after you submit a campaign post URL.",
-      status: videos.length > 0 ? "complete" : "current",
-      meta: videos.length > 0 ? `${videos.length} submitted clip${videos.length === 1 ? "" : "s"}` : "No submitted clips yet",
-      cta: videos.length > 0 ? undefined : { label: "Browse campaigns", href: "/creator/campaigns" },
-    },
-    {
-      id: "pending",
-      label: "Wait for review",
-      description: "Pending clips are being checked before earnings are locked.",
-      status: pendingCount > 0 ? "current" : videos.length > 0 ? "complete" : "blocked",
-      meta: `${pendingCount} pending`,
-      cta: pendingCount > 0 ? { label: "Show pending", onClick: () => setQueue("PENDING") } : undefined,
-    },
-    {
-      id: "issues",
-      label: "Fix rejected or flagged clips",
-      description: "Use this queue when a clip needs edits, proof, or a stronger next attempt.",
-      status: issueCount > 0 ? "attention" : videos.length > 0 ? "complete" : "blocked",
-      meta: `${issueCount} need attention`,
-      cta: issueCount > 0 ? { label: "Show issues", onClick: () => setQueue("ISSUES") } : undefined,
-    },
-    {
-      id: "approved",
-      label: "Track approved earnings",
-      description: "Approved clips become the source for settled earnings and payout history.",
-      status: approvedCount > 0 ? "complete" : videos.length > 0 ? "current" : "blocked",
-      meta: `${approvedCount} approved`,
-      cta: approvedCount > 0 ? { label: "Show approved", onClick: () => setQueue("APPROVED") } : undefined,
-    },
-  ];
-
   return (
     <div className="w-full space-y-8 px-6 py-8">
       <CreatorPageHeader
         eyebrow="Clip review pipeline"
         title="Clips"
         description="Follow submitted content from review to fixes to approved earnings."
-      />
-
-      <CreatorJourney
-        title="Review moves in order"
-        description="The page now starts with the review sequence. The clip table stays below for detailed scanning."
-        steps={steps}
       />
 
       <section>
@@ -138,29 +96,44 @@ export function VideosClient({ videos, statusCounts }: VideosClientProps) {
       </section>
 
       <section className="rounded-2xl border border-neutral-200 bg-white p-5 md:p-6">
-        <div className="mb-5 flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
-          <CreatorSectionHeader
-            title="Clip queue"
-            description={queueDescription(queue, filtered.length)}
-          />
-          <div className="flex flex-col gap-2 sm:flex-row">
-            <QueueButton active={queue === "ALL"} onClick={() => setQueue("ALL")}>All</QueueButton>
-            <QueueButton active={queue === "PENDING"} onClick={() => setQueue("PENDING")}>Pending</QueueButton>
-            <QueueButton active={queue === "ISSUES"} onClick={() => setQueue("ISSUES")}>Issues</QueueButton>
-            <QueueButton active={queue === "APPROVED"} onClick={() => setQueue("APPROVED")}>Approved</QueueButton>
-            <select
-              value={sort}
-              onChange={(e) => setSort(e.target.value as SortKey)}
-              className="h-10 rounded-xl border border-neutral-200 bg-white px-3 text-sm text-neutral-950 outline-none transition focus:border-neutral-400"
+        <CreatorSectionHeader
+          title="Clip queue"
+          description={queueDescription(queue, filtered.length)}
+          action={
+            <ProgressiveActionDrawer
+              triggerLabel="Queue options"
+              title="Refine clip queue"
+              description="Switch queue or sort order when the current list needs focus."
+              variant="outline"
+              badgeLabel={queue !== "ALL" ? queue.toLowerCase() : undefined}
             >
-              {SORT_OPTIONS.map((option) => (
-                <option key={option.key} value={option.key}>
-                  {option.label}
-                </option>
-              ))}
-            </select>
-          </div>
-        </div>
+              <div className="space-y-5">
+                <div className="grid grid-cols-2 gap-2">
+                  <QueueButton active={queue === "ALL"} onClick={() => setQueue("ALL")}>All</QueueButton>
+                  <QueueButton active={queue === "PENDING"} onClick={() => setQueue("PENDING")}>Pending ({pendingCount})</QueueButton>
+                  <QueueButton active={queue === "ISSUES"} onClick={() => setQueue("ISSUES")}>Issues ({issueCount})</QueueButton>
+                  <QueueButton active={queue === "APPROVED"} onClick={() => setQueue("APPROVED")}>Approved ({approvedCount})</QueueButton>
+                </div>
+                <label className="block">
+                  <span className="text-xs font-semibold uppercase tracking-[0.14em] text-neutral-400">
+                    Sort
+                  </span>
+                  <select
+                    value={sort}
+                    onChange={(e) => setSort(e.target.value as SortKey)}
+                    className="mt-2 h-11 w-full rounded-xl border border-neutral-200 bg-white px-3 text-sm text-neutral-950 outline-none transition focus:border-neutral-400"
+                  >
+                    {SORT_OPTIONS.map((option) => (
+                      <option key={option.key} value={option.key}>
+                        {option.label}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              </div>
+            </ProgressiveActionDrawer>
+          }
+        />
 
         {filtered.length === 0 ? (
           videos.length === 0 ? (

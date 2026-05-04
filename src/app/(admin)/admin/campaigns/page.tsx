@@ -1,9 +1,10 @@
 import Link from "next/link";
-import { Plus } from "lucide-react";
+import { Plus } from "@/components/animate-ui/icons/plus";
 import { Badge } from "@/components/ui/badge";
 import { DataTable } from "@/components/ui/data-table";
 import { EmptyState } from "@/components/ui/empty-state";
 import { PageHeader, SectionHeader, StatCard } from "@/components/ui/page";
+import { ProgressiveActionDrawer } from "@/components/ui/progressive-action-drawer";
 import { prisma } from "@/lib/prisma";
 import { formatCurrencyPrecise, formatDate, formatNumber, titleCaseEnum } from "@/lib/admin/agency-format";
 import { PublishButton } from "./_components/publish-button";
@@ -82,20 +83,34 @@ export default async function CampaignsPage() {
             { key: "submissions", header: "Submissions", align: "right", cell: (campaign) => campaign.campaignSubmissions.length },
             { key: "deadline", header: "Deadline", cell: (campaign) => formatDate(campaign.deadline) },
             {
-              key: "publish",
-              header: "Discord",
-              cell: (campaign) => <PublishButton campaignId={campaign.id} />,
-            },
-            {
               key: "actions",
               header: "Actions",
               cell: (campaign) => (
-                <div className="flex items-center gap-2">
-                  <Link href={`/admin/campaigns/${campaign.id}/edit`} className="rounded-xl border border-neutral-200 bg-white px-3 py-2 text-xs font-semibold text-neutral-700 hover:bg-neutral-50">
-                    Edit
-                  </Link>
-                  <CampaignActions campaignId={campaign.id} status={campaign.status} />
-                </div>
+                <ProgressiveActionDrawer
+                  triggerLabel="Manage"
+                  title={campaign.name}
+                  description="Campaign actions"
+                  variant="outline"
+                  size="sm"
+                  showIcon={false}
+                >
+                  <div className="space-y-3">
+                    <Link href={`/admin/campaigns/${campaign.id}`} className="inline-flex h-10 w-full items-center justify-center rounded-xl border border-neutral-200 bg-white px-4 text-sm font-semibold text-neutral-950 transition hover:bg-neutral-50">
+                      Open campaign
+                    </Link>
+                    <Link href={`/admin/campaigns/${campaign.id}/edit`} className="inline-flex h-10 w-full items-center justify-center rounded-xl border border-neutral-200 bg-white px-4 text-sm font-semibold text-neutral-950 transition hover:bg-neutral-50">
+                      Edit campaign
+                    </Link>
+                    <div className="rounded-2xl border border-neutral-200 bg-neutral-50 p-4">
+                      <p className="mb-3 text-xs font-semibold uppercase tracking-[0.14em] text-neutral-400">Publish</p>
+                      <PublishButton campaignId={campaign.id} />
+                    </div>
+                    <div className="rounded-2xl border border-neutral-200 bg-neutral-50 p-4">
+                      <p className="mb-3 text-xs font-semibold uppercase tracking-[0.14em] text-neutral-400">Status and cleanup</p>
+                      <CampaignActions campaignId={campaign.id} status={campaign.status} />
+                    </div>
+                  </div>
+                </ProgressiveActionDrawer>
               ),
             },
           ]}

@@ -6,12 +6,11 @@ import Link from "next/link";
 import PlatformIcon from "@/components/shared/PlatformIcon";
 import { Badge } from "@/components/ui/badge";
 import { EmptyState } from "@/components/ui/empty-state";
+import { ProgressiveActionDrawer } from "@/components/ui/progressive-action-drawer";
 import {
-  CreatorJourney,
   CreatorPageHeader,
   CreatorSectionHeader,
   SoftStat,
-  type JourneyStepItem,
 } from "../../_components/creator-journey";
 
 interface Eligibility {
@@ -67,7 +66,6 @@ export function CampaignsClient({ marketplace, myCampaigns }: CampaignsClientPro
   const [platformFilter, setPlatformFilter] = useState("all");
   const [typeFilter, setTypeFilter] = useState("all");
   const [sort, setSort] = useState<SortKey>("recommended");
-  const [filtersOpen, setFiltersOpen] = useState(false);
 
   const campaigns = activeTab === "my" ? myCampaigns : marketplace;
   const filtersActive =
@@ -90,43 +88,6 @@ export function CampaignsClient({ marketplace, myCampaigns }: CampaignsClientPro
     return sortCampaigns(result, sort);
   }, [campaigns, search, platformFilter, typeFilter, sort]);
 
-  const journeySteps: JourneyStepItem[] = [
-    {
-      id: "choose",
-      label: "Choose your campaign lane",
-      description: "Use Marketplace to find new work, or Joined Campaigns when you are ready to submit.",
-      status: activeTab === "my" && myCampaigns.length === 0 ? "attention" : "complete",
-      meta: activeTab === "marketplace" ? `${marketplace.length} campaigns available` : `${myCampaigns.length} joined campaigns`,
-      cta: activeTab === "marketplace"
-        ? { label: "View joined", onClick: () => setActiveTab("my") }
-        : { label: "Browse marketplace", onClick: () => setActiveTab("marketplace") },
-    },
-    {
-      id: "narrow",
-      label: "Narrow the list only when needed",
-      description: "Search stays visible. Platform, type, and sort stay tucked away until the list is too broad.",
-      status: filtersActive ? "complete" : "current",
-      meta: filtersActive ? "Filters active" : "Default recommendations shown",
-      cta: { label: filtersOpen ? "Hide filters" : "Open filters", onClick: () => setFiltersOpen((value) => !value) },
-    },
-    {
-      id: "review",
-      label: "Review eligibility and payout",
-      description: "Check qualification, CPV, budget progress, platform, and deadline before opening a brief.",
-      status: filtered.length > 0 ? "current" : "blocked",
-      meta: filtered.length > 0 ? `${filtered.length} campaign${filtered.length === 1 ? "" : "s"} in this view` : "No matching campaigns",
-    },
-    {
-      id: "act",
-      label: activeTab === "my" ? "Submit from a joined campaign" : "Open a campaign brief",
-      description: activeTab === "my"
-        ? "Joined campaigns show a submit action directly on the card."
-        : "Open the brief first, then apply or submit from the campaign flow.",
-      status: filtered.length > 0 ? "idle" : "blocked",
-      meta: activeTab === "my" ? "Submission happens after opening the joined card" : "Application happens inside the campaign brief",
-    },
-  ];
-
   function resetFilters() {
     setSearch("");
     setPlatformFilter("all");
@@ -137,15 +98,9 @@ export function CampaignsClient({ marketplace, myCampaigns }: CampaignsClientPro
   return (
     <div className="w-full space-y-8 px-6 py-8">
       <CreatorPageHeader
-        eyebrow="Campaign workflow"
+        eyebrow="Campaigns"
         title="Campaigns"
-        description="Move from marketplace discovery to a joined campaign, then submit from the campaign that actually fits your pages."
-      />
-
-      <CreatorJourney
-        title="Find the next campaign in order"
-        description="The page starts with the work sequence. Filters are available, but they no longer dominate the first screen."
-        steps={journeySteps}
+        description="Find the campaign that fits your pages, then open the brief or submit from joined work."
       />
 
       <section>
@@ -180,39 +135,29 @@ export function CampaignsClient({ marketplace, myCampaigns }: CampaignsClientPro
                 className="h-11 w-full rounded-xl border border-neutral-200 bg-neutral-50 pl-10 pr-4 text-sm text-neutral-950 outline-none transition focus:border-neutral-400 focus:bg-white"
               />
             </label>
-            <button
-              type="button"
-              aria-expanded={filtersOpen}
-              onClick={() => setFiltersOpen((value) => !value)}
-              className="inline-flex h-11 items-center justify-center gap-2 rounded-xl border border-neutral-200 bg-white px-4 text-sm font-semibold text-neutral-950 transition hover:bg-neutral-50"
+            <ProgressiveActionDrawer
+              triggerLabel="Filters"
+              title="Refine campaigns"
+              description="Use this only when the default recommendations are too broad."
+              variant="outline"
+              width="md"
+              badgeLabel={filtersActive ? "On" : undefined}
             >
-              <FilterIcon />
-              Filters
-              {filtersActive ? (
-                <span className="rounded-full bg-neutral-950 px-2 py-0.5 text-[11px] text-white">
-                  On
-                </span>
-              ) : null}
-            </button>
+              <div className="space-y-4">
+                <FilterSelect label="Platform" value={platformFilter} onChange={setPlatformFilter} options={PLATFORM_OPTIONS} />
+                <FilterSelect label="Type" value={typeFilter} onChange={setTypeFilter} options={typeOptions} />
+                <FilterSelect label="Sort" value={sort} onChange={(value) => setSort(value as SortKey)} options={SORTS.map((s) => ({ value: s.key, label: s.label }))} />
+                <button
+                  type="button"
+                  onClick={resetFilters}
+                  className="h-11 w-full rounded-xl border border-neutral-200 bg-white px-4 text-sm font-semibold text-neutral-700 transition hover:bg-neutral-100"
+                >
+                  Reset filters
+                </button>
+              </div>
+            </ProgressiveActionDrawer>
           </div>
         </div>
-
-        {filtersOpen ? (
-          <div className="mb-6 grid grid-cols-1 gap-3 rounded-2xl border border-neutral-200 bg-neutral-50 p-4 md:grid-cols-4">
-            <FilterSelect label="Platform" value={platformFilter} onChange={setPlatformFilter} options={PLATFORM_OPTIONS} />
-            <FilterSelect label="Type" value={typeFilter} onChange={setTypeFilter} options={typeOptions} />
-            <FilterSelect label="Sort" value={sort} onChange={(value) => setSort(value as SortKey)} options={SORTS.map((s) => ({ value: s.key, label: s.label }))} />
-            <div className="flex items-end">
-              <button
-                type="button"
-                onClick={resetFilters}
-                className="h-11 w-full rounded-xl border border-neutral-200 bg-white px-4 text-sm font-semibold text-neutral-700 transition hover:bg-neutral-100"
-              >
-                Reset
-              </button>
-            </div>
-          </div>
-        ) : null}
 
         <CreatorSectionHeader
           title={activeTab === "my" ? "Joined campaigns" : "Marketplace"}
@@ -415,16 +360,6 @@ function SearchIcon({ className }: { className?: string }) {
     <svg className={className} width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
       <circle cx="11" cy="11" r="8" />
       <path d="m21 21-4.3-4.3" />
-    </svg>
-  );
-}
-
-function FilterIcon() {
-  return (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-      <path d="M3 5h18" />
-      <path d="M6 12h12" />
-      <path d="M10 19h4" />
     </svg>
   );
 }

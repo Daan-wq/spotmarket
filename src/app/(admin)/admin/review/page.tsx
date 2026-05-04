@@ -1,8 +1,10 @@
 import Link from "next/link";
-import { ClipboardCheck, ExternalLink } from "lucide-react";
+import { ClipboardCheck } from "@/components/animate-ui/icons/clipboard-check";
+import { ExternalLink } from "@/components/animate-ui/icons/external-link";
 import { Badge } from "@/components/ui/badge";
 import { EmptyState } from "@/components/ui/empty-state";
 import { PageHeader, SectionHeader, StatCard } from "@/components/ui/page";
+import { ProgressiveActionDrawer } from "@/components/ui/progressive-action-drawer";
 import { LogoReviewWidget } from "@/components/admin/logo-review-widget";
 import SubmissionActions from "../submissions/_components/submission-actions";
 import { prisma } from "@/lib/prisma";
@@ -64,18 +66,27 @@ export default async function ReviewPage() {
       </div>
 
       <section>
-        <SectionHeader title="QC Scorecard Fields" description="Every final decision should be based on these checks, not only logo present/missing." />
-        <div className="grid grid-cols-2 gap-3 md:grid-cols-5 xl:grid-cols-9">
-          {SCORECARD.map((field) => (
-            <div key={field} className="rounded-2xl border border-neutral-200 bg-white p-4 text-sm font-semibold text-neutral-950">
-              {field}
-            </div>
-          ))}
-        </div>
-      </section>
-
-      <section>
-        <SectionHeader title="QC Queue" description="Approve, reject, or send revision after the scorecard is recorded." />
+        <SectionHeader
+          title="QC Queue"
+          description="Approve, reject, or send revision after the scorecard is recorded."
+          action={
+            <ProgressiveActionDrawer
+              triggerLabel="Scorecard fields"
+              title="QC scorecard fields"
+              description="Use these checks before recording a final decision."
+              variant="outline"
+              width="lg"
+            >
+              <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+                {SCORECARD.map((field) => (
+                  <div key={field} className="rounded-2xl border border-neutral-200 bg-white p-4 text-sm font-semibold text-neutral-950">
+                    {field}
+                  </div>
+                ))}
+              </div>
+            </ProgressiveActionDrawer>
+          }
+        />
         {submissions.length === 0 ? (
           <EmptyState
             icon={<ClipboardCheck className="h-5 w-5" />}
@@ -158,7 +169,7 @@ export default async function ReviewPage() {
                           rel="noreferrer"
                           className="inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-neutral-200 bg-white px-4 text-sm font-semibold text-neutral-950 hover:bg-neutral-100"
                         >
-                          <ExternalLink className="h-4 w-4" />
+                          <ExternalLink className="h-4 w-4" animateOnHover />
                           Open post
                         </a>
                         {canApprove ? (

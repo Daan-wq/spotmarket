@@ -1,11 +1,13 @@
 import Link from "next/link";
-import type { LucideIcon } from "lucide-react";
+import type { ComponentType, ReactNode, SVGProps } from "react";
 import { cn } from "@/lib/cn";
+
+type ActionIcon = ComponentType<SVGProps<SVGSVGElement> & { animateOnHover?: boolean }>;
 
 interface PageHeaderAction {
   label: string;
   href?: string;
-  icon?: LucideIcon;
+  icon?: ActionIcon;
 }
 
 export function PageHeader({
@@ -53,7 +55,7 @@ function HeaderAction({ action }: { action: PageHeaderAction }) {
   if (action.href) {
     return (
       <Link href={action.href} className={className}>
-        {Icon ? <Icon className="h-4 w-4" /> : null}
+        {Icon ? <Icon className="h-4 w-4" animateOnHover /> : null}
         {action.label}
       </Link>
     );
@@ -70,19 +72,24 @@ function HeaderAction({ action }: { action: PageHeaderAction }) {
 export function SectionHeader({
   title,
   description,
+  action,
   className,
 }: {
   title: string;
   description?: string;
+  action?: ReactNode;
   className?: string;
 }) {
   return (
-    <div className={cn("mb-5", className)}>
-      <div className="flex items-center gap-4">
-        <h2 className="shrink-0 text-sm font-semibold text-neutral-950">{title}</h2>
-        <div className="h-px flex-1 bg-neutral-200" />
+    <div className={cn("mb-5 flex flex-col gap-3 md:flex-row md:items-end md:justify-between", className)}>
+      <div className="min-w-0 flex-1">
+        <div className="flex items-center gap-4">
+          <h2 className="shrink-0 text-sm font-semibold text-neutral-950">{title}</h2>
+          <div className="h-px flex-1 bg-neutral-200" />
+        </div>
+        {description ? <p className="mt-2 text-sm text-neutral-500">{description}</p> : null}
       </div>
-      {description ? <p className="mt-2 text-sm text-neutral-500">{description}</p> : null}
+      {action ? <div className="shrink-0">{action}</div> : null}
     </div>
   );
 }

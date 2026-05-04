@@ -1,4 +1,10 @@
+import { Badge } from "@/components/ui/badge";
+import { DataTable } from "@/components/ui/data-table";
+import { EmptyState } from "@/components/ui/empty-state";
+import { PageHeader, SectionHeader, StatCard } from "@/components/ui/page";
+import { ProgressiveActionDrawer } from "@/components/ui/progressive-action-drawer";
 import { prisma } from "@/lib/prisma";
+import { formatCurrencyPrecise, formatDate, titleCaseEnum } from "@/lib/admin/agency-format";
 import SubmissionActions from "./_components/submission-actions";
 
 export default async function SubmissionsPage() {
@@ -7,79 +13,99 @@ export default async function SubmissionsPage() {
     orderBy: { createdAt: "desc" },
   });
 
+  const pending = submissions.filter((submission) => submission.status === "PENDING").length;
+  const approved = submissions.filter((submission) => submission.status === "APPROVED").length;
+  const issues = submissions.filter((submission) => submission.status === "REJECTED" || submission.status === "FLAGGED").length;
+  const earned = submissions.reduce((sum, submission) => sum + Number(submission.earnedAmount), 0);
+
   return (
-    <div className="p-8">
-      <h1 className="text-3xl font-bold mb-1" style={{ color: "var(--text-primary)" }}>Submissions</h1>
-      <p className="mb-6" style={{ color: "var(--text-secondary)" }}>Review and approve submissions — enter baseline &amp; current views to calculate eligible views</p>
-      <div className="rounded-xl overflow-hidden" style={{ background: "var(--bg-card)", border: "1px solid var(--border)" }}>
-        <table className="w-full">
-          <thead>
-            <tr style={{ borderBottom: "1px solid var(--border)" }}>
-              <th className="px-6 py-3 text-left text-xs font-semibold" style={{ color: "var(--text-secondary)" }}>Campaign</th>
-              <th className="px-6 py-3 text-left text-xs font-semibold" style={{ color: "var(--text-secondary)" }}>Creator</th>
-              <th className="px-6 py-3 text-left text-xs font-semibold" style={{ color: "var(--text-secondary)" }}>Source</th>
-              <th className="px-6 py-3 text-left text-xs font-semibold" style={{ color: "var(--text-secondary)" }}>Submitted</th>
-              <th className="px-6 py-3 text-left text-xs font-semibold" style={{ color: "var(--text-secondary)" }}>Last Scrape</th>
-              <th className="px-6 py-3 text-left text-xs font-semibold" style={{ color: "var(--text-secondary)" }}>Eligible Views</th>
-              <th className="px-6 py-3 text-left text-xs font-semibold" style={{ color: "var(--text-secondary)" }}>Earned</th>
-              <th className="px-6 py-3 text-left text-xs font-semibold" style={{ color: "var(--text-secondary)" }}>Status</th>
-              <th className="px-6 py-3 text-left text-xs font-semibold" style={{ color: "var(--text-secondary)" }}>Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {submissions.map((s) => (
-              <tr key={s.id} style={{ borderBottom: "1px solid var(--border)" }}>
-                <td className="px-6 py-3 text-sm" style={{ color: "var(--text-primary)" }}>{s.campaign.name}</td>
-                <td className="px-6 py-3 text-sm" style={{ color: "var(--text-primary)" }}>{s.creator.email}</td>
-                <td className="px-6 py-3 text-xs">
-                  <div className="flex flex-col gap-0.5">
-                    {s.sourcePlatform && (
-                      <span style={{ color: "var(--text-secondary)" }}>{s.sourcePlatform.toLowerCase()}</span>
-                    )}
-                    {s.sourceMethod === "BIO_VERIFY" ? (
-                      <span
-                        className="inline-block px-1.5 py-0.5 rounded font-medium w-fit"
-                        style={{ background: "var(--warning-bg)", color: "var(--warning-text)" }}
-                      >
-                        bio-verify
-                      </span>
-                    ) : s.sourceMethod === "OAUTH" ? (
-                      <span
-                        className="inline-block px-1.5 py-0.5 rounded font-medium w-fit"
-                        style={{ background: "var(--success-bg)", color: "var(--success-text)" }}
-                      >
-                        oauth
-                      </span>
-                    ) : (
-                      <span style={{ color: "var(--text-muted)" }}>—</span>
-                    )}
-                    {s.authorHandle && (
-                      <span style={{ color: "var(--text-muted)" }}>@{s.authorHandle}</span>
-                    )}
-                  </div>
-                </td>
-                <td className="px-6 py-3 text-sm" style={{ color: "var(--text-secondary)" }}>{new Date(s.createdAt).toLocaleDateString()}</td>
-                <td className="px-6 py-3 text-xs" style={{ color: "var(--text-secondary)" }}>
-                  {s.lastScrapedAt ? new Date(s.lastScrapedAt).toLocaleString() : "—"}
-                  {s.scrapeFailures > 0 && (
-                    <span className="block text-[10px]" style={{ color: "var(--error-text)" }}>
-                      {s.scrapeFailures} failure{s.scrapeFailures === 1 ? "" : "s"}
-                    </span>
-                  )}
-                </td>
-                <td className="px-6 py-3 text-sm" style={{ color: "var(--text-primary)" }}>
-                  {s.eligibleViews != null ? s.eligibleViews.toLocaleString() : '-'}
-                </td>
-                <td className="px-6 py-3 text-sm" style={{ color: "var(--text-primary)" }}>
-                  {Number(s.earnedAmount) > 0 ? `$${Number(s.earnedAmount).toFixed(2)}` : '-'}
-                </td>
-                <td className="px-6 py-3 text-sm"><span className="px-2 py-1 rounded text-xs" style={{ background: s.status === "APPROVED" ? "var(--success-bg)" : s.status === "PENDING" ? "var(--warning-bg)" : "var(--error-bg)", color: s.status === "APPROVED" ? "var(--success-text)" : s.status === "PENDING" ? "var(--warning-text)" : "var(--error-text)" }}>{s.status}</span></td>
-                <td className="px-6 py-3 text-sm"><SubmissionActions id={s.id} status={s.status} postUrl={s.postUrl} /></td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+    <div className="space-y-9">
+      <PageHeader
+        eyebrow="Submissions"
+        title="Submissions"
+        description="Review submitted clips, scrape status, eligible views, and earnings."
+      />
+
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
+        <StatCard label="Submissions" value={String(submissions.length)} detail="All received clips" />
+        <StatCard label="Pending" value={String(pending)} detail="Need review" tone={pending > 0 ? "warning" : "neutral"} />
+        <StatCard label="Approved" value={String(approved)} detail="Eligible for payout" />
+        <StatCard label="Issues" value={String(issues)} detail="Rejected or flagged" tone={issues > 0 ? "danger" : "neutral"} />
       </div>
+
+      <section>
+        <SectionHeader title="Submission Table" description={`${formatCurrencyPrecise(earned, "USD")} earned across approved and tracked submissions.`} />
+        <DataTable
+          rows={submissions}
+          rowKey={(submission) => submission.id}
+          emptyState={<EmptyState title="No submissions yet" description="Creator submissions will appear here after campaign work starts." />}
+          columns={[
+            { key: "campaign", header: "Campaign", cell: (submission) => submission.campaign.name },
+            { key: "creator", header: "Creator", cell: (submission) => submission.creator.email },
+            {
+              key: "source",
+              header: "Source",
+              cell: (submission) => (
+                <div className="flex flex-col gap-1">
+                  <span className="text-xs text-neutral-500">{submission.sourcePlatform?.toLowerCase() ?? "-"}</span>
+                  {submission.sourceMethod ? <Badge variant={submission.sourceMethod === "OAUTH" ? "verified" : "pending"}>{titleCaseEnum(submission.sourceMethod)}</Badge> : null}
+                  {submission.authorHandle ? <span className="text-xs text-neutral-400">@{submission.authorHandle}</span> : null}
+                </div>
+              ),
+            },
+            { key: "submitted", header: "Submitted", cell: (submission) => formatDate(submission.createdAt) },
+            {
+              key: "scrape",
+              header: "Last scrape",
+              cell: (submission) => (
+                <div className="text-xs text-neutral-500">
+                  <p>{submission.lastScrapedAt ? formatDate(submission.lastScrapedAt) : "-"}</p>
+                  {submission.scrapeFailures > 0 ? <p className="text-red-600">{submission.scrapeFailures} failure{submission.scrapeFailures === 1 ? "" : "s"}</p> : null}
+                </div>
+              ),
+            },
+            { key: "views", header: "Eligible views", align: "right", cell: (submission) => submission.eligibleViews?.toLocaleString() ?? "-" },
+            { key: "earned", header: "Earned", align: "right", cell: (submission) => Number(submission.earnedAmount) > 0 ? formatCurrencyPrecise(submission.earnedAmount, "USD") : "-" },
+            { key: "status", header: "Status", cell: (submission) => <Badge variant={submissionStatusVariant(submission.status)}>{titleCaseEnum(submission.status)}</Badge> },
+            {
+              key: "actions",
+              header: "Actions",
+              cell: (submission) => (
+                <ProgressiveActionDrawer
+                  triggerLabel="Review"
+                  title={submission.campaign.name}
+                  description="Submission actions"
+                  variant="outline"
+                  size="sm"
+                  showIcon={false}
+                >
+                  <div className="space-y-4">
+                    {submission.postUrl ? (
+                      <a
+                        href={submission.postUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex h-10 w-full items-center justify-center rounded-xl border border-neutral-200 bg-white px-4 text-sm font-semibold text-neutral-950 transition hover:bg-neutral-50"
+                      >
+                        Open post
+                      </a>
+                    ) : null}
+                    <div className="rounded-2xl border border-neutral-200 bg-neutral-50 p-4">
+                      <SubmissionActions id={submission.id} status={submission.status} postUrl={submission.postUrl} />
+                    </div>
+                  </div>
+                </ProgressiveActionDrawer>
+              ),
+            },
+          ]}
+        />
+      </section>
     </div>
   );
+}
+
+function submissionStatusVariant(status: string) {
+  if (status === "APPROVED") return "verified";
+  if (status === "PENDING") return "pending";
+  return "failed";
 }

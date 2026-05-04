@@ -1,8 +1,10 @@
-import { Download, Plus } from "lucide-react";
+import { Download } from "@/components/animate-ui/icons/download";
+import { Plus } from "@/components/animate-ui/icons/plus";
 import { Badge } from "@/components/ui/badge";
 import { DataTable } from "@/components/ui/data-table";
 import { EmptyState } from "@/components/ui/empty-state";
 import { PageHeader, SectionHeader, StatCard } from "@/components/ui/page";
+import { ProgressiveActionDrawer } from "@/components/ui/progressive-action-drawer";
 import { prisma } from "@/lib/prisma";
 import { formatCurrencyPrecise, formatDate, titleCaseEnum } from "@/lib/admin/agency-format";
 
@@ -58,7 +60,7 @@ export default async function PayoutsPage() {
       </div>
 
       <section>
-        <SectionHeader title="Payout Runs" description="Weekly or period-based grouped payout workflow." />
+        <SectionHeader title="Payout Runs" description="Weekly or period-based grouped payout runs." />
         <DataTable
           rows={runs}
           rowKey={(run) => run.id}
@@ -86,33 +88,52 @@ export default async function PayoutsPage() {
       </section>
 
       <section>
-        <SectionHeader title="Approved Unpaid Work" description="Source material for the next payout run." />
-        <DataTable
-          rows={approvedUnpaid}
-          rowKey={(submission) => submission.id}
-          emptyState={<EmptyState title="No approved unpaid submissions" description="All approved work is either already in a payout run or no approved work exists." />}
-          columns={[
-            { key: "campaign", header: "Campaign", cell: (submission) => submission.campaign.name },
-            { key: "creator", header: "Creator", cell: (submission) => submission.creator.email },
-            { key: "amount", header: "Amount", align: "right", cell: (submission) => formatCurrencyPrecise(submission.earnedAmount, "USD") },
-          ]}
-        />
-      </section>
+        <SectionHeader title="Details" description="Open source material or legacy records only when payout work calls for it." />
+        <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+          <ProgressiveActionDrawer
+            triggerLabel="Approved unpaid work"
+            title="Approved unpaid work"
+            description="Source material for the next payout run."
+            variant="outline"
+            width="lg"
+            badgeLabel={approvedUnpaid.length > 0 ? String(approvedUnpaid.length) : undefined}
+            className="w-full justify-between"
+          >
+            <DataTable
+              rows={approvedUnpaid}
+              rowKey={(submission) => submission.id}
+              emptyState={<EmptyState title="No approved unpaid submissions" description="All approved work is either already in a payout run or no approved work exists." />}
+              columns={[
+                { key: "campaign", header: "Campaign", cell: (submission) => submission.campaign.name },
+                { key: "creator", header: "Creator", cell: (submission) => submission.creator.email },
+                { key: "amount", header: "Amount", align: "right", cell: (submission) => formatCurrencyPrecise(submission.earnedAmount, "USD") },
+              ]}
+            />
+          </ProgressiveActionDrawer>
 
-      <section>
-        <SectionHeader title="Legacy Payout Records" description="Existing payout history remains visible while payout runs become the operator workflow." />
-        <DataTable
-          rows={payouts}
-          rowKey={(payout) => payout.id}
-          emptyState={<EmptyState title="No payouts yet" description="Creator payout records will appear here after processing." />}
-          columns={[
-            { key: "creator", header: "Creator", cell: (payout) => payout.creatorProfile?.displayName || payout.creatorProfile?.user?.email || "-" },
-            { key: "amount", header: "Amount", align: "right", cell: (payout) => formatCurrencyPrecise(payout.amount, payout.currency) },
-            { key: "status", header: "Status", cell: (payout) => <Badge variant={payout.status === "confirmed" || payout.status === "sent" ? "verified" : payout.status === "failed" ? "failed" : "pending"}>{titleCaseEnum(payout.status)}</Badge> },
-            { key: "method", header: "Method", cell: (payout) => payout.paymentMethod || "-" },
-            { key: "date", header: "Date", cell: (payout) => formatDate(payout.createdAt) },
-          ]}
-        />
+          <ProgressiveActionDrawer
+            triggerLabel="Legacy payout records"
+            title="Legacy payout records"
+            description="Existing payout history remains available for audit and support."
+            variant="outline"
+            width="lg"
+            badgeLabel={payouts.length > 0 ? String(payouts.length) : undefined}
+            className="w-full justify-between"
+          >
+            <DataTable
+              rows={payouts}
+              rowKey={(payout) => payout.id}
+              emptyState={<EmptyState title="No payouts yet" description="Creator payout records will appear here after processing." />}
+              columns={[
+                { key: "creator", header: "Creator", cell: (payout) => payout.creatorProfile?.displayName || payout.creatorProfile?.user?.email || "-" },
+                { key: "amount", header: "Amount", align: "right", cell: (payout) => formatCurrencyPrecise(payout.amount, payout.currency) },
+                { key: "status", header: "Status", cell: (payout) => <Badge variant={payout.status === "confirmed" || payout.status === "sent" ? "verified" : payout.status === "failed" ? "failed" : "pending"}>{titleCaseEnum(payout.status)}</Badge> },
+                { key: "method", header: "Method", cell: (payout) => payout.paymentMethod || "-" },
+                { key: "date", header: "Date", cell: (payout) => formatDate(payout.createdAt) },
+              ]}
+            />
+          </ProgressiveActionDrawer>
+        </div>
       </section>
     </div>
   );

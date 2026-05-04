@@ -1,7 +1,11 @@
 import Link from "next/link";
-import { AlertTriangle, ArrowRight, BadgeEuro, ClipboardCheck, Plus } from "lucide-react";
+import { AlertTriangle, BadgeEuro } from "lucide-react";
+import { ArrowRight } from "@/components/animate-ui/icons/arrow-right";
+import { ClipboardCheck } from "@/components/animate-ui/icons/clipboard-check";
+import { Plus } from "@/components/animate-ui/icons/plus";
 import { ActionQueue, PageHeader, SectionHeader, StatCard } from "@/components/ui/page";
 import { Badge } from "@/components/ui/badge";
+import { ProgressiveActionDrawer } from "@/components/ui/progressive-action-drawer";
 import { prisma } from "@/lib/prisma";
 import { getAgencyOsDashboardSnapshot } from "@/lib/admin/agency-os";
 import { formatCurrency, formatNumber, toNumber } from "@/lib/admin/agency-format";
@@ -154,13 +158,24 @@ export default async function AdminCommandCenter() {
       : null,
   ];
   const queue = rawQueue.filter((item): item is NonNullable<(typeof rawQueue)[number]> => Boolean(item));
+  const metricCards = [
+    { label: "Revenue", value: formatCurrency(metrics.totalRevenueThisMonth), detail: "Booked this month" },
+    { label: "Expected revenue", value: formatCurrency(metrics.expectedRevenueNextMonth), detail: "Campaign deadlines next month" },
+    { label: "Active brands", value: String(activeBrands || metrics.activeBrands), detail: `${formatCurrency(toNumber(pipelineValue._sum.estimatedValue))} open pipeline` },
+    { label: "Active clippers", value: String(activeClippers || metrics.activeClippers), detail: `${clipsDue} clips due or in progress` },
+    { label: "QC approvals", value: `${metrics.clipsApprovedThisWeek}/${metrics.clipsRejectedOrRevisedThisWeek}`, detail: "Approved / rejected this week" },
+    { label: "Payouts owed", value: formatCurrency(metrics.payoutsOwed), detail: "Legacy payout obligations", tone: metrics.payoutsOwed > 0 ? "warning" as const : "neutral" as const },
+    { label: "Estimated profit", value: formatCurrency(metrics.estimatedGrossProfit), detail: "Booked minus creator cost and open payouts" },
+    { label: "Risk", value: `${metrics.openRiskSignals} open`, detail: `${metrics.tokenBrokenSignals} broken token signals`, tone: metrics.openRiskSignals > 0 ? "danger" as const : "neutral" as const },
+  ];
+  const headlineMetrics = [metricCards[0], metricCards[1], metricCards[2], metricCards[7]];
 
   return (
     <div className="space-y-9">
       <PageHeader
         eyebrow="Agency OS"
         title="Command Center"
-        description="Start here. Daily actions, CEO numbers, and the full agency pipeline are now one operating surface."
+        description="Start here for the next operator move, then open details only when you need them."
         actions={[{ label: "New lead", href: "/admin/crm", icon: Plus }]}
       />
 
@@ -178,99 +193,134 @@ export default async function AdminCommandCenter() {
       </section>
 
       <section>
-        <SectionHeader title="CEO KPI Reporting" description="Money, delivery, staffing, quality, payout, and risk in one strip." />
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
-          <StatCard label="Revenue" value={formatCurrency(metrics.totalRevenueThisMonth)} detail="Booked this month" />
-          <StatCard label="Expected revenue" value={formatCurrency(metrics.expectedRevenueNextMonth)} detail="Campaign deadlines next month" />
-          <StatCard label="Active brands" value={String(activeBrands || metrics.activeBrands)} detail={`${formatCurrency(toNumber(pipelineValue._sum.estimatedValue))} open pipeline`} />
-          <StatCard label="Active clippers" value={String(activeClippers || metrics.activeClippers)} detail={`${clipsDue} clips due or in progress`} />
-          <StatCard label="QC approvals" value={`${metrics.clipsApprovedThisWeek}/${metrics.clipsRejectedOrRevisedThisWeek}`} detail="Approved / rejected this week" />
-          <StatCard label="Payouts owed" value={formatCurrency(metrics.payoutsOwed)} detail="Legacy payout obligations" tone={metrics.payoutsOwed > 0 ? "warning" : "neutral"} />
-          <StatCard label="Estimated profit" value={formatCurrency(metrics.estimatedGrossProfit)} detail="Booked minus creator cost and open payouts" />
-          <StatCard label="Risk" value={`${metrics.openRiskSignals} open`} detail={`${metrics.tokenBrokenSignals} broken token signals`} tone={metrics.openRiskSignals > 0 ? "danger" : "neutral"} />
-        </div>
-      </section>
-
-      <section>
-        <SectionHeader title="Pipeline Visibility" description="Compact CLIPPING flow from sales to weekly reporting." />
-        <div className="grid grid-cols-1 gap-3 lg:grid-cols-7">
-          {PIPELINE.map((step, index) => (
-            <Link
-              key={step.href}
-              href={step.href}
-              className="group rounded-2xl border border-neutral-200 bg-white p-4 transition hover:border-neutral-300 hover:bg-neutral-50"
+        <SectionHeader
+          title="Core numbers"
+          description="The first strip stays small; deeper reporting opens on demand."
+          action={
+            <ProgressiveActionDrawer
+              triggerLabel="View all KPIs"
+              title="CEO KPI reporting"
+              description="Money, delivery, staffing, quality, payout, and risk."
+              variant="outline"
+              width="lg"
             >
-              <div className="flex items-center justify-between">
-                <span className="text-[11px] font-semibold uppercase tracking-[0.14em] text-neutral-400">
-                  Step {index + 1}
-                </span>
-                <ArrowRight className="h-4 w-4 text-neutral-300 transition group-hover:text-neutral-950" />
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                {metricCards.map((card) => (
+                  <StatCard key={card.label} {...card} />
+                ))}
               </div>
-              <p className="mt-4 text-base font-semibold text-neutral-950">{step.label}</p>
-            </Link>
+            </ProgressiveActionDrawer>
+          }
+        />
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
+          {headlineMetrics.map((card) => (
+            <StatCard key={card.label} {...card} />
           ))}
         </div>
       </section>
 
-      <section className="grid grid-cols-1 gap-5 xl:grid-cols-[1.5fr_1fr]">
-        <div>
-          <SectionHeader title="Module Status" description="The real modules are live; pricing and contracts stay tracked inside onboarding for now." />
-          <div className="overflow-hidden rounded-2xl border border-neutral-200 bg-white">
-            <div className="divide-y divide-neutral-100">
-              {snapshot.operatingAreas.map((area) => (
-                <Link key={area.name} href={area.href ?? "/admin/sops"} className="flex items-center justify-between gap-4 px-5 py-4 transition hover:bg-neutral-50">
-                  <div>
-                    <p className="text-sm font-semibold text-neutral-950">{area.name}</p>
-                    <p className="mt-1 text-xs text-neutral-500">{area.detail}</p>
+      <section>
+        <SectionHeader title="Details" description="Open these when the daily queue points there." />
+        <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
+          <ProgressiveActionDrawer
+            triggerLabel="Open pipeline"
+            title="Pipeline visibility"
+            description="Compact clipping flow from sales to weekly reporting."
+            variant="outline"
+            width="lg"
+            className="w-full justify-between"
+          >
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              {PIPELINE.map((step, index) => (
+                <Link
+                  key={step.href}
+                  href={step.href}
+                  className="group rounded-2xl border border-neutral-200 bg-white p-4 transition hover:border-neutral-300 hover:bg-neutral-50"
+                >
+                  <div className="flex items-center justify-between">
+                    <span className="text-[11px] font-semibold uppercase tracking-[0.14em] text-neutral-400">
+                      Step {index + 1}
+                    </span>
+                    <ArrowRight className="h-4 w-4 text-neutral-300 transition group-hover:text-neutral-950" animateOnHover />
                   </div>
-                  <Badge variant={area.status === "live" ? "verified" : "neutral"}>{area.status}</Badge>
+                  <p className="mt-4 text-base font-semibold text-neutral-950">{step.label}</p>
                 </Link>
               ))}
             </div>
-          </div>
-        </div>
+          </ProgressiveActionDrawer>
 
-        <div>
-          <SectionHeader title="Delivery Risk" />
-          <div className="space-y-3">
-            {snapshot.deliveryRisks.length === 0 ? (
-              <div className="rounded-2xl border border-neutral-200 bg-white p-5 text-sm text-neutral-500">
-                No campaign pace risks in the next 7 days.
-              </div>
-            ) : (
-              snapshot.deliveryRisks.map((risk) => (
-                <Link key={risk.id} href={`/admin/campaigns/${risk.id}`} className="block rounded-2xl border border-orange-200 bg-white p-4 transition hover:bg-orange-50/40">
-                  <div className="flex items-start justify-between gap-4">
-                    <div>
-                      <p className="text-sm font-semibold text-neutral-950">{risk.name}</p>
-                      <p className="mt-1 text-xs text-neutral-500">
-                        {formatNumber(risk.captured)} / {formatNumber(risk.goal)} views captured.
-                      </p>
-                    </div>
-                    <AlertTriangle className="h-4 w-4 text-orange-500" />
-                  </div>
-                </Link>
-              ))
-            )}
-          </div>
-
-          <div className="mt-5 rounded-2xl border border-neutral-200 bg-neutral-50 p-5">
-            <div className="flex items-center gap-2 text-sm font-semibold text-neutral-950">
-              <BadgeEuro className="h-4 w-4" />
-              Weekly close
-            </div>
-            <p className="mt-2 text-sm leading-6 text-neutral-500">
-              Confirm approved clips, finalize payout runs, then log SOP updates before the next reporting cycle.
-            </p>
-          </div>
-
-          <Link
-            href="/admin/review"
-            className="mt-3 inline-flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-neutral-950 px-5 text-sm font-semibold text-white shadow-[0_8px_18px_rgba(0,0,0,0.16)] hover:bg-neutral-800"
+          <ProgressiveActionDrawer
+            triggerLabel="Module status"
+            title="Module status"
+            description="Live modules and the current operating surface."
+            variant="outline"
+            width="lg"
+            className="w-full justify-between"
           >
-            <ClipboardCheck className="h-4 w-4" />
-            Open QC workbench
-          </Link>
+            <div className="overflow-hidden rounded-2xl border border-neutral-200 bg-white">
+              <div className="divide-y divide-neutral-100">
+                {snapshot.operatingAreas.map((area) => (
+                  <Link key={area.name} href={area.href ?? "/admin/sops"} className="flex items-center justify-between gap-4 px-5 py-4 transition hover:bg-neutral-50">
+                    <div>
+                      <p className="text-sm font-semibold text-neutral-950">{area.name}</p>
+                      <p className="mt-1 text-xs text-neutral-500">{area.detail}</p>
+                    </div>
+                    <Badge variant={area.status === "live" ? "verified" : "neutral"}>{area.status}</Badge>
+                  </Link>
+                ))}
+              </div>
+            </div>
+          </ProgressiveActionDrawer>
+
+          <ProgressiveActionDrawer
+            triggerLabel="Delivery risk"
+            title="Delivery risk"
+            description="Campaign pace risks and the weekly close."
+            variant="outline"
+            width="lg"
+            badgeLabel={snapshot.deliveryRisks.length > 0 ? String(snapshot.deliveryRisks.length) : undefined}
+            className="w-full justify-between"
+          >
+            <div className="space-y-3">
+              {snapshot.deliveryRisks.length === 0 ? (
+                <div className="rounded-2xl border border-neutral-200 bg-white p-5 text-sm text-neutral-500">
+                  No campaign pace risks in the next 7 days.
+                </div>
+              ) : (
+                snapshot.deliveryRisks.map((risk) => (
+                  <Link key={risk.id} href={`/admin/campaigns/${risk.id}`} className="block rounded-2xl border border-orange-200 bg-white p-4 transition hover:bg-orange-50/40">
+                    <div className="flex items-start justify-between gap-4">
+                      <div>
+                        <p className="text-sm font-semibold text-neutral-950">{risk.name}</p>
+                        <p className="mt-1 text-xs text-neutral-500">
+                          {formatNumber(risk.captured)} / {formatNumber(risk.goal)} views captured.
+                        </p>
+                      </div>
+                      <AlertTriangle className="h-4 w-4 text-orange-500" />
+                    </div>
+                  </Link>
+                ))
+              )}
+
+              <div className="rounded-2xl border border-neutral-200 bg-neutral-50 p-5">
+                <div className="flex items-center gap-2 text-sm font-semibold text-neutral-950">
+                  <BadgeEuro className="h-4 w-4" />
+                  Weekly close
+                </div>
+                <p className="mt-2 text-sm leading-6 text-neutral-500">
+                  Confirm approved clips, finalize payout runs, then log SOP updates before the next reporting cycle.
+                </p>
+              </div>
+
+              <Link
+                href="/admin/review"
+                className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-neutral-950 px-5 text-sm font-semibold text-white shadow-[0_8px_18px_rgba(0,0,0,0.16)] hover:bg-neutral-800"
+              >
+                <ClipboardCheck className="h-4 w-4" animateOnHover />
+                Open QC workbench
+              </Link>
+            </div>
+          </ProgressiveActionDrawer>
         </div>
       </section>
     </div>

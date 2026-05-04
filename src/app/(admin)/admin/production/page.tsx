@@ -4,6 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { DataTable } from "@/components/ui/data-table";
 import { EmptyState } from "@/components/ui/empty-state";
 import { PageHeader, SectionHeader, StatCard } from "@/components/ui/page";
+import { ProgressiveActionDrawer } from "@/components/ui/progressive-action-drawer";
 import { prisma } from "@/lib/prisma";
 import { formatDate, isPast, titleCaseEnum } from "@/lib/admin/agency-format";
 
@@ -42,21 +43,30 @@ export default async function ProductionPage() {
       </div>
 
       <section>
-        <SectionHeader title="Production Board" description="A compact board by status, so the operator can see where clips are stuck." />
-        <div className="grid grid-cols-2 gap-3 md:grid-cols-4 xl:grid-cols-8">
-          {["NOT_STARTED", "IN_PROGRESS", "SUBMITTED", "NEEDS_REVISION", "APPROVED", "POSTED", "REJECTED", "PAID"].map((status) => (
-            <div key={status} className="rounded-2xl border border-neutral-200 bg-white p-4">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-neutral-400">{titleCaseEnum(status)}</p>
-              <p className="mt-3 text-2xl font-semibold text-neutral-950">
-                {assignments.filter((assignment) => assignment.status === status).length}
-              </p>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      <section>
-        <SectionHeader title="Assignment Table" description="Production starts here. A submitted live post is only one later step." />
+        <SectionHeader
+          title="Assignment Table"
+          description="Production starts here. A submitted live post is only one later step."
+          action={
+            <ProgressiveActionDrawer
+              triggerLabel="Status board"
+              title="Production board"
+              description="Use this when you need to see where clips are stuck."
+              variant="outline"
+              width="lg"
+            >
+              <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+                {["NOT_STARTED", "IN_PROGRESS", "SUBMITTED", "NEEDS_REVISION", "APPROVED", "POSTED", "REJECTED", "PAID"].map((status) => (
+                  <div key={status} className="rounded-2xl border border-neutral-200 bg-white p-4">
+                    <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-neutral-400">{titleCaseEnum(status)}</p>
+                    <p className="mt-3 text-2xl font-semibold text-neutral-950">
+                      {assignments.filter((assignment) => assignment.status === status).length}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            </ProgressiveActionDrawer>
+          }
+        />
         <DataTable
           rows={assignments}
           rowKey={(assignment) => assignment.id}

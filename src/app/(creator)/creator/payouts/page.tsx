@@ -82,7 +82,7 @@ export default async function PaymentsPage() {
   return (
     <div className="w-full space-y-8 px-6 py-8">
       <CreatorPageHeader
-        eyebrow="Payout workflow"
+        eyebrow="Payments"
         title="Payments"
         description="Follow earnings from approved clips into withdrawal requests and payout history."
       />

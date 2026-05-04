@@ -1,4 +1,5 @@
-import { CheckCircle2, Circle, ListChecks } from "lucide-react";
+import { Circle, ListChecks } from "lucide-react";
+import { CircleCheckBig as CheckCircle2 } from "@/components/animate-ui/icons/circle-check-big";
 import { Badge } from "@/components/ui/badge";
 import { EmptyState } from "@/components/ui/empty-state";
 import { PageHeader, SectionHeader, StatCard } from "@/components/ui/page";

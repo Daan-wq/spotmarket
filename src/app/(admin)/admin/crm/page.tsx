@@ -1,9 +1,11 @@
 import Link from "next/link";
-import { Plus, RotateCw } from "lucide-react";
+import { Plus } from "@/components/animate-ui/icons/plus";
+import { RotateCw } from "@/components/animate-ui/icons/rotate-cw";
 import { Badge } from "@/components/ui/badge";
 import { DataTable } from "@/components/ui/data-table";
 import { EmptyState } from "@/components/ui/empty-state";
 import { PageHeader, SectionHeader, StatCard } from "@/components/ui/page";
+import { ProgressiveActionDrawer } from "@/components/ui/progressive-action-drawer";
 import { prisma } from "@/lib/prisma";
 import { formatCurrency, formatDate, titleCaseEnum } from "@/lib/admin/agency-format";
 
@@ -60,19 +62,28 @@ export default async function CrmPage() {
       </div>
 
       <section>
-        <SectionHeader title="Stage Board" description="Compact kanban for scanning the whole sales motion." />
-        <div className="grid grid-cols-2 gap-3 md:grid-cols-5 xl:grid-cols-10">
-          {STAGES.map((stage) => (
-            <div key={stage} className="rounded-2xl border border-neutral-200 bg-white p-4">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-neutral-400">{titleCaseEnum(stage)}</p>
-              <p className="mt-3 text-2xl font-semibold text-neutral-950">{counts.get(stage) ?? 0}</p>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      <section>
-        <SectionHeader title="Follow-Up Queue" description="Only leads with a due or overdue next follow-up." />
+        <SectionHeader
+          title="Follow-Up Queue"
+          description="Only leads with a due or overdue next follow-up."
+          action={
+            <ProgressiveActionDrawer
+              triggerLabel="Stage board"
+              title="Stage board"
+              description="Compact scan of the sales motion."
+              variant="outline"
+              width="lg"
+            >
+              <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+                {STAGES.map((stage) => (
+                  <div key={stage} className="rounded-2xl border border-neutral-200 bg-white p-4">
+                    <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-neutral-400">{titleCaseEnum(stage)}</p>
+                    <p className="mt-3 text-2xl font-semibold text-neutral-950">{counts.get(stage) ?? 0}</p>
+                  </div>
+                ))}
+              </div>
+            </ProgressiveActionDrawer>
+          }
+        />
         {due.length === 0 ? (
           <EmptyState
             title="No CRM follow-ups due"
