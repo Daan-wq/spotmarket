@@ -4,7 +4,6 @@ import { Fragment, useMemo, useState } from "react";
 import type { ReactNode } from "react";
 import Link from "next/link";
 import PlatformIcon from "@/components/shared/PlatformIcon";
-import { EmptyState } from "@/components/ui/empty-state";
 import { ProgressiveActionDrawer } from "@/components/ui/progressive-action-drawer";
 import {
   CreatorPageHeader,
@@ -144,14 +143,14 @@ export function VideosClient({ videos, statusCounts }: VideosClientProps) {
 
         {filtered.length === 0 ? (
           videos.length === 0 ? (
-            <EmptyState
+            <InlineEmptyState
               title="No clips yet"
               description="Submit your first clip from a campaign you've joined to start earning."
               primaryCta={{ label: "Browse campaigns", href: "/creator/campaigns" }}
               secondaryCta={{ label: "Connect an account", href: "/creator/connections" }}
             />
           ) : (
-            <EmptyState
+            <InlineEmptyState
               title={`No ${queue.toLowerCase()} clips`}
               description="Use another queue to keep reviewing submitted clips."
               primaryCta={{ label: "Show all clips", onClick: () => setQueue("ALL") }}
@@ -239,6 +238,59 @@ export function VideosClient({ videos, statusCounts }: VideosClientProps) {
         )}
       </section>
     </div>
+  );
+}
+
+function InlineEmptyState({
+  title,
+  description,
+  primaryCta,
+  secondaryCta,
+}: {
+  title: string;
+  description: string;
+  primaryCta?: { label: string; href?: string; onClick?: () => void };
+  secondaryCta?: { label: string; href?: string; onClick?: () => void };
+}) {
+  return (
+    <div className="flex min-h-[220px] flex-col justify-center py-8">
+      <h3 className="text-base font-semibold text-neutral-950">{title}</h3>
+      <p className="mt-2 max-w-md text-sm leading-6 text-neutral-500">
+        {description}
+      </p>
+      {(primaryCta || secondaryCta) && (
+        <div className="mt-5 flex flex-wrap gap-2">
+          {primaryCta ? <InlineCta cta={primaryCta} primary /> : null}
+          {secondaryCta ? <InlineCta cta={secondaryCta} /> : null}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function InlineCta({
+  cta,
+  primary = false,
+}: {
+  cta: { label: string; href?: string; onClick?: () => void };
+  primary?: boolean;
+}) {
+  const className = primary
+    ? "inline-flex h-10 items-center justify-center rounded-xl bg-neutral-950 px-4 text-sm font-semibold text-white shadow-[0_8px_18px_rgba(0,0,0,0.14)] hover:bg-neutral-800"
+    : "inline-flex h-10 items-center justify-center rounded-xl border border-neutral-200 bg-white px-4 text-sm font-semibold text-neutral-700 hover:bg-neutral-50 hover:text-neutral-950";
+
+  if (cta.href) {
+    return (
+      <Link href={cta.href} className={className}>
+        {cta.label}
+      </Link>
+    );
+  }
+
+  return (
+    <button type="button" onClick={cta.onClick} className={className}>
+      {cta.label}
+    </button>
   );
 }
 
