@@ -1,6 +1,6 @@
 "use client";
 
-import type { ComponentType, ReactNode, SVGProps } from "react";
+import type { ComponentType, ReactNode } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
@@ -22,7 +22,7 @@ interface CreatorSidebarProps {
   balanceSlot: ReactNode;
 }
 
-type NavIcon = ComponentType<SVGProps<SVGSVGElement> & { animateOnHover?: boolean }>;
+type NavIcon = ComponentType<{ className?: string; strokeWidth?: number; animateOnHover?: boolean }>;
 
 const NAV: Array<{ href: string; label: string; icon: NavIcon }> = [
   { href: "/creator/dashboard", label: "Dashboard", icon: LayoutDashboard },
