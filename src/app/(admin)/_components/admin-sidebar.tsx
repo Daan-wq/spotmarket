@@ -1,6 +1,6 @@
 "use client";
 
-import type { ComponentType, SVGProps } from "react";
+import type { ComponentType } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
@@ -22,7 +22,7 @@ import { Users } from "@/components/animate-ui/icons/users";
 import { Logo } from "@/components/shared/logo";
 import { cn } from "@/lib/cn";
 
-type NavIcon = ComponentType<SVGProps<SVGSVGElement> & { animateOnHover?: boolean }>;
+type NavIcon = ComponentType<{ className?: string; strokeWidth?: number; animateOnHover?: boolean }>;
 
 interface NavItem {
   href: string;

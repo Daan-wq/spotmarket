@@ -1,8 +1,8 @@
 import Link from "next/link";
-import type { ComponentType, ReactNode, SVGProps } from "react";
+import type { ComponentType, ReactNode } from "react";
 import { cn } from "@/lib/cn";
 
-type ActionIcon = ComponentType<SVGProps<SVGSVGElement> & { animateOnHover?: boolean }>;
+type ActionIcon = ComponentType<{ className?: string; animateOnHover?: boolean }>;
 
 interface PageHeaderAction {
   label: string;
