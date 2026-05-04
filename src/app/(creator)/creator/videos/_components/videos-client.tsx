@@ -83,55 +83,62 @@ export function VideosClient({ videos, statusCounts }: VideosClientProps) {
       <CreatorPageHeader
         eyebrow="Clip review pipeline"
         title="Clips"
-        description="Follow submitted content from review to fixes to approved earnings."
+        description="Start with the current queue, then open stats or filters only when you need them."
       />
 
-      <section>
-        <CreatorSectionHeader title="Clip snapshot" />
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-          <SoftStat label="Total clips" value={videos.length.toString()} detail="All submissions" />
-          <SoftStat label="Total views" value={totalViews.toLocaleString()} detail="Tracked or claimed" />
-          <SoftStat label="Earned" value={`$${totalEarned.toFixed(2)}`} detail="Approved submissions" />
-        </div>
-      </section>
-
-      <section className="rounded-2xl border border-neutral-200 bg-white p-5 md:p-6">
+      <section className="border-y border-neutral-200 py-7">
         <CreatorSectionHeader
           title="Clip queue"
           description={queueDescription(queue, filtered.length)}
           action={
-            <ProgressiveActionDrawer
-              triggerLabel="Queue options"
-              title="Refine clip queue"
-              description="Switch queue or sort order when the current list needs focus."
-              variant="outline"
-              badgeLabel={queue !== "ALL" ? queue.toLowerCase() : undefined}
-            >
-              <div className="space-y-5">
-                <div className="grid grid-cols-2 gap-2">
-                  <QueueButton active={queue === "ALL"} onClick={() => setQueue("ALL")}>All</QueueButton>
-                  <QueueButton active={queue === "PENDING"} onClick={() => setQueue("PENDING")}>Pending ({pendingCount})</QueueButton>
-                  <QueueButton active={queue === "ISSUES"} onClick={() => setQueue("ISSUES")}>Issues ({issueCount})</QueueButton>
-                  <QueueButton active={queue === "APPROVED"} onClick={() => setQueue("APPROVED")}>Approved ({approvedCount})</QueueButton>
+            <div className="flex flex-wrap gap-2">
+              <ProgressiveActionDrawer
+                triggerLabel="Queue options"
+                title="Refine clip queue"
+                description="Switch queue or sort order when the current list needs focus."
+                variant="outline"
+                badgeLabel={queue !== "ALL" ? queue.toLowerCase() : undefined}
+              >
+                <div className="space-y-5">
+                  <div className="grid grid-cols-2 gap-2">
+                    <QueueButton active={queue === "ALL"} onClick={() => setQueue("ALL")}>All</QueueButton>
+                    <QueueButton active={queue === "PENDING"} onClick={() => setQueue("PENDING")}>Pending ({pendingCount})</QueueButton>
+                    <QueueButton active={queue === "ISSUES"} onClick={() => setQueue("ISSUES")}>Issues ({issueCount})</QueueButton>
+                    <QueueButton active={queue === "APPROVED"} onClick={() => setQueue("APPROVED")}>Approved ({approvedCount})</QueueButton>
+                  </div>
+                  <label className="block">
+                    <span className="text-xs font-semibold uppercase tracking-[0.14em] text-neutral-400">
+                      Sort
+                    </span>
+                    <select
+                      value={sort}
+                      onChange={(e) => setSort(e.target.value as SortKey)}
+                      className="mt-2 h-11 w-full rounded-xl border border-neutral-200 bg-white px-3 text-sm text-neutral-950 outline-none transition focus:border-neutral-400"
+                    >
+                      {SORT_OPTIONS.map((option) => (
+                        <option key={option.key} value={option.key}>
+                          {option.label}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
                 </div>
-                <label className="block">
-                  <span className="text-xs font-semibold uppercase tracking-[0.14em] text-neutral-400">
-                    Sort
-                  </span>
-                  <select
-                    value={sort}
-                    onChange={(e) => setSort(e.target.value as SortKey)}
-                    className="mt-2 h-11 w-full rounded-xl border border-neutral-200 bg-white px-3 text-sm text-neutral-950 outline-none transition focus:border-neutral-400"
-                  >
-                    {SORT_OPTIONS.map((option) => (
-                      <option key={option.key} value={option.key}>
-                        {option.label}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-              </div>
-            </ProgressiveActionDrawer>
+              </ProgressiveActionDrawer>
+
+              <ProgressiveActionDrawer
+                triggerLabel="Snapshot"
+                title="Clip snapshot"
+                description="Totals are available here without taking over the queue."
+                variant="outline"
+                width="lg"
+              >
+                <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+                  <SoftStat label="Total clips" value={videos.length.toString()} detail="All submissions" />
+                  <SoftStat label="Total views" value={totalViews.toLocaleString()} detail="Tracked or claimed" />
+                  <SoftStat label="Earned" value={`$${totalEarned.toFixed(2)}`} detail="Approved submissions" />
+                </div>
+              </ProgressiveActionDrawer>
+            </div>
           }
         />
 
