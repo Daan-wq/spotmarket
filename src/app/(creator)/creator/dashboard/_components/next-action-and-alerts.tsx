@@ -1,7 +1,6 @@
 import Link from "next/link";
 import { getActivationStatus } from "@/lib/activation";
 import { Skeleton } from "@/components/ui/skeleton";
-import { CreatorSectionHeader } from "../../_components/creator-journey";
 import { DashboardAlerts } from "./dashboard-alerts";
 import {
   getCreatorPayoutTotals,
@@ -42,12 +41,11 @@ export async function NextActionAndAlerts({
         hasUnpaidBalance={payouts.hasUnpaidBalance}
       />
 
-      <div className="rounded-2xl border border-neutral-200 bg-white p-5 md:p-6">
-        <CreatorSectionHeader
-          title="Next best action"
-          description="The dashboard chooses one clear move from your activation, campaign, clip, and payout state."
-        />
-        <div>
+      <section className="border-y border-neutral-200 py-7">
+        <div className="max-w-2xl">
+          <p className="text-xs font-semibold uppercase tracking-[0.14em] text-neutral-400">
+            Next best action
+          </p>
           <p className="text-2xl font-semibold text-neutral-950">{action.title}</p>
           <p className="mt-2 text-sm leading-6 text-neutral-500">{action.detail}</p>
           <Link
@@ -57,14 +55,14 @@ export async function NextActionAndAlerts({
             Continue
           </Link>
         </div>
-      </div>
+      </section>
     </>
   );
 }
 
 export function NextActionAndAlertsSkeleton() {
   return (
-    <div className="rounded-2xl border border-neutral-200 bg-white p-5 md:p-6">
+    <div className="border-y border-neutral-200 py-7">
       <Skeleton className="mb-4 h-4 w-40" />
       <Skeleton className="mb-3 h-7 w-2/3" />
       <Skeleton className="mb-2 h-4 w-full" />
