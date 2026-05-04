@@ -104,9 +104,9 @@ export function SignUpForm() {
             <p className="text-sm mb-6" style={{ color: "var(--text-secondary)" }}>
               We sent a verification link to <span className="text-white font-medium">{email}</span>. Click it to activate your account and get started.
             </p>
-            <p className="text-xs" style={{ color: "var(--text-secondary)" }}>
+            <p className="text-xs" style={{ color: "#d4d4d8" }}>
               Already verified?{" "}
-              <Link href="/sign-in" className="hover:underline" style={{ color: "var(--accent)" }}>
+              <Link href="/sign-in" className="font-medium text-white hover:underline">
                 Sign in
               </Link>
             </p>
@@ -126,9 +126,9 @@ export function SignUpForm() {
         </div>
         <div className="rounded-xl p-8" style={{ background: "#111111", border: "1px solid rgba(255,255,255,0.07)" }}>
           <h1 className="text-xl font-semibold mb-1 text-white">Create account</h1>
-          <p className="text-sm mb-6" style={{ color: "var(--text-secondary)" }}>
+          <p className="text-sm mb-6" style={{ color: "#d4d4d8" }}>
             Already have an account?{" "}
-            <Link href="/sign-in" className="hover:underline" style={{ color: "var(--accent)" }}>
+            <Link href="/sign-in" className="font-medium text-white hover:underline">
               Sign in
             </Link>
           </p>
