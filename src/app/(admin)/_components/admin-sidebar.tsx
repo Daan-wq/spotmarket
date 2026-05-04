@@ -4,6 +4,7 @@ import type { ComponentType } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Search } from "lucide-react";
+import { AnimateIcon } from "@/components/animate-ui/icons/icon";
 import { Banknote } from "@/components/animate-ui/icons/banknote";
 import { BookOpen } from "@/components/animate-ui/icons/book-open";
 import { BriefcaseBusiness } from "@/components/animate-ui/icons/briefcase-business";
@@ -20,7 +21,7 @@ import { Users } from "@/components/animate-ui/icons/users";
 import { Logo } from "@/components/shared/logo";
 import { cn } from "@/lib/cn";
 
-type NavIcon = ComponentType<{ className?: string; strokeWidth?: number; animateOnHover?: boolean }>;
+type NavIcon = ComponentType<{ className?: string; strokeWidth?: number }>;
 
 interface NavItem {
   href: string;
@@ -101,19 +102,20 @@ export function AdminSidebar({ initials, email }: AdminSidebarProps) {
                 const active = isActive(item.href);
                 const Icon = item.icon;
                 return (
-                  <Link
-                    key={item.href}
-                    href={item.href}
-                    className={cn(
-                      "flex h-11 items-center gap-3 rounded-xl px-4 text-sm font-medium transition",
-                      active
-                        ? "bg-neutral-200 text-neutral-950"
-                        : "text-neutral-600 hover:bg-neutral-100 hover:text-neutral-950",
-                    )}
-                  >
-                    <Icon className="h-[18px] w-[18px]" strokeWidth={2} animateOnHover />
-                    <span className="truncate">{item.label}</span>
-                  </Link>
+                  <AnimateIcon key={item.href} animateOnHover asChild>
+                    <Link
+                      href={item.href}
+                      className={cn(
+                        "flex h-11 items-center gap-3 rounded-xl px-4 text-sm font-medium transition",
+                        active
+                          ? "bg-neutral-200 text-neutral-950"
+                          : "text-neutral-600 hover:bg-neutral-100 hover:text-neutral-950",
+                      )}
+                    >
+                      <Icon className="h-[18px] w-[18px]" strokeWidth={2} />
+                      <span className="truncate">{item.label}</span>
+                    </Link>
+                  </AnimateIcon>
                 );
               })}
             </div>

@@ -4,6 +4,7 @@ import type { ComponentType, ReactNode } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Search } from "lucide-react";
+import { AnimateIcon } from "@/components/animate-ui/icons/icon";
 import { BarChart3 } from "@/components/animate-ui/icons/bar-chart-3";
 import { CreditCard } from "@/components/animate-ui/icons/credit-card";
 import { GraduationCap } from "@/components/animate-ui/icons/graduation-cap";
@@ -20,7 +21,7 @@ interface CreatorSidebarProps {
   balanceSlot: ReactNode;
 }
 
-type NavIcon = ComponentType<{ className?: string; strokeWidth?: number; animateOnHover?: boolean }>;
+type NavIcon = ComponentType<{ className?: string; strokeWidth?: number }>;
 
 const NAV: Array<{ href: string; label: string; icon: NavIcon }> = [
   { href: "/creator/dashboard", label: "Dashboard", icon: LayoutDashboard },
@@ -61,19 +62,20 @@ export function CreatorSidebar({ identitySlot, balanceSlot }: CreatorSidebarProp
           const active = isActive(item.href);
           const Icon = item.icon;
           return (
-            <Link
-              key={item.href}
-              href={item.href}
-              className={cn(
-                "flex h-11 items-center gap-3 rounded-xl px-4 text-sm font-medium transition",
-                active
-                  ? "bg-neutral-200 text-neutral-950"
-                  : "text-neutral-600 hover:bg-neutral-100 hover:text-neutral-950",
-              )}
-            >
-              <Icon className="h-[18px] w-[18px]" strokeWidth={2} animateOnHover />
-              {item.label}
-            </Link>
+            <AnimateIcon key={item.href} animateOnHover asChild>
+              <Link
+                href={item.href}
+                className={cn(
+                  "flex h-11 items-center gap-3 rounded-xl px-4 text-sm font-medium transition",
+                  active
+                    ? "bg-neutral-200 text-neutral-950"
+                    : "text-neutral-600 hover:bg-neutral-100 hover:text-neutral-950",
+                )}
+              >
+                <Icon className="h-[18px] w-[18px]" strokeWidth={2} />
+                {item.label}
+              </Link>
+            </AnimateIcon>
           );
         })}
       </nav>
