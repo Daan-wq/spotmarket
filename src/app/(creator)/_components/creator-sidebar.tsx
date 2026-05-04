@@ -3,15 +3,13 @@
 import type { ComponentType, ReactNode } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import {
-  BarChart3,
-  CreditCard,
-  GraduationCap,
-  Megaphone,
-  Search,
-  Video,
-  WalletCards,
-} from "lucide-react";
+import { Search } from "lucide-react";
+import { BarChart3 } from "@/components/animate-ui/icons/bar-chart-3";
+import { CreditCard } from "@/components/animate-ui/icons/credit-card";
+import { GraduationCap } from "@/components/animate-ui/icons/graduation-cap";
+import { Megaphone } from "@/components/animate-ui/icons/megaphone";
+import { Video } from "@/components/animate-ui/icons/video";
+import { WalletCards } from "@/components/animate-ui/icons/wallet-cards";
 import { LayoutDashboard } from "@/components/animate-ui/icons/layout-dashboard";
 import { Users } from "@/components/animate-ui/icons/users";
 import { Logo } from "@/components/shared/logo";

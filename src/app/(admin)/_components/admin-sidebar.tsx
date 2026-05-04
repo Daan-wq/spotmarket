@@ -3,16 +3,14 @@
 import type { ComponentType } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import {
-  Banknote,
-  BookOpen,
-  BriefcaseBusiness,
-  FileText,
-  GitPullRequestArrow,
-  ListChecks,
-  Search,
-  ShieldCheck,
-} from "lucide-react";
+import { Search } from "lucide-react";
+import { Banknote } from "@/components/animate-ui/icons/banknote";
+import { BookOpen } from "@/components/animate-ui/icons/book-open";
+import { BriefcaseBusiness } from "@/components/animate-ui/icons/briefcase-business";
+import { FileText } from "@/components/animate-ui/icons/file-text";
+import { GitPullRequestArrow } from "@/components/animate-ui/icons/git-pull-request-arrow";
+import { ListChecks } from "@/components/animate-ui/icons/list-checks";
+import { ShieldCheck } from "@/components/animate-ui/icons/shield-check";
 import { ClipboardCheck } from "@/components/animate-ui/icons/clipboard-check";
 import { Gauge } from "@/components/animate-ui/icons/gauge";
 import { LayoutDashboard } from "@/components/animate-ui/icons/layout-dashboard";

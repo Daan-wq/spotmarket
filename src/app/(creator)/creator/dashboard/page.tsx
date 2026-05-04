@@ -2,6 +2,7 @@ import { Suspense } from "react";
 import { requireAuth, getCreatorHeader } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { Skeleton } from "@/components/ui/skeleton";
+import { ProgressiveActionDrawer } from "@/components/ui/progressive-action-drawer";
 import { LiveEarnings } from "./_components/live-earnings";
 import { ScoreCard } from "@/components/clipper-score/score-card";
 import { CreatorPageHeader, CreatorSectionHeader } from "../_components/creator-journey";
@@ -42,41 +43,83 @@ export default async function DashboardPage() {
       <CreatorPageHeader
         eyebrow="Creator home"
         title={`Good to see you, ${firstName}`}
-        description="Your most important next move and current operating snapshot."
+        description="Start with the one thing that needs your attention now."
       />
 
-      <section className="grid grid-cols-1 gap-5 xl:grid-cols-[1.1fr_0.9fr]">
-        <div className="space-y-3">
-          <Suspense fallback={<NextActionAndAlertsSkeleton />}>
-            <NextActionAndAlerts userId={userId} profileId={profileId} />
-          </Suspense>
+      <Suspense fallback={<NextActionAndAlertsSkeleton />}>
+        <NextActionAndAlerts userId={userId} profileId={profileId} />
+      </Suspense>
+
+      <section className="border-t border-neutral-200 pt-6">
+        <CreatorSectionHeader
+          title="Open only when needed"
+          description="Payouts, campaigns, stats, and recent submissions are still here, but no longer stacked on the dashboard."
+        />
+        <div className="flex flex-col gap-3 md:flex-row md:flex-wrap">
+          <ProgressiveActionDrawer
+            triggerLabel="Payouts"
+            title="Payout summary"
+            description="Estimated, pending, and paid earnings."
+            variant="outline"
+            width="lg"
+          >
+            <Suspense fallback={<PayoutSummarySkeleton />}>
+              <PayoutSummary userId={userId} />
+            </Suspense>
+          </ProgressiveActionDrawer>
+
+          <ProgressiveActionDrawer
+            triggerLabel="Campaigns"
+            title="Active campaigns"
+            description="Joined or started campaigns."
+            variant="outline"
+            width="lg"
+          >
+            <Suspense fallback={<ActiveCampaignsSkeleton />}>
+              <ActiveCampaigns profileId={profileId} />
+            </Suspense>
+          </ProgressiveActionDrawer>
+
+          <ProgressiveActionDrawer
+            triggerLabel="Snapshot"
+            title="Operating snapshot"
+            description="Compact account, campaign, and submission numbers."
+            variant="outline"
+            width="lg"
+          >
+            <Suspense fallback={<OperatingSnapshotSkeleton />}>
+              <OperatingSnapshot userId={userId} profileId={profileId} />
+            </Suspense>
+          </ProgressiveActionDrawer>
+
+          <ProgressiveActionDrawer
+            triggerLabel="Performance"
+            title="Performance"
+            description="Live earnings and creator score."
+            variant="outline"
+            width="lg"
+          >
+            <div className="space-y-5">
+              <LiveEarnings />
+              <Suspense fallback={<ScoreCardSkeleton />}>
+                <ScoreCard creatorProfileId={profileId} variant="compact" />
+              </Suspense>
+            </div>
+          </ProgressiveActionDrawer>
+
+          <ProgressiveActionDrawer
+            triggerLabel="Recent submissions"
+            title="Recent submissions"
+            description="Latest clips moving through review, approval, and payout."
+            variant="outline"
+            width="lg"
+          >
+            <Suspense fallback={<RecentSubmissionsSkeleton />}>
+              <RecentSubmissions creatorId={userId} />
+            </Suspense>
+          </ProgressiveActionDrawer>
         </div>
-
-        <Suspense fallback={<PayoutSummarySkeleton />}>
-          <PayoutSummary userId={userId} />
-        </Suspense>
       </section>
-
-      <Suspense fallback={<ActiveCampaignsSkeleton />}>
-        <ActiveCampaigns profileId={profileId} />
-      </Suspense>
-
-      <Suspense fallback={<OperatingSnapshotSkeleton />}>
-        <OperatingSnapshot userId={userId} profileId={profileId} />
-      </Suspense>
-
-      <section className="grid grid-cols-1 gap-5 xl:grid-cols-3">
-        <div className="xl:col-span-2">
-          <LiveEarnings />
-        </div>
-        <Suspense fallback={<ScoreCardSkeleton />}>
-          <ScoreCard creatorProfileId={profileId} variant="compact" />
-        </Suspense>
-      </section>
-
-      <Suspense fallback={<RecentSubmissionsSkeleton />}>
-        <RecentSubmissions creatorId={userId} />
-      </Suspense>
     </div>
   );
 }
