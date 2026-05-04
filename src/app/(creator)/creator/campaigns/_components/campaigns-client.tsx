@@ -346,7 +346,7 @@ function CampaignCard({ campaign }: { campaign: CampaignData }) {
           </div>
         )}
         <div className="min-w-0 flex-1">
-          <h3 className="line-clamp-2 text-lg font-semibold leading-tight tracking-normal text-neutral-950">
+          <h3 className="line-clamp-2 text-lg font-semibold leading-tight tracking-[-0.02em] text-neutral-950">
             {campaign.name}
           </h3>
           <div className="mt-2 flex flex-wrap items-center gap-1.5">
@@ -363,7 +363,7 @@ function CampaignCard({ campaign }: { campaign: CampaignData }) {
 
       <p className="mt-5 text-xs font-medium text-neutral-500">Payout</p>
       <div className="mt-1 flex items-baseline gap-1">
-        <span className="text-3xl font-semibold tracking-normal text-neutral-950">
+        <span className="text-3xl font-semibold tracking-[-0.03em] text-neutral-950">
           ${campaign.rewardRate.toFixed(1)}
         </span>
         <span className="text-sm text-neutral-500">/1K views</span>

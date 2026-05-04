@@ -108,7 +108,7 @@ export function WithdrawTab() {
             <p className="text-xs font-semibold uppercase tracking-[0.14em] text-neutral-400">
               Available to withdraw
             </p>
-            <p className="mt-1 text-4xl font-semibold tracking-normal text-neutral-950">
+            <p className="mt-1 text-4xl font-semibold tracking-[-0.04em] text-neutral-950">
               ${balance.toFixed(2)}
             </p>
           </div>

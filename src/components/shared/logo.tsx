@@ -9,23 +9,23 @@ const SIZES = {
   lg: "64px",
 };
 
-export function Logo({ variant = "light", size = "sm" }: LogoProps) {
-  const color = variant === "dark" ? "#ffffff" : "#010405";
+export function Logo({ variant = "dark", size = "sm" }: LogoProps) {
+  const color = variant === "dark" ? "#FFFFFF" : "#010405";
 
   return (
     <span
       style={{
-        color,
         fontSize: SIZES[size],
         fontWeight: 900,
         fontStyle: "italic",
-        letterSpacing: 0,
+        color,
         lineHeight: 1,
-        textTransform: "uppercase",
         whiteSpace: "nowrap",
+        letterSpacing: "-0.02em",
+        textTransform: "uppercase",
       }}
     >
-      ClipProfit
+      €lipprofit
     </span>
   );
 }

@@ -29,25 +29,32 @@ export function EmptyState({
   return (
     <div
       className={cn(
-        "flex min-h-[260px] flex-col items-center justify-center rounded-2xl border border-dashed border-neutral-300 bg-neutral-50 px-6 py-12 text-center",
+        "flex flex-col items-center justify-center text-center px-6 py-12 rounded-lg border",
         className,
       )}
+      style={{
+        background: "var(--bg-card)",
+        borderColor: "var(--border)",
+      }}
     >
       {icon && (
         <div
-          className="mb-4 flex h-11 w-11 items-center justify-center rounded-xl border border-neutral-200 bg-white text-neutral-700"
+          className="mb-4 flex h-12 w-12 items-center justify-center rounded-full"
+          style={{ background: "var(--accent-bg)", color: "var(--accent-foreground)" }}
         >
           {icon}
         </div>
       )}
       <h3
-        className="text-base font-semibold text-neutral-950"
+        className="text-base font-semibold"
+        style={{ color: "var(--text-primary)" }}
       >
         {title}
       </h3>
       {description && (
         <p
-          className="mt-2 max-w-md text-sm text-neutral-500"
+          className="mt-1 max-w-md text-sm"
+          style={{ color: "var(--text-secondary)" }}
         >
           {description}
         </p>
