@@ -1,8 +1,7 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { toast } from "sonner";
 import { PayoutStatus, PayoutType } from "@prisma/client";
 
 interface PayoutRow {
@@ -38,8 +37,8 @@ export function PayoutActionsRow({
   readonly?: boolean;
 }) {
   const router = useRouter();
-  const [isPending, startTransition] = useTransition();
   const [txHash, setTxHash] = useState(payout.txHash ?? "");
+  const [loading, setLoading] = useState(false);
   const [copied, setCopied] = useState(false);
 
   function copyWallet() {
@@ -49,47 +48,29 @@ export function PayoutActionsRow({
   }
 
   async function markSent() {
-    if (isPending) return;
     if (!txHash.trim()) {
-      toast.error("Enter a transaction hash before marking as sent.");
+      alert("Enter a transaction hash before marking as sent.");
       return;
     }
-    try {
-      const res = await fetch(`/api/payouts/${payout.id}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ status: "sent", txHash: txHash.trim() }),
-      });
-      if (!res.ok) {
-        toast.error("Failed to mark payout as sent");
-        return;
-      }
-      toast.success("Payout marked as sent");
-      startTransition(() => router.refresh());
-    } catch (err) {
-      console.error("[markSent]", err);
-      toast.error("Network error");
-    }
+    setLoading(true);
+    await fetch(`/api/payouts/${payout.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ status: "sent", txHash: txHash.trim() }),
+    });
+    router.refresh();
+    setLoading(false);
   }
 
   async function markConfirmed() {
-    if (isPending) return;
-    try {
-      const res = await fetch(`/api/payouts/${payout.id}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ status: "confirmed" }),
-      });
-      if (!res.ok) {
-        toast.error("Failed to confirm payout");
-        return;
-      }
-      toast.success("Payout confirmed");
-      startTransition(() => router.refresh());
-    } catch (err) {
-      console.error("[markConfirmed]", err);
-      toast.error("Network error");
-    }
+    setLoading(true);
+    await fetch(`/api/payouts/${payout.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ status: "confirmed" }),
+    });
+    router.refresh();
+    setLoading(false);
   }
 
   const colors = statusStyle[payout.status];
@@ -154,26 +135,26 @@ export function PayoutActionsRow({
                   />
                   <button
                     onClick={markSent}
-                    disabled={isPending}
+                    disabled={loading}
                     className="px-3 py-1.5 rounded-lg text-xs font-medium text-white transition-colors disabled:opacity-50 shrink-0"
                     style={{ background: "var(--accent)" }}
-                    onMouseEnter={(e) => { if (!isPending) (e.currentTarget as HTMLElement).style.background = "var(--accent-hover)"; }}
+                    onMouseEnter={(e) => { if (!loading) (e.currentTarget as HTMLElement).style.background = "var(--accent-hover)"; }}
                     onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = "var(--accent)"; }}
                   >
-                    {isPending ? "…" : "Mark Sent"}
+                    {loading ? "…" : "Mark Sent"}
                   </button>
                 </>
               )}
               {payout.status === "sent" && (
                 <button
                   onClick={markConfirmed}
-                  disabled={isPending}
+                  disabled={loading}
                   className="px-3 py-1.5 rounded-lg text-xs font-medium text-white transition-colors disabled:opacity-50"
                   style={{ background: "var(--success)" }}
-                  onMouseEnter={(e) => { if (!isPending) (e.currentTarget as HTMLElement).style.background = "var(--success-text)"; }}
+                  onMouseEnter={(e) => { if (!loading) (e.currentTarget as HTMLElement).style.background = "var(--success-text)"; }}
                   onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = "var(--success)"; }}
                 >
-                  {isPending ? "…" : "Confirm Receipt"}
+                  {loading ? "…" : "Confirm Receipt"}
                 </button>
               )}
             </div>

@@ -4,8 +4,6 @@ import { ReferralLink } from "./_components/referral-link";
 import { ReferralEarningsChart } from "./_components/earnings-chart";
 import { Leaderboard } from "./_components/leaderboard";
 import { ActivityFeed } from "./_components/activity-feed";
-import { ReferredUsersTable, type ReferredUserRow } from "./_components/referred-users-table";
-import { MilestoneCard } from "./_components/milestone-card";
 
 export default async function ReferralPage() {
   const { userId } = await requireAuth("creator");
@@ -154,25 +152,6 @@ export default async function ReferralPage() {
     { label: "This Month", value: `$${thisMonthEarnings.toFixed(2)}`, color: "#3b82f6" },
   ];
 
-  // Per-referred-user commission breakdown.
-  const commissionByReferred = new Map<string, number>();
-  for (const p of payouts) {
-    commissionByReferred.set(
-      p.referredUserId,
-      (commissionByReferred.get(p.referredUserId) ?? 0) +
-        parseFloat(p.amount.toString()),
-    );
-  }
-  const referredUserRows: ReferredUserRow[] = signups.map((s) => ({
-    userId: s.id,
-    displayName: s.creatorProfile?.displayName ?? s.email.split("@")[0],
-    joinedAt: s.createdAt.toISOString(),
-    commissionEarned: commissionByReferred.get(s.id) ?? 0,
-  }));
-  referredUserRows.sort((a, b) => b.commissionEarned - a.commissionEarned);
-
-  const isEmpty = totalInvited === 0;
-
   return (
     <div className="p-6 space-y-6">
       {/* Header */}
@@ -181,118 +160,64 @@ export default async function ReferralPage() {
           Referral Program
         </h1>
         <p className="text-sm mt-1" style={{ color: "var(--text-secondary)" }}>
-          Earn 10% from invited creators&apos; earnings — up to $100 per creator. We pay 110%: creators keep 100%, your 10% is on top.
+          Earn 10% from invited creators' earnings — up to $100 per creator. We pay 110%: creators keep 100%, your 10% is on top.
         </p>
       </div>
 
-      {isEmpty ? (
-        // Empty-state hero: prioritize the share link + clear value prop
-        <>
+      {/* Stats Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        {stats.map((stat) => (
           <div
-            className="rounded-2xl border p-8 text-center"
-            style={{
-              background:
-                "linear-gradient(135deg, var(--accent-bg) 0%, var(--bg-card) 100%)",
-              borderColor: "var(--border)",
-            }}
-          >
-            <div
-              className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full"
-              style={{ background: "var(--accent)", color: "#fff" }}
-            >
-              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
-                <circle cx="9" cy="7" r="4" />
-                <path d="M22 21v-2a4 4 0 0 0-3-3.87" />
-                <path d="M16 3.13a4 4 0 0 1 0 7.75" />
-              </svg>
-            </div>
-            <h2 className="text-xl font-bold" style={{ color: "var(--text-primary)" }}>
-              Invite a creator, earn 10% of what they make
-            </h2>
-            <p className="mx-auto mt-1.5 max-w-xl text-sm" style={{ color: "var(--text-secondary)" }}>
-              Share your link below. Every clipper who signs up under it earns
-              you 10% of their payouts — up to $100 per creator. They still keep
-              100%, our platform covers your share.
-            </p>
-          </div>
-
-          <ReferralLink referralCode={user.referralCode ?? ""} referralUrl={referralUrl} />
-        </>
-      ) : (
-        <>
-          {/* Stats Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-            {stats.map((stat) => (
-              <div
-                key={stat.label}
-                className="rounded-lg p-6 border"
-                style={{ background: "var(--bg-card)", borderColor: "var(--border)" }}
-              >
-                <p style={{ color: "var(--text-secondary)" }} className="text-sm mb-2">
-                  {stat.label}
-                </p>
-                <p style={{ color: stat.color, fontSize: "32px" }} className="font-bold">
-                  {stat.value}
-                </p>
-              </div>
-            ))}
-          </div>
-
-          {/* Referral Link + Milestone */}
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            <div className="lg:col-span-2">
-              <ReferralLink referralCode={user.referralCode ?? ""} referralUrl={referralUrl} />
-            </div>
-            <MilestoneCard totalInvited={totalInvited} />
-          </div>
-
-          {/* Chart + Leaderboard */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <div
-              className="rounded-lg p-6 border"
-              style={{ background: "var(--bg-card)", borderColor: "var(--border)" }}
-            >
-              <h2 className="text-lg font-semibold mb-4" style={{ color: "var(--text-primary)" }}>
-                Earnings Over Time
-              </h2>
-              <ReferralEarningsChart data={chartData} />
-            </div>
-
-            <div
-              className="rounded-lg p-6 border"
-              style={{ background: "var(--bg-card)", borderColor: "var(--border)" }}
-            >
-              <h2 className="text-lg font-semibold mb-4" style={{ color: "var(--text-primary)" }}>
-                Top Referrers
-              </h2>
-              <Leaderboard entries={leaderboardEntries} currentUserRank={currentUserRank} />
-            </div>
-          </div>
-
-          {/* Per-referred-user breakdown */}
-          <section>
-            <h2
-              className="text-lg font-semibold mb-3"
-              style={{ color: "var(--text-primary)" }}
-            >
-              Your referrals
-            </h2>
-            <ReferredUsersTable rows={referredUserRows} />
-          </section>
-
-          {/* Activity Feed */}
-          <div
+            key={stat.label}
             className="rounded-lg p-6 border"
             style={{ background: "var(--bg-card)", borderColor: "var(--border)" }}
           >
-            <h2 className="text-lg font-semibold mb-4" style={{ color: "var(--text-primary)" }}>
-              Recent Activity
-            </h2>
-            <ActivityFeed activities={activities} />
+            <p style={{ color: "var(--text-secondary)" }} className="text-sm mb-2">
+              {stat.label}
+            </p>
+            <p style={{ color: stat.color, fontSize: "32px" }} className="font-bold">
+              {stat.value}
+            </p>
           </div>
-        </>
-      )}
+        ))}
+      </div>
+
+      {/* Referral Link */}
+      <ReferralLink referralCode={user.referralCode ?? ""} referralUrl={referralUrl} />
+
+      {/* Chart + Leaderboard */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div
+          className="rounded-lg p-6 border"
+          style={{ background: "var(--bg-card)", borderColor: "var(--border)" }}
+        >
+          <h2 className="text-lg font-semibold mb-4" style={{ color: "var(--text-primary)" }}>
+            Earnings Over Time
+          </h2>
+          <ReferralEarningsChart data={chartData} />
+        </div>
+
+        <div
+          className="rounded-lg p-6 border"
+          style={{ background: "var(--bg-card)", borderColor: "var(--border)" }}
+        >
+          <h2 className="text-lg font-semibold mb-4" style={{ color: "var(--text-primary)" }}>
+            Top Referrers
+          </h2>
+          <Leaderboard entries={leaderboardEntries} currentUserRank={currentUserRank} />
+        </div>
+      </div>
+
+      {/* Activity Feed */}
+      <div
+        className="rounded-lg p-6 border"
+        style={{ background: "var(--bg-card)", borderColor: "var(--border)" }}
+      >
+        <h2 className="text-lg font-semibold mb-4" style={{ color: "var(--text-primary)" }}>
+          Recent Activity
+        </h2>
+        <ActivityFeed activities={activities} />
+      </div>
     </div>
   );
 }

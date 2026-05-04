@@ -73,7 +73,7 @@ export default async function LeaderboardPage() {
   };
 
   return (
-    <div className="p-6 w-full">
+    <div className="p-6 max-w-5xl mx-auto">
       {/* Personal Stats Card */}
       <div
         className="rounded-xl p-6 mb-8 text-center"

@@ -27,6 +27,7 @@ export default async function VideoDetailPage({
           name: true,
           platform: true,
           creatorCpv: true,
+          advertiser: { select: { brandName: true } },
         },
       },
     },
@@ -87,6 +88,7 @@ export default async function VideoDetailPage({
 
         <div>
           <h1 className="text-xl font-bold" style={{ color: "var(--text-primary)" }}>{submission.campaign.name}</h1>
+          <p className="text-sm" style={{ color: "var(--text-muted)" }}>{submission.campaign.advertiser?.brandName}</p>
         </div>
 
         {/* Status Badge */}
@@ -141,7 +143,7 @@ export default async function VideoDetailPage({
             ${rewardRate.toFixed(1)} per 1K views
           </span>
           <div className="text-xs mt-1 flex items-center gap-1" style={{ color: "var(--text-muted)" }}>
-            {submission.campaign.name}
+            {submission.campaign.advertiser?.brandName}
           </div>
         </div>
 

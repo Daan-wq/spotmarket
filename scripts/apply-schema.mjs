@@ -222,14 +222,8 @@ const statements = [
   `ALTER TABLE "AuditLog" ADD CONSTRAINT "AuditLog_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE RESTRICT ON UPDATE CASCADE`,
 ];
 
-const connectionString = process.env.DATABASE_URL_DIRECT ?? process.env.DATABASE_URL;
-if (!connectionString) {
-  console.error("Set DATABASE_URL_DIRECT or DATABASE_URL before running this script.");
-  process.exit(1);
-}
-
 const client = new Client({
-  connectionString,
+  connectionString: "postgresql://postgres.qdcgmsaaxjylnhrrbvvx:5rEaeV89oFaw9AhJ@aws-1-eu-west-1.pooler.supabase.com:6543/postgres",
   ssl: { rejectUnauthorized: false },
 });
 

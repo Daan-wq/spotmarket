@@ -1,19 +1,16 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 
 export function RefreshButton({ creatorId }: { creatorId: string }) {
   const router = useRouter();
-  const [isPending, startTransition] = useTransition();
-  const [syncing, setSyncing] = useState(false);
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [tokenExpired, setTokenExpired] = useState(false);
-  const loading = syncing || isPending;
 
   async function handleRefresh() {
-    if (loading) return;
-    setSyncing(true);
+    setLoading(true);
     setError(null);
     setTokenExpired(false);
     try {
@@ -31,11 +28,11 @@ export function RefreshButton({ creatorId }: { creatorId: string }) {
         }
         throw new Error(errCode ?? "Sync failed");
       }
-      startTransition(() => router.refresh());
+      router.refresh();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Sync failed");
     } finally {
-      setSyncing(false);
+      setLoading(false);
     }
   }
 

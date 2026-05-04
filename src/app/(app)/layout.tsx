@@ -1,12 +1,19 @@
 import { redirect } from "next/navigation";
-import { getCachedAuthClaims, resolveRoleFor } from "@/lib/auth";
+import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { prisma } from "@/lib/prisma";
 
 // Legacy route group — redirect to the correct role-based dashboard
 export default async function AppLayout() {
-  const claims = await getCachedAuthClaims();
-  if (!claims) redirect("/sign-in");
+  const supabase = await createSupabaseServerClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) redirect("/sign-in");
 
-  const role = await resolveRoleFor(claims);
-  if (role === "admin") redirect("/admin");
+  const dbUser = await prisma.user.findUnique({
+    where: { supabaseId: user.id },
+    select: { role: true },
+  });
+
+  if (dbUser?.role === "admin") redirect("/admin");
+  if (dbUser?.role === "advertiser") redirect("/advertiser/dashboard");
   redirect("/creator/dashboard");
 }

@@ -1,8 +1,6 @@
 'use client';
 
-import { useState, useTransition } from 'react';
-import { useRouter } from 'next/navigation';
-import { toast } from 'sonner';
+import { useState } from 'react';
 
 interface SubmissionActionsProps {
   id: string;
@@ -11,53 +9,46 @@ interface SubmissionActionsProps {
 }
 
 export default function SubmissionActions({ id, status, postUrl }: SubmissionActionsProps) {
-  const router = useRouter();
-  const [isPending, startTransition] = useTransition();
+  const [loading, setLoading] = useState(false);
   const [showApproveForm, setShowApproveForm] = useState(false);
   const [baselineViews, setBaselineViews] = useState('');
   const [viewCount, setViewCount] = useState('');
 
   async function approve() {
-    if (isPending) return;
+    if (loading) return;
     const baseline = parseInt(baselineViews, 10);
     const views = parseInt(viewCount, 10);
     if (isNaN(baseline) || isNaN(views) || baseline < 0 || views < 0) return;
 
+    setLoading(true);
     try {
       const res = await fetch('/api/submissions/' + id + '/review', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ status: 'APPROVED', baselineViews: baseline, viewCount: views })
       });
-      if (!res.ok) {
-        toast.error('Failed to approve submission');
-        return;
-      }
-      toast.success('Submission approved');
-      startTransition(() => router.refresh());
+      if (res.ok) location.reload();
     } catch (err) {
       console.error(err);
-      toast.error('Network error');
+    } finally {
+      setLoading(false);
     }
   }
 
   async function reject() {
-    if (isPending) return;
+    if (loading) return;
+    setLoading(true);
     try {
       const res = await fetch('/api/submissions/' + id + '/review', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ status: 'REJECTED', rejectionNote: 'Rejected by admin' })
       });
-      if (!res.ok) {
-        toast.error('Failed to reject submission');
-        return;
-      }
-      toast.success('Submission rejected');
-      startTransition(() => router.refresh());
+      if (res.ok) location.reload();
     } catch (err) {
       console.error(err);
-      toast.error('Network error');
+    } finally {
+      setLoading(false);
     }
   }
 
@@ -103,8 +94,8 @@ export default function SubmissionActions({ id, status, postUrl }: SubmissionAct
             </p>
           )}
           <div className="flex gap-2">
-            <button onClick={approve} disabled={isPending || !baselineViews || !viewCount} style={{ fontSize: '12px', padding: '4px 8px', background: 'var(--success-bg)', color: 'var(--success-text)', border: 'none', borderRadius: '4px', cursor: 'pointer', opacity: isPending || !baselineViews || !viewCount ? 0.5 : 1 }}>
-              {isPending ? '...' : 'Confirm'}
+            <button onClick={approve} disabled={loading || !baselineViews || !viewCount} style={{ fontSize: '12px', padding: '4px 8px', background: 'var(--success-bg)', color: 'var(--success-text)', border: 'none', borderRadius: '4px', cursor: 'pointer', opacity: loading || !baselineViews || !viewCount ? 0.5 : 1 }}>
+              Confirm
             </button>
             <button onClick={() => setShowApproveForm(false)} style={{ fontSize: '12px', padding: '4px 8px', background: 'var(--bg-primary)', color: 'var(--text-secondary)', border: '1px solid var(--border)', borderRadius: '4px', cursor: 'pointer' }}>
               Cancel
@@ -113,11 +104,11 @@ export default function SubmissionActions({ id, status, postUrl }: SubmissionAct
         </div>
       ) : (
         <div className="flex gap-2">
-          <button onClick={() => setShowApproveForm(true)} disabled={isPending} style={{ fontSize: '12px', padding: '4px 8px', background: 'var(--success-bg)', color: 'var(--success-text)', border: 'none', borderRadius: '4px', cursor: 'pointer' }}>
+          <button onClick={() => setShowApproveForm(true)} disabled={loading} style={{ fontSize: '12px', padding: '4px 8px', background: 'var(--success-bg)', color: 'var(--success-text)', border: 'none', borderRadius: '4px', cursor: 'pointer' }}>
             Approve
           </button>
-          <button onClick={reject} disabled={isPending} style={{ fontSize: '12px', padding: '4px 8px', background: 'var(--error-bg)', color: 'var(--error-text)', border: 'none', borderRadius: '4px', cursor: 'pointer' }}>
-            {isPending ? '...' : 'Reject'}
+          <button onClick={reject} disabled={loading} style={{ fontSize: '12px', padding: '4px 8px', background: 'var(--error-bg)', color: 'var(--error-text)', border: 'none', borderRadius: '4px', cursor: 'pointer' }}>
+            Reject
           </button>
         </div>
       )}

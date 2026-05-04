@@ -9,7 +9,7 @@ export async function GET(req: NextRequest) {
     return NextResponse.redirect(new URL("/sign-in", req.url));
   }
 
-  const returnTo = req.nextUrl.searchParams.get("return_to") ?? "/creator/connections";
+  const returnTo = req.nextUrl.searchParams.get("return_to") ?? "/creator/pages";
   const state = Buffer.from(JSON.stringify({ returnTo, sub: user.id })).toString("base64url");
 
   const authUrl = await getInstagramAuthUrl(state);

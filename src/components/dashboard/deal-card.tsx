@@ -1,9 +1,8 @@
 "use client";
 
-import { useTransition } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { toast } from "sonner";
 import { type CampaignCardData } from "@/types/campaign-card";
 
 type DealCardProps = {
@@ -14,8 +13,7 @@ type DealCardProps = {
 
 export function DealCard({ campaign, applicationStatus }: DealCardProps) {
   const router = useRouter();
-  const [isPending, startTransition] = useTransition();
-  const loading = isPending;
+  const [loading, setLoading] = useState(false);
 
   const statusConfig: Record<string, { background: string; color: string; label: string }> = {
     approved:  { background: "var(--success-bg)", color: "var(--success-text)", label: "Approved"  },
@@ -27,18 +25,12 @@ export function DealCard({ campaign, applicationStatus }: DealCardProps) {
   };
 
   async function handleApply() {
-    if (isPending) return;
+    setLoading(true);
     try {
       const res = await fetch(`/api/campaigns/${campaign.id}/applications`, { method: "POST" });
-      if (!res.ok) {
-        toast.error("Failed to apply");
-        return;
-      }
-      toast.success("Application submitted");
-      startTransition(() => router.refresh());
-    } catch (err) {
-      console.error(err);
-      toast.error("Network error");
+      if (res.ok) router.refresh();
+    } finally {
+      setLoading(false);
     }
   }
 

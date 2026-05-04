@@ -12,7 +12,7 @@ const createMessageSchema = z.object({
 
 export async function POST(req: NextRequest) {
   try {
-    const { userId } = await requireAuth("creator", "admin");
+    const { userId } = await requireAuth("creator", "advertiser");
 
     const user = await prisma.user.findUnique({
       where: { supabaseId: userId },

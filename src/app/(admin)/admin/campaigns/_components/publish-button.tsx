@@ -1,47 +1,47 @@
 "use client";
 
 import { useState } from "react";
-import { toast } from "sonner";
 
 export function PublishButton({ campaignId }: { campaignId: string }) {
-  const [state, setState] = useState<"idle" | "loading" | "done">("idle");
+  const [state, setState] = useState<"idle" | "loading" | "done" | "error">("idle");
 
   async function handlePublish() {
-    if (state !== "idle") return;
     setState("loading");
     try {
       const res = await fetch(`/api/admin/campaigns/${campaignId}/publish`, { method: "POST" });
       if (!res.ok) {
         const body = await res.json().catch(() => ({}));
-        toast.error(body.error ?? "Failed to post to Discord");
-        setState("idle");
-        return;
+        throw new Error(body.error ?? "Failed");
       }
       setState("done");
-      toast.success("Posted to Discord");
       setTimeout(() => setState("idle"), 3000);
     } catch (err) {
       console.error("[PublishButton]", err);
-      toast.error("Network error");
-      setState("idle");
+      setState("error");
+      setTimeout(() => setState("idle"), 3000);
     }
   }
 
   const label =
     state === "loading" ? "Posting…" :
     state === "done"    ? "✓ Posted" :
+    state === "error"   ? "✗ Error"  :
     "Post to Discord";
 
   const bg =
-    state === "done" ? "var(--success-bg)" : "var(--accent, #534AB7)";
+    state === "done"    ? "var(--success-bg)"  :
+    state === "error"   ? "var(--error-bg, #fecaca)"    :
+    "var(--accent, #534AB7)";
 
   const color =
-    state === "done" ? "var(--success-text)" : "#fff";
+    state === "done"    ? "var(--success-text)" :
+    state === "error"   ? "var(--error-text, #dc2626)"  :
+    "#fff";
 
   return (
     <button
       onClick={handlePublish}
-      disabled={state !== "idle"}
+      disabled={state === "loading" || state === "done"}
       style={{
         background: bg,
         color,
@@ -50,7 +50,7 @@ export function PublishButton({ campaignId }: { campaignId: string }) {
         padding: "4px 10px",
         fontSize: "12px",
         fontWeight: 500,
-        cursor: state === "idle" ? "pointer" : "default",
+        cursor: state === "loading" || state === "done" ? "default" : "pointer",
         opacity: state === "loading" ? 0.7 : 1,
         whiteSpace: "nowrap",
       }}

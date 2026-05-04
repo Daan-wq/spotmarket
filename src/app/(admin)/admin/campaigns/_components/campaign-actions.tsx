@@ -1,8 +1,7 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { toast } from "sonner";
 
 interface CampaignActionsProps {
   campaignId: string;
@@ -11,12 +10,12 @@ interface CampaignActionsProps {
 
 export function CampaignActions({ campaignId, status }: CampaignActionsProps) {
   const router = useRouter();
-  const [isPending, startTransition] = useTransition();
+  const [statusLoading, setStatusLoading] = useState(false);
   const [deleteState, setDeleteState] = useState<"idle" | "confirming" | "loading" | "error">("idle");
   const [settleState, setSettleState] = useState<"idle" | "loading" | "done" | "error">("idle");
 
   async function handleStatusChange() {
-    if (isPending) return;
+    setStatusLoading(true);
     try {
       const newStatus = status === "active" ? "paused" : "active";
       const res = await fetch(`/api/campaigns/${campaignId}`, {
@@ -26,14 +25,14 @@ export function CampaignActions({ campaignId, status }: CampaignActionsProps) {
       });
 
       if (!res.ok) {
-        toast.error("Failed to update campaign");
-        return;
+        throw new Error("Failed to update campaign");
       }
-      toast.success(newStatus === "active" ? "Campaign activated" : "Campaign paused");
-      startTransition(() => router.refresh());
+
+      setStatusLoading(false);
+      router.refresh();
     } catch (err) {
       console.error("[CampaignActions]", err);
-      toast.error("Network error");
+      setStatusLoading(false);
     }
   }
 
@@ -44,7 +43,6 @@ export function CampaignActions({ campaignId, status }: CampaignActionsProps) {
 
       if (res.status === 409) {
         setDeleteState("error");
-        toast.error("Cannot delete: active applications");
         setTimeout(() => setDeleteState("idle"), 3000);
         return;
       }
@@ -54,11 +52,9 @@ export function CampaignActions({ campaignId, status }: CampaignActionsProps) {
       }
 
       setDeleteState("idle");
-      toast.success("Campaign deleted");
-      startTransition(() => router.refresh());
+      router.refresh();
     } catch (err) {
       console.error("[CampaignActions]", err);
-      toast.error("Failed to delete campaign");
       setDeleteState("idle");
     }
   }
@@ -74,18 +70,14 @@ export function CampaignActions({ campaignId, status }: CampaignActionsProps) {
       const res = await fetch(`/api/campaigns/${campaignId}/settle`, { method: "POST" });
       if (!res.ok) {
         setSettleState("error");
-        toast.error("Settle failed");
         setTimeout(() => setSettleState("idle"), 3000);
         return;
       }
       setSettleState("done");
-      toast.success("Campaign settled");
-      startTransition(() => router.refresh());
-      setTimeout(() => setSettleState("idle"), 2000);
+      setTimeout(() => { setSettleState("idle"); router.refresh(); }, 2000);
     } catch (err) {
       console.error("[settle]", err);
       setSettleState("error");
-      toast.error("Network error");
       setTimeout(() => setSettleState("idle"), 3000);
     }
   }
@@ -100,7 +92,7 @@ export function CampaignActions({ campaignId, status }: CampaignActionsProps) {
       {/* Status button */}
       <button
         onClick={handleStatusChange}
-        disabled={isPending}
+        disabled={statusLoading}
         style={{
           background: "var(--accent, #534AB7)",
           color: "#fff",
@@ -109,12 +101,12 @@ export function CampaignActions({ campaignId, status }: CampaignActionsProps) {
           padding: "4px 10px",
           fontSize: "12px",
           fontWeight: 500,
-          cursor: isPending ? "default" : "pointer",
-          opacity: isPending ? 0.7 : 1,
+          cursor: statusLoading ? "default" : "pointer",
+          opacity: statusLoading ? 0.7 : 1,
           whiteSpace: "nowrap",
         }}
       >
-        {isPending ? "…" : statusButtonLabel}
+        {statusLoading ? "…" : statusButtonLabel}
       </button>
 
       {/* Settle button */}

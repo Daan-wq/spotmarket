@@ -55,17 +55,7 @@ export async function GET(req: NextRequest) {
       return NextResponse.redirect(new URL(`${returnTo}?error=discord_token_failed`, req.url));
     }
 
-    const tokenJson = await tokenRes.json();
-    const access_token: string = tokenJson.access_token;
-    const grantedScopes: string[] =
-      typeof tokenJson.scope === "string" ? tokenJson.scope.split(/\s+/).filter(Boolean) : [];
-
-    // Validate required Discord scopes
-    const REQUIRED_DISCORD_SCOPES = ["identify"];
-    const missing = REQUIRED_DISCORD_SCOPES.filter((s) => !grantedScopes.includes(s));
-    if (missing.length > 0) {
-      return NextResponse.redirect(new URL(`${returnTo}?error=discord_missing_scopes`, req.url));
-    }
+    const { access_token } = await tokenRes.json();
 
     // Get Discord user info
     const userRes = await fetch("https://discord.com/api/v10/users/@me", {

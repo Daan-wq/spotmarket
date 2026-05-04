@@ -18,13 +18,6 @@ function isPublicRoute(pathname: string) {
 }
 
 export async function middleware(request: NextRequest) {
-  const { pathname } = request.nextUrl;
-
-  // API routes handle their own auth — skip middleware overhead
-  if (pathname.startsWith("/api/")) {
-    return NextResponse.next({ request });
-  }
-
   let supabaseResponse = NextResponse.next({ request });
 
   const supabase = createServerClient(
@@ -52,12 +45,13 @@ export async function middleware(request: NextRequest) {
     }
   );
 
-  // Local JWT verification (no network round-trip to Supabase auth)
-  const { data } = await supabase.auth.getClaims();
-  const claims = data?.claims ?? null;
+  // Refresh session — required for Server Components to read auth state
+  const { data: { user } } = await supabase.auth.getUser();
+
+  const { pathname } = request.nextUrl;
 
   // Redirect unauthenticated users away from protected routes
-  if (!claims && !isPublicRoute(pathname) && pathname !== "/") {
+  if (!user && !isPublicRoute(pathname) && pathname !== "/") {
     const signInUrl = request.nextUrl.clone();
     signInUrl.pathname = "/sign-in";
     signInUrl.searchParams.set("redirect_url", pathname);
@@ -69,6 +63,6 @@ export async function middleware(request: NextRequest) {
 
 export const config = {
   matcher: [
-    "/((?!_next/static|_next/image|favicon.ico|robots.txt|sitemap.xml|\\.well-known|.*\\.(?:svg|png|jpg|jpeg|gif|webp|txt|xml)$).*)",
+    "/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
   ],
 };

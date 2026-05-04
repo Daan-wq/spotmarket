@@ -15,6 +15,7 @@ export default async function OnboardingPage() {
   const dbUser = await prisma.user.findUnique({ where: { supabaseId: user.id } });
   if (dbUser) {
     if (dbUser.role === "admin") redirect("/admin");
+    if (dbUser.role === "advertiser") redirect("/advertiser/dashboard");
     redirect("/creator/dashboard");
   }
 

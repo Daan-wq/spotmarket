@@ -1,21 +1,32 @@
 {
-  "regions": ["fra1"],
   "crons": [
     {
-      "path": "/api/cron/poll-metrics-hot",
-      "schedule": "5 0 * * *"
-    },
-    {
-      "path": "/api/cron/poll-metrics-warm",
-      "schedule": "10 0 * * *"
-    },
-    {
-      "path": "/api/cron/poll-demographics",
-      "schedule": "0 2 * * *"
+      "path": "/api/cron/poll-views",
+      "schedule": "0 9 * * *"
     },
     {
       "path": "/api/cron/refresh-tokens",
       "schedule": "0 9 * * 1"
+    },
+    {
+      "path": "/api/cron/auto-approve",
+      "schedule": "0 9 * * *"
+    },
+    {
+      "path": "/api/cron/weekly-payouts",
+      "schedule": "0 0 * * 1"
+    },
+    {
+      "path": "/api/cron/refresh-demographics",
+      "schedule": "0 2 * * 0"
+    },
+    {
+      "path": "/api/cron/sync-account-insights",
+      "schedule": "0 2 * * *"
+    },
+    {
+      "path": "/api/cron/sync-media-insights",
+      "schedule": "0 3 * * *"
     },
     {
       "path": "/api/cron/autopost-scheduler",
@@ -24,34 +35,6 @@
     {
       "path": "/api/cron/autopost-auto-approve",
       "schedule": "0 6 * * *"
-    },
-    {
-      "path": "/api/cron/recompute-benchmarks",
-      "schedule": "15 0 * * *"
-    },
-    {
-      "path": "/api/cron/recompute-scores",
-      "schedule": "0 3 * * *"
-    },
-    {
-      "path": "/api/cron/notification-dispatch",
-      "schedule": "20 0 * * *"
-    },
-    {
-      "path": "/api/cron/prune-raw-responses",
-      "schedule": "30 4 * * *"
-    },
-    {
-      "path": "/api/cron/poll-stories",
-      "schedule": "0 4 * * *"
-    },
-    {
-      "path": "/api/cron/poll-yt-analytics",
-      "schedule": "45 1 * * *"
-    },
-    {
-      "path": "/api/cron/poll-platform-account-snapshots",
-      "schedule": "10 2 * * *"
     }
   ]
 }

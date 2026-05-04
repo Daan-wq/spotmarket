@@ -1,32 +1,22 @@
 "use client";
 
-import { useState } from "react";
 import { usePathname } from "next/navigation";
 import Link from "next/link";
-import { FeedbackDrawer } from "@/components/feedback/feedback-drawer";
 
 const SEGMENT_LABELS: Record<string, string> = {
   creator: "",
-  campaigns: "Campaigns",
-  videos: "Clips",
+  campaigns: "Discover",
+  videos: "My Videos",
   dashboard: "Dashboard",
-  payouts: "Payments",
-  course: "Course",
-  connections: "Accounts",
   leaderboard: "Leaderboard",
   notifications: "Notifications",
   profile: "Profile",
   contact: "Contact Brand",
   applications: "Applications",
-  referral: "Referrals",
-  stats: "Stats",
-  settings: "Settings",
-  updates: "Updates",
 };
 
 export function TopBar() {
   const pathname = usePathname();
-  const [feedbackOpen, setFeedbackOpen] = useState(false);
 
   // Build breadcrumb segments from pathname
   const segments = pathname.split("/").filter(Boolean);
@@ -106,8 +96,6 @@ export function TopBar() {
           </svg>
         </Link>
         <button
-          type="button"
-          onClick={() => setFeedbackOpen(true)}
           className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors cursor-pointer"
           style={{
             border: "1px solid var(--border-default)",
@@ -121,8 +109,6 @@ export function TopBar() {
           Feedback
         </button>
       </div>
-
-      <FeedbackDrawer open={feedbackOpen} onClose={() => setFeedbackOpen(false)} />
     </div>
   );
 }

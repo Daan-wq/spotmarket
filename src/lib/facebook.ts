@@ -18,20 +18,12 @@ const GRAPH_BASE = "https://graph.facebook.com/v25.0";
 // OAUTH HELPERS
 // ─────────────────────────────────────────
 
-export const REQUIRED_FB_SCOPES = [
-  "pages_show_list",
-  "pages_read_engagement",
-  "read_insights",
-  "pages_read_user_content",
-] as const;
-
 export function getFacebookAuthUrl(state: string): string {
   const params = new URLSearchParams({
-    client_id: process.env.FACEBOOK_APP_ID!,
+    client_id: process.env.INSTAGRAM_APP_ID!,
     redirect_uri: process.env.FACEBOOK_REDIRECT_URI!,
-    scope: REQUIRED_FB_SCOPES.join(","),
+    scope: "pages_show_list,pages_read_engagement,read_insights",
     response_type: "code",
-    auth_type: "rerequest",
     state,
   });
   return `https://www.facebook.com/v25.0/dialog/oauth?${params.toString()}`;
@@ -39,11 +31,11 @@ export function getFacebookAuthUrl(state: string): string {
 
 export async function exchangeFbCodeForToken(
   code: string
-): Promise<{ accessToken: string; expiresIn: number; grantedScopes: string[] }> {
+): Promise<{ accessToken: string; expiresIn: number }> {
   // Step 1: Exchange code for short-lived user token
   const params = new URLSearchParams({
-    client_id: process.env.FACEBOOK_APP_ID!,
-    client_secret: process.env.FACEBOOK_APP_SECRET!,
+    client_id: process.env.INSTAGRAM_APP_ID!,
+    client_secret: process.env.INSTAGRAM_APP_SECRET!,
     redirect_uri: process.env.FACEBOOK_REDIRECT_URI!,
     code,
   });
@@ -57,58 +49,21 @@ export async function exchangeFbCodeForToken(
   // Step 2: Exchange for long-lived user token (~60 days)
   const longParams = new URLSearchParams({
     grant_type: "fb_exchange_token",
-    client_id: process.env.FACEBOOK_APP_ID!,
-    client_secret: process.env.FACEBOOK_APP_SECRET!,
+    client_id: process.env.INSTAGRAM_APP_ID!,
+    client_secret: process.env.INSTAGRAM_APP_SECRET!,
     fb_exchange_token: shortLivedToken,
   });
   const longRes = await fetch(`${GRAPH_BASE}/oauth/access_token?${longParams}`);
-  let accessToken = shortLivedToken;
-  let expiresIn = shortData.expires_in ?? 3600;
-  if (longRes.ok) {
-    const longData = await longRes.json();
-    accessToken = longData.access_token;
-    expiresIn = longData.expires_in ?? 5184000;
-  } else {
+  if (!longRes.ok) {
     console.error("[facebook] long-lived exchange failed:", await longRes.text());
+    return { accessToken: shortLivedToken, expiresIn: shortData.expires_in ?? 3600 };
   }
+  const longData = await longRes.json();
 
-  // Step 3: Fetch granted permissions (Facebook token exchange doesn't return scope field)
-  const grantedScopes = await fetchFacebookGrantedScopes(accessToken);
-
-  return { accessToken, expiresIn, grantedScopes };
-}
-
-async function fetchFacebookGrantedScopes(accessToken: string): Promise<string[]> {
-  try {
-    const res = await fetch(
-      `${GRAPH_BASE}/me/permissions?access_token=${encodeURIComponent(accessToken)}`
-    );
-    if (!res.ok) return [];
-    const data = await res.json();
-    const rows = (data.data ?? []) as { permission: string; status: string }[];
-    return rows
-      .filter((r) => r.status === "granted" && typeof r.permission === "string")
-      .map((r) => r.permission);
-  } catch {
-    return [];
-  }
-}
-
-/**
- * Fetch the authenticated user's FB user ID via /me.
- * Used to associate connections with the FB user for deauthorize/data-deletion webhooks.
- */
-export async function fetchFacebookUserId(userAccessToken: string): Promise<string | null> {
-  try {
-    const res = await fetch(
-      `${GRAPH_BASE}/me?fields=id&access_token=${encodeURIComponent(userAccessToken)}`
-    );
-    if (!res.ok) return null;
-    const data = await res.json();
-    return typeof data.id === "string" ? data.id : null;
-  } catch {
-    return null;
-  }
+  return {
+    accessToken: longData.access_token,
+    expiresIn: longData.expires_in ?? 5184000, // ~60 days
+  };
 }
 
 /**
@@ -174,26 +129,6 @@ function extractDayValues(
     }
   }
   return map;
-}
-
-/**
- * Aggregate reactions/comments/shares from already-fetched posts.
- * Meta deprecated dedicated page-level totals for these in v3.3+; computing
- * from posts is the canonical workaround.
- */
-export function computeEngagementTotalsFromPosts(posts: FbPagePost[]): {
-  reactions: number;
-  comments: number;
-  shares: number;
-} {
-  return posts.reduce(
-    (acc, p) => ({
-      reactions: acc.reactions + (p.reactions ?? 0),
-      comments: acc.comments + (p.comments ?? 0),
-      shares: acc.shares + (p.shares ?? 0),
-    }),
-    { reactions: 0, comments: 0, shares: 0 }
-  );
 }
 
 export async function fetchPageDailyInsights(
@@ -306,204 +241,40 @@ export async function fetchPageDailyInsights(
 }
 
 // ─────────────────────────────────────────
-// PAGE DEMOGRAPHICS (fans country + gender/age)
-// ─────────────────────────────────────────
-
-export interface FbPageDemographics {
-  countries: Record<string, number>; // ISO code → percent
-  genders: { male?: number; female?: number };
-  ages: Record<string, number>; // bucket ("18-24" etc) → percent
-}
-
-/**
- * Fetch lifetime fan demographics. These metrics require the `read_insights`
- * permission and a Page with at least ~100 fans to return data.
- * Metrics: page_fans_country (top fan countries), page_fans_gender_age (M.18-24 etc.).
- */
-export async function fetchFacebookPageDemographics(
-  pageId: string,
-  accessToken: string
-): Promise<FbPageDemographics> {
-  const demographics: FbPageDemographics = { countries: {}, genders: {}, ages: {} };
-
-  const extractLatest = (item: { values?: { value: Record<string, number> }[] }): Record<string, number> => {
-    const values = item.values ?? [];
-    return values[values.length - 1]?.value ?? {};
-  };
-
-  try {
-    const params = new URLSearchParams({
-      metric: "page_fans_country,page_fans_gender_age",
-      period: "lifetime",
-      access_token: accessToken,
-    });
-    const res = await fetch(`${GRAPH_BASE}/${pageId}/insights?${params}`);
-    if (!res.ok) return demographics;
-
-    const data = await res.json();
-    for (const item of data.data ?? []) {
-      if (item.name === "page_fans_country") {
-        const raw = extractLatest(item);
-        const total = Object.values(raw).reduce((s, v) => s + v, 0);
-        if (total > 0) {
-          for (const [country, count] of Object.entries(raw)) {
-            demographics.countries[country] = Math.round((count / total) * 100);
-          }
-        }
-      } else if (item.name === "page_fans_gender_age") {
-        const raw = extractLatest(item);
-        let maleTotal = 0;
-        let femaleTotal = 0;
-        const ageMap: Record<string, number> = {};
-        for (const [key, count] of Object.entries(raw)) {
-          // Keys look like "M.25-34", "F.18-24", "U.13-17"
-          const [gender, age] = key.split(".");
-          if (gender === "M") maleTotal += count;
-          else if (gender === "F") femaleTotal += count;
-          if (age) ageMap[age] = (ageMap[age] ?? 0) + count;
-        }
-        const genderTotal = maleTotal + femaleTotal;
-        if (genderTotal > 0) {
-          demographics.genders.male = Math.round((maleTotal / genderTotal) * 100);
-          demographics.genders.female = Math.round((femaleTotal / genderTotal) * 100);
-        }
-        const ageTotal = Object.values(ageMap).reduce((s, v) => s + v, 0);
-        if (ageTotal > 0) {
-          for (const [age, count] of Object.entries(ageMap)) {
-            demographics.ages[age] = Math.round((count / ageTotal) * 100);
-          }
-        }
-      }
-    }
-  } catch {
-    // Non-fatal — return empty demographics
-  }
-
-  return demographics;
-}
-
-// ─────────────────────────────────────────
 // RECENT PAGE POSTS
 // ─────────────────────────────────────────
-
-function mapPost(post: Record<string, unknown>, defaultType: string): FbPagePost {
-  const likes = post.likes as Record<string, unknown> | undefined;
-  const reactionsLegacy = post.reactions as Record<string, unknown> | undefined;
-  const comments = post.comments as Record<string, unknown> | undefined;
-  const shares = post.shares as Record<string, unknown> | undefined;
-  const likeCount =
-    ((likes?.summary as Record<string, unknown>)?.total_count as number) ??
-    ((reactionsLegacy?.summary as Record<string, unknown>)?.total_count as number) ??
-    0;
-  const attachments = post.attachments as { data?: { media?: { image?: { src?: string } } }[] } | undefined;
-  const attachmentThumb = attachments?.data?.[0]?.media?.image?.src;
-  const thumbnailUrl =
-    (post.full_picture as string | undefined) ??
-    attachmentThumb ??
-    null;
-  return {
-    id: post.id as string,
-    message: (post.message as string | null) ?? (post.story as string | null) ?? (post.description as string | null) ?? (post.title as string | null) ?? null,
-    type: (post.type as string) ?? (post.status_type as string) ?? defaultType,
-    permalink: (post.permalink_url as string) ?? "",
-    createdTime: (post.created_time as string) ?? "",
-    thumbnailUrl,
-    reactions: likeCount,
-    comments: ((comments?.summary as Record<string, unknown>)?.total_count as number) ?? 0,
-    shares: (shares?.count as number) ?? 0,
-  };
-}
 
 export async function fetchRecentPagePosts(
   pageId: string,
   accessToken: string,
   limit = 50
 ): Promise<FbPagePost[]> {
-  // v25: use .limit(0) on summary expansions to count-only (avoids deprecation error 12)
-  const fields = "id,message,story,status_type,permalink_url,created_time,full_picture,attachments,likes.summary(true).limit(0),comments.summary(true).limit(0),shares";
-  const videoFields = "id,description,title,permalink_url,created_time,likes.summary(true).limit(0),comments.summary(true).limit(0)";
-  const [publishedPostsRes, postsRes, videosRes, reelsRes] = await Promise.all([
-    fetch(`${GRAPH_BASE}/${pageId}/published_posts?${new URLSearchParams({ fields, limit: String(limit), access_token: accessToken })}`),
-    fetch(`${GRAPH_BASE}/${pageId}/feed?${new URLSearchParams({ fields, limit: String(limit), access_token: accessToken })}`),
-    fetch(`${GRAPH_BASE}/${pageId}/videos?${new URLSearchParams({ fields: videoFields, limit: String(limit), access_token: accessToken })}`),
-    fetch(`${GRAPH_BASE}/${pageId}/video_reels?${new URLSearchParams({ fields: videoFields, limit: String(limit), access_token: accessToken })}`),
-  ]);
-
-  const results: FbPagePost[] = [];
-  const seenIds = new Set<string>();
-
-  const addPosts = (data: Record<string, unknown>[], defaultType: string) => {
-    for (const post of data) {
-      const id = post.id as string;
-      if (seenIds.has(id)) continue;
-      seenIds.add(id);
-      results.push(mapPost(post, defaultType));
-    }
-  };
-
-  if (publishedPostsRes.ok) {
-    const d = await publishedPostsRes.json();
-    console.log(`[fb] /published_posts count=${d.data?.length ?? 0}`);
-    addPosts(d.data ?? [], "status");
-  } else {
-    console.error(`[fb-error] /published_posts ${publishedPostsRes.status}: ${await publishedPostsRes.text()}`);
-  }
-
-  if (postsRes.ok) {
-    const d = await postsRes.json();
-    console.log(`[fb] /feed count=${d.data?.length ?? 0}`);
-    addPosts(d.data ?? [], "status");
-  } else {
-    const feedErr = await postsRes.text();
-    console.error(`[fb-error] /feed ${postsRes.status}: ${feedErr}`);
-  }
-
-  if (videosRes.ok) {
-    const d = await videosRes.json();
-    console.log(`[fb] /videos count=${d.data?.length ?? 0}`);
-    addPosts(d.data ?? [], "video");
-  } else {
-    console.error(`[fb-error] /videos ${videosRes.status}: ${await videosRes.text()}`);
-  }
-
-  if (reelsRes.ok) {
-    const d = await reelsRes.json();
-    console.log(`[fb] /video_reels count=${d.data?.length ?? 0}`);
-    addPosts(d.data ?? [], "reel");
-  } else {
-    console.error(`[fb-error] /video_reels ${reelsRes.status}: ${await reelsRes.text()}`);
-  }
-
-  // Sort by createdTime descending
-  return results.sort((a, b) => (a.createdTime > b.createdTime ? -1 : 1));
-}
-
-// ─────────────────────────────────────────
-// PAGINATED PAGE POSTS (for submission flow)
-// ─────────────────────────────────────────
-
-export async function fetchFacebookPagePostsPaginated(
-  pageId: string,
-  accessToken: string,
-  limit: number,
-  cursor?: string
-): Promise<{ posts: FbPagePost[]; nextCursor: string | null }> {
-  const fields =
-    "id,message,story,status_type,permalink_url,created_time,full_picture,attachments,likes.summary(true).limit(0),comments.summary(true).limit(0),shares";
-  const params = new URLSearchParams({ fields, limit: String(limit), access_token: accessToken });
-  if (cursor) params.set("after", cursor);
-  const res = await fetch(`${GRAPH_BASE}/${pageId}/published_posts?${params}`);
+  const params = new URLSearchParams({
+    fields: "id,message,type,permalink_url,created_time,reactions.summary(true),comments.summary(true),shares",
+    limit: String(limit),
+    access_token: accessToken,
+  });
+  const res = await fetch(`${GRAPH_BASE}/${pageId}/posts?${params}`);
   if (!res.ok) {
-    console.warn(`fetchFacebookPagePostsPaginated ${res.status}: ${(await res.text()).slice(0, 120)}`);
-    return { posts: [], nextCursor: null };
+    console.warn(`fetchRecentPagePosts ${res.status}: ${(await res.text()).slice(0, 120)}`);
+    return [];
   }
   const data = await res.json();
-  const posts: FbPagePost[] = (data.data ?? []).map((p: Record<string, unknown>) =>
-    mapPost(p, "status")
-  );
-  const nextCursor =
-    data.paging?.next ? (data.paging?.cursors?.after ?? null) : null;
-  return { posts, nextCursor };
+  return (data.data ?? []).map((post: Record<string, unknown>): FbPagePost => {
+    const reactions = post.reactions as Record<string, unknown> | undefined;
+    const comments = post.comments as Record<string, unknown> | undefined;
+    const shares = post.shares as Record<string, unknown> | undefined;
+    return {
+      id: post.id as string,
+      message: (post.message as string | null) ?? null,
+      type: (post.type as string) ?? "status",
+      permalink: (post.permalink_url as string) ?? "",
+      createdTime: (post.created_time as string) ?? "",
+      reactions: ((reactions?.summary as Record<string, unknown>)?.total_count as number) ?? 0,
+      comments: ((comments?.summary as Record<string, unknown>)?.total_count as number) ?? 0,
+      shares: (shares?.count as number) ?? 0,
+    };
+  });
 }
 
 // ─────────────────────────────────────────
@@ -534,72 +305,6 @@ export function mergeDailyPostCounts(
   }
 
   return daily;
-}
-
-// ─────────────────────────────────────────
-// POST-LEVEL INSIGHTS (used to aggregate page totals)
-// ─────────────────────────────────────────
-
-/**
- * Fetch insights for a single post. Returns null on failure (insights not
- * available for some post types — Reels/videos use different metrics).
- */
-async function fetchSinglePostInsights(
-  postId: string,
-  accessToken: string
-): Promise<{ impressions: number; reach: number; engagedUsers: number } | null> {
-  try {
-    const params = new URLSearchParams({
-      metric: "post_impressions,post_impressions_unique,post_engaged_users",
-      access_token: accessToken,
-    });
-    const res = await fetch(`${GRAPH_BASE}/${postId}/insights?${params}`);
-    if (!res.ok) return null;
-    const data = await res.json();
-    const byName: Record<string, number> = {};
-    for (const item of (data.data ?? []) as { name: string; values: { value: number }[] }[]) {
-      byName[item.name] = item.values?.[0]?.value ?? 0;
-    }
-    return {
-      impressions: byName["post_impressions"] ?? 0,
-      reach: byName["post_impressions_unique"] ?? 0,
-      engagedUsers: byName["post_engaged_users"] ?? 0,
-    };
-  } catch {
-    return null;
-  }
-}
-
-/**
- * Sum post-level insights across recent posts in the window.
- * Mirrors what Facebook's native dashboard shows since page-level
- * impressions/reach metrics return 0 for many small/new pages in v25.
- */
-export async function aggregatePostInsights(
-  posts: FbPagePost[],
-  accessToken: string,
-  sinceUnix: number,
-  untilUnix: number
-): Promise<{ reach: number; impressions: number; engagedUsers: number }> {
-  const sinceMs = sinceUnix * 1000;
-  const untilMs = untilUnix * 1000;
-  const inWindow = posts.filter((p) => {
-    const ts = new Date(p.createdTime).getTime();
-    return ts >= sinceMs && ts <= untilMs;
-  });
-
-  const results = await Promise.all(
-    inWindow.slice(0, 50).map((p) => fetchSinglePostInsights(p.id, accessToken))
-  );
-
-  const totals = { reach: 0, impressions: 0, engagedUsers: 0 };
-  for (const r of results) {
-    if (!r) continue;
-    totals.reach += r.reach;
-    totals.impressions += r.impressions;
-    totals.engagedUsers += r.engagedUsers;
-  }
-  return totals;
 }
 
 // ─────────────────────────────────────────

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { prisma } from "@/lib/prisma";
-import { exchangeFbCodeForToken, fetchUserPages, fetchFacebookPageProfile, fetchFacebookUserId, REQUIRED_FB_SCOPES } from "@/lib/facebook";
+import { exchangeFbCodeForToken, fetchUserPages, fetchFacebookPageProfile } from "@/lib/facebook";
 import { encrypt } from "@/lib/crypto";
 
 export async function GET(req: NextRequest) {
@@ -10,11 +10,11 @@ export async function GET(req: NextRequest) {
   const error = req.nextUrl.searchParams.get("error");
 
   if (error) {
-    return NextResponse.redirect(new URL("/creator/connections?error=fb_denied", req.url));
+    return NextResponse.redirect(new URL("/creator/pages?error=fb_denied", req.url));
   }
 
   if (!code || !stateRaw) {
-    return NextResponse.redirect(new URL("/creator/connections?error=fb_failed", req.url));
+    return NextResponse.redirect(new URL("/creator/pages?error=fb_failed", req.url));
   }
 
   const supabase = await createSupabaseServerClient();
@@ -23,11 +23,11 @@ export async function GET(req: NextRequest) {
     return NextResponse.redirect(new URL("/sign-in", req.url));
   }
 
-  let returnTo = "/creator/connections";
+  let returnTo = "/creator/pages";
   try {
     const state = JSON.parse(Buffer.from(stateRaw, "base64url").toString());
     if (state.sub !== authUser.id) {
-      return NextResponse.redirect(new URL("/creator/connections?error=fb_state_mismatch", req.url));
+      return NextResponse.redirect(new URL("/creator/pages?error=fb_state_mismatch", req.url));
     }
     returnTo = state.returnTo ?? returnTo;
   } catch {
@@ -36,16 +36,7 @@ export async function GET(req: NextRequest) {
 
   try {
     // Exchange code for long-lived user token
-    const { accessToken: userToken, grantedScopes } = await exchangeFbCodeForToken(code);
-
-    // Validate all required scopes were granted
-    const missing = REQUIRED_FB_SCOPES.filter((s) => !grantedScopes.includes(s));
-    if (missing.length > 0) {
-      return NextResponse.redirect(new URL(`${returnTo}?error=fb_missing_scopes`, req.url));
-    }
-
-    // Capture the FB user_id (used for deauthorize/data-deletion webhook mapping)
-    const fbUserId = await fetchFacebookUserId(userToken);
+    const { accessToken: userToken } = await exchangeFbCodeForToken(code);
 
     // Fetch pages the user manages (returns never-expiring page tokens)
     const pages = await fetchUserPages(userToken);
@@ -86,7 +77,6 @@ export async function GET(req: NextRequest) {
         where: { id: existing.id },
         data: {
           creatorProfileId,
-          fbUserId: fbUserId ?? undefined,
           pageName: pageProfile.name,
           profilePicUrl: pageProfile.profilePictureUrl || null,
           followerCount: pageProfile.followerCount,
@@ -101,7 +91,6 @@ export async function GET(req: NextRequest) {
         data: {
           creatorProfileId,
           fbPageId: page.id,
-          fbUserId: fbUserId ?? undefined,
           pageName: pageProfile.name,
           profilePicUrl: pageProfile.profilePictureUrl || null,
           followerCount: pageProfile.followerCount,
@@ -115,9 +104,7 @@ export async function GET(req: NextRequest) {
 
     return NextResponse.redirect(new URL(`${returnTo}?facebook=linked`, req.url));
   } catch (err) {
-    const message = err instanceof Error ? err.message : String(err);
-    console.error("[facebook oauth] error:", message);
-    const errorSlug = encodeURIComponent(message.slice(0, 80));
-    return NextResponse.redirect(new URL(`${returnTo}?error=fb_error&detail=${errorSlug}`, req.url));
+    console.error("[facebook oauth]", err);
+    return NextResponse.redirect(new URL(`${returnTo}?error=fb_error`, req.url));
   }
 }

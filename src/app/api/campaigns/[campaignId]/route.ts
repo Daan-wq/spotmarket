@@ -35,14 +35,17 @@ const patchSchema = z.object({
   minAge: z.string().max(10).optional().nullable(),
 });
 
-async function getAuthorizedAdmin(supabaseId: string, campaignId: string) {
+async function getAuthorizedUser(supabaseId: string, campaignId: string) {
   const user = await prisma.user.findUnique({
     where: { supabaseId },
-    select: { id: true, role: true },
+    include: { advertiserProfile: { select: { id: true } } },
   });
-  if (!user || user.role !== "admin") return null;
+  if (!user) return null;
   const campaign = await prisma.campaign.findUnique({ where: { id: campaignId } });
   if (!campaign) return null;
+  const isAdmin = user.role === "admin";
+  const isOwner = user.advertiserProfile && campaign.advertiserId === user.advertiserProfile.id;
+  if (!isAdmin && !isOwner) return null;
   return { user, campaign };
 }
 
@@ -61,32 +64,19 @@ export async function GET(
   });
   if (!campaign) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
+  // Strip sensitive financial fields for non-admin, non-owner users
   const user = await prisma.user.findUnique({
     where: { supabaseId: authUser.id },
-    select: { id: true, role: true, creatorProfile: { select: { id: true } } },
+    select: { id: true, role: true },
   });
-  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const isPrivileged = user?.role === "admin" || campaign.createdByUserId === user?.id;
 
-  if (user.role === "admin") {
-    return NextResponse.json(serialize(campaign));
+  if (!isPrivileged) {
+    const { businessCpv, totalBudget, ...publicFields } = campaign;
+    return NextResponse.json(serialize(publicFields));
   }
 
-  // Creator: must be active OR have an existing application
-  const hasApplied = user.creatorProfile
-    ? !!(await prisma.campaignApplication.findFirst({
-        where: { campaignId, creatorProfileId: user.creatorProfile.id },
-        select: { id: true },
-      }))
-    : false;
-
-  if (campaign.status !== "active" && !hasApplied) {
-    return NextResponse.json({ error: "Not found" }, { status: 404 });
-  }
-
-  // Strip sensitive financial fields for creators
-  const { businessCpv: _businessCpv, totalBudget: _totalBudget, ...publicFields } = campaign;
-  void _businessCpv; void _totalBudget;
-  return NextResponse.json(serialize(publicFields));
+  return NextResponse.json(serialize(campaign));
 }
 
 export async function PATCH(
@@ -98,7 +88,7 @@ export async function PATCH(
   if (!authUser) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const { campaignId } = await params;
-  const authorized = await getAuthorizedAdmin(authUser.id, campaignId);
+  const authorized = await getAuthorizedUser(authUser.id, campaignId);
   if (!authorized) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
   const body = await req.json();
@@ -124,9 +114,11 @@ export async function PATCH(
     const updated = await prisma.campaign.update({
       where: { id: campaignId },
       data,
+      include: { advertiser: true },
     });
 
     if (wasActive) {
+      const adv = updated as typeof updated & { advertiser?: { brandName?: string | null } };
       await notifyCampaignLive({
         id: updated.id,
         name: updated.name,
@@ -135,6 +127,7 @@ export async function PATCH(
         businessCpv: Number(updated.businessCpv),
         targetCountry: updated.targetCountry,
         minEngagementRate: Number(updated.minEngagementRate),
+        advertiserBrandName: adv.advertiser?.brandName ?? null,
       });
     }
 
@@ -155,7 +148,7 @@ export async function DELETE(
   if (!authUser) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const { campaignId } = await params;
-  const authorized = await getAuthorizedAdmin(authUser.id, campaignId);
+  const authorized = await getAuthorizedUser(authUser.id, campaignId);
   if (!authorized) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
   const activeCount = await prisma.campaignApplication.count({
@@ -165,16 +158,6 @@ export async function DELETE(
     return NextResponse.json({ error: "Cannot delete campaign with active applications" }, { status: 409 });
   }
 
-  try {
-    // Delete submissions directly linked to this campaign (avoids FK constraint on campaignId)
-    await prisma.campaignSubmission.deleteMany({ where: { campaignId } });
-    // Delete all applications (Payouts.applicationId is optional → SetNull on DB level)
-    await prisma.campaignApplication.deleteMany({ where: { campaignId } });
-    // Now safe to delete the campaign
-    await prisma.campaign.delete({ where: { id: campaignId } });
-    return new NextResponse(null, { status: 204 });
-  } catch (err) {
-    console.error("[DELETE /api/campaigns]", err);
-    return NextResponse.json({ error: "Failed to delete campaign" }, { status: 500 });
-  }
+  await prisma.campaign.delete({ where: { id: campaignId } });
+  return new NextResponse(null, { status: 204 });
 }

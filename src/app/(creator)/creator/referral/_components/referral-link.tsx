@@ -30,14 +30,6 @@ export function ReferralLink({ referralCode, referralUrl }: ReferralLinkProps) {
     `Hey! I've been using ClipProfit to earn from my content. Sign up with my referral link and let's both earn:\n\n${referralUrl}`
   )}`;
 
-  const [discordCopied, setDiscordCopied] = useState(false);
-  async function copyForDiscord() {
-    const message = `**Earn from your clips on ClipProfit** — sign up with my link and we both earn: ${referralUrl}`;
-    await navigator.clipboard.writeText(message);
-    setDiscordCopied(true);
-    setTimeout(() => setDiscordCopied(false), 2000);
-  }
-
   return (
     <div
       className="rounded-lg p-6 border"
@@ -103,15 +95,6 @@ export function ReferralLink({ referralCode, referralUrl }: ReferralLinkProps) {
         >
           Email
         </a>
-        <button
-          type="button"
-          onClick={copyForDiscord}
-          className="px-4 py-2 rounded-lg text-sm font-medium transition-colors cursor-pointer"
-          style={{ background: "#5865F2", color: "#fff" }}
-          title="Copies a formatted message you can paste into Discord"
-        >
-          {discordCopied ? "Copied!" : "Discord"}
-        </button>
         <button
           onClick={() => setShowQR(!showQR)}
           className="px-4 py-2 rounded-lg text-sm font-medium cursor-pointer transition-colors"

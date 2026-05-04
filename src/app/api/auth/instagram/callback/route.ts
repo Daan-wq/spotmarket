@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { prisma } from "@/lib/prisma";
-import { exchangeCodeForToken, getInstagramProfile, REQUIRED_IG_SCOPES } from "@/lib/instagram";
+import { exchangeCodeForToken, getInstagramProfile } from "@/lib/instagram";
 import { encrypt } from "@/lib/crypto";
 
 export async function GET(req: NextRequest) {
@@ -25,7 +25,7 @@ export async function GET(req: NextRequest) {
   }
 
   // Decode state
-  let returnTo = "/creator/connections";
+  let returnTo = "/creator/pages";
   try {
     const state = JSON.parse(Buffer.from(stateRaw, "base64url").toString());
     if (state.sub !== authUser.id) {
@@ -38,18 +38,7 @@ export async function GET(req: NextRequest) {
 
   try {
     // Exchange code for access token
-    const { accessToken, expiresIn, grantedScopes } = await exchangeCodeForToken(code);
-
-    // Validate all required scopes were granted.
-    // Meta sometimes omits the permissions field on the token response; in that case
-    // we skip validation here rather than false-reject. The subsequent profile fetch
-    // will fail if insights scope is missing.
-    if (grantedScopes.length > 0) {
-      const missing = REQUIRED_IG_SCOPES.filter((s) => !grantedScopes.includes(s));
-      if (missing.length > 0) {
-        return NextResponse.redirect(new URL(`${returnTo}?error=ig_missing_scopes`, req.url));
-      }
-    }
+    const { accessToken, expiresIn } = await exchangeCodeForToken(code);
 
     // Fetch Instagram profile
     const profile = await getInstagramProfile(accessToken);

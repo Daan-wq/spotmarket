@@ -12,7 +12,6 @@ export interface FbPagePost {
   type: string; // photo, video, link, status
   permalink: string;
   createdTime: string; // ISO 8601
-  thumbnailUrl: string | null;
   reactions: number;
   comments: number;
   shares: number;
