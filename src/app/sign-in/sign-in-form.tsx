@@ -5,6 +5,7 @@ import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { OAuthButtons, OAuthDivider } from "@/components/auth/oauth-buttons";
+import { safeRedirectPath } from "@/lib/safe-redirect";
 
 function EyeIcon({ open }: { open: boolean }) {
   return open ? (
@@ -21,7 +22,7 @@ function EyeIcon({ open }: { open: boolean }) {
 export function SignInForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const redirectUrl = searchParams.get("redirect_url") ?? "/";
+  const redirectUrl = safeRedirectPath(searchParams.get("redirect_url"), "/");
 
   const passwordReset = searchParams.get("reset") === "1";
   const authError = searchParams.get("auth_error");
