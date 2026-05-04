@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 
 interface Props {
@@ -11,32 +11,37 @@ interface Props {
 
 export function ReviewForm({ revieweeId, campaignId, campaignName }: Props) {
   const router = useRouter();
+  const [isPending, startTransition] = useTransition();
   const [rating, setRating] = useState(0);
   const [hovered, setHovered] = useState(0);
   const [text, setText] = useState("");
-  const [loading, setLoading] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
   const [done, setDone] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const loading = submitting || isPending;
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
-    if (!rating) return;
-    setLoading(true);
+    if (!rating || loading) return;
+    setSubmitting(true);
     setError(null);
 
-    const res = await fetch(`/api/users/${revieweeId}/reviews`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ campaignId, rating, text: text || undefined }),
-    });
+    try {
+      const res = await fetch(`/api/users/${revieweeId}/reviews`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ campaignId, rating, text: text || undefined }),
+      });
 
-    setLoading(false);
-    if (res.ok) {
-      setDone(true);
-      router.refresh();
-    } else {
-      const data = await res.json();
-      setError(data.error ?? "Failed to submit review");
+      if (res.ok) {
+        setDone(true);
+        startTransition(() => router.refresh());
+      } else {
+        const data = await res.json();
+        setError(data.error ?? "Failed to submit review");
+      }
+    } finally {
+      setSubmitting(false);
     }
   }
 

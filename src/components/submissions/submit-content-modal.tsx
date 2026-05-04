@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useCallback } from "react";
+import { useState, useRef, useCallback, useTransition } from "react";
 import { useRouter } from "next/navigation";
 
 interface SubmitContentModalProps {
@@ -27,6 +27,7 @@ export function SubmitContentModal({
   onClose,
 }: SubmitContentModalProps) {
   const router = useRouter();
+  const [, startTransition] = useTransition();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [postUrl, setPostUrl] = useState("");
@@ -114,7 +115,7 @@ export function SubmitContentModal({
         return;
       }
 
-      router.refresh();
+      startTransition(() => router.refresh());
       onClose();
     } catch {
       setError("An error occurred while submitting");

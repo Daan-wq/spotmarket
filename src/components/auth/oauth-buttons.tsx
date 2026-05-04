@@ -40,7 +40,7 @@ export function OAuthButtons({ mode }: OAuthButtonsProps) {
     };
 
     if (provider === "discord") {
-      options.scopes = "identify guilds.join";
+      options.scopes = "guilds.join";
     }
 
     const { error } = await supabase.auth.signInWithOAuth({

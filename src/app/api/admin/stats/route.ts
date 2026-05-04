@@ -6,9 +6,8 @@ export async function GET(req: NextRequest) {
   try {
     await requireAuth("admin");
 
-    const [tc, ta, ac, sc, rev, earn, spend] = await Promise.all([
+    const [tc, ac, sc, rev, earn, spend] = await Promise.all([
       prisma.creatorProfile.count(),
-      prisma.advertiserProfile.count(),
       prisma.campaign.count({ where: { status: "active" } }),
       prisma.campaignSubmission.count({ where: { status: "PENDING" } }),
       prisma.campaign.aggregate({ _sum: { adminMargin: true } }),
@@ -18,7 +17,6 @@ export async function GET(req: NextRequest) {
 
     return NextResponse.json({
       totalCreators: tc,
-      totalAdvertisers: ta,
       activeCampaigns: ac,
       submissionsPending: sc,
       platformRevenue: rev._sum.adminMargin || 0,

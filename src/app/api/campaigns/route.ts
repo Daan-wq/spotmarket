@@ -161,6 +161,7 @@ export async function POST(req: Request) {
         bannerUrl: d.bannerUrl,
         contentAssetUrls: d.contentAssetUrls,
         guidelinesUrl: d.guidelinesUrl,
+        createdByUserId: user.id,
       },
     });
   } catch (err) {

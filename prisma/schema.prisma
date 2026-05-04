@@ -27,7 +27,6 @@ model User {
   updatedAt            DateTime @updatedAt
 
   creatorProfile      CreatorProfile?
-  advertiserProfile   AdvertiserProfile?
   auditLogs           AuditLog[]
   referralPayouts     ReferralPayout[]     @relation("ReferrerPayouts")
   ownedCampaigns      Campaign[]           @relation("OwnedCampaigns")
@@ -43,7 +42,6 @@ model User {
 enum UserRole {
   admin
   creator
-  advertiser
 }
 
 model CreatorProfile {
@@ -74,6 +72,8 @@ model CreatorProfile {
 
   igConnections CreatorIgConnection[]
   fbConnections CreatorFbConnection[]
+  ytConnections CreatorYtConnection[]
+  ttConnections CreatorTikTokConnection[]
   applications  CampaignApplication[]
   payouts       Payout[]
 
@@ -83,21 +83,6 @@ model CreatorProfile {
   @@index([topCountry])
   @@index([malePercent])
   @@index([age18PlusPercent])
-}
-
-model AdvertiserProfile {
-  id        String   @id @default(cuid())
-  userId    String   @unique
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  brandName String
-  website   String?
-  industry  String?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  campaigns Campaign[]
-
-  @@index([userId])
 }
 
 model ReferralPayout {
@@ -156,20 +141,111 @@ model CreatorFbConnection {
   id               String         @id @default(cuid())
   creatorProfileId String
   creatorProfile   CreatorProfile @relation(fields: [creatorProfileId], references: [id], onDelete: Cascade)
-  fbPageId         String         @unique
+  fbPageId         String?        @unique
+  fbUserId         String?
   pageName         String
+  pageHandle       String?
   profilePicUrl    String?
   followerCount    Int?
   accessToken      String?
   accessTokenIv    String?
   tokenExpiresAt   DateTime?
+  isVerified       Boolean        @default(false)
+  verifiedAt       DateTime?
+  lastCheckedAt    DateTime?
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
+
+  bioVerifications BioVerification[]
+
+  @@unique([creatorProfileId, fbPageId])
+  @@unique([creatorProfileId, pageHandle])
+  @@index([creatorProfileId])
+  @@index([tokenExpiresAt])
+  @@index([fbUserId])
+}
+
+// ─────────────────────────────────────────
+// YOUTUBE CONNECTION (OAuth)
+// ─────────────────────────────────────────
+
+model CreatorYtConnection {
+  id               String         @id @default(cuid())
+  creatorProfileId String
+  creatorProfile   CreatorProfile @relation(fields: [creatorProfileId], references: [id], onDelete: Cascade)
+  channelId        String         @unique
+  channelName      String
+  profilePicUrl    String?
+  subscriberCount  Int?
+  videoCount       Int?
+  accessToken      String?
+  accessTokenIv    String?
+  refreshToken     String?
+  refreshTokenIv   String?
+  tokenExpiresAt   DateTime?
   isVerified       Boolean        @default(true)
   createdAt        DateTime       @default(now())
   updatedAt        DateTime       @updatedAt
 
-  @@unique([creatorProfileId, fbPageId])
+  @@unique([creatorProfileId, channelId])
   @@index([creatorProfileId])
   @@index([tokenExpiresAt])
+}
+
+// ─────────────────────────────────────────
+// TIKTOK CONNECTION (OAuth)
+// ─────────────────────────────────────────
+
+model CreatorTikTokConnection {
+  id               String         @id @default(cuid())
+  creatorProfileId String
+  creatorProfile   CreatorProfile @relation(fields: [creatorProfileId], references: [id], onDelete: Cascade)
+  tikTokOpenId     String?        @unique
+  username         String
+  displayName      String?
+  profilePicUrl    String?
+  followerCount    Int?
+  accessToken      String?
+  accessTokenIv    String?
+  refreshToken     String?
+  refreshTokenIv   String?
+  tokenExpiresAt   DateTime?
+  isVerified       Boolean        @default(false)
+  verifiedAt       DateTime?
+  lastCheckedAt    DateTime?
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
+
+  demographicSubmissions TikTokDemographicSubmission[]
+  bioVerifications       BioVerification[]
+
+  @@unique([creatorProfileId, username])
+  @@index([creatorProfileId])
+  @@index([tokenExpiresAt])
+}
+
+model TikTokDemographicSubmission {
+  id                 String                  @id @default(cuid())
+  connectionId       String
+  connection         CreatorTikTokConnection @relation(fields: [connectionId], references: [id], onDelete: Cascade)
+  topCountry         String
+  topCountryPercent  Int
+  topCountries       Json                    @default("[]")
+  malePercent        Int
+  femalePercent      Int
+  otherPercent       Int                     @default(0)
+  ageBuckets         Json
+  screenRecordingUrl String
+  status             VerificationStatus      @default(PENDING)
+  reviewNotes        String?
+  reviewedBy         String?
+  reviewedAt         DateTime?
+  createdAt          DateTime                @default(now())
+  updatedAt          DateTime                @updatedAt
+
+  @@index([connectionId])
+  @@index([status])
+  @@index([connectionId, status])
 }
 
 // ─────────────────────────────────────────
@@ -177,17 +253,31 @@ model CreatorFbConnection {
 // ─────────────────────────────────────────
 
 model BioVerification {
-  id            String              @id @default(cuid())
-  connectionId  String
-  connection    CreatorIgConnection @relation(fields: [connectionId], references: [id], onDelete: Cascade)
-  code          String              @unique
-  status        VerificationStatus  @default(PENDING)
-  lastCheckedAt DateTime?
-  verifiedAt    DateTime?
-  createdAt     DateTime            @default(now())
+  id                 String                   @id @default(cuid())
+  platform           BioPlatform              @default(INSTAGRAM)
+  connectionId       String?
+  connection         CreatorIgConnection?     @relation(fields: [connectionId], references: [id], onDelete: Cascade)
+  tiktokConnectionId String?
+  tiktokConnection   CreatorTikTokConnection? @relation(fields: [tiktokConnectionId], references: [id], onDelete: Cascade)
+  fbConnectionId     String?
+  fbConnection       CreatorFbConnection?     @relation(fields: [fbConnectionId], references: [id], onDelete: Cascade)
+  code               String                   @unique
+  status             VerificationStatus       @default(PENDING)
+  lastCheckedAt      DateTime?
+  verifiedAt         DateTime?
+  createdAt          DateTime                 @default(now())
 
   @@index([connectionId])
+  @@index([tiktokConnectionId])
+  @@index([fbConnectionId])
+  @@index([platform, status])
   @@index([status])
+}
+
+enum BioPlatform {
+  INSTAGRAM
+  TIKTOK
+  FACEBOOK
 }
 
 enum VerificationStatus {
@@ -260,14 +350,15 @@ model Campaign {
   guidelinesUrl         String?
 
   niche           Niche?
-  advertiserId    String?
-  advertiser      AdvertiserProfile? @relation(fields: [advertiserId], references: [id])
   stripePaymentId String?
 
   // Link-in-bio campaign fields
   bannerVideoUrl    String?
   linkInBioRequired String?
   bioRequirement    String?
+
+  // Content eligibility
+  requiredHashtags String[] @default([])
 
   // Creator/owner
   createdByUserId String?
@@ -283,7 +374,6 @@ model Campaign {
   @@index([status])
   @@index([deadline])
   @@index([niche])
-  @@index([advertiserId])
   @@index([createdByUserId])
 }
 
@@ -338,6 +428,7 @@ model CampaignApplication {
   claimType          ClaimType         @default(INSTANT)
   appliedAt          DateTime          @default(now())
   reviewedAt         DateTime?
+  reviewedBy         String?
   reviewNotes        String?
   followerSnapshot   Int?
   engagementSnapshot Decimal?          @db.Decimal(5, 2)
@@ -397,6 +488,13 @@ model CampaignSubmission {
   eligibleViews Int?
   status        SubmissionStatus @default(PENDING)
 
+  // Source tracking for bio-verify fallback flow
+  sourcePlatform BioPlatform?
+  sourceMethod   SubmissionMethod @default(UNKNOWN)
+  authorHandle   String?
+  lastScrapedAt  DateTime?
+  scrapeFailures Int              @default(0)
+
   reviewedAt    DateTime?
   reviewedBy    String?
   rejectionNote String?
@@ -404,16 +502,32 @@ model CampaignSubmission {
 
   earnedAmount Decimal @default(0) @db.Decimal(10, 2)
 
+  // ── Subsystem A: tracking foundation ──
+  logoStatus     LogoStatus?
+  logoVerifiedAt DateTime?
+  logoVerifiedBy String?
+  velocityScore  Float?
+  trustScore     Float?
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  referralPayouts ReferralPayout[] @relation("ReferralPayouts")
+  referralPayouts   ReferralPayout[]   @relation("ReferralPayouts")
+  metricSnapshots   MetricSnapshot[]
+  submissionSignals SubmissionSignal[]
 
   @@index([applicationId])
   @@index([creatorId])
   @@index([campaignId])
   @@index([status])
   @@index([settledAt])
+  @@index([logoStatus])
+}
+
+enum LogoStatus {
+  PENDING
+  PRESENT
+  MISSING
 }
 
 enum SubmissionStatus {
@@ -421,6 +535,12 @@ enum SubmissionStatus {
   APPROVED
   REJECTED
   FLAGGED
+}
+
+enum SubmissionMethod {
+  UNKNOWN
+  OAUTH
+  BIO_VERIFY
 }
 
 // ─────────────────────────────────────────
@@ -499,16 +619,19 @@ model AuditLog {
 // ─────────────────────────────────────────
 
 model Notification {
-  id        String           @id @default(cuid())
-  userId    String
-  user      User             @relation(fields: [userId], references: [id], onDelete: Cascade)
-  type      NotificationType
-  data      Json
-  read      Boolean          @default(false)
-  createdAt DateTime         @default(now())
+  id             String           @id @default(cuid())
+  userId         String
+  user           User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type           NotificationType
+  data           Json
+  read           Boolean          @default(false)
+  acknowledged   Boolean          @default(false)
+  acknowledgedAt DateTime?
+  createdAt      DateTime         @default(now())
 
   @@index([userId, read])
   @@index([userId, createdAt])
+  @@index([userId, acknowledged])
 }
 
 enum NotificationType {
@@ -517,11 +640,19 @@ enum NotificationType {
   SUBMISSION_REJECTED
   APPLICATION_APPROVED
   APPLICATION_REJECTED
+  DEMOGRAPHICS_VERIFIED
+  DEMOGRAPHICS_REJECTED
   BIO_VERIFIED
   PAYOUT_SENT
   REFERRAL_EARNED
   EARNINGS_CREDITED
   WITHDRAWAL_PROCESSED
+  // ── Subsystem E additions (foundation) ──
+  PERFORMANCE_VIRAL
+  PERFORMANCE_UNDERPERFORM
+  EARNINGS_MILESTONE
+  SIGNAL_FLAGGED
+  TOKEN_BROKEN
 }
 
 // ─────────────────────────────────────────
@@ -529,12 +660,14 @@ enum NotificationType {
 // ─────────────────────────────────────────
 
 model SignupTicket {
-  id        String    @id @default(cuid())
-  email     String
-  ref       String?
-  expiresAt DateTime
-  usedAt    DateTime?
-  createdAt DateTime  @default(now())
+  id           String    @id @default(cuid())
+  email        String
+  ref          String?
+  expiresAt    DateTime
+  usedAt       DateTime?
+  accessToken  String?
+  refreshToken String?
+  createdAt    DateTime  @default(now())
 
   @@index([email])
 }
@@ -599,4 +732,310 @@ enum WithdrawalStatus {
   SENT
   CONFIRMED
   REJECTED
+}
+
+// ─────────────────────────────────────────
+// SUBSYSTEM A — TRACKING FOUNDATION
+// (owned by feat/A-tracking after foundation merges)
+// ─────────────────────────────────────────
+
+model MetricSnapshot {
+  id           String             @id @default(cuid())
+  submissionId String
+  submission   CampaignSubmission @relation(fields: [submissionId], references: [id], onDelete: Cascade)
+  capturedAt   DateTime           @default(now())
+  source       MetricSource
+  viewCount    BigInt
+  likeCount    Int                @default(0)
+  commentCount Int                @default(0)
+  shareCount   Int                @default(0)
+  saveCount    Int?
+  watchTimeSec Int?
+  reachCount   Int?
+  raw          Json?
+  // Track-everything extensions (PR1 — additive, populated by per-platform PRs)
+  totalInteractions Int?
+  followsFromMedia  Int?
+  profileVisits     Int?
+  profileActivity   Json?
+  reactionsByType   Json?
+
+  @@index([submissionId, capturedAt])
+  @@index([source])
+}
+
+enum MetricSource {
+  OAUTH_IG
+  OAUTH_TT
+  OAUTH_YT
+  OAUTH_FB
+  OAUTH_FAILED
+}
+
+model SubmissionSignal {
+  id           String             @id @default(cuid())
+  submissionId String
+  submission   CampaignSubmission @relation(fields: [submissionId], references: [id], onDelete: Cascade)
+  type         SignalType
+  severity     SignalSeverity
+  payload      Json
+  createdAt    DateTime           @default(now())
+  resolvedAt   DateTime?
+  resolvedBy   String?
+
+  @@index([submissionId, type])
+  @@index([severity, createdAt])
+  @@index([resolvedAt])
+}
+
+enum SignalType {
+  VELOCITY_SPIKE
+  VELOCITY_DROP
+  RATIO_ANOMALY
+  BOT_SUSPECTED
+  LOGO_MISSING
+  DUPLICATE
+  TOKEN_BROKEN
+}
+
+enum SignalSeverity {
+  INFO
+  WARN
+  CRITICAL
+}
+
+model AudienceSnapshot {
+  id             String            @id @default(cuid())
+  connectionType ConnectionType
+  connectionId   String
+  capturedAt     DateTime          @default(now())
+  source         DemographicSource
+  kind           AudienceKind      @default(FOLLOWER)
+  ageBuckets     Json
+  genderSplit    Json
+  topCountries   Json
+  cities         Json?
+  totalReach     Int?
+  raw            Json?
+
+  @@index([connectionType, connectionId, capturedAt])
+  @@index([connectionType, connectionId, kind, capturedAt])
+}
+
+enum ConnectionType {
+  IG
+  TT
+  YT
+  FB
+}
+
+enum DemographicSource {
+  PLATFORM_API
+  SELF_REPORT
+}
+
+enum AudienceKind {
+  FOLLOWER
+  ENGAGED
+}
+
+/// Escape hatch for full raw API payloads. Pruned by daily cron at 90 days.
+/// Keeps `MetricSnapshot` lean while preserving the original API response so
+/// we can re-derive metrics if Meta/YouTube/TikTok rename or deprecate fields.
+model RawApiResponse {
+  id             String         @id @default(cuid())
+  submissionId   String?
+  connectionType ConnectionType
+  connectionId   String
+  endpoint       String
+  capturedAt     DateTime       @default(now())
+  payload        Json
+
+  @@index([submissionId, capturedAt])
+  @@index([connectionType, connectionId, capturedAt])
+  @@index([capturedAt])
+}
+
+/// Instagram Stories — captured by `/api/cron/poll-stories` (hourly) and the
+/// webhook handler (when active). Stories expire 24h after posting via API,
+/// so we poll within the live window and snapshot lifetime metrics.
+/// `postedAt` is the moment the story went live; engagement on a Reel posted
+/// near that time is correlated via `StoryReelCorrelation`.
+model StoryPost {
+  id                String                 @id @default(cuid())
+  connectionId      String
+  mediaId           String                 @unique
+  postedAt          DateTime
+  expiresAt         DateTime?
+  mediaType         String
+  mediaProductType  String
+  permalink         String?
+  reach             Int?
+  views             Int?
+  replies           Int?
+  follows           Int?
+  profileVisits     Int?
+  totalInteractions Int?
+  shares            Int?
+  tapsForward       Int?
+  tapsBack          Int?
+  tapsExit          Int?
+  swipeForward      Int?
+  profileActivity   Json?
+  lastPolledAt      DateTime               @default(now())
+  raw               Json?
+  correlations      StoryReelCorrelation[]
+
+  @@index([connectionId, postedAt])
+  @@index([postedAt])
+}
+
+/// Daily snapshot of platform account state (follower count, video count,
+/// totalLikes for TikTok, etc.). Created by the daily
+/// `/api/cron/poll-platform-account-snapshots` cron — one row per verified
+/// connection per day. Lets us reconstruct "FB page followers over the last
+/// 90 days" / "TT followerCount trend" without diffing connection rows.
+model PlatformAccountSnapshot {
+  id              String         @id @default(cuid())
+  connectionType  ConnectionType
+  connectionId    String
+  capturedAt      DateTime       @default(now())
+  followerCount   Int?
+  followingCount  Int?
+  totalLikes      BigInt?
+  videoCount      Int?
+  isVerified      Boolean?
+  raw             Json?
+
+  @@index([connectionType, connectionId, capturedAt])
+  @@index([capturedAt])
+}
+
+/// Daily YouTube channel-level analytics from the Analytics API. Replaces the
+/// data we used to compute on-demand and discard. One row per (connection, date).
+/// Filled by the daily `/api/cron/poll-yt-analytics` cron.
+model YtDailyChannelInsight {
+  id                          String   @id @default(cuid())
+  connectionId                String
+  date                        DateTime @db.Date
+  views                       BigInt
+  engagedViews                BigInt?
+  estimatedMinutesWatched     Int
+  averageViewDuration         Int
+  averageViewPercentage       Float?
+  subscribersGained           Int
+  subscribersLost             Int
+  likes                       Int
+  comments                    Int
+  shares                      Int
+  redViews                    BigInt?
+  estimatedRedMinutesWatched  Int?
+  trafficSourceBreakdown      Json?
+  playbackLocationBreakdown   Json?
+  deviceTypeBreakdown         Json?
+  contentTypeBreakdown        Json?
+  subscribedStatusBreakdown   Json?
+  raw                         Json?
+
+  @@unique([connectionId, date])
+  @@index([connectionId, date])
+}
+
+/// Per-snapshot video retention curve (Facebook Reels / Instagram Reels).
+/// `curve` is an ordered array of {tSec, retentionPct} datapoints. Stored as
+/// its own table because each snapshot may carry 30+ datapoints — keeping it
+/// out of MetricSnapshot makes those rows lighter.
+model VideoRetentionCurve {
+  id           String       @id @default(cuid())
+  submissionId String
+  capturedAt   DateTime     @default(now())
+  source       MetricSource
+  curve        Json
+
+  @@index([submissionId, capturedAt])
+}
+
+/// Links a Story to a Reel posted within ±2h by the same creator's IG account.
+/// Populated by the daily `correlate-stories-to-reels` job. `deltaMinutes` is
+/// signed: negative = story posted before the reel, positive = after.
+model StoryReelCorrelation {
+  id           String    @id @default(cuid())
+  storyId      String
+  story        StoryPost @relation(fields: [storyId], references: [id], onDelete: Cascade)
+  submissionId String
+  deltaMinutes Int
+  createdAt    DateTime  @default(now())
+
+  @@unique([storyId, submissionId])
+  @@index([submissionId])
+  @@index([storyId])
+}
+
+// ─────────────────────────────────────────
+// SUBSYSTEM B — PERFORMANCE INTELLIGENCE
+// (owned by feat/B-intelligence after foundation merges)
+// ─────────────────────────────────────────
+
+model ClipperPerformanceScore {
+  id               String   @id @default(cuid())
+  creatorProfileId String
+  computedAt       DateTime @default(now())
+  // Weighted composite, 0..100
+  score            Float
+  // Component scores, all 0..100
+  approvalRate     Float
+  benchmarkRatio   Float
+  trustScore       Float
+  deliveryScore    Float
+  audienceFit      Float
+  sampleSize       Int
+  payload          Json?
+
+  @@index([creatorProfileId, computedAt])
+  @@index([score])
+}
+
+model CampaignBenchmark {
+  id              String   @id @default(cuid())
+  campaignId      String
+  computedAt      DateTime @default(now())
+  // Velocity: views per hour
+  velocityP10     Float
+  velocityP50     Float
+  velocityP90     Float
+  // Engagement ratios
+  likeRatioP50    Float
+  likeRatioP90    Float
+  commentRatioP50 Float
+  commentRatioP90 Float
+  // Sample size used to compute
+  sampleSize      Int
+  windowHours     Int
+  payload         Json?
+
+  @@index([campaignId, computedAt])
+}
+
+// ─────────────────────────────────────────
+// SUBSYSTEM E — NOTIFICATION RULES
+// (owned by feat/E-notifications after foundation merges)
+// ─────────────────────────────────────────
+
+model NotificationRule {
+  id        String                @id @default(cuid())
+  userId    String
+  type      NotificationType
+  channels  NotificationChannel[]
+  enabled   Boolean               @default(true)
+  createdAt DateTime              @default(now())
+  updatedAt DateTime              @updatedAt
+
+  @@unique([userId, type])
+  @@index([userId])
+}
+
+enum NotificationChannel {
+  IN_APP
+  EMAIL
+  DISCORD
 }

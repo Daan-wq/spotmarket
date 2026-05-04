@@ -1,12 +1,14 @@
 "use client";
 
-import { useState } from "react";
-import { useSearchParams } from "next/navigation";
+import { useState, useEffect, useRef } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import { Logo } from "@/components/shared/logo";
 import Link from "next/link";
 import { OAuthButtons, OAuthDivider } from "@/components/auth/oauth-buttons";
 
 export function SignUpForm() {
+  const router = useRouter();
   const searchParams = useSearchParams();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -14,6 +16,42 @@ export function SignUpForm() {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [emailSent, setEmailSent] = useState(false);
+  const [ticketId, setTicketId] = useState<string | null>(null);
+  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  useEffect(() => {
+    if (!ticketId) return;
+
+    pollRef.current = setInterval(async () => {
+      try {
+        const res = await fetch(`/api/auth/check-ticket?ticket=${ticketId}`);
+        const data = await res.json();
+
+        if (data.pending) return;
+
+        // Ticket redeemed — clear polling and log in
+        if (pollRef.current) clearInterval(pollRef.current);
+
+        if (!res.ok || !data.session) return;
+
+        const supabase = createSupabaseBrowserClient();
+        await supabase.auth.setSession({
+          access_token: data.session.access_token,
+          refresh_token: data.session.refresh_token,
+        });
+
+        const redirectTo = data.ref ? `/onboarding?ref=${data.ref}` : "/onboarding";
+        router.push(redirectTo);
+        router.refresh();
+      } catch {
+        // Network error — keep polling
+      }
+    }, 2500);
+
+    return () => {
+      if (pollRef.current) clearInterval(pollRef.current);
+    };
+  }, [ticketId, router]);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -42,6 +80,7 @@ export function SignUpForm() {
       return;
     }
 
+    setTicketId(data.ticketId);
     setEmailSent(true);
   }
 

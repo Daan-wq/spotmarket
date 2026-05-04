@@ -1,41 +1,30 @@
 'use client';
 
-import { useState } from 'react';
+import { useTransition } from 'react';
+import { useRouter } from 'next/navigation';
+import { toast } from 'sonner';
 
 export default function VerificationActions({ id, isVerified }: { id: string; isVerified: boolean }) {
-  const [loading, setLoading] = useState(false);
+  const router = useRouter();
+  const [isPending, startTransition] = useTransition();
 
-  async function verify() {
-    if (loading) return;
-    setLoading(true);
+  async function update(status: 'VERIFIED' | 'FAILED') {
+    if (isPending) return;
     try {
       const res = await fetch('/api/admin/verifications/' + id, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status: 'VERIFIED' })
+        body: JSON.stringify({ status })
       });
-      if (res.ok) location.reload();
+      if (!res.ok) {
+        toast.error(`Failed to ${status === 'VERIFIED' ? 'verify' : 'reject'} submission`);
+        return;
+      }
+      toast.success(status === 'VERIFIED' ? 'Verification confirmed' : 'Verification rejected');
+      startTransition(() => router.refresh());
     } catch (err) {
       console.error(err);
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  async function fail() {
-    if (loading) return;
-    setLoading(true);
-    try {
-      const res = await fetch('/api/admin/verifications/' + id, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status: 'FAILED' })
-      });
-      if (res.ok) location.reload();
-    } catch (err) {
-      console.error(err);
-    } finally {
-      setLoading(false);
+      toast.error('Network error');
     }
   }
 
@@ -43,11 +32,11 @@ export default function VerificationActions({ id, isVerified }: { id: string; is
 
   return (
     <div className="flex gap-2">
-      <button onClick={verify} disabled={loading} style={{ fontSize: '12px', padding: '4px 8px', background: 'var(--success-bg)', color: 'var(--success-text)', border: 'none', borderRadius: '4px', cursor: 'pointer' }}>
-        Verify
+      <button onClick={() => update('VERIFIED')} disabled={isPending} style={{ fontSize: '12px', padding: '4px 8px', background: 'var(--success-bg)', color: 'var(--success-text)', border: 'none', borderRadius: '4px', cursor: 'pointer' }}>
+        {isPending ? '…' : 'Verify'}
       </button>
-      <button onClick={fail} disabled={loading} style={{ fontSize: '12px', padding: '4px 8px', background: 'var(--error-bg)', color: 'var(--error-text)', border: 'none', borderRadius: '4px', cursor: 'pointer' }}>
-        Fail
+      <button onClick={() => update('FAILED')} disabled={isPending} style={{ fontSize: '12px', padding: '4px 8px', background: 'var(--error-bg)', color: 'var(--error-text)', border: 'none', borderRadius: '4px', cursor: 'pointer' }}>
+        {isPending ? '…' : 'Fail'}
       </button>
     </div>
   );

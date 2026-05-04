@@ -23,18 +23,18 @@ const launchCampaignSchema = z.object({
 
 export async function POST(req: NextRequest) {
   try {
-    const { userId } = await requireAuth("advertiser");
+    const { userId } = await requireAuth("admin");
 
     const body = await req.json();
     const data = launchCampaignSchema.parse(body);
 
     const user = await prisma.user.findUnique({
       where: { supabaseId: userId },
-      include: { advertiserProfile: true },
+      select: { id: true },
     });
 
-    if (!user?.advertiserProfile) {
-      return NextResponse.json({ error: "Advertiser profile not found" }, { status: 404 });
+    if (!user) {
+      return NextResponse.json({ error: "User not found" }, { status: 404 });
     }
 
     const adminMargin = data.creatorCpv * 0.3;
@@ -59,7 +59,6 @@ export async function POST(req: NextRequest) {
         bioRequirement: data.bioRequirement,
         contentType: data.contentType,
         requirements: data.requirements,
-        advertiserId: user.advertiserProfile.id,
         createdByUserId: user.id,
         status: "active",
       },

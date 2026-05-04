@@ -23,7 +23,7 @@ export default async function ContactBrandPage({
     select: {
       id: true,
       name: true,
-      advertiser: { select: { brandName: true, userId: true } },
+      createdByUserId: true,
     },
   });
   if (!campaign) notFound();
@@ -83,8 +83,21 @@ export default async function ContactBrandPage({
     },
   });
 
-  const brandName = campaign.advertiser?.brandName ?? "Brand";
-  const brandUserId = campaign.advertiser?.userId ?? "";
+  const brandName = campaign.name;
+  const brandUserId = campaign.createdByUserId ?? "";
+
+  if (!brandUserId) {
+    return (
+      <div className="flex items-center justify-center min-h-[60vh]">
+        <div className="text-center space-y-4 max-w-md">
+          <h2 className="text-xl font-bold" style={{ color: "var(--text-primary)" }}>No owner</h2>
+          <p className="text-sm" style={{ color: "var(--text-secondary)" }}>
+            This campaign has no owner — please contact support.
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   const submissionCards = submissions.map((s) => ({
     id: s.id,

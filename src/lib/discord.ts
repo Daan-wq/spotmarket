@@ -6,7 +6,6 @@ interface CampaignNotification {
   businessCpv: number;
   targetCountry?: string | null;
   minEngagementRate: number;
-  advertiserBrandName?: string | null;
 }
 
 interface CampaignAnnouncement {
@@ -34,7 +33,7 @@ export async function notifyCampaignLive(campaign: CampaignNotification): Promis
         title: "💰 New Campaign Available",
         color: 0x23a559,
         fields: [
-          { name: "Brand", value: campaign.advertiserBrandName ?? campaign.name, inline: true },
+          { name: "Campaign", value: campaign.name, inline: true },
           { name: "CPM", value: `$${cpmDollars.toFixed(0)}/1,000 views`, inline: true },
           { name: "Budget", value: `$${campaign.totalBudget.toLocaleString()}`, inline: true },
           { name: "Platform", value: campaign.platform, inline: true },

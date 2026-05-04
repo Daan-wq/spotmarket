@@ -11,13 +11,19 @@ export type { IgDemographics, IgMediaItem, ComputedCreatorStats };
 const GRAPH_BASE = "https://graph.instagram.com/v25.0";
 const META_BASE = "https://api.instagram.com";
 
+export const REQUIRED_IG_SCOPES = [
+  "instagram_business_basic",
+  "instagram_business_manage_insights",
+] as const;
+
 export async function getInstagramAuthUrl(state: string): Promise<string> {
   const redirectUri = process.env.INSTAGRAM_REDIRECT_URI!;
   const params = new URLSearchParams({
     client_id: process.env.INSTAGRAM_APP_ID!,
     redirect_uri: redirectUri,
-    scope: "instagram_business_basic,instagram_business_manage_insights",
+    scope: REQUIRED_IG_SCOPES.join(","),
     response_type: "code",
+    auth_type: "rerequest",
     state,
   });
   // Must use www.instagram.com for the new Instagram Login product
@@ -26,7 +32,7 @@ export async function getInstagramAuthUrl(state: string): Promise<string> {
 
 export async function exchangeCodeForToken(
   code: string
-): Promise<{ accessToken: string; expiresIn: number }> {
+): Promise<{ accessToken: string; expiresIn: number; grantedScopes: string[] }> {
   // Step 1: Short-lived token
   const tokenRedirectUri = process.env.INSTAGRAM_REDIRECT_URI!;
   const body = new URLSearchParams({
@@ -49,6 +55,10 @@ export async function exchangeCodeForToken(
 
   const shortData = JSON.parse(rawResponse);
   const shortLivedToken = shortData.access_token;
+  // Instagram Business Login returns permissions as an array on the short-lived token response
+  const grantedScopes: string[] = Array.isArray(shortData.permissions)
+    ? shortData.permissions.filter((s: unknown): s is string => typeof s === "string")
+    : [];
 
   // Step 2: Exchange short-lived token for long-lived token (60 days)
   const longRes = await fetch(
@@ -62,6 +72,7 @@ export async function exchangeCodeForToken(
     return {
       accessToken: shortLivedToken,
       expiresIn: shortData.expires_in ?? 3600,
+      grantedScopes,
     };
   }
 
@@ -69,6 +80,7 @@ export async function exchangeCodeForToken(
   return {
     accessToken: longData.access_token,
     expiresIn: longData.expires_in ?? 5183944, // ~60 days
+    grantedScopes,
   };
 }
 
@@ -286,22 +298,24 @@ export async function fetchFollowerDemographics(
 export async function fetchRecentMedia(
   accessToken: string,
   igUserId: string,
-  limit = 12
-): Promise<IgMediaItem[]> {
+  limit = 12,
+  cursor?: string
+): Promise<{ media: IgMediaItem[]; nextCursor: string | null }> {
   const params = new URLSearchParams({
     fields:
       "id,caption,media_type,media_product_type,permalink,timestamp,like_count,comments_count,media_url,thumbnail_url",
     limit: String(limit),
     access_token: accessToken,
   });
+  if (cursor) params.set("after", cursor);
   const res = await fetch(`${GRAPH_BASE}/${igUserId}/media?${params}`);
   if (!res.ok) {
     const errText = await res.text();
     console.warn(`fetchRecentMedia ${res.status}: ${errText.slice(0, 120)}`);
-    return [];
+    return { media: [], nextCursor: null };
   }
   const data = await res.json();
-  return (data.data ?? []).map((item: unknown): IgMediaItem => {
+  const media = (data.data ?? []).map((item: unknown): IgMediaItem => {
     const mediaItem = item as Record<string, unknown>;
     return {
       id: mediaItem.id as string,
@@ -316,6 +330,54 @@ export async function fetchRecentMedia(
       thumbnail_url: (mediaItem.thumbnail_url as string | null) ?? null,
     };
   });
+  const nextCursor =
+    data.paging?.next ? (data.paging?.cursors?.after ?? null) : null;
+  return { media, nextCursor };
+}
+
+// ─────────────────────────────────────────
+// ACTIVE STORIES (v25.0)
+// ─────────────────────────────────────────
+
+export interface IgStoryItem {
+  id: string;
+  media_type: string;
+  media_product_type: string;
+  permalink: string | null;
+  timestamp: string;
+  caption: string | null;
+  thumbnail_url: string | null;
+}
+
+/**
+ * Returns currently-active stories for the IG user (those in the live 24h
+ * window). Stories that have already expired are not returned by this endpoint
+ * — capture insights via the cron poll BEFORE expiry.
+ */
+export async function fetchActiveStories(
+  accessToken: string,
+  igUserId: string,
+): Promise<IgStoryItem[]> {
+  const params = new URLSearchParams({
+    fields: "id,media_type,media_product_type,permalink,timestamp,caption,thumbnail_url",
+    access_token: accessToken,
+  });
+  const res = await fetch(`${GRAPH_BASE}/${igUserId}/stories?${params}`);
+  if (!res.ok) {
+    const errText = await res.text();
+    console.warn(`fetchActiveStories ${res.status}: ${errText.slice(0, 120)}`);
+    return [];
+  }
+  const data = await res.json();
+  return ((data.data ?? []) as Record<string, unknown>[]).map((m) => ({
+    id: m.id as string,
+    media_type: (m.media_type as string) ?? "",
+    media_product_type: (m.media_product_type as string) ?? "",
+    permalink: (m.permalink as string | null) ?? null,
+    timestamp: (m.timestamp as string) ?? "",
+    caption: (m.caption as string | null) ?? null,
+    thumbnail_url: (m.thumbnail_url as string | null) ?? null,
+  }));
 }
 
 // ─────────────────────────────────────────

@@ -16,7 +16,6 @@ export default async function CampaignDetailPage({
   const campaign = await prisma.campaign.findUnique({
     where: { id: campaignId },
     include: {
-      advertiser: { select: { brandName: true } },
       campaignSubmissions: {
         select: { earnedAmount: true, status: true },
       },
@@ -35,10 +34,17 @@ export default async function CampaignDetailPage({
   });
   if (!profile) throw new Error("Creator profile not found");
 
-  const igConnections = await prisma.creatorIgConnection.findMany({
-    where: { creatorProfileId: profile.id },
-  });
-  const isVerified = igConnections.some((c) => c.isVerified);
+  const [igConnections, ytConnections, ttConnections, fbConnections] = await Promise.all([
+    prisma.creatorIgConnection.findMany({ where: { creatorProfileId: profile.id } }),
+    prisma.creatorYtConnection.findMany({ where: { creatorProfileId: profile.id } }),
+    prisma.creatorTikTokConnection.findMany({ where: { creatorProfileId: profile.id } }),
+    prisma.creatorFbConnection.findMany({ where: { creatorProfileId: profile.id } }),
+  ]);
+  const isVerified =
+    igConnections.some((c) => c.isVerified) ||
+    ytConnections.length > 0 ||
+    ttConnections.length > 0 ||
+    fbConnections.length > 0;
 
   const existingApplication = await prisma.campaignApplication.findFirst({
     where: { campaignId, creatorProfileId: profile.id },
@@ -84,7 +90,7 @@ export default async function CampaignDetailPage({
     : [];
 
   return (
-    <div className="p-6 max-w-4xl mx-auto">
+    <div className="p-6 w-full">
       {/* Top Bar */}
       <div className="flex items-center justify-between mb-6">
         <Link
@@ -125,7 +131,7 @@ export default async function CampaignDetailPage({
             style={{ background: "#e5e7eb" }}
           >
             <span style={{ color: "var(--text-primary)" }}>
-              {(campaign.advertiser?.brandName ?? campaign.name).charAt(0).toUpperCase()}
+              {campaign.name.charAt(0).toUpperCase()}
             </span>
           </div>
         )}

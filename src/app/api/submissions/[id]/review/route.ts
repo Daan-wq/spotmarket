@@ -17,7 +17,7 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { userId, role } = await requireAuth("admin", "advertiser");
+    const { userId } = await requireAuth("admin");
     const { id } = await params;
 
     const body = await req.json();
@@ -32,21 +32,24 @@ export async function POST(
       return NextResponse.json({ error: "Submission not found" }, { status: 404 });
     }
 
-    // If advertiser, verify they own the campaign
-    if (role === "advertiser") {
-      const user = await prisma.user.findUnique({
-        where: { supabaseId: userId },
-        select: { advertiserProfile: { select: { id: true } } },
-      });
-      if (!user?.advertiserProfile || submission.campaign.advertiserId !== user.advertiserProfile.id) {
-        return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-      }
-    }
-
     // Calculate eligible views and earnings
     let earnedAmount = Number(submission.earnedAmount);
     let eligibleViews: number | null = null;
     if (status === "APPROVED") {
+      // Logo gate: block approvals while logo verdict is still PENDING / MISSING.
+      // Subsystem D requires manual logo verification before earnings flow.
+      if (submission.logoStatus == null || submission.logoStatus === "PENDING") {
+        return NextResponse.json(
+          { error: "Logo verification is pending — review the submission's logo before approving." },
+          { status: 400 }
+        );
+      }
+      if (submission.logoStatus === "MISSING") {
+        return NextResponse.json(
+          { error: "Submission marked as logo missing — cannot approve. Mark logo present first or reject." },
+          { status: 400 }
+        );
+      }
       if (baselineViews == null || viewCount == null) {
         return NextResponse.json(
           { error: "baselineViews and viewCount are required for approval" },

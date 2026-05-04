@@ -51,7 +51,8 @@ export async function POST(request: Request) {
 
   // Confirm the user's email
   const { data: users } = await admin.auth.admin.listUsers();
-  const user = users?.users?.find((u) => u.email === ticket.email);
+  const ticketEmailLower = ticket.email.toLowerCase();
+  const user = users?.users?.find((u) => u.email?.toLowerCase() === ticketEmailLower);
 
   if (!user) {
     return NextResponse.json(
@@ -91,6 +92,15 @@ export async function POST(request: Request) {
       { status: 500 }
     );
   }
+
+  // Store tokens on the ticket so the original sign-up tab can poll and auto-login
+  await prisma.signupTicket.update({
+    where: { id: ticketId },
+    data: {
+      accessToken: sessionData.session.access_token,
+      refreshToken: sessionData.session.refresh_token,
+    },
+  });
 
   return NextResponse.json({
     session: {
