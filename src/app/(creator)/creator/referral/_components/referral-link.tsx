@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { QRCodeSVG } from "qrcode.react";
+import { Check, Copy, Hash, Mail, MessageCircle, QrCode, Send } from "lucide-react";
 
 interface ReferralLinkProps {
   referralCode: string;
@@ -61,12 +62,12 @@ export function ReferralLink({ referralCode, referralUrl }: ReferralLinkProps) {
         </div>
         <button
           onClick={copyLink}
-          className="px-4 py-2.5 rounded-lg text-sm font-medium shrink-0 cursor-pointer transition-colors"
+          className="inline-flex shrink-0 cursor-pointer items-center gap-2 rounded-lg px-4 py-2.5 text-sm font-medium text-white transition-colors"
           style={{
             background: copied ? "#22c55e" : "var(--accent)",
-            color: "#000",
           }}
         >
+          {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
           {copied ? "Copied!" : "Copy"}
         </button>
       </div>
@@ -82,41 +83,41 @@ export function ReferralLink({ referralCode, referralUrl }: ReferralLinkProps) {
           href={twitterUrl}
           target="_blank"
           rel="noopener noreferrer"
-          className="px-4 py-2 rounded-lg text-sm font-medium transition-colors"
-          style={{ background: "#1DA1F2", color: "#fff" }}
+          className="inline-flex items-center gap-2 rounded-lg border border-neutral-200 bg-white px-4 py-2 text-sm font-medium text-neutral-950 transition-colors hover:bg-neutral-50"
         >
+          <Send className="h-4 w-4" />
           Twitter
         </a>
         <a
           href={whatsappUrl}
           target="_blank"
           rel="noopener noreferrer"
-          className="px-4 py-2 rounded-lg text-sm font-medium transition-colors"
-          style={{ background: "#25D366", color: "#fff" }}
+          className="inline-flex items-center gap-2 rounded-lg border border-neutral-200 bg-white px-4 py-2 text-sm font-medium text-neutral-950 transition-colors hover:bg-neutral-50"
         >
+          <MessageCircle className="h-4 w-4" />
           WhatsApp
         </a>
         <a
           href={mailUrl}
-          className="px-4 py-2 rounded-lg text-sm font-medium transition-colors"
-          style={{ background: "var(--bg-elevated)", color: "var(--text-primary)", border: "1px solid var(--border)" }}
+          className="inline-flex items-center gap-2 rounded-lg border border-neutral-200 bg-white px-4 py-2 text-sm font-medium text-neutral-950 transition-colors hover:bg-neutral-50"
         >
+          <Mail className="h-4 w-4" />
           Email
         </a>
         <button
           type="button"
           onClick={copyForDiscord}
-          className="px-4 py-2 rounded-lg text-sm font-medium transition-colors cursor-pointer"
-          style={{ background: "#5865F2", color: "#fff" }}
+          className="inline-flex cursor-pointer items-center gap-2 rounded-lg border border-neutral-200 bg-white px-4 py-2 text-sm font-medium text-neutral-950 transition-colors hover:bg-neutral-50"
           title="Copies a formatted message you can paste into Discord"
         >
+          {discordCopied ? <Check className="h-4 w-4" /> : <Hash className="h-4 w-4" />}
           {discordCopied ? "Copied!" : "Discord"}
         </button>
         <button
           onClick={() => setShowQR(!showQR)}
-          className="px-4 py-2 rounded-lg text-sm font-medium cursor-pointer transition-colors"
-          style={{ background: "var(--bg-elevated)", color: "var(--text-primary)", border: "1px solid var(--border)" }}
+          className="inline-flex cursor-pointer items-center gap-2 rounded-lg border border-neutral-200 bg-white px-4 py-2 text-sm font-medium text-neutral-950 transition-colors hover:bg-neutral-50"
         >
+          <QrCode className="h-4 w-4" />
           {showQR ? "Hide QR" : "QR Code"}
         </button>
       </div>
