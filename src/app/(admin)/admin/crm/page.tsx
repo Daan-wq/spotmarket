@@ -5,9 +5,9 @@ import { Badge } from "@/components/ui/badge";
 import { DataTable } from "@/components/ui/data-table";
 import { EmptyState } from "@/components/ui/empty-state";
 import { PageHeader, SectionHeader, StatCard } from "@/components/ui/page";
-import { ProgressiveActionDrawer } from "@/components/ui/progressive-action-drawer";
 import { prisma } from "@/lib/prisma";
 import { formatCurrency, formatDate, titleCaseEnum } from "@/lib/admin/agency-format";
+import { LeadCreateForm } from "./lead-create-form";
 
 export const dynamic = "force-dynamic";
 
@@ -49,7 +49,7 @@ export default async function CrmPage() {
     <div className="space-y-9">
       <PageHeader
         eyebrow="Sales"
-        title="CRM"
+        title="Leads"
         description="Lead pipeline, owners, value, probability, and follow-ups. This feeds the command center."
         actions={[{ label: "Create lead", href: "/admin/crm?new=1", icon: Plus }]}
       />
@@ -62,31 +62,18 @@ export default async function CrmPage() {
       </div>
 
       <section>
+        <SectionHeader title="Create lead" description="Add a brand lead and the next follow-up date in one step." />
+        <LeadCreateForm />
+      </section>
+
+      <section>
         <SectionHeader
           title="Follow-Up Queue"
           description="Only leads with a due or overdue next follow-up."
-          action={
-            <ProgressiveActionDrawer
-              triggerLabel="Stage board"
-              title="Stage board"
-              description="Compact scan of the sales motion."
-              variant="outline"
-              width="lg"
-            >
-              <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-                {STAGES.map((stage) => (
-                  <div key={stage} className="rounded-2xl border border-neutral-200 bg-white p-4">
-                    <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-neutral-400">{titleCaseEnum(stage)}</p>
-                    <p className="mt-3 text-2xl font-semibold text-neutral-950">{counts.get(stage) ?? 0}</p>
-                  </div>
-                ))}
-              </div>
-            </ProgressiveActionDrawer>
-          }
         />
         {due.length === 0 ? (
           <EmptyState
-            title="No CRM follow-ups due"
+            title="No lead follow-ups due"
             description="Add next follow-up dates to leads so the command center can tell the operator what to do first."
           />
         ) : (
@@ -105,11 +92,11 @@ export default async function CrmPage() {
       </section>
 
       <section>
-        <SectionHeader title="Lead List" description="Full CRM list, including won, lost, and nurture-later records." />
+        <SectionHeader title="Lead list" description="Full lead list, including won, lost, and nurture-later records." />
         <DataTable
           rows={leads}
           rowKey={(lead) => lead.id}
-          emptyState={<EmptyState title="No brand leads yet" description="Create the first lead through the CRM API or seed import; the module is ready for real records." />}
+          emptyState={<EmptyState title="No brand leads yet" description="Create the first lead above so follow-ups can appear in the command center." />}
           columns={[
             { key: "brand", header: "Brand", cell: (lead) => <LeadName lead={lead} /> },
             { key: "contact", header: "Contact", cell: (lead) => lead.contactEmail || lead.contactName || "-" },
@@ -134,6 +121,18 @@ export default async function CrmPage() {
             },
           ]}
         />
+      </section>
+
+      <section>
+        <SectionHeader title="Stage counts" description="Simple count of where leads sit today." />
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
+          {STAGES.map((stage) => (
+            <div key={stage} className="rounded-2xl border border-neutral-200 bg-white p-4">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-neutral-400">{titleCaseEnum(stage)}</p>
+              <p className="mt-3 text-2xl font-semibold text-neutral-950">{counts.get(stage) ?? 0}</p>
+            </div>
+          ))}
+        </div>
       </section>
     </div>
   );

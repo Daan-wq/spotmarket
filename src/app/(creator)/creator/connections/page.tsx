@@ -6,7 +6,7 @@ import { requireAuth, getCreatorHeader } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { Badge } from "@/components/ui/badge";
 import { EmptyState } from "@/components/ui/empty-state";
-import { ProgressiveActionDrawer } from "@/components/ui/progressive-action-drawer";
+import { ConnectPlatformDialog } from "./_components/connect-platform-dialog";
 import { InstagramConnectButton } from "./_components/instagram-connect-button";
 import { FacebookConnectButton } from "./_components/facebook-connect-button";
 import { YoutubeConnectButton } from "./_components/youtube-connect-button";
@@ -129,18 +129,11 @@ export default async function PagesPage() {
         title="Accounts"
         description="Keep the pages you post from connected, verified, and ready for tracking."
         action={
-          <ProgressiveActionDrawer
-            triggerLabel="Connect your page"
-            title="Choose a platform"
-            description="Select the platform first, then complete the matching connection step."
-            width="lg"
-          >
-            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-              {platforms.map((platform) => (
-                <div key={platform.key}>{platform.connect}</div>
-              ))}
-            </div>
-          </ProgressiveActionDrawer>
+          <ConnectPlatformDialog>
+            {platforms.map((platform) => (
+              <div key={platform.key}>{platform.connect}</div>
+            ))}
+          </ConnectPlatformDialog>
         }
       />
 

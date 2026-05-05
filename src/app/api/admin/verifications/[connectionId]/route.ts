@@ -27,7 +27,7 @@ export async function PATCH(
       return NextResponse.json({ error: "Connection not found" }, { status: 404 });
     }
 
-    let updated: any;
+    let updated: unknown;
 
     if (status === "VERIFIED") {
       updated = await prisma.creatorIgConnection.update({
@@ -69,11 +69,11 @@ export async function PATCH(
     }
 
     return NextResponse.json({ connection: updated });
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error("[admin verifications PATCH]", err);
     if (err instanceof z.ZodError) {
       return NextResponse.json({ error: "Invalid input" }, { status: 400 });
     }
-    return NextResponse.json({ error: err.message }, { status: 500 });
+    return NextResponse.json({ error: err instanceof Error ? err.message : "Internal error" }, { status: 500 });
   }
 }

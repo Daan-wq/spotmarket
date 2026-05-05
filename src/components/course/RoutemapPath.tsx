@@ -37,7 +37,7 @@ export function RoutemapPath({
 
   function handleSelect(lesson: LessonNodeData) {
     if (lesson.state === "coming-soon") {
-      toast.info("This lesson is coming soon.");
+      toast.info("This lesson is not available.");
       return;
     }
     if (lesson.state === "locked") return;
@@ -59,9 +59,9 @@ export function RoutemapPath({
   if (!course) {
     return (
       <div className="rounded-2xl border bg-white p-10 text-center">
-        <p className="text-base font-semibold text-neutral-900">Coming soon</p>
+        <p className="text-base font-semibold text-neutral-900">No lessons available</p>
         <p className="mt-1 text-sm text-neutral-500">
-          This platform's course is still being prepared.
+          Choose another course from the tabs above.
         </p>
       </div>
     );
@@ -89,8 +89,8 @@ export function RoutemapPath({
               {section.title}
             </span>
             {!section.isPublished && (
-              <span className="rounded-full bg-amber-50 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-amber-700">
-                {isAdmin ? "Preview" : "Coming soon"}
+              <span className="rounded-full bg-neutral-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-neutral-600">
+                {isAdmin ? "Draft" : "Unavailable"}
               </span>
             )}
           </div>

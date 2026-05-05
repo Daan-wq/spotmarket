@@ -1,6 +1,6 @@
 "use client";
 
-import { Lock, Check, Star, Clock, Sparkles } from "lucide-react";
+import { Lock, Check, Star, Clock, Sparkles, Play } from "lucide-react";
 import { cn } from "@/lib/cn";
 import type { LessonNode as LessonNodeData } from "@/lib/course/queries";
 
@@ -74,14 +74,9 @@ export function LessonNode({ lesson, accent, offset, onSelect }: LessonNodeProps
         <p className="line-clamp-2 text-xs font-semibold text-neutral-900">{lesson.title}</p>
         <p className="mt-0.5 inline-flex items-center gap-1 text-[10px] text-neutral-500">
           <Clock className="h-3 w-3" /> {lesson.estMinutes} min
-          {lesson.state === "coming-soon" && (
-            <span className="ml-1 rounded-full bg-amber-50 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-amber-700">
-              Coming soon
-            </span>
-          )}
           {lesson.state === "preview" && (
-            <span className="ml-1 rounded-full border border-dashed border-indigo-400 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-indigo-600">
-              Preview
+            <span className="ml-1 rounded-full border border-dashed border-neutral-300 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-neutral-600">
+              Draft
             </span>
           )}
         </p>
@@ -124,9 +119,9 @@ function getNodeStyles(
       };
     case "preview":
       return {
-        background: "#eef2ff",
-        borderColor: "#6366f1",
-        color: "#4338ca",
+        background: "#fafafa",
+        borderColor: "#a3a3a3",
+        color: "#525252",
         borderStyle: "dashed",
       };
     default:
@@ -136,7 +131,6 @@ function getNodeStyles(
 
 function NodeIcon({
   state,
-  accent: _accent,
 }: {
   state: LessonNodeData["state"];
   accent: string;
@@ -147,13 +141,5 @@ function NodeIcon({
   if (state === "completed-badge" || state === "completed-no-badge") {
     return <Check className="h-8 w-8" strokeWidth={3} />;
   }
-  return <PlayIcon />;
-}
-
-function PlayIcon() {
-  return (
-    <svg width="28" height="28" viewBox="0 0 24 24" fill="currentColor">
-      <path d="M8 5v14l11-7z" />
-    </svg>
-  );
+  return <Play className="h-8 w-8 fill-current" />;
 }

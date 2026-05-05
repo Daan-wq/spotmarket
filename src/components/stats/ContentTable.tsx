@@ -36,6 +36,7 @@ const TITLE_COL: ColumnDef = {
 };
 
 function num(getter: (r: ContentRow) => number | null | undefined): ColumnDef["cell"] {
+  // eslint-disable-next-line react/display-name
   return (r) => {
     const v = getter(r);
     if (v == null) return <span style={{ color: "var(--text-muted)" }}>—</span>;

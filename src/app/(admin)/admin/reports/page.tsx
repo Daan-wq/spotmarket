@@ -6,12 +6,13 @@ import { PageHeader, SectionHeader, StatCard } from "@/components/ui/page";
 import { getAgencyOsDashboardSnapshot } from "@/lib/admin/agency-os";
 import { formatCurrency, formatDate, formatNumber, titleCaseEnum } from "@/lib/admin/agency-format";
 import { prisma } from "@/lib/prisma";
+import { WeeklySnapshotForm } from "./weekly-snapshot-form";
 
 export const dynamic = "force-dynamic";
 
 export default async function ReportsPage() {
   const snapshot = await getAgencyOsDashboardSnapshot();
-  const [brands, payoutRuns, recentReviews] = await Promise.all([
+  const [brands, payoutRuns, recentReviews, weeklySnapshots] = await Promise.all([
     prisma.brand.findMany({
       where: { status: { in: ["ACTIVE", "ONBOARDING"] } },
       include: {
@@ -35,6 +36,7 @@ export default async function ReportsPage() {
       take: 10,
       include: { submission: { select: { campaign: { select: { name: true } }, creator: { select: { email: true } } } } },
     }),
+    prisma.weeklyBusinessSnapshot.findMany({ orderBy: [{ weekStart: "desc" }, { createdAt: "desc" }], take: 12 }),
   ]);
 
   const { metrics } = snapshot;
@@ -42,17 +44,40 @@ export default async function ReportsPage() {
   return (
     <div className="space-y-9">
       <PageHeader
-        eyebrow="CEO View"
+        eyebrow="Admin"
         title="Reports"
-        description="Weekly KPI review surface for revenue, delivery, quality, payouts, brand performance, and SOP hygiene."
+        description="Saved weekly numbers, brand delivery, clip review, payouts, and guide upkeep in one place."
       />
 
       <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
         <StatCard label="Booked budget" value={formatCurrency(metrics.bookedCampaignBudget)} detail="Non-cancelled campaigns" />
         <StatCard label="Creator earnings" value={formatCurrency(metrics.creatorEarnings)} detail="Approved submission earnings" />
-        <StatCard label="Approval rate" value={metrics.approvalRate == null ? "-" : `${metrics.approvalRate.toFixed(0)}%`} detail="Approved vs rejected this week" />
+        <StatCard label="Approval rate" value={metrics.approvalRate == null ? "-" : `${metrics.approvalRate.toFixed(0)}%`} detail="Approved vs revised this week" />
         <StatCard label="Open risk" value={String(metrics.openRiskSignals)} detail={`${metrics.criticalRiskSignals} critical`} tone={metrics.openRiskSignals > 0 ? "danger" : "neutral"} />
       </div>
+
+      <section>
+        <SectionHeader title="Save weekly numbers" description="Store today’s live numbers as a weekly review snapshot for history." />
+        <WeeklySnapshotForm />
+      </section>
+
+      <section>
+        <SectionHeader title="Weekly history" description="Snapshots stay fixed so the team can compare weeks instead of only seeing live dashboard numbers." />
+        <DataTable
+          rows={weeklySnapshots}
+          rowKey={(row) => row.id}
+          emptyState={<EmptyState title="No weekly snapshots yet" description="Save the current week above to start history." />}
+          columns={[
+            { key: "week", header: "Week", cell: (row) => `${formatDate(row.weekStart)} - ${formatDate(row.weekEnd)}` },
+            { key: "revenue", header: "Booked", align: "right", cell: (row) => formatCurrency(row.revenueBooked) },
+            { key: "profit", header: "Est. profit", align: "right", cell: (row) => formatCurrency(row.estimatedProfit) },
+            { key: "clips", header: "Clips", align: "right", cell: (row) => formatNumber(row.clipsDelivered) },
+            { key: "approved", header: "Approved", align: "right", cell: (row) => formatNumber(row.clipsApproved) },
+            { key: "risk", header: "Open risks", align: "right", cell: (row) => formatNumber(row.openRisks) },
+            { key: "notes", header: "Notes", cell: (row) => row.notes || "-" },
+          ]}
+        />
+      </section>
 
       <section>
         <SectionHeader title="Brand Delivery Report" description="Approved views and creator cost grouped by brand campaigns." />
@@ -82,11 +107,11 @@ export default async function ReportsPage() {
 
       <section className="grid grid-cols-1 gap-5 xl:grid-cols-2">
         <div>
-          <SectionHeader title="Recent QC Reviews" />
+          <SectionHeader title="Recent clip reviews" />
           <DataTable
             rows={recentReviews}
             rowKey={(review) => review.id}
-            emptyState={<EmptyState title="No QC reviews recorded yet" description="QC decisions will appear here once scorecards are saved." />}
+            emptyState={<EmptyState title="No clip reviews recorded yet" description="Review decisions will appear here once scorecards are saved." />}
             columns={[
               { key: "campaign", header: "Campaign", cell: (review) => review.submission.campaign.name },
               { key: "creator", header: "Creator", cell: (review) => review.submission.creator.email },

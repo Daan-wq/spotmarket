@@ -35,7 +35,7 @@ const NAV: Array<{ label: string; items: NavItem[] }> = [
     label: "Operate",
     items: [
       { href: "/admin", label: "Command Center", icon: LayoutDashboard },
-      { href: "/admin/crm", label: "CRM", icon: BriefcaseBusiness },
+      { href: "/admin/crm", label: "Leads", icon: BriefcaseBusiness },
       { href: "/admin/brands", label: "Brands", icon: FileText },
       { href: "/admin/onboarding", label: "Onboarding", icon: ListChecks },
     ],
@@ -47,15 +47,17 @@ const NAV: Array<{ label: string; items: NavItem[] }> = [
       { href: "/admin/recruitment", label: "Recruitment", icon: Sparkles },
       { href: "/admin/campaigns", label: "Campaigns", icon: Send },
       { href: "/admin/production", label: "Production", icon: GitPullRequestArrow },
-      { href: "/admin/review", label: "Review", icon: ClipboardCheck },
+      { href: "/admin/review", label: "Clip review", icon: ClipboardCheck },
     ],
   },
   {
     label: "Control",
     items: [
       { href: "/admin/payouts", label: "Payouts", icon: Banknote },
+      { href: "/admin/pricing", label: "Pricing", icon: FileText },
+      { href: "/admin/documents", label: "Documents", icon: ClipboardCheck },
       { href: "/admin/reports", label: "Reports", icon: Gauge },
-      { href: "/admin/sops", label: "SOP Library", icon: BookOpen },
+      { href: "/admin/sops", label: "Guides", icon: BookOpen },
       { href: "/admin/signals", label: "Signals", icon: ShieldCheck },
     ],
   },

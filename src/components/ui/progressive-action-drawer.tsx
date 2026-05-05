@@ -2,7 +2,8 @@
 
 import type { ReactNode } from "react";
 import { useState } from "react";
-import { ChevronRight, SlidersHorizontal } from "lucide-react";
+import { ChevronRight } from "lucide-react";
+import { SlidersHorizontal } from "@/components/animate-ui/icons/sliders-horizontal";
 import { Button } from "./button";
 import { Drawer } from "./drawer";
 import { cn } from "@/lib/cn";
@@ -45,7 +46,7 @@ export function ProgressiveActionDrawer({
         onClick={() => setOpen(true)}
         className={cn("shrink-0", className)}
       >
-        {showIcon ? <SlidersHorizontal className="h-4 w-4" /> : null}
+        {showIcon ? <SlidersHorizontal className="h-4 w-4" animateOnHover /> : null}
         <span>{triggerLabel}</span>
         {badgeLabel ? (
           <span

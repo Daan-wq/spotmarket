@@ -6,6 +6,7 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { PageHeader, SectionHeader, StatCard } from "@/components/ui/page";
 import { prisma } from "@/lib/prisma";
 import { formatDate, titleCaseEnum } from "@/lib/admin/agency-format";
+import { GuideForm } from "./guide-form";
 
 export const dynamic = "force-dynamic";
 
@@ -34,16 +35,21 @@ export default async function SopLibraryPage() {
     <div className="space-y-9">
       <PageHeader
         eyebrow="Operating Knowledge"
-        title="SOP Library"
-        description="Searchable admin SOP library for Sales, Brand Onboarding, Clipper Recruitment, Production, QC, Payouts, and Reporting."
+        title="Guides"
+        description="Searchable admin guide library for sales, brand onboarding, clipper recruitment, production, clip review, payouts, and reporting."
       />
 
       <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
-        <StatCard label="Documents" value={String(docs.length)} detail="All SOP records" />
+        <StatCard label="Guides" value={String(docs.length)} detail="All saved guide records" />
         <StatCard label="Active" value={String(active.length)} detail="Current operating procedures" />
         <StatCard label="Needs review" value={String(needsReview.length)} detail="Feeds command center" tone={needsReview.length > 0 ? "warning" : "neutral"} />
         <StatCard label="Owners" value={String(owners.size)} detail="Assigned reviewers" />
       </div>
+
+      <section>
+        <SectionHeader title="Create guide" description="Save a playbook the team can review and keep current." />
+        <GuideForm />
+      </section>
 
       <section>
         <SectionHeader title="Categories" description="The library mirrors the admin operating flow." />
@@ -60,12 +66,12 @@ export default async function SopLibraryPage() {
       </section>
 
       <section>
-        <SectionHeader title="Needs Review Queue" description="Outdated or explicitly flagged SOPs." />
+        <SectionHeader title="Needs review queue" description="Outdated or explicitly flagged guides." />
         {needsReview.length === 0 ? (
           <EmptyState
             icon={<BookOpen className="h-5 w-5" />}
-            title="No SOPs need review"
-            description="When an SOP review date passes, it appears here and in the command center."
+            title="No guides need review"
+            description="When a guide review date passes, it appears here and in the command center."
           />
         ) : (
           <DataTable
@@ -85,17 +91,17 @@ export default async function SopLibraryPage() {
 
       <section>
         <SectionHeader
-          title="SOP Documents"
-          description="Search is ready for the UI layer; API supports creating and updating documents."
+          title="Guide documents"
+          description="Search and create are available here; updates are backed by the admin guide API."
         />
         <div className="mb-4 inline-flex h-10 items-center gap-2 rounded-xl border border-neutral-200 bg-white px-3 text-sm text-neutral-500">
           <Search className="h-4 w-4" />
-          Searchable via API
+          Searchable guide records
         </div>
         <DataTable
           rows={docs}
           rowKey={(doc) => doc.id}
-          emptyState={<EmptyState icon={<BookOpen className="h-5 w-5" />} title="No SOP documents yet" description="Add SOPs through the admin API. Categories, owner, status, body, and review dates are DB-backed now." />}
+          emptyState={<EmptyState icon={<BookOpen className="h-5 w-5" />} title="No guides yet" description="Create the first guide above. Categories, owner, status, body, and review dates are saved." />}
           columns={[
             { key: "title", header: "Title", cell: (doc) => <DocTitle doc={doc} /> },
             { key: "category", header: "Category", cell: (doc) => titleCaseEnum(doc.category) },

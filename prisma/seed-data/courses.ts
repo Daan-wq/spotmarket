@@ -33,12 +33,6 @@ export interface CourseSeed {
   sections: SectionSeed[];
 }
 
-const COMING_SOON_BODY = `_Coming soon._
-
-This lesson is being written. Check back later.`;
-
-const COMING_SOON_QUESTIONS: QuestionSeed[] = [];
-
 // ─────────────────────────────────────────
 // FOUNDATIONS
 // ─────────────────────────────────────────
@@ -375,23 +369,6 @@ This is **in addition** to your base view-rate earnings.
               correctIndex: 2,
             },
           ],
-        },
-      ],
-    },
-    {
-      slug: "cross-platform",
-      title: "Cross-Platform Strategy",
-      isPublished: false,
-      badgeSlug: "foundations-cross-platform",
-      badgeTitle: "Cross-Platform Pro",
-      lessons: [
-        {
-          slug: "cross-platform-strategy",
-          title: "Cross-Platform Strategy",
-          estMinutes: 6,
-          isPublished: false,
-          contentMd: COMING_SOON_BODY,
-          questions: COMING_SOON_QUESTIONS,
         },
       ],
     },
@@ -736,18 +713,6 @@ Keep clips **under 30 seconds** for maximum engagement. The shorter your clip, t
         },
       ],
     },
-    {
-      slug: "tiktok-advanced",
-      title: "TikTok Advanced",
-      isPublished: false,
-      badgeSlug: "tiktok-advanced",
-      badgeTitle: "TikTok Strategist",
-      lessons: [
-        { slug: "tiktok-hooks", title: "Hooks That Stop the Scroll", estMinutes: 6, isPublished: false, contentMd: COMING_SOON_BODY, questions: COMING_SOON_QUESTIONS },
-        { slug: "tiktok-editing", title: "Editing for Retention", estMinutes: 7, isPublished: false, contentMd: COMING_SOON_BODY, questions: COMING_SOON_QUESTIONS },
-        { slug: "tiktok-algorithm", title: "Algorithm Deep Dive", estMinutes: 8, isPublished: false, contentMd: COMING_SOON_BODY, questions: COMING_SOON_QUESTIONS },
-      ],
-    },
   ],
 };
 
@@ -941,17 +906,6 @@ Rotate hashtag sets across posts. Reusing the exact same set every time looks sp
         },
       ],
     },
-    {
-      slug: "instagram-advanced",
-      title: "Instagram Advanced",
-      isPublished: false,
-      badgeSlug: "instagram-advanced",
-      badgeTitle: "Instagram Strategist",
-      lessons: [
-        { slug: "instagram-warmup", title: "Account Warmup", estMinutes: 6, isPublished: false, contentMd: COMING_SOON_BODY, questions: COMING_SOON_QUESTIONS },
-        { slug: "instagram-strategy", title: "Growth Strategy", estMinutes: 7, isPublished: false, contentMd: COMING_SOON_BODY, questions: COMING_SOON_QUESTIONS },
-      ],
-    },
   ],
 };
 
@@ -1121,17 +1075,6 @@ Shorts are pushed by the feed AND by search. Most clippers ignore the search hal
         },
       ],
     },
-    {
-      slug: "youtube-advanced",
-      title: "YouTube Advanced",
-      isPublished: false,
-      badgeSlug: "youtube-advanced",
-      badgeTitle: "YouTube Strategist",
-      lessons: [
-        { slug: "youtube-warmup", title: "Channel Warmup", estMinutes: 6, isPublished: false, contentMd: COMING_SOON_BODY, questions: COMING_SOON_QUESTIONS },
-        { slug: "youtube-strategy", title: "Growth Strategy", estMinutes: 7, isPublished: false, contentMd: COMING_SOON_BODY, questions: COMING_SOON_QUESTIONS },
-      ],
-    },
   ],
 };
 
@@ -1295,17 +1238,6 @@ Polls are an easy reply-driver:
             },
           ],
         },
-      ],
-    },
-    {
-      slug: "x-advanced",
-      title: "X Advanced",
-      isPublished: false,
-      badgeSlug: "x-advanced",
-      badgeTitle: "X Strategist",
-      lessons: [
-        { slug: "x-warmup", title: "Account Warmup", estMinutes: 6, isPublished: false, contentMd: COMING_SOON_BODY, questions: COMING_SOON_QUESTIONS },
-        { slug: "x-strategy", title: "Growth Strategy", estMinutes: 7, isPublished: false, contentMd: COMING_SOON_BODY, questions: COMING_SOON_QUESTIONS },
       ],
     },
   ],

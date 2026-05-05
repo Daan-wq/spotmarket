@@ -301,7 +301,7 @@ export default async function CreatorProfilePage({ params }: PageProps) {
         </div>
         {allSignals.length === 0 ? (
           <p className="px-5 py-8 text-sm" style={{ color: "var(--text-secondary)" }}>
-            No signals fired against this creator's submissions.
+            No signals fired against this creator&apos;s submissions.
           </p>
         ) : (
           <ul>

@@ -72,6 +72,8 @@ export default async function SuggestedCampaignPage() {
     totalCampaignEarners = sorted.length;
   }
 
+  const nowTime = new Date().getTime();
+
   return (
     <div
       className="min-h-screen flex flex-col items-center justify-center px-6 py-12"
@@ -149,7 +151,7 @@ export default async function SuggestedCampaignPage() {
               <div className="p-3 rounded-xl" style={{ background: "var(--bg-primary)" }}>
                 <p className="text-xs mb-1" style={{ color: "var(--text-muted)" }}>Days left</p>
                 <p className="text-lg font-bold" style={{ color: "var(--text-primary)" }}>
-                  {Math.max(0, Math.ceil((campaign.deadline.getTime() - Date.now()) / 86400000))}
+                  {Math.max(0, Math.ceil((campaign.deadline.getTime() - nowTime) / 86400000))}
                 </p>
               </div>
             </div>

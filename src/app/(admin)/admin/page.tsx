@@ -5,7 +5,6 @@ import { ClipboardCheck } from "@/components/animate-ui/icons/clipboard-check";
 import { Plus } from "@/components/animate-ui/icons/plus";
 import { ActionQueue, PageHeader, SectionHeader, StatCard } from "@/components/ui/page";
 import { Badge } from "@/components/ui/badge";
-import { ProgressiveActionDrawer } from "@/components/ui/progressive-action-drawer";
 import { prisma } from "@/lib/prisma";
 import { getAgencyOsDashboardSnapshot } from "@/lib/admin/agency-os";
 import { formatCurrency, formatNumber, toNumber } from "@/lib/admin/agency-format";
@@ -17,9 +16,9 @@ const PIPELINE = [
   { label: "Onboarding", href: "/admin/onboarding" },
   { label: "Campaign", href: "/admin/campaigns" },
   { label: "Production", href: "/admin/production" },
-  { label: "QC", href: "/admin/review" },
-  { label: "Payout", href: "/admin/payouts" },
-  { label: "Report", href: "/admin/reports" },
+  { label: "Clip review", href: "/admin/review" },
+  { label: "Payouts", href: "/admin/payouts" },
+  { label: "Reports", href: "/admin/reports" },
 ];
 
 export default async function AdminCommandCenter() {
@@ -96,9 +95,9 @@ export default async function AdminCommandCenter() {
     crmFollowUps > 0
       ? {
           title: `Follow up with ${crmFollowUps} brand lead${crmFollowUps === 1 ? "" : "s"}`,
-          detail: "CRM follow-ups are due now. Move the lead, book the call, or nurture it cleanly.",
+          detail: "Lead follow-ups are due now. Move the lead, book the call, or keep it warm.",
           href: "/admin/crm",
-          label: "CRM",
+          label: "Leads",
           tone: "warning" as const,
         }
       : null,
@@ -125,7 +124,7 @@ export default async function AdminCommandCenter() {
           title: `Review ${pendingQc} clip${pendingQc === 1 ? "" : "s"}`,
           detail: `${missingLogo} missing-logo item${missingLogo === 1 ? "" : "s"}, ${revisionAssignments} revision assignment${revisionAssignments === 1 ? "" : "s"}.`,
           href: "/admin/review",
-          label: "QC",
+          label: "Review",
           tone: "warning" as const,
         }
       : null,
@@ -140,10 +139,10 @@ export default async function AdminCommandCenter() {
       : null,
     sopNeedsReview > 0
       ? {
-          title: `${sopNeedsReview} SOP${sopNeedsReview === 1 ? "" : "s"} need review`,
-          detail: "Keep sales, onboarding, recruitment, production, QC, payouts, and reporting procedures current.",
+          title: `${sopNeedsReview} guide${sopNeedsReview === 1 ? "" : "s"} need review`,
+          detail: "Keep sales, onboarding, recruitment, production, clip review, payouts, and reporting guides current.",
           href: "/admin/sops",
-          label: "SOP",
+          label: "Guide",
           tone: "neutral" as const,
         }
       : null,
@@ -163,7 +162,7 @@ export default async function AdminCommandCenter() {
     { label: "Expected revenue", value: formatCurrency(metrics.expectedRevenueNextMonth), detail: "Campaign deadlines next month" },
     { label: "Active brands", value: String(activeBrands || metrics.activeBrands), detail: `${formatCurrency(toNumber(pipelineValue._sum.estimatedValue))} open pipeline` },
     { label: "Active clippers", value: String(activeClippers || metrics.activeClippers), detail: `${clipsDue} clips due or in progress` },
-    { label: "QC approvals", value: `${metrics.clipsApprovedThisWeek}/${metrics.clipsRejectedOrRevisedThisWeek}`, detail: "Approved / rejected this week" },
+    { label: "Clip approvals", value: `${metrics.clipsApprovedThisWeek}/${metrics.clipsRejectedOrRevisedThisWeek}`, detail: "Approved / revised this week" },
     { label: "Payouts owed", value: formatCurrency(metrics.payoutsOwed), detail: "Legacy payout obligations", tone: metrics.payoutsOwed > 0 ? "warning" as const : "neutral" as const },
     { label: "Estimated profit", value: formatCurrency(metrics.estimatedGrossProfit), detail: "Booked minus creator cost and open payouts" },
     { label: "Risk", value: `${metrics.openRiskSignals} open`, detail: `${metrics.tokenBrokenSignals} broken token signals`, tone: metrics.openRiskSignals > 0 ? "danger" as const : "neutral" as const },
@@ -184,7 +183,7 @@ export default async function AdminCommandCenter() {
         <ActionQueue
           items={queue.length > 0 ? queue : [{
             title: "No urgent blockers",
-            detail: "Use the pipeline strip and KPI reporting to decide the next sales, production, or payout move.",
+            detail: "Use the pipeline strip and weekly numbers to decide the next sales, production, or payout move.",
             href: "/admin/reports",
             label: "Clear",
             tone: "success",
@@ -195,22 +194,8 @@ export default async function AdminCommandCenter() {
       <section>
         <SectionHeader
           title="Core numbers"
-          description="The first strip stays small; deeper reporting opens on demand."
-          action={
-            <ProgressiveActionDrawer
-              triggerLabel="View all KPIs"
-              title="CEO KPI reporting"
-              description="Money, delivery, staffing, quality, payout, and risk."
-              variant="outline"
-              width="lg"
-            >
-              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                {metricCards.map((card) => (
-                  <StatCard key={card.label} {...card} />
-                ))}
-              </div>
-            </ProgressiveActionDrawer>
-          }
+          description="The first strip stays small; deeper reporting opens from Reports."
+          action={<Link href="/admin/reports" className="text-sm font-semibold text-neutral-950 underline">View weekly numbers</Link>}
         />
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
           {headlineMetrics.map((card) => (
@@ -220,107 +205,71 @@ export default async function AdminCommandCenter() {
       </section>
 
       <section>
-        <SectionHeader title="Details" description="Open these when the daily queue points there." />
+        <SectionHeader title="Drill-ins" description="Open the specific area when the daily queue points there." />
         <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
-          <ProgressiveActionDrawer
-            triggerLabel="Open pipeline"
-            title="Pipeline visibility"
-            description="Compact clipping flow from sales to weekly reporting."
-            variant="outline"
-            width="lg"
-            className="w-full justify-between"
-          >
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <div className="rounded-2xl border border-neutral-200 bg-white p-4">
+            <div className="mb-3 flex items-center justify-between">
+              <h3 className="text-sm font-semibold text-neutral-950">Pipeline</h3>
+              <ArrowRight className="h-4 w-4 text-neutral-400" animateOnHover />
+            </div>
+            <div className="space-y-2">
               {PIPELINE.map((step, index) => (
-                <Link
-                  key={step.href}
-                  href={step.href}
-                  className="group rounded-2xl border border-neutral-200 bg-white p-4 transition hover:border-neutral-300 hover:bg-neutral-50"
-                >
-                  <div className="flex items-center justify-between">
-                    <span className="text-[11px] font-semibold uppercase tracking-[0.14em] text-neutral-400">
-                      Step {index + 1}
-                    </span>
-                    <ArrowRight className="h-4 w-4 text-neutral-300 transition group-hover:text-neutral-950" animateOnHover />
-                  </div>
-                  <p className="mt-4 text-base font-semibold text-neutral-950">{step.label}</p>
+                <Link key={step.href} href={step.href} className="flex items-center justify-between rounded-xl bg-neutral-50 px-3 py-2 text-sm font-medium text-neutral-700 transition hover:bg-neutral-100 hover:text-neutral-950">
+                  <span>{index + 1}. {step.label}</span>
+                  <span className="text-neutral-400">Open</span>
                 </Link>
               ))}
             </div>
-          </ProgressiveActionDrawer>
+          </div>
 
-          <ProgressiveActionDrawer
-            triggerLabel="Module status"
-            title="Module status"
-            description="Live modules and the current operating surface."
-            variant="outline"
-            width="lg"
-            className="w-full justify-between"
-          >
-            <div className="overflow-hidden rounded-2xl border border-neutral-200 bg-white">
-              <div className="divide-y divide-neutral-100">
-                {snapshot.operatingAreas.map((area) => (
-                  <Link key={area.name} href={area.href ?? "/admin/sops"} className="flex items-center justify-between gap-4 px-5 py-4 transition hover:bg-neutral-50">
-                    <div>
-                      <p className="text-sm font-semibold text-neutral-950">{area.name}</p>
-                      <p className="mt-1 text-xs text-neutral-500">{area.detail}</p>
-                    </div>
-                    <Badge variant={area.status === "live" ? "verified" : "neutral"}>{area.status}</Badge>
-                  </Link>
-                ))}
-              </div>
+          <div className="rounded-2xl border border-neutral-200 bg-white p-4">
+            <h3 className="mb-3 text-sm font-semibold text-neutral-950">Useful areas</h3>
+            <div className="space-y-2">
+              {snapshot.operatingAreas.slice(0, 6).map((area) => (
+                <Link key={area.name} href={area.href ?? "/admin/reports"} className="flex items-start justify-between gap-3 rounded-xl bg-neutral-50 px-3 py-2 transition hover:bg-neutral-100">
+                  <span>
+                    <span className="block text-sm font-medium text-neutral-950">{area.name}</span>
+                    <span className="block text-xs text-neutral-500">{area.detail}</span>
+                  </span>
+                  <Badge variant={area.status === "live" ? "verified" : "neutral"}>{area.status}</Badge>
+                </Link>
+              ))}
             </div>
-          </ProgressiveActionDrawer>
+          </div>
 
-          <ProgressiveActionDrawer
-            triggerLabel="Delivery risk"
-            title="Delivery risk"
-            description="Campaign pace risks and the weekly close."
-            variant="outline"
-            width="lg"
-            badgeLabel={snapshot.deliveryRisks.length > 0 ? String(snapshot.deliveryRisks.length) : undefined}
-            className="w-full justify-between"
-          >
+          <div className="rounded-2xl border border-neutral-200 bg-white p-4">
+            <h3 className="mb-3 text-sm font-semibold text-neutral-950">Delivery risk</h3>
             <div className="space-y-3">
               {snapshot.deliveryRisks.length === 0 ? (
-                <div className="rounded-2xl border border-neutral-200 bg-white p-5 text-sm text-neutral-500">
-                  No campaign pace risks in the next 7 days.
-                </div>
+                <p className="rounded-xl bg-neutral-50 p-4 text-sm text-neutral-500">No campaign pace risks in the next 7 days.</p>
               ) : (
-                snapshot.deliveryRisks.map((risk) => (
-                  <Link key={risk.id} href={`/admin/campaigns/${risk.id}`} className="block rounded-2xl border border-orange-200 bg-white p-4 transition hover:bg-orange-50/40">
+                snapshot.deliveryRisks.slice(0, 3).map((risk) => (
+                  <Link key={risk.id} href={`/admin/campaigns/${risk.id}`} className="block rounded-xl border border-orange-200 bg-white p-3 transition hover:bg-orange-50/40">
                     <div className="flex items-start justify-between gap-4">
                       <div>
                         <p className="text-sm font-semibold text-neutral-950">{risk.name}</p>
-                        <p className="mt-1 text-xs text-neutral-500">
-                          {formatNumber(risk.captured)} / {formatNumber(risk.goal)} views captured.
-                        </p>
+                        <p className="mt-1 text-xs text-neutral-500">{formatNumber(risk.captured)} / {formatNumber(risk.goal)} views captured.</p>
                       </div>
                       <AlertTriangle className="h-4 w-4 text-orange-500" />
                     </div>
                   </Link>
                 ))
               )}
-
-              <div className="rounded-2xl border border-neutral-200 bg-neutral-50 p-5">
+              <div className="rounded-xl border border-neutral-200 bg-neutral-50 p-4">
                 <div className="flex items-center gap-2 text-sm font-semibold text-neutral-950">
                   <BadgeEuro className="h-4 w-4" />
                   Weekly close
                 </div>
                 <p className="mt-2 text-sm leading-6 text-neutral-500">
-                  Confirm approved clips, finalize payout runs, then log SOP updates before the next reporting cycle.
+                  Confirm approved clips, finalize payout runs, then log guide updates before the next reporting cycle.
                 </p>
               </div>
-
-              <Link
-                href="/admin/review"
-                className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-neutral-950 px-5 text-sm font-semibold text-white shadow-[0_8px_18px_rgba(0,0,0,0.16)] hover:bg-neutral-800"
-              >
+              <Link href="/admin/review" className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-neutral-950 px-5 text-sm font-semibold text-white shadow-[0_8px_18px_rgba(0,0,0,0.16)] hover:bg-neutral-800">
                 <ClipboardCheck className="h-4 w-4" animateOnHover />
-                Open QC workbench
+                Open clip review
               </Link>
             </div>
-          </ProgressiveActionDrawer>
+          </div>
         </div>
       </section>
     </div>

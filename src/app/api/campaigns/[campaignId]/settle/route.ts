@@ -79,8 +79,8 @@ export async function POST(
       message: "Campaign settled",
       ...result,
     });
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error("[campaign settle]", err);
-    return NextResponse.json({ error: err.message || "Internal error" }, { status: 500 });
+    return NextResponse.json({ error: err instanceof Error ? err.message : "Internal error" }, { status: 500 });
   }
 }

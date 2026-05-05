@@ -4,9 +4,9 @@ import { Badge } from "@/components/ui/badge";
 import { DataTable } from "@/components/ui/data-table";
 import { EmptyState } from "@/components/ui/empty-state";
 import { PageHeader, SectionHeader, StatCard } from "@/components/ui/page";
-import { ProgressiveActionDrawer } from "@/components/ui/progressive-action-drawer";
 import { prisma } from "@/lib/prisma";
 import { formatCurrencyPrecise, formatDate, titleCaseEnum } from "@/lib/admin/agency-format";
+import { PayoutRunForm } from "./payout-run-form";
 
 export const dynamic = "force-dynamic";
 
@@ -60,6 +60,11 @@ export default async function PayoutsPage() {
       </div>
 
       <section>
+        <SectionHeader title="Create payout run" description="Group approved unpaid work into a period-based payout run." />
+        <PayoutRunForm />
+      </section>
+
+      <section>
         <SectionHeader title="Payout Runs" description="Weekly or period-based grouped payout runs." />
         <DataTable
           rows={runs}
@@ -90,15 +95,8 @@ export default async function PayoutsPage() {
       <section>
         <SectionHeader title="Details" description="Open source material or legacy records only when payout work calls for it." />
         <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-          <ProgressiveActionDrawer
-            triggerLabel="Approved unpaid work"
-            title="Approved unpaid work"
-            description="Source material for the next payout run."
-            variant="outline"
-            width="lg"
-            badgeLabel={approvedUnpaid.length > 0 ? String(approvedUnpaid.length) : undefined}
-            className="w-full justify-between"
-          >
+          <div>
+            <SectionHeader title="Approved unpaid work" description="Source material for the next payout run." />
             <DataTable
               rows={approvedUnpaid}
               rowKey={(submission) => submission.id}
@@ -109,17 +107,10 @@ export default async function PayoutsPage() {
                 { key: "amount", header: "Amount", align: "right", cell: (submission) => formatCurrencyPrecise(submission.earnedAmount, "USD") },
               ]}
             />
-          </ProgressiveActionDrawer>
+          </div>
 
-          <ProgressiveActionDrawer
-            triggerLabel="Legacy payout records"
-            title="Legacy payout records"
-            description="Existing payout history remains available for audit and support."
-            variant="outline"
-            width="lg"
-            badgeLabel={payouts.length > 0 ? String(payouts.length) : undefined}
-            className="w-full justify-between"
-          >
+          <div>
+            <SectionHeader title="Legacy payout records" description="Existing payout history remains available for audit and support." />
             <DataTable
               rows={payouts}
               rowKey={(payout) => payout.id}
@@ -132,7 +123,7 @@ export default async function PayoutsPage() {
                 { key: "date", header: "Date", cell: (payout) => formatDate(payout.createdAt) },
               ]}
             />
-          </ProgressiveActionDrawer>
+          </div>
         </div>
       </section>
     </div>

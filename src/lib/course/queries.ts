@@ -66,9 +66,11 @@ export async function getCourseTree(
     orderBy: { order: "asc" },
     include: {
       sections: {
+        where: isAdmin ? {} : { isPublished: true },
         orderBy: { order: "asc" },
         include: {
           lessons: {
+            where: isAdmin ? {} : { isPublished: true },
             orderBy: { order: "asc" },
             include: { _count: { select: { questions: true } } },
           },

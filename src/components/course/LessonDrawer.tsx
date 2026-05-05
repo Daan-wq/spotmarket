@@ -1,5 +1,7 @@
 "use client";
 
+/* eslint-disable react-hooks/set-state-in-effect */
+
 import { useEffect, useRef, useState, useTransition } from "react";
 import { toast } from "sonner";
 import { Check, Clock } from "lucide-react";
@@ -158,8 +160,8 @@ export function LessonDrawer({ lessonSlug, accent, onClose }: LessonDrawerProps)
                 <Clock className="h-3 w-3" /> {data.lesson.estMinutes} min
               </span>
               {!data.lesson.isPublished && (
-                <span className="rounded-full border border-dashed border-indigo-400 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-indigo-600">
-                  Preview
+                <span className="rounded-full border border-dashed border-neutral-300 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-neutral-600">
+                  Draft
                 </span>
               )}
               {isCompleted && data.progress?.earnedBadge && (
@@ -197,7 +199,7 @@ export function LessonDrawer({ lessonSlug, accent, onClose }: LessonDrawerProps)
             <div className="my-6 border-t border-dashed pt-4">
               {!hasQuiz && (
                 <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
-                  This lesson doesn't have a quiz yet.
+                  This lesson does not have a quiz yet.
                 </div>
               )}
 

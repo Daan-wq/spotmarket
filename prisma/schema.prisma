@@ -335,6 +335,7 @@ model Brand {
   campaigns             Campaign[]
   convertedLeads        BrandLead[]            @relation("ConvertedBrand")
   productionAssignments ProductionAssignment[]
+  contractDocuments     ContractDocument[]
 
   @@index([status])
   @@index([owner])
@@ -384,11 +385,39 @@ model BrandOnboarding {
   assignedClipperIds      String[]  @default([])
   startDate               DateTime?
   accountManager          String?
+  pricingTemplateId       String?
+  pricingTemplate         PricingPackageTemplate? @relation(fields: [pricingTemplateId], references: [id])
   createdAt               DateTime  @default(now())
   updatedAt               DateTime  @updatedAt
 
   @@index([accountManager])
   @@index([startDate])
+  @@index([pricingTemplateId])
+}
+
+model PricingPackageTemplate {
+  id                 String   @id @default(cuid())
+  name               String
+  description        String?
+  price              Decimal  @default(0) @db.Decimal(12, 2)
+  currency           String   @default("EUR")
+  platforms          Platform[] @default([])
+  includedClips      Int?
+  includedViews      Int?
+  creatorRatePerClip Decimal  @default(0) @db.Decimal(10, 2)
+  creatorCpv         Decimal  @default(0) @db.Decimal(8, 6)
+  businessCpv        Decimal  @default(0) @db.Decimal(8, 6)
+  marginPercent      Decimal  @default(0) @db.Decimal(5, 2)
+  isActive           Boolean  @default(true)
+  sortOrder          Int      @default(0)
+  notes              String?  @db.Text
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  onboardings BrandOnboarding[]
+  campaigns   Campaign[]
+
+  @@index([isActive, sortOrder])
 }
 
 enum BrandStatus {
@@ -478,6 +507,8 @@ model Campaign {
   createdBy       User?   @relation("OwnedCampaigns", fields: [createdByUserId], references: [id])
   brandId         String?
   brand           Brand?  @relation(fields: [brandId], references: [id])
+  pricingTemplateId String?
+  pricingTemplate   PricingPackageTemplate? @relation(fields: [pricingTemplateId], references: [id])
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -486,12 +517,14 @@ model Campaign {
   campaignSubmissions   CampaignSubmission[]
   inviteLinks           CampaignInviteLink[]
   productionAssignments ProductionAssignment[]
+  contractDocuments     ContractDocument[]
 
   @@index([status])
   @@index([deadline])
   @@index([niche])
   @@index([createdByUserId])
   @@index([brandId])
+  @@index([pricingTemplateId])
 }
 
 enum CampaignStatus {
@@ -885,6 +918,62 @@ model SopDocument {
   @@index([category])
   @@index([status])
   @@index([nextReviewAt])
+}
+
+model ContractDocument {
+  id             String    @id @default(cuid())
+  title          String
+  type           String    @default("CONTRACT")
+  status         String    @default("DRAFT")
+  owner          String?
+  brandId        String?
+  brand          Brand?    @relation(fields: [brandId], references: [id])
+  campaignId     String?
+  campaign       Campaign? @relation(fields: [campaignId], references: [id])
+  effectiveAt    DateTime?
+  expiresAt      DateTime?
+  renewalAt      DateTime?
+  externalUrl    String?
+  storageKey     String?
+  fileName       String?
+  mimeType       String?
+  fileSize       Int?
+  notes          String?   @db.Text
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  @@index([status])
+  @@index([owner])
+  @@index([brandId])
+  @@index([campaignId])
+  @@index([expiresAt])
+  @@index([renewalAt])
+}
+
+model WeeklyBusinessSnapshot {
+  id                    String   @id @default(cuid())
+  weekStart             DateTime @db.Date
+  weekEnd               DateTime @db.Date
+  status                String   @default("DRAFT")
+  revenueBooked         Decimal  @default(0) @db.Decimal(12, 2)
+  expectedRevenue       Decimal  @default(0) @db.Decimal(12, 2)
+  creatorCost           Decimal  @default(0) @db.Decimal(12, 2)
+  payoutOwed            Decimal  @default(0) @db.Decimal(12, 2)
+  estimatedProfit       Decimal  @default(0) @db.Decimal(12, 2)
+  activeBrands          Int      @default(0)
+  activeClippers        Int      @default(0)
+  clipsDelivered        Int      @default(0)
+  clipsApproved         Int      @default(0)
+  clipsRejectedOrRevised Int     @default(0)
+  openRisks             Int      @default(0)
+  notes                 String?  @db.Text
+  createdBy             String?
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  @@unique([weekStart, weekEnd])
+  @@index([status])
+  @@index([weekStart])
 }
 
 enum ClipperStatus {
