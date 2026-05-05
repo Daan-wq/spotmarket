@@ -10,7 +10,7 @@ import { CreditCard } from "@/components/animate-ui/icons/credit-card";
 import { GraduationCap } from "@/components/animate-ui/icons/graduation-cap";
 import { Megaphone } from "@/components/animate-ui/icons/megaphone";
 import { Video } from "@/components/animate-ui/icons/video";
-import { WalletCards } from "@/components/animate-ui/icons/wallet-cards";
+import { ChartSpline } from "@/components/animate-ui/icons/chart-spline";
 import { LayoutDashboard } from "@/components/animate-ui/icons/layout-dashboard";
 import { Users } from "@/components/animate-ui/icons/users";
 import { Logo } from "@/components/shared/logo";
@@ -28,7 +28,7 @@ const NAV: Array<{ href: string; label: string; icon: NavIcon }> = [
   { href: "/creator/campaigns", label: "Campaigns", icon: Megaphone },
   { href: "/creator/videos", label: "Clips", icon: Video },
   { href: "/creator/payouts", label: "Payments", icon: CreditCard },
-  { href: "/creator/connections", label: "Accounts", icon: WalletCards },
+  { href: "/creator/connections", label: "Accounts", icon: ChartSpline },
   { href: "/creator/course", label: "Course", icon: GraduationCap },
   { href: "/creator/referral", label: "Teams", icon: Users },
   { href: "/creator/stats", label: "Stats", icon: BarChart3 },

@@ -1,11 +1,17 @@
 import Link from "next/link";
-import { Camera, Music2, PlaySquare, Share2, ShieldCheck } from "lucide-react";
+import { Camera, Music2, PlaySquare, Share2 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import type { ReactNode } from "react";
 import { requireAuth, getCreatorHeader } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { getCreatorTopStats } from "@/lib/stats/creator";
+import { parseRange } from "@/lib/stats/range";
+import { PLATFORM_ALL } from "@/lib/stats/types";
 import { Badge } from "@/components/ui/badge";
 import { EmptyState } from "@/components/ui/empty-state";
+import { KpiCard } from "@/components/admin/kpi-card";
+import { PlatformTile } from "@/components/stats/PlatformTile";
+import { TimeRangeSelector } from "@/components/stats/TimeRangeSelector";
 import { ConnectPlatformDialog } from "./_components/connect-platform-dialog";
 import { InstagramConnectButton } from "./_components/instagram-connect-button";
 import { FacebookConnectButton } from "./_components/facebook-connect-button";
@@ -15,16 +21,24 @@ import { RemovePageButton } from "./_components/remove-page-button";
 import { RemoveFbPageButton } from "./_components/remove-fb-page-button";
 import { RemoveYtPageButton } from "./_components/remove-yt-page-button";
 import { RemoveTikTokPageButton } from "./_components/remove-tiktok-page-button";
-import { CreatorPageHeader, CreatorSectionHeader, SoftStat } from "../_components/creator-journey";
+import { CreatorPageHeader, CreatorSectionHeader } from "../_components/creator-journey";
 
-export default async function PagesPage() {
+export const dynamic = "force-dynamic";
+
+interface PageProps {
+  searchParams: Promise<{ range?: string }>;
+}
+
+export default async function PagesPage({ searchParams }: PageProps) {
+  const sp = await searchParams;
+  const range = parseRange(sp);
   const { userId: supabaseId } = await requireAuth("creator");
 
   const header = await getCreatorHeader(supabaseId);
   if (!header) throw new Error("User not found");
   if (!header.creatorProfile) throw new Error("Creator profile not found");
 
-  const [igConnections, fbConnections, ytConnections, ttConnections] = await Promise.all([
+  const [igConnections, fbConnections, ytConnections, ttConnections, stats] = await Promise.all([
     prisma.creatorIgConnection.findMany({
       where: { creatorProfileId: header.creatorProfile.id },
       orderBy: { createdAt: "desc" },
@@ -41,6 +55,7 @@ export default async function PagesPage() {
       where: { creatorProfileId: header.creatorProfile.id },
       orderBy: { createdAt: "desc" },
     }),
+    getCreatorTopStats(supabaseId, range),
   ]);
 
   const platforms = [
@@ -52,9 +67,7 @@ export default async function PagesPage() {
         id: connection.id,
         label: `@${connection.igUsername}`,
         meta: followerMeta(connection.followerCount),
-        verified: connection.isVerified,
         lastSyncedAt: connection.lastCheckedAt ?? connection.verifiedAt,
-        hasToken: Boolean(connection.accessToken && connection.igUserId),
         statsHref: connection.accessToken && connection.igUserId ? `/creator/stats/ig/${connection.id}` : undefined,
         remove: <RemovePageButton connectionId={connection.id} />,
       })),
@@ -68,9 +81,7 @@ export default async function PagesPage() {
         id: connection.id,
         label: connection.username.startsWith("@") ? connection.username : `@${connection.username}`,
         meta: followerMeta(connection.followerCount),
-        verified: connection.isVerified,
         lastSyncedAt: connection.lastCheckedAt ?? connection.verifiedAt,
-        hasToken: Boolean(connection.accessToken),
         statsHref: connection.accessToken ? `/creator/stats/tiktok/${connection.id}` : undefined,
         remove: <RemoveTikTokPageButton connectionId={connection.id} />,
       })),
@@ -84,9 +95,7 @@ export default async function PagesPage() {
         id: connection.id,
         label: connection.channelName,
         meta: followerMeta(connection.subscriberCount, "subscribers"),
-        verified: connection.isVerified,
         lastSyncedAt: connection.updatedAt,
-        hasToken: Boolean(connection.accessToken),
         statsHref: connection.accessToken ? `/creator/stats/yt/${connection.id}` : undefined,
         remove: <RemoveYtPageButton connectionId={connection.id} />,
       })),
@@ -100,9 +109,7 @@ export default async function PagesPage() {
         id: connection.id,
         label: connection.pageName,
         meta: followerMeta(connection.followerCount),
-        verified: connection.isVerified,
         lastSyncedAt: connection.lastCheckedAt ?? connection.verifiedAt,
-        hasToken: Boolean(connection.accessToken),
         statsHref: connection.accessToken ? `/creator/stats/fb/${connection.id}` : undefined,
         remove: <RemoveFbPageButton connectionId={connection.id} />,
       })),
@@ -118,9 +125,6 @@ export default async function PagesPage() {
       icon: platform.icon,
     })),
   );
-  const totalAccounts = accounts.length;
-  const verifiedAccounts = accounts.filter((account) => account.verified).length;
-  const oauthReady = accounts.filter((account) => account.hasToken).length;
 
   return (
     <div className="w-full space-y-8 px-6 py-8">
@@ -136,12 +140,6 @@ export default async function PagesPage() {
           </ConnectPlatformDialog>
         }
       />
-
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-        <SoftStat label="Connected accounts" value={String(totalAccounts)} detail="Across supported platforms" />
-        <SoftStat label="Verified" value={`${verifiedAccounts}/${totalAccounts || 0}`} detail="Ready for eligibility checks" />
-        <SoftStat label="Sync ready" value={String(oauthReady)} detail="OAuth token available" />
-      </div>
 
       <section className="rounded-2xl border border-neutral-200 bg-white p-5 md:p-6">
         <CreatorSectionHeader title="Connected pages" description="Only active accounts stay visible here." />
@@ -159,6 +157,63 @@ export default async function PagesPage() {
           </div>
         )}
       </section>
+
+      {stats && (
+        <section className="space-y-6">
+          <div className="flex items-center justify-between flex-wrap gap-3">
+            <CreatorSectionHeader
+              title="Your performance"
+              description={`${range.label} across all platforms`}
+            />
+            <TimeRangeSelector value={range.key} />
+          </div>
+
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+            <KpiCard
+              label="Total views"
+              value={stats.totalViews.value.toLocaleString()}
+              trend={stats.totalViews.delta}
+              hint={range.label}
+            />
+            <KpiCard
+              label="Total followers"
+              value={stats.totalFollowers.value.toLocaleString()}
+              hint="Latest snapshot"
+            />
+            <KpiCard
+              label="Engagement"
+              value={stats.totalEngagement.value.toLocaleString()}
+              trend={stats.totalEngagement.delta}
+              hint="Likes + comments + shares"
+            />
+            <KpiCard
+              label="Earnings"
+              value={`$${stats.totalEarnings.value.toFixed(2)}`}
+              trend={stats.totalEarnings.delta}
+              hint={range.label}
+            />
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {PLATFORM_ALL.map((slug) => {
+              const p = stats.byPlatform[slug];
+              return (
+                <PlatformTile
+                  key={slug}
+                  slug={slug}
+                  href={`/creator/stats/${slug}${range.key !== "30d" ? `?range=${range.key}` : ""}`}
+                  connectionCount={p.connectionCount}
+                  followerCount={p.followerCount}
+                  windowViews={p.windowViews}
+                  windowEngagement={p.windowEngagement}
+                  topPostTitle={p.topPost?.title}
+                  topPostViews={p.topPost?.views}
+                />
+              );
+            })}
+          </div>
+        </section>
+      )}
     </div>
   );
 }
@@ -171,8 +226,6 @@ function AccountRow({
     meta: string;
     platformLabel: string;
     icon: LucideIcon;
-    verified: boolean;
-    hasToken: boolean;
     lastSyncedAt: Date | null;
     statsHref?: string;
     remove: ReactNode;
@@ -198,13 +251,6 @@ function AccountRow({
       </div>
 
       <div className="flex flex-wrap items-center gap-2 md:justify-end">
-        <Badge variant={account.verified ? "verified" : "pending"}>
-          <ShieldCheck className="h-3 w-3" />
-          {account.verified ? "Verified" : "Pending"}
-        </Badge>
-        <Badge variant={account.hasToken ? "verified" : "neutral"}>
-          {account.hasToken ? "OAuth" : "Bio/manual"}
-        </Badge>
         {account.statsHref ? (
           <Link
             href={account.statsHref}
