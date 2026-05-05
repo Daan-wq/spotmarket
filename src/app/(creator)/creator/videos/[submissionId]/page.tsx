@@ -4,7 +4,16 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import PlatformIcon from "@/components/shared/PlatformIcon";
 import ClipThumbnail from "@/components/shared/ClipThumbnail";
-import { deriveThumbnail } from "@/lib/clip-thumbnail";
+import { resolveThumbnail } from "@/lib/clip-thumbnail";
+import { parseClipUrl, type ClipPlatform } from "@/lib/parse-clip-url";
+
+const CLIP_TO_ICON: Record<ClipPlatform, string | null> = {
+  INSTAGRAM: "INSTAGRAM",
+  TIKTOK: "TIKTOK",
+  FACEBOOK: "FACEBOOK",
+  YOUTUBE: "YOUTUBE_SHORTS",
+  UNKNOWN: null,
+};
 
 export default async function VideoDetailPage({
   params,
@@ -43,9 +52,8 @@ export default async function VideoDetailPage({
   const shares = submission.shareCount ?? 0;
   const totalEngagement = views > 0 ? (((likes + comments + shares) / views) * 100) : 0;
   const rewardRate = Number(submission.campaign.creatorCpv) * 1000;
-  const platforms = submission.campaign.platforms.length > 0
-    ? submission.campaign.platforms
-    : [submission.campaign.platform];
+  const submissionPlatformIcon = CLIP_TO_ICON[parseClipUrl(submission.postUrl).platform];
+  const thumbnailUrl = await resolveThumbnail(submission.postUrl, submission.thumbnailUrl);
 
   const statusStyles: Record<string, { bg: string; color: string; label: string }> = {
     PENDING: { bg: "var(--warning-bg)", color: "var(--warning-text)", label: "Pending" },
@@ -60,7 +68,7 @@ export default async function VideoDetailPage({
       {/* Left: Post Embed */}
       <div className="w-[50%] flex items-center justify-center p-8" style={{ background: "var(--bg-primary)" }}>
         <ClipThumbnail
-          thumbnailUrl={submission.thumbnailUrl ?? deriveThumbnail(submission.postUrl)}
+          thumbnailUrl={thumbnailUrl}
           mediaType={(submission.mediaType as "video" | "image" | "carousel" | null) ?? "video"}
           caption={submission.campaign.name}
           className="w-full max-w-md aspect-square rounded-xl"
@@ -140,9 +148,9 @@ export default async function VideoDetailPage({
           <div className="text-xs font-semibold tracking-wider uppercase mb-2" style={{ color: "var(--text-muted)" }}>PLATFORM</div>
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-1.5">
-              {platforms.map((p) => (
-                <PlatformIcon key={p} platform={p} size={24} />
-              ))}
+              {submissionPlatformIcon && (
+                <PlatformIcon platform={submissionPlatformIcon} size={24} />
+              )}
             </div>
             {submission.postUrl && (
               <a href={submission.postUrl} target="_blank" rel="noopener noreferrer" className="text-xs flex items-center gap-1" style={{ color: "var(--primary)" }}>
