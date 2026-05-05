@@ -121,7 +121,7 @@ export async function POST(req: Request) {
     });
   }
 
-  return NextResponse.json({ success: true, redirect: "/creator/dashboard" });
+  return NextResponse.json({ success: true, redirect: "/creator/campaigns" });
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     console.error("[onboarding/complete]", message);

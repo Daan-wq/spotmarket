@@ -5,13 +5,11 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Search } from "lucide-react";
 import { AnimateIcon } from "@/components/animate-ui/icons/icon";
-import { BarChart3 } from "@/components/animate-ui/icons/bar-chart-3";
 import { CreditCard } from "@/components/animate-ui/icons/credit-card";
 import { GraduationCap } from "@/components/animate-ui/icons/graduation-cap";
 import { Megaphone } from "@/components/animate-ui/icons/megaphone";
 import { Video } from "@/components/animate-ui/icons/video";
 import { ChartSpline } from "@/components/animate-ui/icons/chart-spline";
-import { LayoutDashboard } from "@/components/animate-ui/icons/layout-dashboard";
 import { Users } from "@/components/animate-ui/icons/users";
 import { Logo } from "@/components/shared/logo";
 import { cn } from "@/lib/cn";
@@ -24,28 +22,27 @@ interface CreatorSidebarProps {
 type NavIcon = ComponentType<{ className?: string; strokeWidth?: number }>;
 
 const NAV: Array<{ href: string; label: string; icon: NavIcon }> = [
-  { href: "/creator/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { href: "/creator/campaigns", label: "Campaigns", icon: Megaphone },
   { href: "/creator/videos", label: "Clips", icon: Video },
   { href: "/creator/payouts", label: "Payments", icon: CreditCard },
   { href: "/creator/connections", label: "Accounts", icon: ChartSpline },
   { href: "/creator/course", label: "Course", icon: GraduationCap },
-  { href: "/creator/referral", label: "Teams", icon: Users },
-  { href: "/creator/stats", label: "Stats", icon: BarChart3 },
+  { href: "/creator/referral", label: "Referral", icon: Users },
 ];
 
 export function CreatorSidebar({ identitySlot, balanceSlot }: CreatorSidebarProps) {
   const pathname = usePathname();
 
   function isActive(href: string) {
-    if (href === "/creator/dashboard") return pathname === "/creator/dashboard";
     return pathname.startsWith(href);
   }
 
   return (
     <aside className="fixed left-8 top-0 hidden h-screen w-56 flex-col py-10 lg:flex">
       <div className="mb-7">
-        <Logo variant="light" size="sm" />
+        <Link href="/creator/dashboard" aria-label="Dashboard">
+          <Logo variant="light" size="sm" />
+        </Link>
         <p className="mt-1 text-xs text-neutral-500">Creator</p>
       </div>
 

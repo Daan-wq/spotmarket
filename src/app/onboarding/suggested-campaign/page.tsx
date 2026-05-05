@@ -226,11 +226,11 @@ export default async function SuggestedCampaignPage() {
       </Link>
 
       <Link
-        href="/creator/dashboard"
+        href="/creator/campaigns"
         className="mt-2 text-xs"
         style={{ color: "var(--text-muted)" }}
       >
-        Skip to dashboard →
+        Skip to campaigns →
       </Link>
     </div>
   );

@@ -281,10 +281,10 @@ export function OnboardingForm() {
             </Link>
             <button
               type="button"
-              onClick={() => router.push("/creator/dashboard")}
+              onClick={() => router.push("/creator/campaigns")}
               className="text-xs font-medium text-gray-500 hover:text-gray-700 mt-1"
             >
-              Skip for now — go to dashboard
+              Skip for now — go to campaigns
             </button>
           </div>
         </div>
