@@ -630,6 +630,8 @@ model CampaignSubmission {
   postUrl       String
   videoUrl      String?
   screenshotUrl String?
+  thumbnailUrl  String?
+  mediaType     String?
   claimedViews  Int              @default(0)
   brandMessage  String?          @db.Text
   viewCount     Int?

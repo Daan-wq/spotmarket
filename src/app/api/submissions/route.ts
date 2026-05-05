@@ -10,6 +10,8 @@ const createSubmissionSchema = z.object({
   applicationId: z.string().min(1),
   postUrl: z.string().url(),
   screenshotUrl: z.string().url().optional(),
+  thumbnailUrl: z.string().url().optional(),
+  mediaType: z.enum(["video", "image", "carousel"]).optional(),
 });
 
 const PLATFORM_TO_BIO: Record<ClipPlatform, "INSTAGRAM" | "TIKTOK" | "FACEBOOK" | null> = {
@@ -67,7 +69,8 @@ export async function POST(req: NextRequest) {
     const { userId } = await requireAuth("creator");
 
     const body = await req.json();
-    const { applicationId, postUrl, screenshotUrl } = createSubmissionSchema.parse(body);
+    const { applicationId, postUrl, screenshotUrl, thumbnailUrl, mediaType } =
+      createSubmissionSchema.parse(body);
 
     const creator = await prisma.user.findUnique({
       where: { supabaseId: userId },
@@ -186,6 +189,8 @@ export async function POST(req: NextRequest) {
         campaignId: app.campaignId,
         postUrl,
         screenshotUrl: screenshotUrl ?? null,
+        thumbnailUrl: thumbnailUrl ?? null,
+        mediaType: mediaType ?? null,
         claimedViews: 0,
         status: "PENDING",
         sourcePlatform,

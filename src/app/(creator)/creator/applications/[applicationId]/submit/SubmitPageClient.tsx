@@ -230,14 +230,21 @@ export default function SubmitPageClient({
     setSuccess(null);
 
     const urls = Array.from(selectedPostUrls);
+    const postsByUrl = new Map(currentPosts.map((p) => [p.url, p]));
     let submitted = 0;
 
     for (const url of urls) {
+      const post = postsByUrl.get(url);
       try {
         const res = await fetch("/api/submissions", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ applicationId, postUrl: url }),
+          body: JSON.stringify({
+            applicationId,
+            postUrl: url,
+            thumbnailUrl: post?.thumbnail ?? undefined,
+            mediaType: post?.mediaType,
+          }),
         });
         if (res.ok) {
           submitted++;

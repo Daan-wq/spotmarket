@@ -1,6 +1,7 @@
 "use client";
 
 import type { NormalizedPost } from "@/types/media";
+import ClipThumbnail from "@/components/shared/ClipThumbnail";
 
 interface Props {
   post: NormalizedPost;
@@ -25,31 +26,12 @@ export default function PostCard({ post, isSelected, isSubmitted, isEligible, on
         cursor: isSubmitted ? "default" : "pointer",
       }}
     >
-      {post.thumbnail ? (
-        <img
-          src={post.thumbnail}
-          alt={post.caption?.slice(0, 30) ?? "Post"}
-          className="w-full h-full object-cover"
-        />
-      ) : (
-        <div
-          className="w-full h-full flex items-center justify-center"
-          style={{ background: "var(--bg-primary)" }}
-        >
-          <span className="text-[10px]" style={{ color: "var(--text-muted)" }}>
-            {post.mediaType}
-          </span>
-        </div>
-      )}
-
-      {/* Video badge */}
-      {post.mediaType === "video" && (
-        <div className="absolute top-1.5 left-1.5">
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="white" className="drop-shadow">
-            <path d="M5 3l14 9-14 9V3z" />
-          </svg>
-        </div>
-      )}
+      <ClipThumbnail
+        thumbnailUrl={post.thumbnail}
+        mediaType={post.mediaType}
+        caption={post.caption}
+        className="w-full h-full"
+      />
 
       {/* Eligibility badge */}
       {isEligible && (

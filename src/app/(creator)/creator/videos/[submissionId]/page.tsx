@@ -3,6 +3,8 @@ import { prisma } from "@/lib/prisma";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import PlatformIcon from "@/components/shared/PlatformIcon";
+import ClipThumbnail from "@/components/shared/ClipThumbnail";
+import { deriveThumbnail } from "@/lib/clip-thumbnail";
 
 export default async function VideoDetailPage({
   params,
@@ -26,6 +28,7 @@ export default async function VideoDetailPage({
           id: true,
           name: true,
           platform: true,
+          platforms: true,
           creatorCpv: true,
         },
       },
@@ -40,7 +43,9 @@ export default async function VideoDetailPage({
   const shares = submission.shareCount ?? 0;
   const totalEngagement = views > 0 ? (((likes + comments + shares) / views) * 100) : 0;
   const rewardRate = Number(submission.campaign.creatorCpv) * 1000;
-  const platformLabel = submission.campaign.platform === "INSTAGRAM" ? "Instagram" : submission.campaign.platform === "TIKTOK" ? "TikTok" : "Multi-platform";
+  const platforms = submission.campaign.platforms.length > 0
+    ? submission.campaign.platforms
+    : [submission.campaign.platform];
 
   const statusStyles: Record<string, { bg: string; color: string; label: string }> = {
     PENDING: { bg: "var(--warning-bg)", color: "var(--warning-text)", label: "Pending" },
@@ -54,27 +59,12 @@ export default async function VideoDetailPage({
     <div className="flex h-full">
       {/* Left: Post Embed */}
       <div className="w-[50%] flex items-center justify-center p-8" style={{ background: "var(--bg-primary)" }}>
-        {submission.postUrl ? (
-          <div className="w-full max-w-md rounded-xl overflow-hidden" style={{ border: "1px solid var(--border-default)", background: "var(--bg-card)" }}>
-            <iframe
-              src={`${submission.postUrl}embed`}
-              width="100%"
-              height="500"
-              frameBorder="0"
-              scrolling="no"
-              allowTransparency
-              allow="encrypted-media"
-              style={{ border: "none", borderRadius: "12px" }}
-            />
-          </div>
-        ) : (
-          <div className="text-center" style={{ color: "var(--text-muted)" }}>
-            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="mx-auto mb-2">
-              <polygon points="23 7 16 12 23 17 23 7" /><rect width="15" height="14" x="1" y="5" rx="2" />
-            </svg>
-            <p className="text-sm">No post preview available</p>
-          </div>
-        )}
+        <ClipThumbnail
+          thumbnailUrl={submission.thumbnailUrl ?? deriveThumbnail(submission.postUrl)}
+          mediaType={(submission.mediaType as "video" | "image" | "carousel" | null) ?? "video"}
+          caption={submission.campaign.name}
+          className="w-full max-w-md aspect-square rounded-xl"
+        />
       </div>
 
       {/* Right: Detail Panel */}
@@ -149,9 +139,10 @@ export default async function VideoDetailPage({
         <div>
           <div className="text-xs font-semibold tracking-wider uppercase mb-2" style={{ color: "var(--text-muted)" }}>PLATFORM</div>
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <PlatformIcon platform={submission.campaign.platform} size={24} />
-              <span className="text-sm" style={{ color: "var(--text-primary)" }}>{platformLabel}</span>
+            <div className="flex items-center gap-1.5">
+              {platforms.map((p) => (
+                <PlatformIcon key={p} platform={p} size={24} />
+              ))}
             </div>
             {submission.postUrl && (
               <a href={submission.postUrl} target="_blank" rel="noopener noreferrer" className="text-xs flex items-center gap-1" style={{ color: "var(--primary)" }}>
