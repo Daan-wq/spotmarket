@@ -36,8 +36,6 @@ export default async function VideoDetailPage({
         select: {
           id: true,
           name: true,
-          platform: true,
-          platforms: true,
           creatorCpv: true,
         },
       },

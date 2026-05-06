@@ -47,7 +47,6 @@ interface CampaignData {
   requiresApproval?: boolean;
   niche?: string | null;
   platforms?: string[];
-  platform?: string;
 }
 
 interface CampaignEditFormProps {
@@ -61,11 +60,7 @@ export function CampaignEditForm({ campaign, backUrl }: CampaignEditFormProps) {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
 
-  const initialPlatforms = campaign.platforms?.length
-    ? campaign.platforms
-    : campaign.platform && campaign.platform !== "BOTH"
-      ? [campaign.platform]
-      : [];
+  const initialPlatforms = campaign.platforms ?? [];
 
   const initialNiches = campaign.niche
     ? campaign.niche.split(", ").filter(Boolean)

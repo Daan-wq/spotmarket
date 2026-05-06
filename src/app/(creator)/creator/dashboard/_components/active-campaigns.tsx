@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
+import PlatformIcon from "@/components/shared/PlatformIcon";
 import { Skeleton } from "@/components/ui/skeleton";
 import { CreatorSectionHeader } from "../../_components/creator-journey";
 import { getCreatorActiveCampaigns } from "../_data";
@@ -45,10 +46,18 @@ export async function ActiveCampaigns({ profileId }: { profileId: string }) {
                   {application.status}
                 </Badge>
               </div>
-              <p className="mt-3 text-sm text-neutral-500">
-                ${(Number(application.campaign.creatorCpv) * 1000).toFixed(2)} CPM ·{" "}
-                {application.campaign.platform}
-              </p>
+              <div className="mt-3 flex items-center gap-2 text-sm text-neutral-500">
+                <span>
+                  ${(Number(application.campaign.creatorCpv) * 1000).toFixed(2)} CPM
+                </span>
+                {application.campaign.platforms.length > 0 && (
+                  <span className="flex items-center gap-1">
+                    {application.campaign.platforms.map((p) => (
+                      <PlatformIcon key={p} platform={p} size={14} />
+                    ))}
+                  </span>
+                )}
+              </div>
               <p className="mt-1 text-xs text-neutral-400">
                 Due{" "}
                 {application.campaign.deadline.toLocaleDateString("en-US", {

@@ -91,7 +91,7 @@ export default async function CampaignHealthPage({ params }: PageProps) {
           </h1>
           <p style={{ color: "var(--text-secondary)" }}>
             {campaign.status} · deadline {campaign.deadline.toLocaleDateString()} ·{" "}
-            {campaign.platform.toLowerCase()}
+            {campaign.platforms.map((p) => p.toLowerCase()).join(" · ")}
           </p>
         </div>
         <Link

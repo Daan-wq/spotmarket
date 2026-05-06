@@ -2,6 +2,7 @@ import { requireAuth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { notFound } from "next/navigation";
 import Link from "next/link";
+import { parseClipUrl } from "@/lib/parse-clip-url";
 import { ContactClient } from "./_components/contact-client";
 
 export default async function ContactBrandPage({
@@ -37,7 +38,6 @@ export default async function ContactBrandPage({
       postUrl: true,
       status: true,
       createdAt: true,
-      campaign: { select: { platform: true } },
     },
   });
 
@@ -101,7 +101,7 @@ export default async function ContactBrandPage({
 
   const submissionCards = submissions.map((s) => ({
     id: s.id,
-    platform: s.campaign.platform,
+    platform: parseClipUrl(s.postUrl).platform,
     postUrl: s.postUrl,
     status: s.status,
     date: s.createdAt.toISOString(),

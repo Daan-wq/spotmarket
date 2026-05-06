@@ -196,7 +196,9 @@ export default async function CampaignDetailPage({
         <div>
           <div className="text-xs font-semibold tracking-wider uppercase mb-1" style={{ color: "var(--text-muted)" }}>PLATFORMS</div>
           <div className="flex items-center gap-1.5">
-            <PlatformIcon platform={campaign.platform} size={24} />
+            {campaign.platforms.map((p) => (
+              <PlatformIcon key={p} platform={p} size={24} />
+            ))}
           </div>
         </div>
       </div>

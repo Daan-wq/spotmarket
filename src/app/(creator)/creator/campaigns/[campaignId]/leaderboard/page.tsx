@@ -14,7 +14,7 @@ export default async function CampaignLeaderboardPage({ params }: PageProps) {
 
   const campaign = await prisma.campaign.findUnique({
     where: { id: campaignId },
-    select: { id: true, name: true, platform: true, creatorCpv: true },
+    select: { id: true, name: true, creatorCpv: true },
   });
 
   if (!campaign) notFound();

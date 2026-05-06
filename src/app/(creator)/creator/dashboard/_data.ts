@@ -102,7 +102,7 @@ export const getCreatorActiveCampaigns = cache(async (profileId: string) => {
           name: true,
           deadline: true,
           creatorCpv: true,
-          platform: true,
+          platforms: true,
         },
       },
     },

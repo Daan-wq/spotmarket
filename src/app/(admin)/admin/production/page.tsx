@@ -15,7 +15,7 @@ export default async function ProductionPage() {
   const assignments = await prisma.productionAssignment.findMany({
     orderBy: [{ dueAt: "asc" }, { updatedAt: "desc" }],
     include: {
-      campaign: { select: { id: true, name: true, platform: true } },
+      campaign: { select: { id: true, name: true, platforms: true } },
       brand: { select: { id: true, name: true } },
       creatorProfile: { select: { id: true, displayName: true, user: { select: { email: true } } } },
       submission: { select: { id: true, status: true, postUrl: true } },

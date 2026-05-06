@@ -1,7 +1,21 @@
+const PLATFORM_LABELS: Record<string, string> = {
+  INSTAGRAM: "Instagram",
+  TIKTOK: "TikTok",
+  YOUTUBE_SHORTS: "YouTube Shorts",
+  FACEBOOK: "Facebook",
+  X: "X",
+  BOTH: "Instagram & TikTok",
+};
+
+function formatPlatforms(platforms: string[] | null | undefined, separator = " · "): string {
+  if (!platforms || platforms.length === 0) return "—";
+  return platforms.map((p) => PLATFORM_LABELS[p] ?? p).join(separator);
+}
+
 interface CampaignNotification {
   id: string;
   name: string;
-  platform: string;
+  platforms: string[];
   totalBudget: number;
   businessCpv: number;
   targetCountry?: string | null;
@@ -13,8 +27,7 @@ interface CampaignAnnouncement {
   name: string;
   totalBudget: number;
   otherNotes?: string | null;   // stores regions for Discord display
-  platform: string;
-  platforms?: string[];
+  platforms: string[];
   contentType?: string | null;
   requirements?: string | null;
   minAge?: string | null;
@@ -102,7 +115,7 @@ export async function notifyCampaignLive(campaign: CampaignNotification): Promis
       { name: "Campaign", value: campaign.name, inline: true },
       { name: "CPM", value: `$${cpmDollars.toFixed(0)}/1,000 views`, inline: true },
       { name: "Budget", value: `$${campaign.totalBudget.toLocaleString()}`, inline: true },
-      { name: "Platform", value: campaign.platform, inline: true },
+      { name: "Platform", value: formatPlatforms(campaign.platforms, " / "), inline: true },
       ...(campaign.targetCountry ? [{ name: "Target", value: campaign.targetCountry, inline: true }] : []),
       { name: "Min. Engagement", value: `${campaign.minEngagementRate}%`, inline: true },
     ],
@@ -152,21 +165,8 @@ export async function notifyCampaignLive(campaign: CampaignNotification): Promis
 }
 
 export async function postCampaignAnnouncement(campaign: CampaignAnnouncement): Promise<void> {
-  const PLATFORM_LABELS: Record<string, string> = {
-    INSTAGRAM: "Instagram",
-    TIKTOK: "TikTok",
-    YOUTUBE_SHORTS: "YouTube Shorts",
-    FACEBOOK: "Facebook",
-    X: "X",
-    BOTH: "Instagram & TikTok",
-  };
-
   const budget = new Intl.NumberFormat("de-DE").format(campaign.totalBudget);
-
-  // Build platform label from platforms array or fallback to single platform
-  const platformLabel = campaign.platforms && campaign.platforms.length > 0
-    ? campaign.platforms.map((p) => PLATFORM_LABELS[p] ?? p).join(" · ")
-    : PLATFORM_LABELS[campaign.platform] ?? campaign.platform;
+  const platformLabel = formatPlatforms(campaign.platforms);
 
   // Build description lines — only include fields that have values
   const lines: string[] = [];

@@ -25,7 +25,6 @@ interface CampaignData {
   rewardRate: number;
   totalBudget: number;
   totalPaid: number;
-  platform: string;
   platforms: string[];
   contentType: string;
   niche: string | null;
