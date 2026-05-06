@@ -27,6 +27,7 @@ export async function POST(
       pageStats: true,
       niche: true,
       targetCountry: true,
+      targetGeo: true,
       contentGuidelines: true,
     },
   });
@@ -71,6 +72,8 @@ export async function POST(
     requirements: campaign.requirements,
     minAge: campaign.minAge,
     pageStats: campaign.pageStats,
+    targetCountry: campaign.targetCountry,
+    targetGeo: campaign.targetGeo,
   });
 
   return NextResponse.json({ success: true });
