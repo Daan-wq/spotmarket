@@ -144,7 +144,6 @@ export async function PATCH(
         totalBudget: Number(updated.totalBudget),
         businessCpv: Number(updated.businessCpv),
         targetCountry: updated.targetCountry,
-        targetGeo: updated.targetGeo,
         minEngagementRate: Number(updated.minEngagementRate),
       });
     }
