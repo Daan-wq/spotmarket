@@ -7,24 +7,28 @@ import Link from "next/link";
 interface Props {
   posts: NormalizedPost[];
   isLoading: boolean;
-  selectedUrls: Set<string>;
-  submittedUrls: Set<string>;
-  submittingOneUrls: Set<string>;
+  selectedKeys: Set<string>;
+  submittedKeys: Set<string>;
+  submittingKeys: Set<string>;
   requiredHashtags: string[];
   hasConnectedAccount: boolean;
   platform: "ig" | "tt" | "fb";
-  onToggle: (url: string) => void;
+  onToggle: (post: NormalizedPost) => void;
   onSubmitOne: (post: NormalizedPost) => void;
 }
 
 const PLATFORM_NAMES = { ig: "Instagram", tt: "TikTok", fb: "Facebook" };
 
+// Must mirror keyOf() in SubmitPageClient.
+const keyOf = (p: { platform: NormalizedPost["platform"]; id: string }) =>
+  `${p.platform}:${p.id}`;
+
 export default function PostGrid({
   posts,
   isLoading,
-  selectedUrls,
-  submittedUrls,
-  submittingOneUrls,
+  selectedKeys,
+  submittedKeys,
+  submittingKeys,
   requiredHashtags,
   hasConnectedAccount,
   platform,
@@ -81,15 +85,16 @@ export default function PostGrid({
           requiredHashtags.every((tag) =>
             post.caption!.toLowerCase().includes(tag.toLowerCase())
           );
+        const k = keyOf(post);
         return (
           <PostCard
-            key={post.id}
+            key={k}
             post={post}
-            isSelected={selectedUrls.has(post.url)}
-            isSubmitted={submittedUrls.has(post.url)}
-            isSubmittingOne={submittingOneUrls.has(post.url)}
+            isSelected={selectedKeys.has(k)}
+            isSubmitted={submittedKeys.has(k)}
+            isSubmittingOne={submittingKeys.has(k)}
             isEligible={eligible}
-            onToggle={() => onToggle(post.url)}
+            onToggle={() => onToggle(post)}
             onSubmitOne={() => onSubmitOne(post)}
           />
         );

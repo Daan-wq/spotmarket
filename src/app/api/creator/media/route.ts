@@ -83,7 +83,11 @@ async function handleIg(
     mediaType: normalizeIgMediaType(m.media_type, m.media_product_type),
   }));
 
-  return NextResponse.json<MediaResponse>({ posts, nextCursor, hasMore: nextCursor !== null });
+  return NextResponse.json<MediaResponse>({
+    posts: dedupePosts(posts),
+    nextCursor,
+    hasMore: nextCursor !== null,
+  });
 }
 
 async function handleTt(
@@ -126,7 +130,7 @@ async function handleTt(
   }));
 
   return NextResponse.json<MediaResponse>({
-    posts,
+    posts: dedupePosts(posts),
     nextCursor: nextCursor !== null ? String(nextCursor) : null,
     hasMore,
   });
@@ -165,7 +169,26 @@ async function handleFb(
     mediaType: normalizeFbMediaType(p.type),
   }));
 
-  return NextResponse.json<MediaResponse>({ posts, nextCursor, hasMore: nextCursor !== null });
+  return NextResponse.json<MediaResponse>({
+    posts: dedupePosts(posts),
+    nextCursor,
+    hasMore: nextCursor !== null,
+  });
+}
+
+// Drops posts with empty/missing url and dedupes by url, preserving order.
+// Two cards with the same url would otherwise share UI state on the client
+// (selection, submitting, submitted overlay) — see SubmitPageClient.
+function dedupePosts(posts: NormalizedPost[]): NormalizedPost[] {
+  const seen = new Set<string>();
+  const out: NormalizedPost[] = [];
+  for (const p of posts) {
+    if (!p.url) continue;
+    if (seen.has(p.url)) continue;
+    seen.add(p.url);
+    out.push(p);
+  }
+  return out;
 }
 
 function normalizeIgMediaType(
