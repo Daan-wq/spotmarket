@@ -1,7 +1,7 @@
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { Platform } from "@prisma/client";
+import { Platform, Niche } from "@prisma/client";
 import { z } from "zod";
 import { notifyCampaignLive } from "@/lib/discord";
 
@@ -27,7 +27,17 @@ const patchSchema = z.object({
   requiresApproval: z.boolean().optional(),
   status: z.enum(["draft", "active", "paused", "completed", "cancelled"]).optional(),
   deadline: z.string().optional().nullable(),
-  niche: z.string().optional().nullable(),
+  niche: z
+    .string()
+    .nullable()
+    .optional()
+    .transform((v) => {
+      if (v == null) return v;
+      const trimmed = v.trim();
+      if (trimmed === "") return null;
+      const first = trimmed.split(",")[0]!.trim().toUpperCase();
+      return (Object.values(Niche) as string[]).includes(first) ? (first as Niche) : null;
+    }),
   platforms: z.array(z.string()).optional(),
   contentType: z.string().max(100).optional().nullable(),
   otherNotes: z.string().max(2000).optional().nullable(),
@@ -134,6 +144,7 @@ export async function PATCH(
         totalBudget: Number(updated.totalBudget),
         businessCpv: Number(updated.businessCpv),
         targetCountry: updated.targetCountry,
+        targetGeo: updated.targetGeo,
         minEngagementRate: Number(updated.minEngagementRate),
       });
     }
