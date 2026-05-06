@@ -6,8 +6,7 @@ import { z } from "zod";
 const createCampaignSchema = z.object({
   // Section 1
   name: z.string().min(1).max(200),
-  platform: z.enum(["INSTAGRAM", "TIKTOK", "BOTH", "YOUTUBE_SHORTS", "FACEBOOK", "X"]).optional().default("INSTAGRAM"),
-  platforms: z.array(z.enum(["INSTAGRAM", "TIKTOK", "YOUTUBE_SHORTS", "FACEBOOK", "X"])).optional().default([]),
+  platforms: z.array(z.enum(["INSTAGRAM", "TIKTOK", "YOUTUBE_SHORTS", "FACEBOOK", "X"])).min(1, "At least one platform is required"),
   contentType: z.string().max(100).optional(),
   description: z.string().max(2000).optional(),
   contentGuidelines: z.string().max(5000).optional(),
@@ -131,8 +130,7 @@ export async function POST(req: Request) {
     campaign = await prisma.campaign.create({
       data: {
         name: d.name,
-        platform: d.platforms.length > 0 ? d.platforms[0] : d.platform,
-        platforms: d.platforms.length > 0 ? d.platforms : (d.platform ? [d.platform] : []),
+        platforms: d.platforms,
         contentType: d.contentType,
         description: d.description,
         contentGuidelines: d.contentGuidelines,

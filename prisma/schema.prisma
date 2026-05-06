@@ -454,7 +454,6 @@ enum LeadPriority {
 model Campaign {
   id                String         @id @default(cuid())
   name              String
-  platform          Platform       @default(INSTAGRAM)
   platforms         Platform[]     @default([])
   description       String?
   contentGuidelines String?        @db.Text

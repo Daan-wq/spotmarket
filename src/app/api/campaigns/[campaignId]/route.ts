@@ -125,8 +125,6 @@ export async function PATCH(
   if (deadline) data.deadline = new Date(deadline);
   if (platforms) {
     data.platforms = platforms as Platform[];
-    // Keep singular column synced until Phase 3 schema drop (rollback safety).
-    data.platform = (platforms[0] ?? authorized.campaign.platform) as Platform;
   }
   if (goalViews !== undefined) data.goalViews = goalViews ? BigInt(goalViews) : null;
   if (minEngagementRate !== undefined) data.minEngagementRate = minEngagementRate;
