@@ -23,7 +23,7 @@ type NavIcon = ComponentType<{ className?: string; strokeWidth?: number }>;
 
 const NAV: Array<{ href: string; label: string; icon: NavIcon }> = [
   { href: "/creator/campaigns", label: "Campaigns", icon: Megaphone },
-  { href: "/creator/videos", label: "Clips", icon: Video },
+  { href: "/creator/videos", label: "My Clips", icon: Video },
   { href: "/creator/payouts", label: "Payments", icon: CreditCard },
   { href: "/creator/connections", label: "Accounts", icon: ChartSpline },
   { href: "/creator/course", label: "Course", icon: GraduationCap },

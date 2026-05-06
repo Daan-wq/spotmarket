@@ -8,7 +8,7 @@ import { FeedbackDrawer } from "@/components/feedback/feedback-drawer";
 const SEGMENT_LABELS: Record<string, string> = {
   creator: "",
   campaigns: "Campaigns",
-  videos: "Clips",
+  videos: "My Clips",
   dashboard: "Dashboard",
   payouts: "Payments",
   course: "Course",

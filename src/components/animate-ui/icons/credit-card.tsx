@@ -39,12 +39,13 @@ function IconComponent({ size, ...props }: CreditCardProps) {
       strokeWidth={2}
       strokeLinecap="round"
       strokeLinejoin="round"
+      variants={variants.group}
+      initial="initial"
+      animate={controls}
       {...props}
     >
-      <motion.g variants={variants.group} initial="initial" animate={controls}>
-        <rect width="20" height="14" x="2" y="5" rx="2" />
-        <line x1="2" y1="10" x2="22" y2="10" />
-      </motion.g>
+      <rect width="20" height="14" x="2" y="5" rx="2" />
+      <line x1="2" y1="10" x2="22" y2="10" />
     </motion.svg>
   );
 }
