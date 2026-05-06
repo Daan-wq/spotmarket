@@ -1,14 +1,8 @@
-import Link from "next/link";
-import { Camera, Music2, PlaySquare, Share2 } from "lucide-react";
-import type { LucideIcon } from "lucide-react";
-import type { ReactNode } from "react";
 import { requireAuth, getCreatorHeader } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { getCreatorTopStats } from "@/lib/stats/creator";
 import { parseRange } from "@/lib/stats/range";
 import { PLATFORM_ALL } from "@/lib/stats/types";
-import { Badge } from "@/components/ui/badge";
-import { EmptyState } from "@/components/ui/empty-state";
 import { KpiCard } from "@/components/admin/kpi-card";
 import { PlatformTile } from "@/components/stats/PlatformTile";
 import { TimeRangeSelector } from "@/components/stats/TimeRangeSelector";
@@ -21,6 +15,11 @@ import { RemovePageButton } from "./_components/remove-page-button";
 import { RemoveFbPageButton } from "./_components/remove-fb-page-button";
 import { RemoveYtPageButton } from "./_components/remove-yt-page-button";
 import { RemoveTikTokPageButton } from "./_components/remove-tiktok-page-button";
+import {
+  ConnectionsClient,
+  type ConnectionAccount,
+} from "./_components/ConnectionsClient";
+import type { ConnectionPlatform } from "@/components/shared/connections/PlatformTabs";
 import { CreatorPageHeader, CreatorSectionHeader } from "../_components/creator-journey";
 
 export const dynamic = "force-dynamic";
@@ -58,72 +57,71 @@ export default async function PagesPage({ searchParams }: PageProps) {
     getCreatorTopStats(supabaseId, range),
   ]);
 
-  const platforms = [
-    {
-      key: "instagram",
-      label: "Instagram",
-      icon: Camera,
-      accounts: igConnections.map((connection) => ({
-        id: connection.id,
-        label: `@${connection.igUsername}`,
-        meta: followerMeta(connection.followerCount),
-        lastSyncedAt: connection.lastCheckedAt ?? connection.verifiedAt,
-        statsHref: connection.accessToken && connection.igUserId ? `/creator/stats/ig/${connection.id}` : undefined,
-        remove: <RemovePageButton connectionId={connection.id} />,
-      })),
-      connect: <InstagramConnectButton />,
-    },
-    {
-      key: "tiktok",
-      label: "TikTok",
-      icon: Music2,
-      accounts: ttConnections.map((connection) => ({
-        id: connection.id,
-        label: connection.username.startsWith("@") ? connection.username : `@${connection.username}`,
-        meta: followerMeta(connection.followerCount),
-        lastSyncedAt: connection.lastCheckedAt ?? connection.verifiedAt,
-        statsHref: connection.accessToken ? `/creator/stats/tiktok/${connection.id}` : undefined,
-        remove: <RemoveTikTokPageButton connectionId={connection.id} />,
-      })),
-      connect: <TikTokConnectButton />,
-    },
-    {
-      key: "youtube",
-      label: "YouTube",
-      icon: PlaySquare,
-      accounts: ytConnections.map((connection) => ({
-        id: connection.id,
-        label: connection.channelName,
-        meta: followerMeta(connection.subscriberCount, "subscribers"),
-        lastSyncedAt: connection.updatedAt,
-        statsHref: connection.accessToken ? `/creator/stats/yt/${connection.id}` : undefined,
-        remove: <RemoveYtPageButton connectionId={connection.id} />,
-      })),
-      connect: <YoutubeConnectButton />,
-    },
-    {
-      key: "facebook",
-      label: "Facebook",
-      icon: Share2,
-      accounts: fbConnections.map((connection) => ({
-        id: connection.id,
-        label: connection.pageName,
-        meta: followerMeta(connection.followerCount),
-        lastSyncedAt: connection.lastCheckedAt ?? connection.verifiedAt,
-        statsHref: connection.accessToken ? `/creator/stats/fb/${connection.id}` : undefined,
-        remove: <RemoveFbPageButton connectionId={connection.id} />,
-      })),
-      connect: <FacebookConnectButton />,
-    },
-  ];
+  const stripAt = (s: string) => s.replace(/^@/, "");
 
-  const accounts = platforms.flatMap((platform) =>
-    platform.accounts.map((account) => ({
-      ...account,
-      platformKey: platform.key,
-      platformLabel: platform.label,
-      icon: platform.icon,
+  const accountsByPlatform: Record<ConnectionPlatform, ConnectionAccount[]> = {
+    ig: igConnections.map((c): ConnectionAccount => {
+      const handle = stripAt(c.igUsername);
+      return {
+        id: c.id,
+        label: `@${handle}`,
+        username: handle,
+        meta: followerMeta(c.followerCount),
+        lastSyncedAt: (c.lastCheckedAt ?? c.verifiedAt)?.toISOString() ?? null,
+        statsHref:
+          c.accessToken && c.igUserId
+            ? `/creator/stats/ig/${c.id}`
+            : undefined,
+        remove: (
+          <RemovePageButton connectionId={c.id} label={`@${handle}`} />
+        ),
+      };
+    }),
+    tt: ttConnections.map((c): ConnectionAccount => {
+      const handle = stripAt(c.username);
+      return {
+        id: c.id,
+        label: `@${handle}`,
+        username: handle,
+        meta: followerMeta(c.followerCount),
+        lastSyncedAt: (c.lastCheckedAt ?? c.verifiedAt)?.toISOString() ?? null,
+        statsHref: c.accessToken ? `/creator/stats/tiktok/${c.id}` : undefined,
+        remove: (
+          <RemoveTikTokPageButton connectionId={c.id} label={`@${handle}`} />
+        ),
+      };
+    }),
+    fb: fbConnections.map((c): ConnectionAccount => ({
+      id: c.id,
+      label: c.pageName,
+      username: stripAt(c.pageName).replace(/\s+/g, ""),
+      meta: followerMeta(c.followerCount),
+      lastSyncedAt: (c.lastCheckedAt ?? c.verifiedAt)?.toISOString() ?? null,
+      statsHref: c.accessToken ? `/creator/stats/fb/${c.id}` : undefined,
+      remove: (
+        <RemoveFbPageButton connectionId={c.id} label={c.pageName} />
+      ),
     })),
+    yt: ytConnections.map((c): ConnectionAccount => ({
+      id: c.id,
+      label: c.channelName,
+      username: stripAt(c.channelName).replace(/\s+/g, ""),
+      meta: followerMeta(c.subscriberCount, "subscribers"),
+      lastSyncedAt: c.updatedAt?.toISOString() ?? null,
+      statsHref: c.accessToken ? `/creator/stats/yt/${c.id}` : undefined,
+      remove: (
+        <RemoveYtPageButton connectionId={c.id} label={c.channelName} />
+      ),
+    })),
+  };
+
+  const connectButtons = (
+    <ConnectPlatformDialog>
+      <InstagramConnectButton />
+      <TikTokConnectButton />
+      <YoutubeConnectButton />
+      <FacebookConnectButton />
+    </ConnectPlatformDialog>
   );
 
   return (
@@ -132,30 +130,11 @@ export default async function PagesPage({ searchParams }: PageProps) {
         eyebrow="Account health"
         title="Accounts"
         description="Keep the pages you post from connected, verified, and ready for tracking."
-        action={
-          <ConnectPlatformDialog>
-            {platforms.map((platform) => (
-              <div key={platform.key}>{platform.connect}</div>
-            ))}
-          </ConnectPlatformDialog>
-        }
       />
 
-      <section className="rounded-2xl border border-neutral-200 bg-white p-5 md:p-6">
-        <CreatorSectionHeader title="Connected pages" description="Only active accounts stay visible here." />
-        {accounts.length === 0 ? (
-          <EmptyState
-            title="No pages connected yet"
-            description="Use the connect button above to choose a platform and add the first page."
-            className="min-h-[220px]"
-          />
-        ) : (
-          <div className="divide-y divide-neutral-100 overflow-hidden rounded-2xl border border-neutral-200">
-            {accounts.map((account) => (
-              <AccountRow key={`${account.platformKey}-${account.id}`} account={account} />
-            ))}
-          </div>
-        )}
+      <section className="space-y-3">
+        <CreatorSectionHeader title="Connected pages" description="Switch platforms and accounts to manage stats and disconnects." />
+        <ConnectionsClient accountsByPlatform={accountsByPlatform} connect={connectButtons} />
       </section>
 
       {stats && (
@@ -218,58 +197,6 @@ export default async function PagesPage({ searchParams }: PageProps) {
   );
 }
 
-function AccountRow({
-  account,
-}: {
-  account: {
-    label: string;
-    meta: string;
-    platformLabel: string;
-    icon: LucideIcon;
-    lastSyncedAt: Date | null;
-    statsHref?: string;
-    remove: ReactNode;
-  };
-}) {
-  const Icon = account.icon;
-
-  return (
-    <div className="flex flex-col gap-4 bg-white px-4 py-4 md:flex-row md:items-center md:justify-between">
-      <div className="flex min-w-0 items-center gap-3">
-        <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-neutral-200 bg-neutral-50 text-neutral-950">
-          <Icon className="h-5 w-5" />
-        </div>
-        <div className="min-w-0">
-          <div className="flex flex-wrap items-center gap-2">
-            <p className="font-semibold text-neutral-950">{account.label}</p>
-            <Badge variant="neutral">{account.platformLabel}</Badge>
-          </div>
-          <p className="mt-1 text-xs text-neutral-500">
-            {account.meta} - last synced {formatSync(account.lastSyncedAt)}
-          </p>
-        </div>
-      </div>
-
-      <div className="flex flex-wrap items-center gap-2 md:justify-end">
-        {account.statsHref ? (
-          <Link
-            href={account.statsHref}
-            className="inline-flex h-9 items-center justify-center rounded-xl border border-neutral-200 bg-white px-3 text-xs font-semibold text-neutral-950 transition hover:bg-neutral-50"
-          >
-            Stats
-          </Link>
-        ) : null}
-        {account.remove}
-      </div>
-    </div>
-  );
-}
-
 function followerMeta(value: number | null | undefined, label = "followers") {
   return value == null ? `No ${label} snapshot` : `${value.toLocaleString()} ${label}`;
-}
-
-function formatSync(value: Date | null) {
-  if (!value) return "never";
-  return value.toLocaleDateString("en-US", { month: "short", day: "numeric" });
 }

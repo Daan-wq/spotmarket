@@ -79,6 +79,7 @@ async function handleIg(
     caption: m.caption,
     publishedAt: m.timestamp,
     likeCount: m.like_count,
+    commentCount: m.comments_count ?? null,
     mediaType: normalizeIgMediaType(m.media_type, m.media_product_type),
   }));
 
@@ -120,6 +121,7 @@ async function handleTt(
     caption: v.title || null,
     publishedAt: new Date(v.createTime * 1000).toISOString(),
     likeCount: v.likeCount,
+    commentCount: v.commentCount ?? null,
     mediaType: "video",
   }));
 
@@ -159,6 +161,7 @@ async function handleFb(
     caption: p.message,
     publishedAt: p.createdTime,
     likeCount: p.reactions,
+    commentCount: p.comments ?? null,
     mediaType: normalizeFbMediaType(p.type),
   }));
 

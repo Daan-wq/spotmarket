@@ -3,8 +3,8 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { useRouter } from "next/navigation";
 import type { NormalizedPost } from "@/types/media";
-import PlatformTabs from "./_components/PlatformTabs";
-import AccountSwitcher from "./_components/AccountSwitcher";
+import PlatformTabs from "@/components/shared/connections/PlatformTabs";
+import AccountSwitcher from "@/components/shared/connections/AccountSwitcher";
 import PostGrid from "./_components/PostGrid";
 import PaginationControls from "./_components/PaginationControls";
 import SearchBar from "./_components/SearchBar";
@@ -75,6 +75,7 @@ export default function SubmitPageClient({
     new Set(initialSubmittedUrls)
   );
   const [submitting, setSubmitting] = useState(false);
+  const [submittingOneUrls, setSubmittingOneUrls] = useState<Set<string>>(new Set());
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
 
@@ -223,6 +224,47 @@ export default function SubmitPageClient({
     });
   };
 
+  const submitOne = async (post: NormalizedPost) => {
+    if (submittedPostUrls.has(post.url)) return;
+    if (submittingOneUrls.has(post.url)) return;
+    setError(null);
+    setSuccess(null);
+    setSubmittingOneUrls((prev) => new Set(prev).add(post.url));
+    try {
+      const res = await fetch("/api/submissions", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          applicationId,
+          postUrl: post.url,
+          thumbnailUrl: post.thumbnail ?? undefined,
+          mediaType: post.mediaType,
+        }),
+      });
+      if (res.ok) {
+        setSubmittedPostUrls((prev) => new Set([...prev, post.url]));
+        setSelectedPostUrls((prev) => {
+          if (!prev.has(post.url)) return prev;
+          const next = new Set(prev);
+          next.delete(post.url);
+          return next;
+        });
+        setSuccess("Clip submitted.");
+      } else {
+        const data = await res.json().catch(() => ({}));
+        setError(data.error || "Failed to submit");
+      }
+    } catch {
+      setError("Submission failed. Please try again.");
+    } finally {
+      setSubmittingOneUrls((prev) => {
+        const next = new Set(prev);
+        next.delete(post.url);
+        return next;
+      });
+    }
+  };
+
   const submitSelected = async () => {
     if (selectedPostUrls.size === 0) return;
     setSubmitting(true);
@@ -368,10 +410,12 @@ export default function SubmitPageClient({
             isLoading={isLoading}
             selectedUrls={selectedPostUrls}
             submittedUrls={submittedPostUrls}
+            submittingOneUrls={submittingOneUrls}
             requiredHashtags={campaign.requiredHashtags}
             hasConnectedAccount={activeConnections.length > 0}
             platform={activePlatform}
             onToggle={togglePost}
+            onSubmitOne={submitOne}
           />
 
           {!isLoading && activeConnections.length > 0 && currentPosts.length > 0 && (

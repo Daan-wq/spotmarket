@@ -9,10 +9,12 @@ interface Props {
   isLoading: boolean;
   selectedUrls: Set<string>;
   submittedUrls: Set<string>;
+  submittingOneUrls: Set<string>;
   requiredHashtags: string[];
   hasConnectedAccount: boolean;
   platform: "ig" | "tt" | "fb";
   onToggle: (url: string) => void;
+  onSubmitOne: (post: NormalizedPost) => void;
 }
 
 const PLATFORM_NAMES = { ig: "Instagram", tt: "TikTok", fb: "Facebook" };
@@ -22,10 +24,12 @@ export default function PostGrid({
   isLoading,
   selectedUrls,
   submittedUrls,
+  submittingOneUrls,
   requiredHashtags,
   hasConnectedAccount,
   platform,
   onToggle,
+  onSubmitOne,
 }: Props) {
   if (!hasConnectedAccount) {
     return (
@@ -83,8 +87,10 @@ export default function PostGrid({
             post={post}
             isSelected={selectedUrls.has(post.url)}
             isSubmitted={submittedUrls.has(post.url)}
+            isSubmittingOne={submittingOneUrls.has(post.url)}
             isEligible={eligible}
             onToggle={() => onToggle(post.url)}
+            onSubmitOne={() => onSubmitOne(post)}
           />
         );
       })}
