@@ -36,7 +36,6 @@ export default async function MyVideosPage() {
       campaign: {
         select: {
           name: true,
-          platform: true,
         },
       },
     },
@@ -56,7 +55,7 @@ export default async function MyVideosPage() {
         views: s.viewCount ?? s.claimedViews,
         createdAt: s.createdAt.toISOString(),
         campaignName: s.campaign.name,
-        platform: derivedPlatform ?? s.campaign.platform,
+        platform: derivedPlatform,
       };
     }),
   );

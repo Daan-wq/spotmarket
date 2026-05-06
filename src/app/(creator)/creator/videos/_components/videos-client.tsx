@@ -28,7 +28,7 @@ interface VideoData {
   views: number;
   createdAt: string;
   campaignName: string;
-  platform: string;
+  platform: string | null;
 }
 
 interface VideosClientProps {
@@ -237,7 +237,7 @@ export function VideosClient({ videos, statusCounts }: VideosClientProps) {
                     </td>
                     <td className="px-2 py-3">
                       <Link href={`/creator/videos/${video.id}`} className="block">
-                        <PlatformIcon platform={video.platform} size={28} />
+                        {video.platform ? <PlatformIcon platform={video.platform} size={28} /> : null}
                       </Link>
                     </td>
                     <td className="px-2 py-3 text-right">
