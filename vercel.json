@@ -1,5 +1,6 @@
 {
   "regions": ["fra1"],
+  "alias": ["clipprofit-testing.vercel.app"],
   "crons": [
     {
       "path": "/api/cron/poll-metrics-hot",
