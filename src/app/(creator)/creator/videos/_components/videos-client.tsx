@@ -1,32 +1,34 @@
 "use client";
 
-import { Fragment, useMemo, useState } from "react";
-import type { ReactNode } from "react";
+import { useMemo, useState } from "react";
 import Link from "next/link";
 import PlatformIcon from "@/components/shared/PlatformIcon";
-import { ProgressiveActionDrawer } from "@/components/ui/progressive-action-drawer";
+import ClipThumbnail from "@/components/shared/ClipThumbnail";
+import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuLabel,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
+  DropdownMenuSeparator,
+} from "@/components/animate-ui/components/radix/dropdown-menu";
 import {
   CreatorPageHeader,
   CreatorSectionHeader,
   SoftStat,
 } from "../../_components/creator-journey";
 
-interface UnderperformInfo {
-  weakDimensions: string[];
-  reason: string | null;
-}
-
 interface VideoData {
   id: string;
   postUrl: string | null;
+  thumbnailUrl: string | null;
   status: string;
   earned: number;
   views: number;
   createdAt: string;
   campaignName: string;
-  brandName: string;
   platform: string;
-  underperform?: UnderperformInfo | null;
 }
 
 interface VideosClientProps {
@@ -77,6 +79,13 @@ export function VideosClient({ videos, statusCounts }: VideosClientProps) {
     return sorted;
   }, [videos, queue, sort]);
 
+  const queueOptions: Array<{ key: QueueKey; label: string }> = [
+    { key: "ALL", label: `All (${statusCounts.ALL ?? videos.length})` },
+    { key: "PENDING", label: `Pending (${pendingCount})` },
+    { key: "ISSUES", label: `Issues (${issueCount})` },
+    { key: "APPROVED", label: `Approved (${approvedCount})` },
+  ];
+
   return (
     <div className="w-full space-y-8 px-6 py-8">
       <CreatorPageHeader
@@ -90,56 +99,69 @@ export function VideosClient({ videos, statusCounts }: VideosClientProps) {
           title="Clip queue"
           description={queueDescription(queue, filtered.length)}
           action={
-            <div className="flex flex-wrap gap-2">
-              <ProgressiveActionDrawer
-                triggerLabel="Queue options"
-                title="Refine clip queue"
-                description="Switch queue or sort order when the current list needs focus."
-                variant="outline"
-                badgeLabel={queue !== "ALL" ? queue.toLowerCase() : undefined}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button
+                  type="button"
+                  className="inline-flex h-10 items-center gap-2 rounded-xl border border-neutral-200 bg-white px-4 text-sm font-semibold text-neutral-700 transition hover:bg-neutral-50 hover:text-neutral-950"
+                >
+                  Filter options
+                  <ChevronDownIcon />
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent
+                align="end"
+                className="w-56 rounded-xl border border-neutral-200 bg-white p-1 text-neutral-900 shadow-lg"
               >
-                <div className="space-y-5">
-                  <div className="grid grid-cols-2 gap-2">
-                    <QueueButton active={queue === "ALL"} onClick={() => setQueue("ALL")}>All</QueueButton>
-                    <QueueButton active={queue === "PENDING"} onClick={() => setQueue("PENDING")}>Pending ({pendingCount})</QueueButton>
-                    <QueueButton active={queue === "ISSUES"} onClick={() => setQueue("ISSUES")}>Issues ({issueCount})</QueueButton>
-                    <QueueButton active={queue === "APPROVED"} onClick={() => setQueue("APPROVED")}>Approved ({approvedCount})</QueueButton>
-                  </div>
-                  <label className="block">
-                    <span className="text-xs font-semibold uppercase tracking-[0.14em] text-neutral-400">
-                      Sort
-                    </span>
-                    <select
-                      value={sort}
-                      onChange={(e) => setSort(e.target.value as SortKey)}
-                      className="mt-2 h-11 w-full rounded-xl border border-neutral-200 bg-white px-3 text-sm text-neutral-950 outline-none transition focus:border-neutral-400"
-                    >
-                      {SORT_OPTIONS.map((option) => (
-                        <option key={option.key} value={option.key}>
-                          {option.label}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-                </div>
-              </ProgressiveActionDrawer>
-
-              <ProgressiveActionDrawer
-                triggerLabel="Snapshot"
-                title="Clip snapshot"
-                description="Totals are available here without taking over the queue."
-                variant="outline"
-                width="lg"
-              >
-                <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-                  <SoftStat label="Total clips" value={videos.length.toString()} detail="All submissions" />
-                  <SoftStat label="Total views" value={totalViews.toLocaleString()} detail="Tracked or claimed" />
-                  <SoftStat label="Earned" value={`$${totalEarned.toFixed(2)}`} detail="Approved submissions" />
-                </div>
-              </ProgressiveActionDrawer>
-            </div>
+                <DropdownMenuLabel className="text-xs font-semibold uppercase tracking-[0.14em] text-neutral-400">
+                  Queue
+                </DropdownMenuLabel>
+                <DropdownMenuRadioGroup
+                  value={queue}
+                  onValueChange={(v) => setQueue(v as QueueKey)}
+                >
+                  {queueOptions.map((option) => (
+                    <DropdownMenuRadioItem key={option.key} value={option.key}>
+                      {option.label}
+                    </DropdownMenuRadioItem>
+                  ))}
+                </DropdownMenuRadioGroup>
+                <DropdownMenuSeparator />
+                <DropdownMenuLabel className="text-xs font-semibold uppercase tracking-[0.14em] text-neutral-400">
+                  Sort
+                </DropdownMenuLabel>
+                <DropdownMenuRadioGroup
+                  value={sort}
+                  onValueChange={(v) => setSort(v as SortKey)}
+                >
+                  {SORT_OPTIONS.map((option) => (
+                    <DropdownMenuRadioItem key={option.key} value={option.key}>
+                      {option.label}
+                    </DropdownMenuRadioItem>
+                  ))}
+                </DropdownMenuRadioGroup>
+              </DropdownMenuContent>
+            </DropdownMenu>
           }
         />
+
+        <div className="mt-6 grid grid-cols-1 gap-4 md:grid-cols-3">
+          <SoftStat
+            label="Total clips"
+            value={videos.length.toString()}
+            detail="All submissions"
+          />
+          <SoftStat
+            label="Total views"
+            value={totalViews.toLocaleString()}
+            detail="Tracked or claimed"
+          />
+          <SoftStat
+            label="Earned"
+            value={`$${totalEarned.toFixed(2)}`}
+            detail="Approved submissions"
+          />
+        </div>
 
         {filtered.length === 0 ? (
           videos.length === 0 ? (
@@ -157,10 +179,11 @@ export function VideosClient({ videos, statusCounts }: VideosClientProps) {
             />
           )
         ) : (
-          <div className="overflow-x-auto">
+          <div className="mt-6 overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-neutral-200 text-neutral-500">
+                  <th className="w-14 px-2 py-3" aria-label="Preview"></th>
                   <th className="px-2 py-3 text-left font-medium">Submitted</th>
                   <th className="px-2 py-3 text-left font-medium">Campaign</th>
                   <th className="px-2 py-3 text-left font-medium">Status</th>
@@ -172,65 +195,67 @@ export function VideosClient({ videos, statusCounts }: VideosClientProps) {
               </thead>
               <tbody>
                 {filtered.map((video) => (
-                  <Fragment key={video.id}>
-                    <tr className="transition-colors" style={{ borderBottom: video.underperform ? undefined : "1px solid #f4f4f5" }}>
-                      <td className="px-2 py-3">
-                        <Link href={`/creator/videos/${video.id}`} className="block text-neutral-600">
-                          {relativeTime(video.createdAt)}
-                        </Link>
-                      </td>
-                      <td className="px-2 py-3">
-                        <Link href={`/creator/videos/${video.id}`} className="block">
-                          <span className="inline-flex rounded-full bg-neutral-100 px-2.5 py-1 text-xs font-semibold text-neutral-700">
-                            {video.campaignName}
-                          </span>
-                          <div className="mt-1 text-xs text-neutral-500">by {video.brandName}</div>
-                        </Link>
-                      </td>
-                      <td className="px-2 py-3">
-                        <Link href={`/creator/videos/${video.id}`} className="block">
-                          <StatusBadge status={video.status} />
-                        </Link>
-                      </td>
-                      <td className="px-2 py-3">
-                        <Link href={`/creator/videos/${video.id}`} className="block font-medium text-neutral-950">
-                          ${video.earned.toFixed(2)}
-                        </Link>
-                      </td>
-                      <td className="px-2 py-3">
-                        <Link href={`/creator/videos/${video.id}`} className="block text-neutral-950">
-                          {video.views.toLocaleString()}
-                        </Link>
-                      </td>
-                      <td className="px-2 py-3">
-                        <Link href={`/creator/videos/${video.id}`} className="block">
-                          <PlatformIcon platform={video.platform} size={28} />
-                        </Link>
-                      </td>
-                      <td className="px-2 py-3 text-right">
-                        {video.postUrl ? (
-                          <a
-                            href={video.postUrl}
-                            target="_blank"
-                            rel="noreferrer noopener"
-                            onClick={(e) => e.stopPropagation()}
-                            className="inline-flex items-center gap-1 text-xs font-semibold text-neutral-600 underline-offset-2 hover:text-neutral-950 hover:underline"
-                            title="Open post in new tab"
-                          >
-                            Open
-                            <ExternalIcon />
-                          </a>
-                        ) : null}
-                      </td>
-                    </tr>
-                    {video.underperform ? (
-                      <tr className="border-b border-neutral-100">
-                        <td colSpan={7} className="px-2 py-2">
-                          <UnderperformNotice info={video.underperform} />
-                        </td>
-                      </tr>
-                    ) : null}
-                  </Fragment>
+                  <tr
+                    key={video.id}
+                    className="cursor-pointer border-b border-neutral-100 transition-colors hover:bg-neutral-50"
+                  >
+                    <td className="px-2 py-3">
+                      <Link href={`/creator/videos/${video.id}`} className="block">
+                        <ClipThumbnail
+                          thumbnailUrl={video.thumbnailUrl}
+                          mediaType="video"
+                          className="h-10 w-10 shrink-0 rounded-md"
+                        />
+                      </Link>
+                    </td>
+                    <td className="px-2 py-3">
+                      <Link href={`/creator/videos/${video.id}`} className="block text-neutral-600">
+                        {relativeTime(video.createdAt)}
+                      </Link>
+                    </td>
+                    <td className="px-2 py-3">
+                      <Link href={`/creator/videos/${video.id}`} className="block">
+                        <span className="inline-flex rounded-full bg-neutral-100 px-2.5 py-1 text-xs font-semibold text-neutral-700">
+                          {video.campaignName}
+                        </span>
+                      </Link>
+                    </td>
+                    <td className="px-2 py-3">
+                      <Link href={`/creator/videos/${video.id}`} className="block">
+                        <StatusBadge status={video.status} />
+                      </Link>
+                    </td>
+                    <td className="px-2 py-3">
+                      <Link href={`/creator/videos/${video.id}`} className="block font-medium text-neutral-950">
+                        ${video.earned.toFixed(2)}
+                      </Link>
+                    </td>
+                    <td className="px-2 py-3">
+                      <Link href={`/creator/videos/${video.id}`} className="block text-neutral-950">
+                        {video.views.toLocaleString()}
+                      </Link>
+                    </td>
+                    <td className="px-2 py-3">
+                      <Link href={`/creator/videos/${video.id}`} className="block">
+                        <PlatformIcon platform={video.platform} size={28} />
+                      </Link>
+                    </td>
+                    <td className="px-2 py-3 text-right">
+                      {video.postUrl ? (
+                        <a
+                          href={video.postUrl}
+                          target="_blank"
+                          rel="noreferrer noopener"
+                          onClick={(e) => e.stopPropagation()}
+                          className="inline-flex items-center gap-1 text-xs font-semibold text-neutral-600 underline-offset-2 hover:text-neutral-950 hover:underline"
+                          title="Open post in new tab"
+                        >
+                          Open
+                          <ExternalIcon />
+                        </a>
+                      ) : null}
+                    </td>
+                  </tr>
                 ))}
               </tbody>
             </table>
@@ -301,30 +326,6 @@ function queueDescription(queue: QueueKey, count: number) {
   return `${count} submitted clips across every status.`;
 }
 
-function QueueButton({
-  active,
-  onClick,
-  children,
-}: {
-  active: boolean;
-  onClick: () => void;
-  children: ReactNode;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className={`h-10 rounded-xl px-4 text-sm font-semibold transition ${
-        active
-          ? "bg-neutral-950 text-white shadow-[0_8px_18px_rgba(0,0,0,0.14)]"
-          : "border border-neutral-200 bg-white text-neutral-600 hover:bg-neutral-50 hover:text-neutral-950"
-      }`}
-    >
-      {children}
-    </button>
-  );
-}
-
 function StatusBadge({ status }: { status: string }) {
   const styles: Record<string, { bg: string; color: string; label: string }> = {
     PENDING: { bg: "#fff7ed", color: "#c2410c", label: "Pending" },
@@ -340,50 +341,10 @@ function StatusBadge({ status }: { status: string }) {
   );
 }
 
-const DIMENSION_LABEL: Record<string, string> = {
-  views: "Low view velocity",
-  likeRatio: "Low like ratio",
-  commentRatio: "Low comment ratio",
-  watchTime: "Short watch time",
-};
-
-const DIMENSION_HINT: Record<string, string> = {
-  views: "Try a stronger hook in the first 2 seconds.",
-  likeRatio: "Hook the emotion with surprise, awe, or a sharper take.",
-  commentRatio: "End with a question or a take that invites replies.",
-  watchTime: "Tighten the edit and drop the slow opening.",
-};
-
-function UnderperformNotice({ info }: { info: UnderperformInfo }) {
-  const dims = info.weakDimensions.length > 0 ? info.weakDimensions : ["views"];
+function ChevronDownIcon() {
   return (
-    <div className="flex gap-3 rounded-xl border border-orange-200 bg-orange-50 px-3 py-2.5">
-      <WarningIcon />
-      <div className="flex-1">
-        <p className="mb-1 text-xs font-semibold text-orange-700">
-          Performance note
-        </p>
-        <div className="mb-1 flex flex-wrap gap-1.5">
-          {dims.map((dimension) => (
-            <span key={dimension} className="rounded-full bg-orange-100 px-2 py-0.5 text-xs font-medium text-orange-700">
-              {DIMENSION_LABEL[dimension] ?? dimension}
-            </span>
-          ))}
-        </div>
-        <p className="text-xs text-neutral-600">
-          {info.reason ?? dims.map((dimension) => DIMENSION_HINT[dimension]).filter(Boolean).join(" ")}
-        </p>
-      </div>
-    </div>
-  );
-}
-
-function WarningIcon() {
-  return (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#c2410c" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="mt-0.5 shrink-0" aria-hidden>
-      <path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
-      <path d="M12 9v4" />
-      <path d="M12 17h.01" />
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <path d="m6 9 6 6 6-6" />
     </svg>
   );
 }
@@ -397,3 +358,4 @@ function ExternalIcon() {
     </svg>
   );
 }
+
