@@ -97,7 +97,25 @@ export function VideosClient({ videos, statusCounts }: VideosClientProps) {
       />
 
       <section>
-        <div className="flex justify-end">
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+          <SoftStat
+            label="Total clips"
+            value={videos.length.toString()}
+            detail="All submissions"
+          />
+          <SoftStat
+            label="Total views"
+            value={totalViews.toLocaleString()}
+            detail="Tracked or claimed"
+          />
+          <SoftStat
+            label="Earned"
+            value={`$${totalEarned.toFixed(2)}`}
+            detail="Approved submissions"
+          />
+        </div>
+
+        <div className="mt-6 flex justify-end">
           <DropdownMenu modal={false}>
             <DropdownMenuTrigger asChild>
               <button
@@ -143,24 +161,6 @@ export function VideosClient({ videos, statusCounts }: VideosClientProps) {
           </DropdownMenu>
         </div>
 
-        <div className="mt-6 grid grid-cols-1 gap-4 md:grid-cols-3">
-          <SoftStat
-            label="Total clips"
-            value={videos.length.toString()}
-            detail="All submissions"
-          />
-          <SoftStat
-            label="Total views"
-            value={totalViews.toLocaleString()}
-            detail="Tracked or claimed"
-          />
-          <SoftStat
-            label="Earned"
-            value={`$${totalEarned.toFixed(2)}`}
-            detail="Approved submissions"
-          />
-        </div>
-
         {filtered.length === 0 ? (
           videos.length === 0 ? (
             <InlineEmptyState
@@ -177,7 +177,7 @@ export function VideosClient({ videos, statusCounts }: VideosClientProps) {
             />
           )
         ) : (
-          <div className="mt-6 overflow-x-auto">
+          <div className="mt-3 overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-neutral-200 text-neutral-500">

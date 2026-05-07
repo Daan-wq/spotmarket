@@ -28,6 +28,7 @@ export default async function MyVideosPage() {
       id: true,
       postUrl: true,
       thumbnailUrl: true,
+      mediaType: true,
       status: true,
       earnedAmount: true,
       claimedViews: true,
@@ -41,15 +42,28 @@ export default async function MyVideosPage() {
     },
   });
 
+  type ClipMediaType = "video" | "image" | "carousel";
+  const asClipMediaType = (v: string | null | undefined): ClipMediaType | null =>
+    v === "video" || v === "image" || v === "carousel" ? v : null;
+
   const videos = await Promise.all(
     submissions.map(async (s) => {
       const parsed = s.postUrl ? parseClipUrl(s.postUrl) : null;
       const derivedPlatform = parsed ? CLIP_TO_PLATFORM_ICON[parsed.platform] : null;
-      const thumbnailUrl = await resolveThumbnail(s.postUrl, s.thumbnailUrl);
+      const { thumbnailUrl, mediaType } = await resolveThumbnail(
+        s.postUrl,
+        s.thumbnailUrl,
+        {
+          creatorId: user.id,
+          submissionId: s.id,
+          storedMediaType: asClipMediaType(s.mediaType),
+        },
+      );
       return {
         id: s.id,
         postUrl: s.postUrl,
         thumbnailUrl,
+        mediaType,
         status: s.status,
         earned: Number(s.earnedAmount),
         views: s.viewCount ?? s.claimedViews,

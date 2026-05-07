@@ -6,6 +6,7 @@ import { getFreshTikTokAccessToken } from "@/lib/token-refresh";
 import { fetchRecentMedia } from "@/lib/instagram";
 import { fetchTikTokVideos } from "@/lib/tiktok";
 import { fetchFacebookPagePostsPaginated } from "@/lib/facebook";
+import { normalizeIgMediaType } from "@/lib/instagram-media-type";
 import type { NormalizedPost, MediaResponse } from "@/types/media";
 
 const DEFAULT_LIMIT = 10;
@@ -189,18 +190,6 @@ function dedupePosts(posts: NormalizedPost[]): NormalizedPost[] {
     out.push(p);
   }
   return out;
-}
-
-function normalizeIgMediaType(
-  mediaType: string,
-  mediaProductType: string
-): "video" | "image" | "carousel" {
-  const product = (mediaProductType ?? "").toUpperCase();
-  const type = (mediaType ?? "").toUpperCase();
-  if (product === "REELS" || product === "REEL") return "video";
-  if (type === "CAROUSEL_ALBUM") return "carousel";
-  if (type === "VIDEO") return "video";
-  return "image";
 }
 
 function normalizeFbMediaType(type: string): "video" | "image" | "carousel" {

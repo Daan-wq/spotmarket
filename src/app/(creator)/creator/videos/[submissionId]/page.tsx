@@ -4,6 +4,12 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import PlatformIcon from "@/components/shared/PlatformIcon";
 import ClipThumbnail from "@/components/shared/ClipThumbnail";
+import {
+  Tooltip,
+  TooltipTrigger,
+  TooltipContent,
+  TooltipProvider,
+} from "@/components/animate-ui/primitives/radix/tooltip";
 import { resolveThumbnail } from "@/lib/clip-thumbnail";
 import { parseClipUrl, type ClipPlatform } from "@/lib/parse-clip-url";
 import type { ReactNode } from "react";
@@ -51,8 +57,24 @@ export default async function VideoDetailPage({
   const shares = submission.shareCount ?? 0;
   const totalEngagement = views > 0 ? (((likes + comments + shares) / views) * 100) : 0;
   const rewardRate = Number(submission.campaign.creatorCpv) * 1000;
+  const projectedEarnings = views * Number(submission.campaign.creatorCpv);
+  const showEarningsDisclaimer = submission.status !== "APPROVED";
   const submissionPlatformIcon = CLIP_TO_ICON[parseClipUrl(submission.postUrl).platform];
-  const thumbnailUrl = await resolveThumbnail(submission.postUrl, submission.thumbnailUrl);
+  const storedMediaType =
+    submission.mediaType === "video" ||
+    submission.mediaType === "image" ||
+    submission.mediaType === "carousel"
+      ? submission.mediaType
+      : null;
+  const { thumbnailUrl, mediaType } = await resolveThumbnail(
+    submission.postUrl,
+    submission.thumbnailUrl,
+    {
+      creatorId: user.id,
+      submissionId: submission.id,
+      storedMediaType,
+    },
+  );
 
   const statusStyles: Record<string, { bg: string; color: string; label: string }> = {
     PENDING: { bg: "var(--warning-bg)", color: "var(--warning-text)", label: "Pending" },
@@ -61,17 +83,6 @@ export default async function VideoDetailPage({
     APPROVED: { bg: "var(--success-bg)", color: "var(--success-text)", label: "Approved" },
   };
   const statusStyle = statusStyles[submission.status] ?? statusStyles.PENDING;
-
-  const earnedSubline =
-    submission.status === "PENDING"
-      ? { label: "Pending approval", dot: "var(--warning)" }
-      : submission.status === "APPROVED"
-      ? { label: "Approved", dot: "var(--success)" }
-      : submission.status === "REJECTED"
-      ? { label: "Rejected", dot: "var(--error)" }
-      : submission.status === "FLAGGED"
-      ? { label: "Flagged", dot: "#8B5CF6" }
-      : null;
 
   const statIcons: Record<string, ReactNode> = {
     Views: (
@@ -112,7 +123,7 @@ export default async function VideoDetailPage({
       <div className="w-full max-w-[340px] mx-auto lg:mx-0 lg:flex-shrink-0 lg:w-[340px] lg:sticky lg:top-6 lg:self-start">
         <ClipThumbnail
           thumbnailUrl={thumbnailUrl}
-          mediaType={(submission.mediaType as "video" | "image" | "carousel" | null) ?? "video"}
+          mediaType={mediaType}
           caption={submission.campaign.name}
           href={submission.postUrl}
           className="w-full aspect-[9/16] rounded-2xl"
@@ -154,24 +165,57 @@ export default async function VideoDetailPage({
           className="p-5 rounded-xl"
           style={{ background: "var(--bg-card)", border: "1px solid var(--border-default)" }}
         >
-          <div className="text-xs font-medium tracking-wider uppercase mb-1" style={{ color: "var(--text-muted)" }}>
-            Earned
+          <div
+            className="flex items-center gap-1.5 text-xs font-medium tracking-wider uppercase mb-1"
+            style={{ color: "var(--text-muted)" }}
+          >
+            <span>Earned</span>
+            {showEarningsDisclaimer && (
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button
+                      type="button"
+                      aria-label="Earnings disclaimer"
+                      className="inline-flex items-center justify-center rounded-full transition-colors focus:outline-none focus-visible:ring-2"
+                      style={{ color: "var(--text-muted)" }}
+                    >
+                      <svg
+                        width="14"
+                        height="14"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        aria-hidden="true"
+                      >
+                        <circle cx="12" cy="12" r="10" />
+                        <path d="M12 16v-4" />
+                        <path d="M12 8h.01" />
+                      </svg>
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent side="top" align="start">
+                    <div
+                      className="max-w-xs px-3 py-2 rounded-lg text-xs leading-relaxed shadow-lg"
+                      style={{
+                        background: "var(--bg-card)",
+                        border: "1px solid var(--border-default)",
+                        color: "var(--text-primary)",
+                      }}
+                    >
+                      The post has to be accepted for the earnings to enter the wallet.
+                    </div>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            )}
           </div>
           <div className="text-3xl font-bold" style={{ color: "var(--text-primary)" }}>
-            ${Number(submission.earnedAmount).toFixed(2)}
+            ${projectedEarnings.toFixed(2)}
           </div>
-          {earnedSubline && (
-            <div className="flex items-center gap-1.5 mt-2">
-              <span
-                className="inline-block w-2 h-2 rounded-full"
-                style={{ background: earnedSubline.dot }}
-                aria-hidden="true"
-              />
-              <span className="text-xs" style={{ color: "var(--text-muted)" }}>
-                {earnedSubline.label}
-              </span>
-            </div>
-          )}
         </div>
 
         {/* Engagement hero metric */}

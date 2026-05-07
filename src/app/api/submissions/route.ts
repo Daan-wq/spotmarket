@@ -5,6 +5,7 @@ import { z } from "zod";
 import { parseClipUrl, normalizeHandle, type ClipPlatform } from "@/lib/parse-clip-url";
 import { findDuplicate } from "@/lib/duplicate-detector";
 import { publishEvent } from "@/lib/event-bus";
+import { resolveInstagramThumbnail } from "@/lib/clip-thumbnail";
 
 const createSubmissionSchema = z.object({
   applicationId: z.string().min(1),
@@ -182,6 +183,23 @@ export async function POST(req: NextRequest) {
 
     const sourcePlatform = PLATFORM_TO_BIO[parsed.platform];
 
+    // Server-side IG metadata backfill — covers paths (e.g. manual URL paste
+    // via submit-content-modal) that don't supply thumbnail/mediaType from the
+    // client. Best-effort: failure must not block submission creation.
+    let resolvedThumbnail = thumbnailUrl ?? null;
+    let resolvedMediaType: string | null = mediaType ?? null;
+    if (parsed.platform === "INSTAGRAM" && !resolvedThumbnail) {
+      try {
+        const ig = await resolveInstagramThumbnail(postUrl, creator.id);
+        if (ig) {
+          resolvedThumbnail = ig.thumbnailUrl;
+          if (!resolvedMediaType) resolvedMediaType = ig.mediaType;
+        }
+      } catch (err) {
+        console.warn("[submissions POST] IG thumbnail backfill failed", err);
+      }
+    }
+
     const submission = await prisma.campaignSubmission.create({
       data: {
         applicationId,
@@ -189,8 +207,8 @@ export async function POST(req: NextRequest) {
         campaignId: app.campaignId,
         postUrl,
         screenshotUrl: screenshotUrl ?? null,
-        thumbnailUrl: thumbnailUrl ?? null,
-        mediaType: mediaType ?? null,
+        thumbnailUrl: resolvedThumbnail,
+        mediaType: resolvedMediaType,
         claimedViews: 0,
         status: "PENDING",
         sourcePlatform,
