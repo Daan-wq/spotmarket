@@ -3,6 +3,7 @@
 import type { ComponentType } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { motion } from "motion/react";
 import { Search } from "lucide-react";
 import { AnimateIcon } from "@/components/animate-ui/icons/icon";
 import { Banknote } from "@/components/animate-ui/icons/banknote";
@@ -81,7 +82,16 @@ export function AdminSidebar({ initials, email }: AdminSidebarProps) {
   return (
     <aside className="fixed left-8 top-0 hidden h-screen w-56 flex-col py-10 lg:flex">
       <div className="mb-7">
-        <Logo variant="light" size="sm" />
+        <motion.div
+          whileHover={{ scale: 1.025 }}
+          whileTap={{ scale: 0.97 }}
+          transition={{ type: "spring", stiffness: 320, damping: 22 }}
+          className="origin-left cursor-pointer select-none"
+        >
+          <Link href="/admin" aria-label="Command Center" className="block">
+            <Logo variant="light" size="fill" />
+          </Link>
+        </motion.div>
         <p className="mt-1 text-xs text-neutral-500">Admin</p>
       </div>
 
