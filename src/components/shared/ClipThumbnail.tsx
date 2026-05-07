@@ -5,6 +5,7 @@ interface Props {
   mediaType: MediaType;
   caption?: string | null;
   className?: string;
+  href?: string | null;
 }
 
 export default function ClipThumbnail({
@@ -12,12 +13,10 @@ export default function ClipThumbnail({
   mediaType,
   caption,
   className,
+  href,
 }: Props) {
-  return (
-    <div
-      className={`relative overflow-hidden ${className ?? ""}`}
-      style={{ background: "var(--bg-primary)", border: "1px solid var(--border-default, var(--border))" }}
-    >
+  const inner = (
+    <>
       {thumbnailUrl ? (
         // eslint-disable-next-line @next/next/no-img-element
         <img
@@ -37,12 +36,52 @@ export default function ClipThumbnail({
       )}
 
       {mediaType === "video" && (
-        <div className="absolute top-1.5 left-1.5">
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="white" className="drop-shadow">
-            <path d="M5 3l14 9-14 9V3z" />
-          </svg>
-        </div>
+        <>
+          {/* Small corner play indicator (always visible) */}
+          <div className="absolute top-2 left-2">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="white" className="drop-shadow">
+              <path d="M5 3l14 9-14 9V3z" />
+            </svg>
+          </div>
+
+          {/* Centered hover overlay (only when interactive) */}
+          {href && (
+            <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-200 bg-black/40">
+              <div className="w-14 h-14 rounded-full bg-white/95 flex items-center justify-center shadow-lg">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="#09090b" style={{ marginLeft: 2 }}>
+                  <path d="M5 3l14 9-14 9V3z" />
+                </svg>
+              </div>
+            </div>
+          )}
+        </>
       )}
+    </>
+  );
+
+  const baseClass = `relative overflow-hidden ${className ?? ""}`;
+  const baseStyle = {
+    background: "var(--bg-primary)",
+    border: "1px solid var(--border-default, var(--border))",
+  } as const;
+
+  if (href) {
+    return (
+      <a
+        href={href}
+        target="_blank"
+        rel="noopener noreferrer"
+        className={`group block ${baseClass}`}
+        style={baseStyle}
+      >
+        {inner}
+      </a>
+    );
+  }
+
+  return (
+    <div className={baseClass} style={baseStyle}>
+      {inner}
     </div>
   );
 }
