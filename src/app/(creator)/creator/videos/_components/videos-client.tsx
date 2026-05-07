@@ -15,14 +15,16 @@ import {
 } from "@/components/animate-ui/components/radix/dropdown-menu";
 import {
   CreatorPageHeader,
-  CreatorSectionHeader,
   SoftStat,
 } from "../../_components/creator-journey";
+
+type ClipMediaType = "video" | "image" | "carousel";
 
 interface VideoData {
   id: string;
   postUrl: string | null;
   thumbnailUrl: string | null;
+  mediaType: ClipMediaType;
   status: string;
   earned: number;
   views: number;
@@ -94,56 +96,52 @@ export function VideosClient({ videos, statusCounts }: VideosClientProps) {
         description="Start with the current queue, then open stats or filters only when you need them."
       />
 
-      <section className="border-y border-neutral-200 py-7">
-        <CreatorSectionHeader
-          title="Clip queue"
-          description={queueDescription(queue, filtered.length)}
-          action={
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <button
-                  type="button"
-                  className="inline-flex h-10 items-center gap-2 rounded-xl border border-neutral-200 bg-white px-4 text-sm font-semibold text-neutral-700 transition hover:bg-neutral-50 hover:text-neutral-950"
-                >
-                  Filter options
-                  <ChevronDownIcon />
-                </button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent
-                align="end"
-                className="w-56 rounded-xl border border-neutral-200 bg-white p-1 text-neutral-900 shadow-lg"
+      <section>
+        <div className="flex justify-end">
+          <DropdownMenu modal={false}>
+            <DropdownMenuTrigger asChild>
+              <button
+                type="button"
+                className="inline-flex h-10 items-center gap-2 rounded-xl border border-neutral-200 bg-white px-4 text-sm font-semibold text-neutral-700 transition hover:bg-neutral-50 hover:text-neutral-950"
               >
-                <DropdownMenuLabel className="text-xs font-semibold uppercase tracking-[0.14em] text-neutral-400">
-                  Queue
-                </DropdownMenuLabel>
-                <DropdownMenuRadioGroup
-                  value={queue}
-                  onValueChange={(v) => setQueue(v as QueueKey)}
-                >
-                  {queueOptions.map((option) => (
-                    <DropdownMenuRadioItem key={option.key} value={option.key}>
-                      {option.label}
-                    </DropdownMenuRadioItem>
-                  ))}
-                </DropdownMenuRadioGroup>
-                <DropdownMenuSeparator />
-                <DropdownMenuLabel className="text-xs font-semibold uppercase tracking-[0.14em] text-neutral-400">
-                  Sort
-                </DropdownMenuLabel>
-                <DropdownMenuRadioGroup
-                  value={sort}
-                  onValueChange={(v) => setSort(v as SortKey)}
-                >
-                  {SORT_OPTIONS.map((option) => (
-                    <DropdownMenuRadioItem key={option.key} value={option.key}>
-                      {option.label}
-                    </DropdownMenuRadioItem>
-                  ))}
-                </DropdownMenuRadioGroup>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          }
-        />
+                Filter options
+                <ChevronDownIcon />
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent
+              align="end"
+              className="w-56 rounded-xl border border-neutral-200 bg-white p-1 text-neutral-900 shadow-lg"
+            >
+              <DropdownMenuLabel className="text-xs font-semibold uppercase tracking-[0.14em] text-neutral-400">
+                Queue
+              </DropdownMenuLabel>
+              <DropdownMenuRadioGroup
+                value={queue}
+                onValueChange={(v) => setQueue(v as QueueKey)}
+              >
+                {queueOptions.map((option) => (
+                  <DropdownMenuRadioItem key={option.key} value={option.key}>
+                    {option.label}
+                  </DropdownMenuRadioItem>
+                ))}
+              </DropdownMenuRadioGroup>
+              <DropdownMenuSeparator />
+              <DropdownMenuLabel className="text-xs font-semibold uppercase tracking-[0.14em] text-neutral-400">
+                Sort
+              </DropdownMenuLabel>
+              <DropdownMenuRadioGroup
+                value={sort}
+                onValueChange={(v) => setSort(v as SortKey)}
+              >
+                {SORT_OPTIONS.map((option) => (
+                  <DropdownMenuRadioItem key={option.key} value={option.key}>
+                    {option.label}
+                  </DropdownMenuRadioItem>
+                ))}
+              </DropdownMenuRadioGroup>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
 
         <div className="mt-6 grid grid-cols-1 gap-4 md:grid-cols-3">
           <SoftStat
@@ -203,7 +201,7 @@ export function VideosClient({ videos, statusCounts }: VideosClientProps) {
                       <Link href={`/creator/videos/${video.id}`} className="block">
                         <ClipThumbnail
                           thumbnailUrl={video.thumbnailUrl}
-                          mediaType="video"
+                          mediaType={video.mediaType}
                           className="h-10 w-10 shrink-0 rounded-md"
                         />
                       </Link>
@@ -317,13 +315,6 @@ function InlineCta({
       {cta.label}
     </button>
   );
-}
-
-function queueDescription(queue: QueueKey, count: number) {
-  if (queue === "PENDING") return `${count} clips waiting for review.`;
-  if (queue === "ISSUES") return `${count} clips need attention before they can earn.`;
-  if (queue === "APPROVED") return `${count} clips are approved and earning.`;
-  return `${count} submitted clips across every status.`;
 }
 
 function StatusBadge({ status }: { status: string }) {
