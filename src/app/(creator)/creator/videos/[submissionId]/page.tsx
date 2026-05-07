@@ -4,14 +4,13 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import PlatformIcon from "@/components/shared/PlatformIcon";
 import ClipThumbnail from "@/components/shared/ClipThumbnail";
-import {
-  Tooltip,
-  TooltipTrigger,
-  TooltipContent,
-  TooltipProvider,
-} from "@/components/animate-ui/primitives/radix/tooltip";
+import EarningsCard from "@/components/shared/EarningsCard";
 import { resolveThumbnail } from "@/lib/clip-thumbnail";
 import { parseClipUrl, type ClipPlatform } from "@/lib/parse-clip-url";
+import {
+  submissionProjectedEarnings,
+  submissionViews,
+} from "@/lib/earnings";
 import type { ReactNode } from "react";
 
 const CLIP_TO_ICON: Record<ClipPlatform, string | null> = {
@@ -51,13 +50,13 @@ export default async function VideoDetailPage({
 
   if (!submission || submission.creatorId !== user.id) notFound();
 
-  const views = submission.viewCount ?? submission.claimedViews;
+  const views = submissionViews(submission);
   const likes = submission.likeCount ?? 0;
   const comments = submission.commentCount ?? 0;
   const shares = submission.shareCount ?? 0;
   const totalEngagement = views > 0 ? (((likes + comments + shares) / views) * 100) : 0;
   const rewardRate = Number(submission.campaign.creatorCpv) * 1000;
-  const projectedEarnings = views * Number(submission.campaign.creatorCpv);
+  const projectedEarnings = submissionProjectedEarnings(submission);
   const showEarningsDisclaimer = submission.status !== "APPROVED";
   const submissionPlatformIcon = CLIP_TO_ICON[parseClipUrl(submission.postUrl).platform];
   const storedMediaType =
@@ -161,63 +160,14 @@ export default async function VideoDetailPage({
           </span>
         </div>
 
-        {/* Earnings card — neutral surface, typography-driven */}
-        <div
-          className="p-5 rounded-xl"
-          style={{ background: "var(--bg-card)", border: "1px solid var(--border-default)" }}
-        >
-          <div
-            className="flex items-center gap-1.5 text-xs font-medium tracking-wider uppercase mb-1"
-            style={{ color: "var(--text-muted)" }}
-          >
-            <span>Earned</span>
-            {showEarningsDisclaimer && (
-              <TooltipProvider>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <button
-                      type="button"
-                      aria-label="Earnings disclaimer"
-                      className="inline-flex items-center justify-center rounded-full transition-colors focus:outline-none focus-visible:ring-2"
-                      style={{ color: "var(--text-muted)" }}
-                    >
-                      <svg
-                        width="14"
-                        height="14"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth="2"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        aria-hidden="true"
-                      >
-                        <circle cx="12" cy="12" r="10" />
-                        <path d="M12 16v-4" />
-                        <path d="M12 8h.01" />
-                      </svg>
-                    </button>
-                  </TooltipTrigger>
-                  <TooltipContent side="top" align="start">
-                    <div
-                      className="max-w-xs px-3 py-2 rounded-lg text-xs leading-relaxed shadow-lg"
-                      style={{
-                        background: "var(--bg-card)",
-                        border: "1px solid var(--border-default)",
-                        color: "var(--text-primary)",
-                      }}
-                    >
-                      The post has to be accepted for the earnings to enter the wallet.
-                    </div>
-                  </TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
-            )}
-          </div>
-          <div className="text-3xl font-bold" style={{ color: "var(--text-primary)" }}>
-            ${projectedEarnings.toFixed(2)}
-          </div>
-        </div>
+        <EarningsCard
+          amount={projectedEarnings}
+          disclaimer={
+            showEarningsDisclaimer
+              ? "The post has to be accepted for the earnings to enter the wallet."
+              : null
+          }
+        />
 
         {/* Engagement hero metric */}
         <div

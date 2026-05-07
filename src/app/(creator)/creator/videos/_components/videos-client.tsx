@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import Link from "next/link";
 import PlatformIcon from "@/components/shared/PlatformIcon";
 import ClipThumbnail from "@/components/shared/ClipThumbnail";
+import EarningsCard from "@/components/shared/EarningsCard";
 import {
   DropdownMenu,
   DropdownMenuTrigger,
@@ -36,6 +37,7 @@ interface VideoData {
 interface VideosClientProps {
   videos: VideoData[];
   statusCounts: Record<string, number>;
+  totalEarnedProjected: number;
 }
 
 type QueueKey = "ALL" | "PENDING" | "ISSUES" | "APPROVED";
@@ -58,15 +60,19 @@ function relativeTime(dateStr: string) {
   return `${days} day${days > 1 ? "s" : ""} ago`;
 }
 
-export function VideosClient({ videos, statusCounts }: VideosClientProps) {
+export function VideosClient({
+  videos,
+  statusCounts,
+  totalEarnedProjected,
+}: VideosClientProps) {
   const [queue, setQueue] = useState<QueueKey>("ALL");
   const [sort, setSort] = useState<SortKey>("newest");
 
   const issueCount = (statusCounts.FLAGGED ?? 0) + (statusCounts.REJECTED ?? 0);
   const pendingCount = statusCounts.PENDING ?? 0;
   const approvedCount = statusCounts.APPROVED ?? 0;
-  const totalEarned = videos.reduce((sum, video) => sum + video.earned, 0);
   const totalViews = videos.reduce((sum, video) => sum + video.views, 0);
+  const hasUnsettled = videos.some((v) => v.status !== "APPROVED");
 
   const filtered = useMemo(() => {
     const base = videos.filter((video) => {
@@ -108,10 +114,13 @@ export function VideosClient({ videos, statusCounts }: VideosClientProps) {
             value={totalViews.toLocaleString()}
             detail="Tracked or claimed"
           />
-          <SoftStat
-            label="Earned"
-            value={`$${totalEarned.toFixed(2)}`}
-            detail="Approved submissions"
+          <EarningsCard
+            amount={totalEarnedProjected}
+            disclaimer={
+              hasUnsettled
+                ? "Posts have to be accepted for the earnings to enter the wallet."
+                : null
+            }
           />
         </div>
 

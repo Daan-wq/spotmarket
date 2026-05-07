@@ -2,6 +2,11 @@ import { requireAuth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { resolveThumbnail } from "@/lib/clip-thumbnail";
 import { parseClipUrl, type ClipPlatform } from "@/lib/parse-clip-url";
+import {
+  submissionProjectedEarnings,
+  submissionViews,
+  totalProjectedEarnings,
+} from "@/lib/earnings";
 import { VideosClient } from "./_components/videos-client";
 
 const CLIP_TO_PLATFORM_ICON: Record<ClipPlatform, string | null> = {
@@ -37,6 +42,7 @@ export default async function MyVideosPage() {
       campaign: {
         select: {
           name: true,
+          creatorCpv: true,
         },
       },
     },
@@ -65,8 +71,8 @@ export default async function MyVideosPage() {
         thumbnailUrl,
         mediaType,
         status: s.status,
-        earned: Number(s.earnedAmount),
-        views: s.viewCount ?? s.claimedViews,
+        earned: submissionProjectedEarnings(s),
+        views: submissionViews(s),
         createdAt: s.createdAt.toISOString(),
         campaignName: s.campaign.name,
         platform: derivedPlatform,
@@ -82,5 +88,13 @@ export default async function MyVideosPage() {
     ALL: videos.length,
   };
 
-  return <VideosClient videos={videos} statusCounts={statusCounts} />;
+  const totalEarnedProjected = totalProjectedEarnings(submissions);
+
+  return (
+    <VideosClient
+      videos={videos}
+      statusCounts={statusCounts}
+      totalEarnedProjected={totalEarnedProjected}
+    />
+  );
 }
