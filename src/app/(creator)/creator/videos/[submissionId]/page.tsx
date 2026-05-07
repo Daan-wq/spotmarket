@@ -126,7 +126,8 @@ export default async function VideoDetailPage({
           mediaType={mediaType}
           caption={submission.campaign.name}
           href={submission.postUrl}
-          className="w-full aspect-[9/16] rounded-2xl"
+          className="w-full rounded-2xl"
+          dynamicAspectRatio
         />
       </div>
 

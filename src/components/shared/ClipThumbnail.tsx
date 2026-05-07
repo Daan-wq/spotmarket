@@ -1,3 +1,7 @@
+"use client";
+
+import { useState } from "react";
+
 type MediaType = "video" | "image" | "carousel";
 
 interface Props {
@@ -6,6 +10,24 @@ interface Props {
   caption?: string | null;
   className?: string;
   href?: string | null;
+  /**
+   * When true, the container's aspect ratio is driven by the image's natural
+   * dimensions (read on load). Until the image loads, falls back to
+   * `initialAspectRatio` (or a mediaType-derived default). The image uses
+   * `object-contain` so the brief pre-load state never crops.
+   *
+   * When false (default), the parent owns sizing via classes like `h-10 w-10`
+   * or `aspect-square`, and the image keeps `object-cover`.
+   */
+  dynamicAspectRatio?: boolean;
+  /** Initial aspect ratio (width / height) used before image loads. */
+  initialAspectRatio?: number;
+}
+
+function defaultRatioForMediaType(mediaType: MediaType): number {
+  if (mediaType === "video") return 9 / 16;
+  if (mediaType === "carousel") return 1;
+  return 4 / 5;
 }
 
 export default function ClipThumbnail({
@@ -14,7 +36,17 @@ export default function ClipThumbnail({
   caption,
   className,
   href,
+  dynamicAspectRatio = false,
+  initialAspectRatio,
 }: Props) {
+  const [aspectRatio, setAspectRatio] = useState<number>(
+    initialAspectRatio ?? defaultRatioForMediaType(mediaType),
+  );
+
+  const imgClass = dynamicAspectRatio
+    ? "w-full h-full object-contain"
+    : "w-full h-full object-cover";
+
   const inner = (
     <>
       {thumbnailUrl ? (
@@ -22,7 +54,17 @@ export default function ClipThumbnail({
         <img
           src={thumbnailUrl}
           alt={caption?.slice(0, 60) ?? "Post"}
-          className="w-full h-full object-cover"
+          className={imgClass}
+          onLoad={
+            dynamicAspectRatio
+              ? (e) => {
+                  const { naturalWidth, naturalHeight } = e.currentTarget;
+                  if (naturalWidth && naturalHeight) {
+                    setAspectRatio(naturalWidth / naturalHeight);
+                  }
+                }
+              : undefined
+          }
         />
       ) : (
         <div
@@ -60,10 +102,11 @@ export default function ClipThumbnail({
   );
 
   const baseClass = `relative overflow-hidden ${className ?? ""}`;
-  const baseStyle = {
+  const baseStyle: React.CSSProperties = {
     background: "var(--bg-primary)",
     border: "1px solid var(--border-default, var(--border))",
-  } as const;
+    ...(dynamicAspectRatio ? { aspectRatio } : {}),
+  };
 
   if (href) {
     return (
