@@ -139,6 +139,15 @@ async function getTotalFollowers(
  * Strategy: a submission's platform = the platform of the latest MetricSnapshot
  * for that submission (falls back to BioPlatform.sourcePlatform for IG/TT/FB).
  */
+export async function getCreatorSubmissionIdsByPlatform(
+  supabaseUserId: string,
+  range: Range,
+): Promise<Record<PlatformSlug, string[]> | null> {
+  const scope = await getProfileScope(supabaseUserId);
+  if (!scope) return null;
+  return getSubmissionIdsByPlatform(scope.userId, range);
+}
+
 async function getSubmissionIdsByPlatform(
   userId: string,
   range: Range,
@@ -501,7 +510,7 @@ async function resolveConnectionMeta(
   };
 }
 
-async function findCreatorSubmissionsByHandle(
+export async function findCreatorSubmissionsByHandle(
   userId: string,
   slug: PlatformSlug,
   matchHandle: string,
@@ -544,12 +553,21 @@ export async function getCreatorDemographics(
   supabaseUserId: string,
   slug: PlatformSlug | null,
   kind?: "FOLLOWER" | "ENGAGED",
+  connectionId?: string,
 ) {
   const scope = await getProfileScope(supabaseUserId);
   if (!scope) return null;
   const connIds = await getConnectionIds(scope.creatorProfileId);
 
-  const filterIds = slug ? connIds[slug] : [...connIds.ig, ...connIds.tt, ...connIds.yt, ...connIds.fb];
+  let filterIds: string[];
+  if (connectionId) {
+    if (!slug) return null;
+    if (!connIds[slug].includes(connectionId)) return null;
+    filterIds = [connectionId];
+  } else {
+    filterIds = slug ? connIds[slug] : [...connIds.ig, ...connIds.tt, ...connIds.yt, ...connIds.fb];
+  }
+
   if (filterIds.length === 0) {
     return aggregateAudience([]);
   }
@@ -567,6 +585,22 @@ export async function getCreatorDemographics(
   });
   const latest = latestPerConnection(snaps);
   return aggregateAudience(latest, kind);
+}
+
+/**
+ * Convenience: resolve a connection's match-handle and return its submission ids.
+ * Used by the Accounts Workspace's account-scoped sub-tab loaders.
+ */
+export async function getConnectionSubmissionIds(
+  supabaseUserId: string,
+  slug: PlatformSlug,
+  connectionId: string,
+): Promise<string[]> {
+  const scope = await getProfileScope(supabaseUserId);
+  if (!scope) return [];
+  const meta = await resolveConnectionMeta(slug, connectionId, scope.creatorProfileId);
+  if (!meta) return [];
+  return findCreatorSubmissionsByHandle(scope.userId, slug, meta.matchHandle);
 }
 
 // ──────────────────────────────────────────────

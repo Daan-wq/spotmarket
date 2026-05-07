@@ -3,12 +3,14 @@
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import type { ContentRow } from "@/lib/stats/content";
-import type { PlatformSlug } from "@/lib/stats/types";
+import { type PlatformSlug, PLATFORM_LABEL, PLATFORM_COLOR } from "@/lib/stats/types";
 
 interface ContentTableProps {
   platform: PlatformSlug;
   rows: ContentRow[];
   showCreator?: boolean;
+  /** Adds a leading "Platform" column. Use when rendering rows from multiple platforms (all-scope). */
+  showPlatform?: boolean;
 }
 
 interface ColumnDef {
@@ -103,17 +105,39 @@ const PLATFORM_COLUMNS: Record<PlatformSlug, ColumnDef[]> = {
   ],
 };
 
-export function ContentTable({ platform, rows, showCreator }: ContentTableProps) {
+export function ContentTable({ platform, rows, showCreator, showPlatform }: ContentTableProps) {
   const cols = useMemo(() => {
     const base = PLATFORM_COLUMNS[platform];
-    if (!showCreator) return base;
-    const creatorCol: ColumnDef = {
-      key: "creator",
-      label: "Creator",
-      cell: (r) => r.creatorDisplayName ?? "—",
-    };
-    return [creatorCol, ...base];
-  }, [platform, showCreator]);
+    let result = base;
+    if (showCreator) {
+      const creatorCol: ColumnDef = {
+        key: "creator",
+        label: "Creator",
+        cell: (r) => r.creatorDisplayName ?? "—",
+      };
+      result = [creatorCol, ...result];
+    }
+    if (showPlatform) {
+      const platformCol: ColumnDef = {
+        key: "platform",
+        label: "Platform",
+        cell: (r) => (
+          <span
+            className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold uppercase tracking-wide"
+            style={{
+              background: `${PLATFORM_COLOR[r.platform]}1a`,
+              color: PLATFORM_COLOR[r.platform],
+            }}
+          >
+            {PLATFORM_LABEL[r.platform]}
+          </span>
+        ),
+        sortValue: (r) => r.platform.charCodeAt(0),
+      };
+      result = [platformCol, ...result];
+    }
+    return result;
+  }, [platform, showCreator, showPlatform]);
 
   const [sortKey, setSortKey] = useState<string>(COMMON_NUM_KEYS[0]);
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");

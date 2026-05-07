@@ -4,6 +4,7 @@ import type { PlatformSlug } from "./types";
 
 export interface ContentRowBase {
   submissionId: string;
+  platform: PlatformSlug;
   title: string;
   postUrl: string;
   capturedAt: Date;
@@ -92,6 +93,7 @@ export async function getContentRows({
     const creatorEmbed = sub as (typeof sub & CreatorEmbed) | null;
     return {
       submissionId: m.submissionId,
+      platform,
       title: sub?.campaign?.name ?? sub?.postUrl ?? "Untitled",
       postUrl: sub?.postUrl ?? "",
       capturedAt: m.capturedAt,
