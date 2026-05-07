@@ -16,18 +16,18 @@ export function Logo({ variant = "light", size = "sm", className }: LogoProps) {
   if (size === "fill") {
     return (
       <svg
-        viewBox="0 0 240 40"
-        preserveAspectRatio="xMidYMid meet"
+        viewBox="0 0 220 40"
+        preserveAspectRatio="xMinYMid meet"
         className={className}
         style={{ display: "block", width: "100%", height: "auto", maxWidth: "100%" }}
         aria-label="ClipProfit"
         role="img"
       >
         <text
-          x="120"
+          x="0"
           y="20"
           dominantBaseline="central"
-          textAnchor="middle"
+          textAnchor="start"
           fill={color}
           fontWeight={900}
           fontStyle="italic"
