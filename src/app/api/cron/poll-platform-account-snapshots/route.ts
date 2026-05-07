@@ -79,6 +79,12 @@ async function runIg(): Promise<PlatformResult> {
       }
       const token = decrypt(c.accessToken, c.accessTokenIv);
       const profile = await fetchInstagramProfile(token, c.igUserId);
+      if (profile.profilePictureUrl) {
+        await prisma.creatorIgConnection.update({
+          where: { id: c.id },
+          data: { profilePicUrl: profile.profilePictureUrl },
+        });
+      }
       await persist({
         connectionType: "IG",
         connectionId: c.id,
@@ -112,6 +118,12 @@ async function runFb(): Promise<PlatformResult> {
       }
       const token = decrypt(c.accessToken, c.accessTokenIv);
       const profile = await fetchFacebookPageProfile(c.fbPageId, token);
+      if (profile.profilePictureUrl) {
+        await prisma.creatorFbConnection.update({
+          where: { id: c.id },
+          data: { profilePicUrl: profile.profilePictureUrl },
+        });
+      }
       await persist({
         connectionType: "FB",
         connectionId: c.id,
@@ -143,6 +155,12 @@ async function runTt(): Promise<PlatformResult> {
         continue;
       }
       const profile = await fetchTikTokProfile(token);
+      if (profile.avatarUrl) {
+        await prisma.creatorTikTokConnection.update({
+          where: { id: c.id },
+          data: { profilePicUrl: profile.avatarUrl },
+        });
+      }
       await persist({
         connectionType: "TT",
         connectionId: c.id,
@@ -178,6 +196,12 @@ async function runYt(): Promise<PlatformResult> {
         continue;
       }
       const profile = await fetchChannelProfile(token);
+      if (profile.profilePictureUrl) {
+        await prisma.creatorYtConnection.update({
+          where: { id: c.id },
+          data: { profilePicUrl: profile.profilePictureUrl },
+        });
+      }
       await persist({
         connectionType: "YT",
         connectionId: c.id,
