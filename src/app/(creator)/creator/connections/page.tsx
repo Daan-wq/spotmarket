@@ -111,7 +111,7 @@ export default async function CreatorConnectionsPage({ searchParams }: PageProps
   }
 
   // ── Parse sub-tab ────────────────────────────────────────────────────────
-  const subTab = parseSubTab(sp.tab, scope);
+  const subTab = parseSubTab(sp.tab, scope, accountId);
 
   // ── Connect button JSX ───────────────────────────────────────────────────
   const connectButtons = (
@@ -279,11 +279,17 @@ async function loadInventory(creatorProfileId: string): Promise<AccountsByPlatfo
 // Sub-tab parser
 // ────────────────────────────────────────────────────────────────────────────
 
-function parseSubTab(raw: string | undefined, scope: Scope): SubTab {
-  const allowed: SubTab[] =
-    scope === "all"
-      ? ["overview", "content", "timeline", "audience"]
-      : ["overview", "content", "timeline", "audience", "insights"];
+function parseSubTab(
+  raw: string | undefined,
+  scope: Scope,
+  accountId: string | "all",
+): SubTab {
+  const isIndividualAccount = scope !== "all" && accountId !== "all";
+  const allowed: SubTab[] = isIndividualAccount
+    ? ["overview", "content", "timeline", "audience", "insights"]
+    : scope === "all"
+      ? ["overview", "content", "timeline"]
+      : ["overview", "content", "timeline", "insights"];
   const candidate = raw as SubTab | undefined;
   return candidate && allowed.includes(candidate) ? candidate : "overview";
 }

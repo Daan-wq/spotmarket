@@ -60,9 +60,12 @@ export function AccountsWorkspace({
     return out;
   }, [accountsByPlatform]);
 
-  const visibleSubTabs: SubTab[] = scope === "all"
-    ? ["overview", "content", "timeline", "audience"]
-    : ["overview", "content", "timeline", "audience", "insights"];
+  const isIndividualAccount = scope !== "all" && accountId !== "all";
+  const visibleSubTabs: SubTab[] = isIndividualAccount
+    ? ["overview", "content", "timeline", "audience", "insights"]
+    : scope === "all"
+      ? ["overview", "content", "timeline"]
+      : ["overview", "content", "timeline", "insights"];
 
   const activePlatformAccounts = scope !== "all" ? (accountsByPlatform[scope] ?? []) : [];
 
@@ -82,7 +85,10 @@ export function AccountsWorkspace({
       }
       // Reset account selection on every scope change.
       p.delete("account");
-      // If switching to "all", insights tab isn't valid — reset to overview.
+      // Audience tab is only valid for an individual account; account just got
+      // cleared, so drop it on any scope change.
+      if (p.get("tab") === "audience") p.delete("tab");
+      // Insights tab isn't valid for the "all" scope.
       if (nextScope === "all" && p.get("tab") === "insights") {
         p.delete("tab");
       }
@@ -93,6 +99,8 @@ export function AccountsWorkspace({
     pushParams((p) => {
       if (nextId === "all") {
         p.delete("account");
+        // Audience tab is only valid for individual accounts.
+        if (p.get("tab") === "audience") p.delete("tab");
       } else {
         p.set("account", nextId);
       }
