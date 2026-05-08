@@ -175,6 +175,7 @@ export default async function CreatorConnectionsPage({ searchParams }: PageProps
     accountId,
     range,
     supabaseId,
+    inventory,
   });
 
   // ── Workspace inventory mapping (chips need {id, username}) ─────────────
@@ -304,6 +305,7 @@ interface RenderArgs {
   accountId: string | "all";
   range: ReturnType<typeof parseRange>;
   supabaseId: string;
+  inventory: AccountsByPlatform;
 }
 
 async function renderSubTab(args: RenderArgs): Promise<ReactNode> {
@@ -337,7 +339,7 @@ async function resolveSubmissionIds(args: RenderArgs): Promise<{
 }
 
 async function renderOverview(args: RenderArgs): Promise<ReactNode> {
-  const { scope, accountId, range, supabaseId } = args;
+  const { scope, accountId, range, supabaseId, inventory } = args;
 
   if (scope === "all") {
     const [stats, subs] = await Promise.all([
@@ -346,7 +348,24 @@ async function renderOverview(args: RenderArgs): Promise<ReactNode> {
     ]);
     if (!stats) return null;
     const daily = await getDailyViewsSeries(subs.ids, range);
-    return <OverviewSubTab kind="all" stats={stats} daily={daily} range={range} />;
+    const connections = PLATFORM_ALL.flatMap((p) =>
+      inventory[p].map((a) => ({
+        id: a.id,
+        label: a.label,
+        followerCount: a.followerCount,
+        lastSyncedAt: a.lastSyncedAt,
+        platform: p,
+      })),
+    );
+    return (
+      <OverviewSubTab
+        kind="all"
+        stats={stats}
+        daily={daily}
+        range={range}
+        connections={connections}
+      />
+    );
   }
 
   if (accountId === "all") {

@@ -11,11 +11,20 @@ import type { Range } from "@/lib/stats/range";
 
 type DailyPoint = { date: string; views: number; likes: number; comments: number; shares: number };
 
+type ConnectionRow = {
+  id: string;
+  label: string;
+  followerCount: number | null;
+  lastSyncedAt: string | null;
+  platform: PlatformSlug;
+};
+
 interface AllScopeProps {
   kind: "all";
   stats: CreatorTopStats;
   daily: DailyPoint[];
   range: Range;
+  connections: ConnectionRow[];
 }
 interface PlatformScopeProps {
   kind: "platform";
@@ -38,7 +47,7 @@ export function OverviewSubTab(props: AllScopeProps | PlatformScopeProps | Accou
   return <AccountScopeView {...props} />;
 }
 
-function AllScopeView({ stats, daily, range }: AllScopeProps) {
+function AllScopeView({ stats, daily, range, connections }: AllScopeProps) {
   return (
     <div className="space-y-5">
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
@@ -67,6 +76,8 @@ function AllScopeView({ stats, daily, range }: AllScopeProps) {
         />
       </div>
 
+      <ConnectionsList connections={connections} rangeKey={range.key} showPlatformTag />
+
       <DailyViewsChart data={daily} />
     </div>
   );
@@ -85,7 +96,16 @@ function PlatformScopeView({ platform, stats, daily, range }: PlatformScopeProps
           hint={stats.topPost ? truncate(stats.topPost.title, 26) : range.label}
         />
       </div>
-      <ConnectionsList platform={platform} connections={stats.connections} rangeKey={range.key} />
+      <ConnectionsList
+        connections={stats.connections.map((c) => ({
+          id: c.id,
+          label: c.label,
+          followerCount: c.followerCount,
+          lastSyncedAt: c.lastSyncedAt ? c.lastSyncedAt.toISOString() : null,
+          platform,
+        }))}
+        rangeKey={range.key}
+      />
       <DailyViewsChart data={daily} />
     </div>
   );
@@ -114,13 +134,13 @@ function AccountScopeView({ stats, daily, range }: AccountScopeProps) {
 }
 
 function ConnectionsList({
-  platform,
   connections,
   rangeKey,
+  showPlatformTag = false,
 }: {
-  platform: PlatformSlug;
-  connections: { id: string; label: string; followerCount: number | null; lastSyncedAt: Date | null }[];
+  connections: ConnectionRow[];
   rangeKey: string;
+  showPlatformTag?: boolean;
 }) {
   if (connections.length === 0) {
     return (
@@ -129,7 +149,7 @@ function ConnectionsList({
         style={{ background: "var(--bg-card)", border: "1px solid var(--border)" }}
       >
         <p className="text-sm" style={{ color: "var(--text-secondary)" }}>
-          No {PLATFORM_LABEL[platform]} connections yet.
+          No connections yet.
         </p>
       </div>
     );
@@ -146,30 +166,44 @@ function ConnectionsList({
       <ul style={{ borderTop: "1px solid var(--border)" }}>
         {connections.map((c) => (
           <li
-            key={c.id}
+            key={`${c.platform}:${c.id}`}
             className="flex items-center justify-between px-5 py-3"
             style={{ borderBottom: "1px solid var(--border)" }}
           >
-            <div>
-              <Link
-                href={`/creator/connections?platform=${platform}&account=${c.id}${qs}`}
-                className="text-sm font-medium hover:underline"
-                style={{ color: "var(--text-primary)" }}
-              >
-                {c.label}
-              </Link>
+            <div className="min-w-0">
+              <div className="flex items-center gap-2 min-w-0">
+                <Link
+                  href={`/creator/connections?platform=${c.platform}&account=${c.id}${qs}`}
+                  className="text-sm font-medium hover:underline truncate"
+                  style={{ color: "var(--text-primary)" }}
+                >
+                  {c.label}
+                </Link>
+                {showPlatformTag && (
+                  <span
+                    className="text-[10px] uppercase tracking-wide rounded px-1.5 py-0.5 shrink-0"
+                    style={{
+                      color: "var(--text-muted)",
+                      border: "1px solid var(--border)",
+                      background: "var(--bg-muted, transparent)",
+                    }}
+                  >
+                    {PLATFORM_LABEL[c.platform]}
+                  </span>
+                )}
+              </div>
               {c.lastSyncedAt && (
                 <p className="text-xs mt-0.5" style={{ color: "var(--text-muted)" }}>
                   Last synced {new Date(c.lastSyncedAt).toLocaleDateString()}
                 </p>
               )}
             </div>
-            <div className="text-right">
+            <div className="text-right shrink-0 pl-3">
               <p className="text-sm font-semibold" style={{ color: "var(--text-primary)" }}>
                 {c.followerCount?.toLocaleString() ?? "—"}
               </p>
               <p className="text-[10px] uppercase tracking-wide" style={{ color: "var(--text-muted)" }}>
-                followers
+                {c.platform === "yt" ? "subscribers" : "followers"}
               </p>
             </div>
           </li>
