@@ -3,6 +3,7 @@ import { Lexend } from "next/font/google";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 import { Analytics } from "@vercel/analytics/next";
 import { AuthErrorHandler } from "./auth-error-handler";
+import { QueryProvider } from "@/components/providers/query-provider";
 import { Toaster } from "@/components/ui/toaster";
 import "./globals.css";
 
@@ -29,7 +30,7 @@ export default function RootLayout({
     <html lang="en">
       <body className={`${lexend.variable} antialiased`}>
         <AuthErrorHandler />
-        {children}
+        <QueryProvider>{children}</QueryProvider>
         <Toaster />
         <SpeedInsights />
         <Analytics />

@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 
 interface NotificationItem {
@@ -12,12 +13,19 @@ interface NotificationItem {
   createdAt: string;
 }
 
+interface NotificationsResponse {
+  notifications: NotificationItem[];
+  unreadCount: number;
+}
+
 type TopHeaderProps = {
   title: string;
   displayName?: string;
   followers?: number;
   userId?: string; // supabaseId for realtime
 };
+
+const NOTIFICATIONS_KEY = ["notifications"] as const;
 
 function timeAgo(date: string) {
   const diff = Date.now() - new Date(date).getTime();
@@ -47,31 +55,60 @@ function notifHref(n: NotificationItem): string {
 }
 
 export function TopHeader({ title, displayName, followers, userId }: TopHeaderProps) {
-  const [notifications, setNotifications] = useState<NotificationItem[]>([]);
-  const [unread, setUnread] = useState(0);
+  const queryClient = useQueryClient();
   const [open, setOpen] = useState(false);
   const dropRef = useRef<HTMLDivElement>(null);
 
-  useEffect(() => {
-    fetch("/api/notifications")
-      .then(r => r.json())
-      .then(d => {
-        setNotifications(d.notifications ?? []);
-        setUnread(d.unreadCount ?? 0);
-      });
-  }, []);
+  const { data } = useQuery({
+    queryKey: NOTIFICATIONS_KEY,
+    queryFn: async (): Promise<NotificationsResponse> => {
+      const r = await fetch("/api/notifications");
+      if (!r.ok) throw new Error(`HTTP ${r.status}`);
+      const json = (await r.json()) as Partial<NotificationsResponse>;
+      return {
+        notifications: json.notifications ?? [],
+        unreadCount: json.unreadCount ?? 0,
+      };
+    },
+  });
 
-  // Subscribe to realtime notifications
+  const notifications = data?.notifications ?? [];
+  const unread = data?.unreadCount ?? 0;
+
+  const markRead = useMutation({
+    mutationFn: () => fetch("/api/notifications", { method: "PATCH" }),
+    onMutate: async () => {
+      await queryClient.cancelQueries({ queryKey: NOTIFICATIONS_KEY });
+      const previous = queryClient.getQueryData<NotificationsResponse>(NOTIFICATIONS_KEY);
+      queryClient.setQueryData<NotificationsResponse>(NOTIFICATIONS_KEY, (old) => ({
+        notifications: (old?.notifications ?? []).map((n) => ({ ...n, read: true })),
+        unreadCount: 0,
+      }));
+      return { previous };
+    },
+    onError: (_err, _vars, ctx) => {
+      if (ctx?.previous) queryClient.setQueryData(NOTIFICATIONS_KEY, ctx.previous);
+    },
+  });
+
+  // Subscribe to realtime notifications — push new entries into the cache
   useEffect(() => {
     if (!userId) return;
     const supabase = createSupabaseBrowserClient();
     const channel = supabase.channel(`user-notifications-${userId}`);
-    channel.on("broadcast", { event: "notification:new" }, ({ payload }) => {
-      setNotifications(prev => [payload as NotificationItem, ...prev].slice(0, 20));
-      setUnread(c => c + 1);
-    }).subscribe();
-    return () => { supabase.removeChannel(channel); };
-  }, [userId]);
+    channel
+      .on("broadcast", { event: "notification:new" }, ({ payload }) => {
+        const incoming = payload as NotificationItem;
+        queryClient.setQueryData<NotificationsResponse>(NOTIFICATIONS_KEY, (old) => ({
+          notifications: [incoming, ...(old?.notifications ?? [])].slice(0, 20),
+          unreadCount: (old?.unreadCount ?? 0) + 1,
+        }));
+      })
+      .subscribe();
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [userId, queryClient]);
 
   // Close dropdown on outside click
   useEffect(() => {
@@ -84,12 +121,10 @@ export function TopHeader({ title, displayName, followers, userId }: TopHeaderPr
     return () => document.removeEventListener("mousedown", handler);
   }, []);
 
-  async function openDropdown() {
-    setOpen(o => !o);
+  function openDropdown() {
+    setOpen((o) => !o);
     if (unread > 0) {
-      setUnread(0);
-      setNotifications(prev => prev.map(n => ({ ...n, read: true })));
-      await fetch("/api/notifications", { method: "PATCH" });
+      markRead.mutate();
     }
   }
 

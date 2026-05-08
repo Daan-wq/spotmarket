@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useQuery } from "@tanstack/react-query";
 
 export interface PostStatus {
   id: string;
@@ -18,56 +18,34 @@ interface UseAutopostStatusReturn {
   retry: () => Promise<void>;
 }
 
+const POLL_INTERVAL_MS = 5_000;
+
 export function useAutopostStatus(
   scheduledPostId: string | null
 ): UseAutopostStatusReturn {
-  const [status, setStatus] = useState<PostStatus | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  const poll = useCallback(async () => {
-    if (!scheduledPostId) return;
-
-    try {
+  const query = useQuery({
+    queryKey: ["autopost-status", scheduledPostId],
+    queryFn: async (): Promise<PostStatus> => {
       const res = await fetch(`/api/autopost/status/${scheduledPostId}`);
       if (!res.ok) {
         throw new Error(`Failed to fetch status: ${res.status}`);
       }
-      const data: PostStatus = await res.json();
-      setStatus(data);
-      setError(null);
-    } catch (err) {
-      const message = err instanceof Error ? err.message : "Unknown error";
-      setError(message);
-    }
-  }, [scheduledPostId]);
+      return (await res.json()) as PostStatus;
+    },
+    enabled: !!scheduledPostId,
+    refetchInterval: (q) => {
+      const data = q.state.data;
+      if (data?.status === "PUBLISHED" || data?.status === "FAILED") return false;
+      return POLL_INTERVAL_MS;
+    },
+  });
 
-  useEffect(() => {
-    if (!scheduledPostId) return;
-
-    setLoading(true);
-    poll().then(() => setLoading(false));
-
-    // Poll every 5s while status is not terminal
-    const interval = setInterval(() => {
-      if (
-        status?.status === "PUBLISHED" ||
-        status?.status === "FAILED"
-      ) {
-        return;
-      }
-      poll();
-    }, 5000);
-
-    return () => clearInterval(interval);
-  }, [scheduledPostId, poll, status?.status]);
-
-  const retry = useCallback(async () => {
-    if (!scheduledPostId) return;
-    setLoading(true);
-    await poll();
-    setLoading(false);
-  }, [scheduledPostId, poll]);
-
-  return { status, loading, error, retry };
+  return {
+    status: query.data ?? null,
+    loading: query.isPending && !!scheduledPostId,
+    error: query.error instanceof Error ? query.error.message : null,
+    retry: async () => {
+      await query.refetch();
+    },
+  };
 }
