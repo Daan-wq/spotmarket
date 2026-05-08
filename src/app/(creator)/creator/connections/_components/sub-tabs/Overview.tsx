@@ -1,13 +1,12 @@
 import Link from "next/link";
 import { KpiCard } from "@/components/admin/kpi-card";
-import { PlatformTile } from "@/components/stats/PlatformTile";
 import { DailyViewsChart } from "@/components/stats/DailyViewsChart";
 import {
   type CreatorTopStats,
   type CreatorPlatformStats,
   type CreatorConnectionStats,
 } from "@/lib/stats/creator";
-import { type PlatformSlug, PLATFORM_ALL, PLATFORM_LABEL } from "@/lib/stats/types";
+import { type PlatformSlug, PLATFORM_LABEL } from "@/lib/stats/types";
 import type { Range } from "@/lib/stats/range";
 
 type DailyPoint = { date: string; views: number; likes: number; comments: number; shares: number };
@@ -66,25 +65,6 @@ function AllScopeView({ stats, daily, range }: AllScopeProps) {
           trend={stats.totalEarnings.delta}
           hint={range.label}
         />
-      </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {PLATFORM_ALL.map((slug) => {
-          const p = stats.byPlatform[slug];
-          return (
-            <PlatformTile
-              key={slug}
-              slug={slug}
-              href={`/creator/connections?platform=${slug}${range.key !== "30d" ? `&range=${range.key}` : ""}`}
-              connectionCount={p.connectionCount}
-              followerCount={p.followerCount}
-              windowViews={p.windowViews}
-              windowEngagement={p.windowEngagement}
-              topPostTitle={p.topPost?.title}
-              topPostViews={p.topPost?.views}
-            />
-          );
-        })}
       </div>
 
       <DailyViewsChart data={daily} />
