@@ -1,3 +1,5 @@
+import { postViaBot as postChannelMessage } from "./discord-internal";
+
 const PLATFORM_LABELS: Record<string, string> = {
   INSTAGRAM: "Instagram",
   TIKTOK: "TikTok",
@@ -85,22 +87,9 @@ async function postViaBot(
   channelId: string,
   body: Record<string, unknown>,
 ): Promise<void> {
-  const botToken = process.env.DISCORD_BOT_TOKEN;
-  if (!botToken) {
-    console.warn("[discord] DISCORD_BOT_TOKEN not set — skipping channel post");
-    return;
-  }
-  const res = await fetch(`https://discord.com/api/v10/channels/${channelId}/messages`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bot ${botToken}`,
-    },
-    body: JSON.stringify(body),
-  });
-  if (!res.ok) {
-    const text = await res.text().catch(() => "");
-    console.error(`[discord] post to channel ${channelId} failed (${res.status}): ${text}`);
+  const result = await postChannelMessage(channelId, body);
+  if (!result.ok) {
+    console.error(`[discord] post to channel ${channelId} failed: ${result.error}`);
   }
 }
 
