@@ -26,7 +26,6 @@ export default function SubmissionActions({ id, status, postUrl }: SubmissionAct
 
     startTransition(async () => {
       setOptimisticStatus('APPROVED');
-      toast.success('Submission approved');
 
       try {
         const res = await fetch('/api/submissions/' + id + '/review', {
@@ -38,6 +37,7 @@ export default function SubmissionActions({ id, status, postUrl }: SubmissionAct
           toast.error('Failed to approve submission — reverting');
           return;
         }
+        toast.success('Submission approved');
         router.refresh();
       } catch (err) {
         console.error(err);
@@ -51,7 +51,6 @@ export default function SubmissionActions({ id, status, postUrl }: SubmissionAct
 
     startTransition(async () => {
       setOptimisticStatus('REJECTED');
-      toast.success('Submission rejected');
 
       try {
         const res = await fetch('/api/submissions/' + id + '/review', {
@@ -63,6 +62,7 @@ export default function SubmissionActions({ id, status, postUrl }: SubmissionAct
           toast.error('Failed to reject submission — reverting');
           return;
         }
+        toast.success('Submission rejected');
         router.refresh();
       } catch (err) {
         console.error(err);

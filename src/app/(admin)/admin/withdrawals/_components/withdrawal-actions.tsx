@@ -23,7 +23,6 @@ export default function WithdrawalActions({ id, status, walletAddress, txHash }:
     if (isPending) return;
     startTransition(async () => {
       setOptimisticStatus(newStatus);
-      toast.success(`Withdrawal ${newStatus.toLowerCase()}`);
 
       try {
         const res = await fetch(`/api/admin/withdrawals/${id}`, {
@@ -35,6 +34,7 @@ export default function WithdrawalActions({ id, status, walletAddress, txHash }:
           toast.error('Failed to update withdrawal — reverting');
           return;
         }
+        toast.success(`Withdrawal ${newStatus.toLowerCase()}`);
         router.refresh();
       } catch (err) {
         console.error(err);

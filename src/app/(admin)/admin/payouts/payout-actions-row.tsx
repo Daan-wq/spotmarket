@@ -58,7 +58,6 @@ export function PayoutActionsRow({
 
     startTransition(async () => {
       setOptimisticStatus("sent");
-      toast.success("Payout marked as sent");
 
       try {
         const res = await fetch(`/api/payouts/${payout.id}`, {
@@ -70,6 +69,7 @@ export function PayoutActionsRow({
           toast.error("Failed to mark payout as sent — reverting");
           return;
         }
+        toast.success("Payout marked as sent");
         router.refresh();
       } catch (err) {
         console.error("[markSent]", err);
@@ -82,7 +82,6 @@ export function PayoutActionsRow({
     if (isPending) return;
     startTransition(async () => {
       setOptimisticStatus("confirmed");
-      toast.success("Payout confirmed");
 
       try {
         const res = await fetch(`/api/payouts/${payout.id}`, {
@@ -94,6 +93,7 @@ export function PayoutActionsRow({
           toast.error("Failed to confirm payout — reverting");
           return;
         }
+        toast.success("Payout confirmed");
         router.refresh();
       } catch (err) {
         console.error("[markConfirmed]", err);

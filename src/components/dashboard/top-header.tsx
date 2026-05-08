@@ -3,15 +3,18 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { z } from "zod";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 
-interface NotificationItem {
-  id: string;
-  type: string;
-  data: Record<string, unknown>;
-  read: boolean;
-  createdAt: string;
-}
+const notificationSchema = z.object({
+  id: z.string().min(1),
+  type: z.string().min(1),
+  data: z.record(z.string(), z.unknown()),
+  read: z.boolean(),
+  createdAt: z.string().min(1),
+});
+
+type NotificationItem = z.infer<typeof notificationSchema>;
 
 interface NotificationsResponse {
   notifications: NotificationItem[];
@@ -42,7 +45,11 @@ function notifText(n: NotificationItem): string {
   const d = n.data;
   if (n.type === "NEW_FOLLOWER") return `${d.followerName} started following you`;
   if (n.type === "CAMPAIGN_LAUNCHED") return `${d.launcherName} launched a new campaign: ${d.campaignName}`;
-  if (n.type === "REVIEW_RECEIVED") return `${d.reviewerName} left you a ${"★".repeat(Number(d.rating))} review on ${d.campaignName}`;
+  if (n.type === "REVIEW_RECEIVED") {
+    const rawRating = Number(d.rating);
+    const stars = Number.isFinite(rawRating) ? Math.max(0, Math.min(5, Math.floor(rawRating))) : 0;
+    return `${d.reviewerName} left you a ${"★".repeat(stars)} review on ${d.campaignName}`;
+  }
   return "New notification";
 }
 
@@ -76,7 +83,10 @@ export function TopHeader({ title, displayName, followers, userId }: TopHeaderPr
   const unread = data?.unreadCount ?? 0;
 
   const markRead = useMutation({
-    mutationFn: () => fetch("/api/notifications", { method: "PATCH" }),
+    mutationFn: async () => {
+      const r = await fetch("/api/notifications", { method: "PATCH" });
+      if (!r.ok) throw new Error(`HTTP ${r.status}`);
+    },
     onMutate: async () => {
       await queryClient.cancelQueries({ queryKey: NOTIFICATIONS_KEY });
       const previous = queryClient.getQueryData<NotificationsResponse>(NOTIFICATIONS_KEY);
@@ -98,7 +108,9 @@ export function TopHeader({ title, displayName, followers, userId }: TopHeaderPr
     const channel = supabase.channel(`user-notifications-${userId}`);
     channel
       .on("broadcast", { event: "notification:new" }, ({ payload }) => {
-        const incoming = payload as NotificationItem;
+        const parsed = notificationSchema.safeParse(payload);
+        if (!parsed.success) return;
+        const incoming = parsed.data;
         queryClient.setQueryData<NotificationsResponse>(NOTIFICATIONS_KEY, (old) => ({
           notifications: [incoming, ...(old?.notifications ?? [])].slice(0, 20),
           unreadCount: (old?.unreadCount ?? 0) + 1,
@@ -122,10 +134,12 @@ export function TopHeader({ title, displayName, followers, userId }: TopHeaderPr
   }, []);
 
   function openDropdown() {
-    setOpen((o) => !o);
-    if (unread > 0) {
-      markRead.mutate();
-    }
+    setOpen((wasOpen) => {
+      if (!wasOpen && unread > 0) {
+        markRead.mutate();
+      }
+      return !wasOpen;
+    });
   }
 
   return (

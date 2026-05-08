@@ -13,7 +13,6 @@ export default function VerificationActions({ id, isVerified }: { id: string; is
     if (isPending) return;
     startTransition(async () => {
       setOptimisticVerified(status === 'VERIFIED');
-      toast.success(status === 'VERIFIED' ? 'Verification confirmed' : 'Verification rejected');
 
       try {
         const res = await fetch('/api/admin/verifications/' + id, {
@@ -25,6 +24,7 @@ export default function VerificationActions({ id, isVerified }: { id: string; is
           toast.error(`Failed to ${status === 'VERIFIED' ? 'verify' : 'reject'} submission — reverting`);
           return;
         }
+        toast.success(status === 'VERIFIED' ? 'Verification confirmed' : 'Verification rejected');
         router.refresh();
       } catch (err) {
         console.error(err);

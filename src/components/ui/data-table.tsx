@@ -32,7 +32,7 @@ export interface DataTableProps<T> {
   estimatedRowHeight?: number;
 }
 
-const VIRTUALIZE_AUTO_THRESHOLD = 100;
+const VIRTUALIZE_AUTO_THRESHOLD = 50;
 
 export function DataTable<T>(props: DataTableProps<T>) {
   const {

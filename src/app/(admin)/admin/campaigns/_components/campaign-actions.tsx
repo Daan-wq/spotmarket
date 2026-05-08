@@ -22,7 +22,6 @@ export function CampaignActions({ campaignId, status }: CampaignActionsProps) {
 
     startTransition(async () => {
       setOptimisticStatus(newStatus);
-      toast.success(newStatus === "active" ? "Campaign activated" : "Campaign paused");
 
       try {
         const res = await fetch(`/api/campaigns/${campaignId}`, {
@@ -34,6 +33,7 @@ export function CampaignActions({ campaignId, status }: CampaignActionsProps) {
           toast.error("Failed to update campaign — reverting");
           return;
         }
+        toast.success(newStatus === "active" ? "Campaign activated" : "Campaign paused");
         router.refresh();
       } catch (err) {
         console.error("[CampaignActions]", err);
