@@ -18,6 +18,7 @@ import {
   CreatorPageHeader,
   SoftStat,
 } from "../../_components/creator-journey";
+import { relativeTime } from "@/lib/relative-time";
 
 type ClipMediaType = "video" | "image" | "carousel";
 
@@ -48,17 +49,6 @@ const SORT_OPTIONS: Array<{ key: SortKey; label: string }> = [
   { key: "most-views", label: "Most views" },
   { key: "highest-earned", label: "Highest earned" },
 ];
-
-function relativeTime(dateStr: string) {
-  const diff = Date.now() - new Date(dateStr).getTime();
-  const mins = Math.floor(diff / 60000);
-  if (mins < 1) return "less than a minute ago";
-  if (mins < 60) return `${mins} minute${mins > 1 ? "s" : ""} ago`;
-  const hours = Math.floor(mins / 60);
-  if (hours < 24) return `${hours} hour${hours > 1 ? "s" : ""} ago`;
-  const days = Math.floor(hours / 24);
-  return `${days} day${days > 1 ? "s" : ""} ago`;
-}
 
 export function VideosClient({
   videos,
@@ -96,11 +86,7 @@ export function VideosClient({
 
   return (
     <div className="w-full space-y-8 px-6 py-8">
-      <CreatorPageHeader
-        eyebrow="Clip review pipeline"
-        title="Clips"
-        description="Start with the current queue, then open stats or filters only when you need them."
-      />
+      <CreatorPageHeader eyebrow="Submitted clips" title="Clips" />
 
       <section>
         <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
@@ -124,69 +110,15 @@ export function VideosClient({
           />
         </div>
 
-        <div className="mt-6 flex justify-end">
-          <DropdownMenu modal={false}>
-            <DropdownMenuTrigger asChild>
-              <button
-                type="button"
-                className="inline-flex h-10 items-center gap-2 rounded-xl border border-neutral-200 bg-white px-4 text-sm font-semibold text-neutral-700 transition hover:bg-neutral-50 hover:text-neutral-950"
-              >
-                Filter options
-                <ChevronDownIcon />
-              </button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent
-              align="end"
-              className="w-56 rounded-xl border border-neutral-200 bg-white p-1 text-neutral-900 shadow-lg"
-            >
-              <DropdownMenuLabel className="text-xs font-semibold uppercase tracking-[0.14em] text-neutral-400">
-                Queue
-              </DropdownMenuLabel>
-              <DropdownMenuRadioGroup
-                value={queue}
-                onValueChange={(v) => setQueue(v as QueueKey)}
-              >
-                {queueOptions.map((option) => (
-                  <DropdownMenuRadioItem key={option.key} value={option.key}>
-                    {option.label}
-                  </DropdownMenuRadioItem>
-                ))}
-              </DropdownMenuRadioGroup>
-              <DropdownMenuSeparator />
-              <DropdownMenuLabel className="text-xs font-semibold uppercase tracking-[0.14em] text-neutral-400">
-                Sort
-              </DropdownMenuLabel>
-              <DropdownMenuRadioGroup
-                value={sort}
-                onValueChange={(v) => setSort(v as SortKey)}
-              >
-                {SORT_OPTIONS.map((option) => (
-                  <DropdownMenuRadioItem key={option.key} value={option.key}>
-                    {option.label}
-                  </DropdownMenuRadioItem>
-                ))}
-              </DropdownMenuRadioGroup>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </div>
-
-        {filtered.length === 0 ? (
-          videos.length === 0 ? (
-            <InlineEmptyState
-              title="No clips yet"
-              description="Submit your first clip from a campaign you've joined to start earning."
-              primaryCta={{ label: "Browse campaigns", href: "/creator/campaigns" }}
-              secondaryCta={{ label: "Connect an account", href: "/creator/connections" }}
-            />
-          ) : (
-            <InlineEmptyState
-              title={`No ${queue.toLowerCase()} clips`}
-              description="Use another queue to keep reviewing submitted clips."
-              primaryCta={{ label: "Show all clips", onClick: () => setQueue("ALL") }}
-            />
-          )
+        {videos.length === 0 ? (
+          <InlineEmptyState
+            title="No clips yet"
+            description="Submit your first clip from a campaign you've joined to start earning."
+            primaryCta={{ label: "Browse campaigns", href: "/creator/campaigns" }}
+            secondaryCta={{ label: "Connect an account", href: "/creator/connections" }}
+          />
         ) : (
-          <div className="mt-3 overflow-x-auto">
+          <div className="mt-6 overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-neutral-200 text-neutral-500">
@@ -197,10 +129,67 @@ export function VideosClient({
                   <th className="px-2 py-3 text-left font-medium">Earned</th>
                   <th className="px-2 py-3 text-left font-medium">Views</th>
                   <th className="px-2 py-3 text-left font-medium">Platform</th>
-                  <th className="px-2 py-3 text-right font-medium"></th>
+                  <th className="px-2 py-3 text-right font-medium">
+                    <div className="flex justify-end">
+                      <DropdownMenu modal={false}>
+                        <DropdownMenuTrigger asChild>
+                          <button
+                            type="button"
+                            className="inline-flex h-9 items-center gap-2 rounded-lg border border-neutral-200 bg-white px-3 text-xs font-semibold text-neutral-700 transition hover:bg-neutral-50 hover:text-neutral-950"
+                          >
+                            Filter options
+                            <ChevronDownIcon />
+                          </button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent
+                          align="end"
+                          className="w-56 rounded-xl border border-neutral-200 bg-white p-1 text-neutral-900 shadow-lg"
+                        >
+                          <DropdownMenuLabel className="text-xs font-semibold uppercase tracking-[0.14em] text-neutral-400">
+                            Queue
+                          </DropdownMenuLabel>
+                          <DropdownMenuRadioGroup
+                            value={queue}
+                            onValueChange={(v) => setQueue(v as QueueKey)}
+                          >
+                            {queueOptions.map((option) => (
+                              <DropdownMenuRadioItem key={option.key} value={option.key}>
+                                {option.label}
+                              </DropdownMenuRadioItem>
+                            ))}
+                          </DropdownMenuRadioGroup>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuLabel className="text-xs font-semibold uppercase tracking-[0.14em] text-neutral-400">
+                            Sort
+                          </DropdownMenuLabel>
+                          <DropdownMenuRadioGroup
+                            value={sort}
+                            onValueChange={(v) => setSort(v as SortKey)}
+                          >
+                            {SORT_OPTIONS.map((option) => (
+                              <DropdownMenuRadioItem key={option.key} value={option.key}>
+                                {option.label}
+                              </DropdownMenuRadioItem>
+                            ))}
+                          </DropdownMenuRadioGroup>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </div>
+                  </th>
                 </tr>
               </thead>
               <tbody>
+                {filtered.length === 0 ? (
+                  <tr>
+                    <td colSpan={8} className="px-2 py-10">
+                      <InlineEmptyState
+                        title={`No ${queue.toLowerCase()} clips`}
+                        description="Use another queue to keep reviewing submitted clips."
+                        primaryCta={{ label: "Show all clips", onClick: () => setQueue("ALL") }}
+                      />
+                    </td>
+                  </tr>
+                ) : null}
                 {filtered.map((video) => (
                   <tr
                     key={video.id}

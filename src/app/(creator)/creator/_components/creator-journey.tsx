@@ -8,7 +8,7 @@ export function CreatorPageHeader({
 }: {
   eyebrow?: string;
   title: string;
-  description: string;
+  description?: string;
   action?: ReactNode;
 }) {
   return (
@@ -22,9 +22,11 @@ export function CreatorPageHeader({
         <h1 className="text-[32px] font-semibold leading-tight tracking-normal text-neutral-950 md:text-[36px]">
           {title}
         </h1>
-        <p className="mt-2 text-sm leading-6 text-neutral-500">
-          {description}
-        </p>
+        {description ? (
+          <p className="mt-2 text-sm leading-6 text-neutral-500">
+            {description}
+          </p>
+        ) : null}
       </div>
       {action ? <div className="shrink-0">{action}</div> : null}
     </header>
