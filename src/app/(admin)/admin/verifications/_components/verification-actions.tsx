@@ -1,34 +1,39 @@
 'use client';
 
-import { useTransition } from 'react';
+import { useOptimistic, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 
 export default function VerificationActions({ id, isVerified }: { id: string; isVerified: boolean }) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
+  const [optimisticVerified, setOptimisticVerified] = useOptimistic(isVerified);
 
-  async function update(status: 'VERIFIED' | 'FAILED') {
+  function update(status: 'VERIFIED' | 'FAILED') {
     if (isPending) return;
-    try {
-      const res = await fetch('/api/admin/verifications/' + id, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status })
-      });
-      if (!res.ok) {
-        toast.error(`Failed to ${status === 'VERIFIED' ? 'verify' : 'reject'} submission`);
-        return;
-      }
+    startTransition(async () => {
+      setOptimisticVerified(status === 'VERIFIED');
       toast.success(status === 'VERIFIED' ? 'Verification confirmed' : 'Verification rejected');
-      startTransition(() => router.refresh());
-    } catch (err) {
-      console.error(err);
-      toast.error('Network error');
-    }
+
+      try {
+        const res = await fetch('/api/admin/verifications/' + id, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ status })
+        });
+        if (!res.ok) {
+          toast.error(`Failed to ${status === 'VERIFIED' ? 'verify' : 'reject'} submission — reverting`);
+          return;
+        }
+        router.refresh();
+      } catch (err) {
+        console.error(err);
+        toast.error('Network error — reverting');
+      }
+    });
   }
 
-  if (isVerified) return <span style={{ color: 'var(--text-secondary)' }}>Verified</span>;
+  if (optimisticVerified) return <span style={{ color: 'var(--text-secondary)' }}>Verified</span>;
 
   return (
     <div className="flex gap-2">

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useTransition } from 'react';
+import { useOptimistic, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 
@@ -13,55 +13,65 @@ interface SubmissionActionsProps {
 export default function SubmissionActions({ id, status, postUrl }: SubmissionActionsProps) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
+  const [optimisticStatus, setOptimisticStatus] = useOptimistic(status);
   const [showApproveForm, setShowApproveForm] = useState(false);
   const [baselineViews, setBaselineViews] = useState('');
   const [viewCount, setViewCount] = useState('');
 
-  async function approve() {
+  function approve() {
     if (isPending) return;
     const baseline = parseInt(baselineViews, 10);
     const views = parseInt(viewCount, 10);
     if (isNaN(baseline) || isNaN(views) || baseline < 0 || views < 0) return;
 
-    try {
-      const res = await fetch('/api/submissions/' + id + '/review', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status: 'APPROVED', baselineViews: baseline, viewCount: views })
-      });
-      if (!res.ok) {
-        toast.error('Failed to approve submission');
-        return;
-      }
+    startTransition(async () => {
+      setOptimisticStatus('APPROVED');
       toast.success('Submission approved');
-      startTransition(() => router.refresh());
-    } catch (err) {
-      console.error(err);
-      toast.error('Network error');
-    }
-  }
 
-  async function reject() {
-    if (isPending) return;
-    try {
-      const res = await fetch('/api/submissions/' + id + '/review', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status: 'REJECTED', rejectionNote: 'Rejected by admin' })
-      });
-      if (!res.ok) {
-        toast.error('Failed to reject submission');
-        return;
+      try {
+        const res = await fetch('/api/submissions/' + id + '/review', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ status: 'APPROVED', baselineViews: baseline, viewCount: views })
+        });
+        if (!res.ok) {
+          toast.error('Failed to approve submission — reverting');
+          return;
+        }
+        router.refresh();
+      } catch (err) {
+        console.error(err);
+        toast.error('Network error — reverting');
       }
-      toast.success('Submission rejected');
-      startTransition(() => router.refresh());
-    } catch (err) {
-      console.error(err);
-      toast.error('Network error');
-    }
+    });
   }
 
-  if (status !== 'PENDING') return <span style={{ color: 'var(--text-secondary)' }}>-</span>;
+  function reject() {
+    if (isPending) return;
+
+    startTransition(async () => {
+      setOptimisticStatus('REJECTED');
+      toast.success('Submission rejected');
+
+      try {
+        const res = await fetch('/api/submissions/' + id + '/review', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ status: 'REJECTED', rejectionNote: 'Rejected by admin' })
+        });
+        if (!res.ok) {
+          toast.error('Failed to reject submission — reverting');
+          return;
+        }
+        router.refresh();
+      } catch (err) {
+        console.error(err);
+        toast.error('Network error — reverting');
+      }
+    });
+  }
+
+  if (optimisticStatus !== 'PENDING') return <span style={{ color: 'var(--text-secondary)' }}>-</span>;
 
   return (
     <div className="space-y-2">

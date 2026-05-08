@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useTransition } from 'react';
+import { useOptimistic, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 
@@ -14,31 +14,36 @@ interface WithdrawalActionsProps {
 export default function WithdrawalActions({ id, status, walletAddress, txHash }: WithdrawalActionsProps) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
+  const [optimisticStatus, setOptimisticStatus] = useOptimistic(status);
   const [txInput, setTxInput] = useState('');
   const [showTxForm, setShowTxForm] = useState(false);
   const loading = isPending;
 
-  async function updateStatus(newStatus: string, hash?: string) {
+  function updateStatus(newStatus: string, hash?: string) {
     if (isPending) return;
-    try {
-      const res = await fetch(`/api/admin/withdrawals/${id}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status: newStatus, txHash: hash }),
-      });
-      if (!res.ok) {
-        toast.error('Failed to update withdrawal');
-        return;
-      }
+    startTransition(async () => {
+      setOptimisticStatus(newStatus);
       toast.success(`Withdrawal ${newStatus.toLowerCase()}`);
-      startTransition(() => router.refresh());
-    } catch (err) {
-      console.error(err);
-      toast.error('Network error');
-    }
+
+      try {
+        const res = await fetch(`/api/admin/withdrawals/${id}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ status: newStatus, txHash: hash }),
+        });
+        if (!res.ok) {
+          toast.error('Failed to update withdrawal — reverting');
+          return;
+        }
+        router.refresh();
+      } catch (err) {
+        console.error(err);
+        toast.error('Network error — reverting');
+      }
+    });
   }
 
-  if (status === 'CONFIRMED' || status === 'REJECTED') {
+  if (optimisticStatus === 'CONFIRMED' || optimisticStatus === 'REJECTED') {
     if (txHash) {
       return (
         <a
@@ -55,7 +60,7 @@ export default function WithdrawalActions({ id, status, walletAddress, txHash }:
     return <span style={{ color: 'var(--text-secondary)' }}>-</span>;
   }
 
-  if (status === 'SENT') {
+  if (optimisticStatus === 'SENT') {
     return (
       <button
         onClick={() => updateStatus('CONFIRMED')}
@@ -97,7 +102,7 @@ export default function WithdrawalActions({ id, status, walletAddress, txHash }:
         </div>
       ) : (
         <div className="flex gap-1">
-          {status === 'PENDING' && (
+          {optimisticStatus === 'PENDING' && (
             <button
               onClick={() => updateStatus('PROCESSING')}
               disabled={loading}

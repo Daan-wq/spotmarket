@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useOptimistic, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { PayoutStatus, PayoutType } from "@prisma/client";
@@ -39,6 +39,7 @@ export function PayoutActionsRow({
 }) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
+  const [optimisticStatus, setOptimisticStatus] = useOptimistic(payout.status);
   const [txHash, setTxHash] = useState(payout.txHash ?? "");
   const [copied, setCopied] = useState(false);
 
@@ -48,51 +49,60 @@ export function PayoutActionsRow({
     setTimeout(() => setCopied(false), 2000);
   }
 
-  async function markSent() {
+  function markSent() {
     if (isPending) return;
     if (!txHash.trim()) {
       toast.error("Enter a transaction hash before marking as sent.");
       return;
     }
-    try {
-      const res = await fetch(`/api/payouts/${payout.id}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ status: "sent", txHash: txHash.trim() }),
-      });
-      if (!res.ok) {
-        toast.error("Failed to mark payout as sent");
-        return;
-      }
+
+    startTransition(async () => {
+      setOptimisticStatus("sent");
       toast.success("Payout marked as sent");
-      startTransition(() => router.refresh());
-    } catch (err) {
-      console.error("[markSent]", err);
-      toast.error("Network error");
-    }
-  }
 
-  async function markConfirmed() {
-    if (isPending) return;
-    try {
-      const res = await fetch(`/api/payouts/${payout.id}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ status: "confirmed" }),
-      });
-      if (!res.ok) {
-        toast.error("Failed to confirm payout");
-        return;
+      try {
+        const res = await fetch(`/api/payouts/${payout.id}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ status: "sent", txHash: txHash.trim() }),
+        });
+        if (!res.ok) {
+          toast.error("Failed to mark payout as sent — reverting");
+          return;
+        }
+        router.refresh();
+      } catch (err) {
+        console.error("[markSent]", err);
+        toast.error("Network error — reverting");
       }
-      toast.success("Payout confirmed");
-      startTransition(() => router.refresh());
-    } catch (err) {
-      console.error("[markConfirmed]", err);
-      toast.error("Network error");
-    }
+    });
   }
 
-  const colors = statusStyle[payout.status];
+  function markConfirmed() {
+    if (isPending) return;
+    startTransition(async () => {
+      setOptimisticStatus("confirmed");
+      toast.success("Payout confirmed");
+
+      try {
+        const res = await fetch(`/api/payouts/${payout.id}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ status: "confirmed" }),
+        });
+        if (!res.ok) {
+          toast.error("Failed to confirm payout — reverting");
+          return;
+        }
+        router.refresh();
+      } catch (err) {
+        console.error("[markConfirmed]", err);
+        toast.error("Network error — reverting");
+      }
+    });
+  }
+
+  const colors = statusStyle[optimisticStatus];
 
   return (
     <div className="px-5 py-5" style={{ borderTop: "1px solid var(--border)" }}>
@@ -103,7 +113,7 @@ export function PayoutActionsRow({
               {payout.application.creatorProfile.displayName}
             </p>
             <span className="text-xs px-2 py-0.5 rounded-full font-medium" style={colors}>
-              {payout.status}
+              {optimisticStatus}
             </span>
             <span className="text-xs px-2 py-0.5 rounded-full font-medium" style={{ backgroundColor: "var(--bg-card)", color: "var(--card-foreground)" }}>
               {payout.type}
@@ -140,7 +150,7 @@ export function PayoutActionsRow({
           {/* Actions */}
           {!readonly && (
             <div className="flex items-center gap-2">
-              {payout.status === "pending" && (
+              {optimisticStatus === "pending" && (
                 <>
                   <input
                     type="text"
@@ -164,7 +174,7 @@ export function PayoutActionsRow({
                   </button>
                 </>
               )}
-              {payout.status === "sent" && (
+              {optimisticStatus === "sent" && (
                 <button
                   onClick={markConfirmed}
                   disabled={isPending}
