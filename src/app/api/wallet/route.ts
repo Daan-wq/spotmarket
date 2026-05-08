@@ -9,7 +9,10 @@ export async function GET(_req: NextRequest) {
 
     const user = await prisma.user.findUnique({
       where: { supabaseId: userId },
-      select: { id: true },
+      select: {
+        id: true,
+        creatorProfile: { select: { tronsAddress: true } },
+      },
     });
 
     if (!user) {
@@ -31,6 +34,7 @@ export async function GET(_req: NextRequest) {
 
     return NextResponse.json({
       balance: wallet ? Number(wallet.balance) : 0,
+      tronsAddress: user.creatorProfile?.tronsAddress ?? null,
       totalEarnings: earnings.total,
       settledEarnings: earnings.settled,
       estimatedEarnings: earnings.estimated,

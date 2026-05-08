@@ -3,8 +3,8 @@ import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { nanoid } from "nanoid";
+import { isValidTronAddress } from "@/lib/validation/tron";
 
-const TRON_REGEX = /^T[1-9A-HJ-NP-Z]{33}$/;
 const VALID_ROLES = ["creator"] as const;
 
 function generateReferralCode(): string {
@@ -42,7 +42,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Display name is required" }, { status: 400 });
   }
 
-  if (tronsAddress && !TRON_REGEX.test(tronsAddress)) {
+  if (tronsAddress && !isValidTronAddress(tronsAddress)) {
     return NextResponse.json({ error: "Invalid Tron wallet address" }, { status: 400 });
   }
 

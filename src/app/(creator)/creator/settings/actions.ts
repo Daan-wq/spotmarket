@@ -3,8 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { requireAuth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-
-const TRON_REGEX = /^T[1-9A-HJ-NP-Z]{33}$/;
+import { isValidTronAddress } from "@/lib/validation/tron";
 
 export interface UpdateProfileResult {
   ok: boolean;
@@ -27,7 +26,7 @@ export async function updateCreatorProfile(formData: FormData): Promise<UpdatePr
   if (bio.length > 280) {
     return { ok: false, error: "Bio must be 280 characters or fewer." };
   }
-  if (tronsAddress && !TRON_REGEX.test(tronsAddress)) {
+  if (tronsAddress && !isValidTronAddress(tronsAddress)) {
     return {
       ok: false,
       error: "TRON wallet address looks invalid. It should start with T and be 34 characters.",
