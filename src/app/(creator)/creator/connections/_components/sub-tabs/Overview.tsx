@@ -105,8 +105,8 @@ function PlatformScopeView({ platform, stats, daily, range }: PlatformScopeProps
           hint={stats.topPost ? truncate(stats.topPost.title, 26) : range.label}
         />
       </div>
-      <DailyViewsChart data={daily} />
       <ConnectionsList platform={platform} connections={stats.connections} rangeKey={range.key} />
+      <DailyViewsChart data={daily} />
     </div>
   );
 }

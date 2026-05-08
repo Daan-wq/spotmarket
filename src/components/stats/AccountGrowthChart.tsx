@@ -23,7 +23,6 @@ export interface AccountGrowthPoint {
 const SERIES = [
   { key: "followers", label: "Followers", color: "#6366F1" },
   { key: "following", label: "Following", color: "#14b8a6" },
-  { key: "videoCount", label: "Videos", color: "#F59E0B" },
   { key: "totalLikes", label: "Total likes", color: "#EC4899" },
 ] as const;
 
@@ -31,7 +30,6 @@ export function AccountGrowthChart({ data, height = 240 }: { data: AccountGrowth
   const [enabled, setEnabled] = useState<Record<string, boolean>>({
     followers: true,
     following: false,
-    videoCount: false,
     totalLikes: false,
   });
 

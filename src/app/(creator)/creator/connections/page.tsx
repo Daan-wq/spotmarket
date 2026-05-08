@@ -188,9 +188,9 @@ export default async function CreatorConnectionsPage({ searchParams }: PageProps
   return (
     <div className="w-full space-y-6 px-6 py-8">
       <CreatorPageHeader
-        eyebrow="Account health"
+        eyebrow="Analytics"
         title="Accounts"
-        description="Manage connected pages and explore performance — all in one place."
+        description="Manage connected pages and explore performance, all in one place."
       />
 
       <AccountsWorkspace
