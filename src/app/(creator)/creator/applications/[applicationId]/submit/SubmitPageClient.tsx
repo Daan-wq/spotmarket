@@ -162,7 +162,11 @@ export default function SubmitPageClient({
           setCurrentPosts([]);
           return;
         }
-        if (!res.ok) throw new Error("Failed to load posts");
+        if (!res.ok) {
+          const body = await res.json().catch(() => ({}));
+          const apiError = typeof body?.error === "string" ? body.error : null;
+          throw new Error(apiError || "Failed to load posts");
+        }
 
         const data = await res.json();
         const posts: NormalizedPost[] = data.posts ?? [];
@@ -181,9 +185,10 @@ export default function SubmitPageClient({
         cursorCache.current.set(connectionId, newCursors);
 
         setCurrentPosts(posts);
-      } catch {
+      } catch (err) {
         setCurrentPosts([]);
-        setError("Failed to load posts. Please try again.");
+        const fallback = "Failed to load posts. Please try again.";
+        setError(err instanceof Error && err.message ? err.message : fallback);
       } finally {
         setIsLoading(false);
       }

@@ -32,22 +32,35 @@ export async function getFreshTikTokAccessToken(
   if (!shouldRefresh(conn.tokenExpiresAt) || !conn.refreshToken || !conn.refreshTokenIv) {
     return current;
   }
-  try {
-    const refresh = decrypt(conn.refreshToken, conn.refreshTokenIv);
-    const fresh = await refreshTikTokToken(refresh);
-    const enc = encrypt(fresh.accessToken);
-    await prisma.creatorTikTokConnection.update({
-      where: { id: conn.id },
-      data: {
-        accessToken: enc.ciphertext,
-        accessTokenIv: enc.iv,
-        tokenExpiresAt: new Date(Date.now() + fresh.expiresIn * 1000),
-      },
-    });
-    return fresh.accessToken;
-  } catch {
-    return current;
-  }
+  const refreshed = await forceRefreshTikTokAccessToken(conn).catch(() => null);
+  return refreshed ?? current;
+}
+
+/**
+ * Always perform a TikTok refresh-token exchange and persist the new
+ * access token. Use this when the API reports the current token as
+ * invalid/expired even though our `tokenExpiresAt` says otherwise —
+ * TikTok can revoke tokens server-side outside the expected window.
+ *
+ * Throws on refresh failure so the caller can surface a reconnect
+ * prompt instead of retrying with another dead token.
+ */
+export async function forceRefreshTikTokAccessToken(
+  conn: TokenRecord
+): Promise<string | null> {
+  if (!conn.refreshToken || !conn.refreshTokenIv) return null;
+  const refresh = decrypt(conn.refreshToken, conn.refreshTokenIv);
+  const fresh = await refreshTikTokToken(refresh);
+  const enc = encrypt(fresh.accessToken);
+  await prisma.creatorTikTokConnection.update({
+    where: { id: conn.id },
+    data: {
+      accessToken: enc.ciphertext,
+      accessTokenIv: enc.iv,
+      tokenExpiresAt: new Date(Date.now() + fresh.expiresIn * 1000),
+    },
+  });
+  return fresh.accessToken;
 }
 
 export async function getFreshYoutubeAccessToken(

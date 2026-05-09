@@ -2,7 +2,7 @@ import { type NextRequest, NextResponse } from "next/server";
 import { requireAuth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { decrypt } from "@/lib/crypto";
-import { getFreshTikTokAccessToken } from "@/lib/token-refresh";
+import { getFreshTikTokAccessToken, forceRefreshTikTokAccessToken } from "@/lib/token-refresh";
 import { fetchRecentMedia } from "@/lib/instagram";
 import { fetchTikTokVideos } from "@/lib/tiktok";
 import { fetchFacebookPagePostsPaginated } from "@/lib/facebook";
@@ -91,6 +91,13 @@ async function handleIg(
   });
 }
 
+// TikTok rejects expired/revoked tokens with these error codes — treat both
+// as a signal to force-refresh and retry once before giving up. The codes
+// can appear in either the response body (`data.error.code`) or the raw
+// text body of a non-2xx response, so we string-match on the thrown
+// message from `fetchTikTokVideos`.
+const TT_INVALID_TOKEN_PATTERN = /access_token_invalid|access_token_expired/i;
+
 async function handleTt(
   creatorProfileId: string,
   connectionId: string,
@@ -111,12 +118,41 @@ async function handleTt(
   if (!conn) {
     return NextResponse.json({ error: "Connection not found" }, { status: 404 });
   }
-  const token = await getFreshTikTokAccessToken(conn);
+  let token = await getFreshTikTokAccessToken(conn);
   if (!token) {
     return NextResponse.json({ error: "Connection not found" }, { status: 404 });
   }
   const cursorNum = cursor !== undefined ? parseInt(cursor, 10) : undefined;
-  const { videos, nextCursor, hasMore } = await fetchTikTokVideos(token, limit, cursorNum);
+
+  let result: Awaited<ReturnType<typeof fetchTikTokVideos>>;
+  try {
+    result = await fetchTikTokVideos(token, limit, cursorNum);
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    if (!TT_INVALID_TOKEN_PATTERN.test(message)) throw err;
+    const refreshed = await forceRefreshTikTokAccessToken(conn).catch(() => null);
+    if (!refreshed) {
+      return NextResponse.json(
+        { error: "TikTok session expired. Please reconnect your TikTok account in Connections." },
+        { status: 401 }
+      );
+    }
+    token = refreshed;
+    try {
+      result = await fetchTikTokVideos(token, limit, cursorNum);
+    } catch (retryErr) {
+      const retryMessage = retryErr instanceof Error ? retryErr.message : String(retryErr);
+      if (TT_INVALID_TOKEN_PATTERN.test(retryMessage)) {
+        return NextResponse.json(
+          { error: "TikTok session expired. Please reconnect your TikTok account in Connections." },
+          { status: 401 }
+        );
+      }
+      throw retryErr;
+    }
+  }
+
+  const { videos, nextCursor, hasMore } = result;
 
   const posts: NormalizedPost[] = videos.map((v) => ({
     id: v.id,
