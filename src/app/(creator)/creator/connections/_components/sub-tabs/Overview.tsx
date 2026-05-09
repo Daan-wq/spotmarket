@@ -7,6 +7,7 @@ import {
   type CreatorConnectionStats,
 } from "@/lib/stats/creator";
 import { type PlatformSlug, PLATFORM_LABEL } from "@/lib/stats/types";
+import { PLATFORM_ICONS } from "@/lib/stats/platform-icons";
 import type { Range } from "@/lib/stats/range";
 
 type DailyPoint = { date: string; views: number; likes: number; comments: number; shares: number };
@@ -181,14 +182,15 @@ function ConnectionsList({
                 </Link>
                 {showPlatformTag && (
                   <span
-                    className="text-[10px] uppercase tracking-wide rounded px-1.5 py-0.5 shrink-0"
+                    aria-label={PLATFORM_LABEL[c.platform]}
+                    className="inline-flex items-center justify-center rounded px-1.5 py-0.5 shrink-0"
                     style={{
                       color: "var(--text-muted)",
                       border: "1px solid var(--border)",
                       background: "var(--bg-muted, transparent)",
                     }}
                   >
-                    {PLATFORM_LABEL[c.platform]}
+                    {PLATFORM_ICONS[c.platform]}
                   </span>
                 )}
               </div>
