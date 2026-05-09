@@ -183,12 +183,8 @@ function ConnectionsList({
                 {showPlatformTag && (
                   <span
                     aria-label={PLATFORM_LABEL[c.platform]}
-                    className="inline-flex items-center justify-center rounded px-1.5 py-0.5 shrink-0"
-                    style={{
-                      color: "var(--text-muted)",
-                      border: "1px solid var(--border)",
-                      background: "var(--bg-muted, transparent)",
-                    }}
+                    className="inline-flex shrink-0"
+                    style={{ color: "var(--text-muted)" }}
                   >
                     {PLATFORM_ICONS[c.platform]}
                   </span>
