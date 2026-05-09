@@ -30,6 +30,9 @@ interface Props {
   connections: Record<Platform, Connection[]>;
   campaign: Campaign;
   initialSubmittedUrls: string[];
+  /** When set, the client tries to find this post in the grid and pre-select it. */
+  prefillUrl?: string | null;
+  prefillPlatform?: Platform | null;
 }
 
 // Per-card identity. Two cards rendered in the grid can share a `url`
@@ -43,6 +46,8 @@ export default function SubmitPageClient({
   connections,
   campaign,
   initialSubmittedUrls,
+  prefillUrl,
+  prefillPlatform,
 }: Props) {
   const router = useRouter();
 
@@ -54,11 +59,19 @@ export default function SubmitPageClient({
     return p;
   }, [connections]);
 
-  const defaultPlatform: Platform = platforms[0] ?? "ig";
+  // If we got a prefill platform that the creator has connected, start there.
+  const initialPlatform: Platform =
+    prefillPlatform && platforms.includes(prefillPlatform)
+      ? prefillPlatform
+      : platforms[0] ?? "ig";
+  const defaultPlatform = initialPlatform;
   const defaultConnectionId = connections[defaultPlatform]?.[0]?.id ?? "";
 
   const [activePlatform, setActivePlatform] = useState<Platform>(defaultPlatform);
   const [activeConnectionId, setActiveConnectionId] = useState<string>(defaultConnectionId);
+  // One-shot flag: once we've handled a prefillUrl, don't keep trying.
+  const prefillHandledRef = useRef(false);
+  const [prefillNotFound, setPrefillNotFound] = useState(false);
 
   // Page cache: connectionId → pages array (each page is NormalizedPost[])
   const pageCache = useRef<Map<string, NormalizedPost[][]>>(new Map());
@@ -185,6 +198,29 @@ export default function SubmitPageClient({
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Prefill: when the page was opened via "Submit for Campaign" on Accounts → Content,
+  // try to find the matching post in the freshly-fetched grid and pre-select it.
+  useEffect(() => {
+    if (prefillHandledRef.current) return;
+    if (!prefillUrl) return;
+    if (currentPosts.length === 0) return;
+    const match = currentPosts.find((p) => p.url === prefillUrl);
+    if (!match) {
+      // Don't latch — user can still flip platform tabs to find it.
+      setPrefillNotFound(true);
+      return;
+    }
+    prefillHandledRef.current = true;
+    setPrefillNotFound(false);
+    setSelectedKeys((prev) => new Set(prev).add(keyOf(match)));
+    // Defer scroll until DOM has the new card.
+    const id = `submit-card-${keyOf(match)}`;
+    requestAnimationFrame(() => {
+      const el = document.getElementById(id);
+      if (el) el.scrollIntoView({ behavior: "smooth", block: "center" });
+    });
+  }, [prefillUrl, currentPosts]);
 
   const handlePlatformChange = (platform: Platform) => {
     const firstConn = connections[platform][0];
@@ -386,6 +422,15 @@ export default function SubmitPageClient({
           style={{ background: "rgba(234,179,8,0.1)", color: "#ca8a04" }}
         >
           Instagram is rate-limited — try again in ~1 minute.
+        </div>
+      )}
+
+      {prefillNotFound && (
+        <div
+          className="p-3 rounded-lg mb-4 text-sm"
+          style={{ background: "rgba(234,179,8,0.1)", color: "#ca8a04" }}
+        >
+          We couldn&apos;t auto-select that post on this page. Try switching the platform tab or paging back to find it.
         </div>
       )}
 

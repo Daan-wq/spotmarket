@@ -1,12 +1,18 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import ClipThumbnail from "@/components/shared/ClipThumbnail";
 import { relativeTime } from "@/lib/relative-time";
 import type { ContentRow } from "@/lib/stats/content";
 import { type PlatformSlug, PLATFORM_LABEL } from "@/lib/stats/types";
 import { PlatformIconMono } from "@/lib/stats/platform-icons";
+import {
+  PickApplicationModal,
+  type ApplicationOption,
+} from "@/components/submissions/PickApplicationModal";
+
+const PAGE_SIZE = 10;
 
 interface ContentTableProps {
   platform: PlatformSlug;
@@ -14,6 +20,8 @@ interface ContentTableProps {
   showCreator?: boolean;
   /** Adds a "Platform" column. Use when rendering rows from multiple platforms (all-scope). */
   showPlatform?: boolean;
+  /** Creator's CampaignApplications — required to enable the "Submit for Campaign" button. */
+  applications?: ApplicationOption[];
 }
 
 interface StatColumn {
@@ -88,10 +96,18 @@ const PLATFORM_STAT_COLUMNS: Record<PlatformSlug, StatColumn[]> = {
   ],
 };
 
-export function ContentTable({ platform, rows, showCreator, showPlatform }: ContentTableProps) {
+export function ContentTable({
+  platform,
+  rows,
+  showCreator,
+  showPlatform,
+  applications = [],
+}: ContentTableProps) {
   const statCols = PLATFORM_STAT_COLUMNS[platform];
   const [sortKey, setSortKey] = useState<string>(statCols[0]?.key ?? "views");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
+  const [pageIndex, setPageIndex] = useState(0);
+  const [pickerRow, setPickerRow] = useState<ContentRow | null>(null);
 
   const sorted = useMemo(() => {
     const col = statCols.find((c) => c.key === sortKey);
@@ -99,6 +115,18 @@ export function ContentTable({ platform, rows, showCreator, showPlatform }: Cont
     const out = [...rows].sort((a, b) => col.sortValue(a) - col.sortValue(b));
     return sortDir === "desc" ? out.reverse() : out;
   }, [rows, statCols, sortKey, sortDir]);
+
+  const totalPages = Math.max(1, Math.ceil(sorted.length / PAGE_SIZE));
+
+  // Reset to page 1 when row set or platform changes (e.g. switching tabs).
+  useEffect(() => {
+    setPageIndex(0);
+  }, [platform, rows.length]);
+
+  const pageRows = useMemo(() => {
+    const start = pageIndex * PAGE_SIZE;
+    return sorted.slice(start, start + PAGE_SIZE);
+  }, [sorted, pageIndex]);
 
   if (rows.length === 0) {
     return (
@@ -146,55 +174,108 @@ export function ContentTable({ platform, rows, showCreator, showPlatform }: Cont
           </tr>
         </thead>
         <tbody>
-          {sorted.map((row) => {
-            const detailHref = `/creator/videos/${row.submissionId}`;
+          {pageRows.map((row) => {
+            const detailHref = row.submissionId
+              ? `/creator/videos/${row.submissionId}`
+              : row.postUrl || "#";
+            const isOauth = row.source === "oauth";
             return (
               <tr
-                key={row.submissionId}
+                key={row.rowId}
                 className="cursor-pointer border-b border-neutral-100 transition-colors hover:bg-neutral-50"
               >
                 <td className="px-2 py-3">
-                  <Link href={detailHref} className="block">
+                  {isOauth ? (
                     <ClipThumbnail
                       thumbnailUrl={row.thumbnailUrl}
                       mediaType={row.mediaType}
                       className="h-10 w-10 shrink-0 rounded-md"
                     />
-                  </Link>
+                  ) : (
+                    <Link href={detailHref} className="block">
+                      <ClipThumbnail
+                        thumbnailUrl={row.thumbnailUrl}
+                        mediaType={row.mediaType}
+                        className="h-10 w-10 shrink-0 rounded-md"
+                      />
+                    </Link>
+                  )}
                 </td>
                 <td className="px-2 py-3">
-                  <Link href={detailHref} className="block text-neutral-600">
-                    {relativeTime(row.postedAt ?? row.capturedAt)}
-                  </Link>
-                </td>
-                <td className="px-2 py-3">
-                  <Link href={detailHref} className="block">
-                    <span className="inline-flex rounded-full bg-neutral-100 px-2.5 py-1 text-xs font-semibold text-neutral-700">
-                      {row.campaignName}
+                  {isOauth ? (
+                    <span className="block text-neutral-600">
+                      {relativeTime(row.postedAt ?? row.capturedAt)}
                     </span>
-                  </Link>
+                  ) : (
+                    <Link href={detailHref} className="block text-neutral-600">
+                      {relativeTime(row.postedAt ?? row.capturedAt)}
+                    </Link>
+                  )}
+                </td>
+                <td className="px-2 py-3">
+                  {row.campaignId && row.campaignName ? (
+                    isOauth ? (
+                      <span className="inline-flex rounded-full bg-neutral-100 px-2.5 py-1 text-xs font-semibold text-neutral-700">
+                        {row.campaignName}
+                      </span>
+                    ) : (
+                      <Link href={detailHref} className="block">
+                        <span className="inline-flex rounded-full bg-neutral-100 px-2.5 py-1 text-xs font-semibold text-neutral-700">
+                          {row.campaignName}
+                        </span>
+                      </Link>
+                    )
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setPickerRow(row);
+                      }}
+                      className="inline-flex items-center gap-1 rounded-full border border-neutral-300 bg-white px-2.5 py-1 text-xs font-semibold text-neutral-700 transition-colors hover:border-neutral-950 hover:text-neutral-950"
+                    >
+                      <span aria-hidden>+</span>
+                      Submit for Campaign
+                    </button>
+                  )}
                 </td>
                 {showCreator ? (
                   <td className="px-2 py-3">
-                    <Link href={detailHref} className="block text-neutral-700">
-                      {row.creatorDisplayName ?? "—"}
-                    </Link>
+                    {isOauth ? (
+                      <span className="block text-neutral-700">
+                        {row.creatorDisplayName ?? "—"}
+                      </span>
+                    ) : (
+                      <Link href={detailHref} className="block text-neutral-700">
+                        {row.creatorDisplayName ?? "—"}
+                      </Link>
+                    )}
                   </td>
                 ) : null}
                 {showPlatform ? (
                   <td className="px-2 py-3">
-                    <Link href={detailHref} className="block" aria-label={PLATFORM_LABEL[row.platform]}>
-                      <span style={{ color: "var(--text-primary)" }} className="inline-flex">
+                    {isOauth ? (
+                      <span style={{ color: "var(--text-primary)" }} className="inline-flex" aria-label={PLATFORM_LABEL[row.platform]}>
                         <PlatformIconMono platform={row.platform} size={28} />
                       </span>
-                    </Link>
+                    ) : (
+                      <Link href={detailHref} className="block" aria-label={PLATFORM_LABEL[row.platform]}>
+                        <span style={{ color: "var(--text-primary)" }} className="inline-flex">
+                          <PlatformIconMono platform={row.platform} size={28} />
+                        </span>
+                      </Link>
+                    )}
                   </td>
                 ) : null}
                 {statCols.map((c) => (
                   <td key={c.key} className="px-2 py-3 text-right text-neutral-950">
-                    <Link href={detailHref} className="block">
-                      {c.cell(row)}
-                    </Link>
+                    {isOauth ? (
+                      <span className="block">{c.cell(row)}</span>
+                    ) : (
+                      <Link href={detailHref} className="block">
+                        {c.cell(row)}
+                      </Link>
+                    )}
                   </td>
                 ))}
                 <td className="px-2 py-3 text-right">
@@ -217,6 +298,43 @@ export function ContentTable({ platform, rows, showCreator, showPlatform }: Cont
           })}
         </tbody>
       </table>
+
+      {totalPages > 1 ? (
+        <div className="flex items-center justify-between border-t border-neutral-100 px-2 py-3 text-sm text-neutral-600">
+          <span>
+            Page {pageIndex + 1} of {totalPages}
+            <span className="ml-2 text-neutral-400">({sorted.length} posts)</span>
+          </span>
+          <div className="flex items-center gap-1">
+            <button
+              type="button"
+              onClick={() => setPageIndex((i) => Math.max(0, i - 1))}
+              disabled={pageIndex === 0}
+              className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-neutral-200 text-neutral-700 transition-colors hover:bg-neutral-50 disabled:cursor-not-allowed disabled:opacity-30"
+              aria-label="Previous page"
+            >
+              ←
+            </button>
+            <button
+              type="button"
+              onClick={() => setPageIndex((i) => Math.min(totalPages - 1, i + 1))}
+              disabled={pageIndex >= totalPages - 1}
+              className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-neutral-200 text-neutral-700 transition-colors hover:bg-neutral-50 disabled:cursor-not-allowed disabled:opacity-30"
+              aria-label="Next page"
+            >
+              →
+            </button>
+          </div>
+        </div>
+      ) : null}
+
+      <PickApplicationModal
+        open={pickerRow !== null}
+        onClose={() => setPickerRow(null)}
+        postUrl={pickerRow?.postUrl ?? ""}
+        platform={pickerRow?.platform ?? "ig"}
+        applications={applications}
+      />
     </div>
   );
 }

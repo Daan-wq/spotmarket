@@ -1,0 +1,139 @@
+"use client";
+
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+import Link from "next/link";
+
+export interface ApplicationOption {
+  applicationId: string;
+  campaignName: string;
+  status: string;
+}
+
+interface Props {
+  open: boolean;
+  onClose: () => void;
+  postUrl: string;
+  platform: "ig" | "tt" | "fb" | "yt";
+  applications: ApplicationOption[];
+}
+
+export function PickApplicationModal({
+  open,
+  onClose,
+  postUrl,
+  platform,
+  applications,
+}: Props) {
+  const router = useRouter();
+  const [selected, setSelected] = useState<string | null>(
+    applications[0]?.applicationId ?? null,
+  );
+
+  if (!open) return null;
+
+  const handleContinue = () => {
+    if (!selected) return;
+    const params = new URLSearchParams({
+      prefillUrl: postUrl,
+      platform,
+    });
+    router.push(`/creator/applications/${selected}/submit?${params.toString()}`);
+  };
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
+      onClick={onClose}
+    >
+      <div
+        className="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <h3 className="text-lg font-semibold text-neutral-950">
+          Submit post to a campaign
+        </h3>
+        <p className="mt-1 text-sm text-neutral-500">
+          Pick which campaign this post should be submitted to. We&apos;ll take you
+          to the submit page with this post pre-selected.
+        </p>
+
+        {applications.length === 0 ? (
+          <div className="mt-5 rounded-lg border border-neutral-200 bg-neutral-50 p-4 text-sm text-neutral-700">
+            <p className="font-medium">You haven&apos;t applied to any campaigns yet.</p>
+            <p className="mt-1 text-neutral-500">
+              Apply to a campaign first, then come back to submit this post.
+            </p>
+            <div className="mt-3 flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={onClose}
+                className="rounded-md px-3 py-1.5 text-sm text-neutral-600 hover:bg-neutral-100"
+              >
+                Cancel
+              </button>
+              <Link
+                href="/creator/campaigns"
+                className="rounded-md bg-neutral-950 px-3 py-1.5 text-sm font-medium text-white hover:bg-neutral-800"
+              >
+                Browse campaigns
+              </Link>
+            </div>
+          </div>
+        ) : (
+          <>
+            <div className="mt-4 max-h-72 space-y-1 overflow-y-auto">
+              {applications.map((app) => {
+                const isSelected = selected === app.applicationId;
+                return (
+                  <label
+                    key={app.applicationId}
+                    className={`flex cursor-pointer items-center justify-between rounded-lg border px-3 py-2.5 text-sm transition-colors ${
+                      isSelected
+                        ? "border-neutral-950 bg-neutral-50"
+                        : "border-neutral-200 hover:bg-neutral-50"
+                    }`}
+                  >
+                    <span className="flex items-center gap-2">
+                      <input
+                        type="radio"
+                        name="application"
+                        value={app.applicationId}
+                        checked={isSelected}
+                        onChange={() => setSelected(app.applicationId)}
+                        className="h-4 w-4"
+                      />
+                      <span className="font-medium text-neutral-950">
+                        {app.campaignName}
+                      </span>
+                    </span>
+                    <span className="text-xs uppercase tracking-wide text-neutral-500">
+                      {app.status}
+                    </span>
+                  </label>
+                );
+              })}
+            </div>
+            <div className="mt-5 flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={onClose}
+                className="rounded-md px-3 py-1.5 text-sm text-neutral-600 hover:bg-neutral-100"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleContinue}
+                disabled={!selected}
+                className="rounded-md bg-neutral-950 px-3 py-1.5 text-sm font-medium text-white hover:bg-neutral-800 disabled:opacity-40"
+              >
+                Continue
+              </button>
+            </div>
+          </>
+        )}
+      </div>
+    </div>
+  );
+}

@@ -1,6 +1,7 @@
 import { ContentTable } from "@/components/stats/ContentTable";
 import type { ContentRow } from "@/lib/stats/content";
 import type { PlatformSlug } from "@/lib/stats/types";
+import type { ApplicationOption } from "@/components/submissions/PickApplicationModal";
 
 interface Props {
   /** When showPlatform is true, this is just a fallback (used by ContentTable for platform-specific
@@ -8,8 +9,16 @@ interface Props {
   platform: PlatformSlug;
   rows: ContentRow[];
   showPlatform: boolean;
+  applications: ApplicationOption[];
 }
 
-export function ContentSubTab({ platform, rows, showPlatform }: Props) {
-  return <ContentTable platform={platform} rows={rows} showPlatform={showPlatform} />;
+export function ContentSubTab({ platform, rows, showPlatform, applications }: Props) {
+  return (
+    <ContentTable
+      platform={platform}
+      rows={rows}
+      showPlatform={showPlatform}
+      applications={applications}
+    />
+  );
 }

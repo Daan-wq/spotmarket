@@ -25,7 +25,8 @@ import {
   getAggregateRetentionCurve,
   getFbReactionsOverTime,
 } from "@/lib/stats/trends";
-import { getContentRows } from "@/lib/stats/content";
+import { getContentRows, getMergedContentRows, type OauthConnectionInput } from "@/lib/stats/content";
+import { listCreatorApplications } from "@/lib/creator/applications";
 import { getTimelineEvents, getPostLifts7d, type TimelineScope } from "@/lib/stats/timeline";
 import { ConnectPlatformDialog } from "./_components/connect-platform-dialog";
 import { InstagramConnectButton } from "./_components/instagram-connect-button";
@@ -176,6 +177,7 @@ export default async function CreatorConnectionsPage({ searchParams }: PageProps
     range,
     supabaseId,
     inventory,
+    creatorProfileId: header.creatorProfile.id,
   });
 
   // ── Workspace inventory mapping (chips need {id, username}) ─────────────
@@ -306,6 +308,7 @@ interface RenderArgs {
   range: ReturnType<typeof parseRange>;
   supabaseId: string;
   inventory: AccountsByPlatform;
+  creatorProfileId: string;
 }
 
 async function renderSubTab(args: RenderArgs): Promise<ReactNode> {
@@ -388,23 +391,85 @@ async function renderOverview(args: RenderArgs): Promise<ReactNode> {
 }
 
 async function renderContent(args: RenderArgs): Promise<ReactNode> {
-  const { scope, range } = args;
+  const { scope, accountId, range, inventory, creatorProfileId } = args;
   const subs = await resolveSubmissionIds(args);
 
-  if (scope === "all") {
-    // Concatenate per-platform calls so each row carries its own platform field.
-    const perPlatform = await Promise.all(
-      PLATFORM_ALL.map((p) =>
-        getContentRows({ submissionIds: subs.byPlatform[p], range, platform: p }),
-      ),
-    );
-    const rows = perPlatform.flat();
-    rows.sort((a, b) => b.capturedAt.getTime() - a.capturedAt.getTime());
-    return <ContentSubTab platform="ig" rows={rows} showPlatform={true} />;
+  // Creator's CampaignApplications — used by the in-table "Submit for Campaign"
+  // picker to redirect into the existing /creator/applications/[id]/submit flow.
+  const applications = (await listCreatorApplications(creatorProfileId)).map((a) => ({
+    applicationId: a.applicationId,
+    campaignName: a.campaignName,
+    status: a.status,
+  }));
+
+  // Build the OAuth connection inputs that match the active scope/account.
+  // YouTube is excluded — its OAuth fetcher isn't wired into the merged view yet.
+  function connsFor(p: "ig" | "tt" | "fb"): OauthConnectionInput[] {
+    const list = inventory[p];
+    if (accountId !== "all") {
+      return list.some((a) => a.id === accountId)
+        ? [{ platform: p, connectionId: accountId }]
+        : [];
+    }
+    return list.map((a) => ({ platform: p, connectionId: a.id }));
   }
 
-  const rows = await getContentRows({ submissionIds: subs.ids, range, platform: scope });
-  return <ContentSubTab platform={scope} rows={rows} showPlatform={false} />;
+  if (scope === "all") {
+    const perPlatform = await Promise.all(
+      PLATFORM_ALL.map((p) => {
+        if (p === "yt") {
+          return getContentRows({ submissionIds: subs.byPlatform[p], range, platform: p });
+        }
+        return getMergedContentRows({
+          submissionIds: subs.byPlatform[p],
+          range,
+          platform: p,
+          connections: connsFor(p),
+        });
+      }),
+    );
+    const rows = perPlatform.flat();
+    rows.sort((a, b) => {
+      const at = (a.postedAt ?? a.capturedAt).getTime();
+      const bt = (b.postedAt ?? b.capturedAt).getTime();
+      return bt - at;
+    });
+    return (
+      <ContentSubTab
+        platform="ig"
+        rows={rows}
+        showPlatform={true}
+        applications={applications}
+      />
+    );
+  }
+
+  if (scope === "yt") {
+    const rows = await getContentRows({ submissionIds: subs.ids, range, platform: "yt" });
+    return (
+      <ContentSubTab
+        platform="yt"
+        rows={rows}
+        showPlatform={false}
+        applications={applications}
+      />
+    );
+  }
+
+  const rows = await getMergedContentRows({
+    submissionIds: subs.ids,
+    range,
+    platform: scope,
+    connections: connsFor(scope),
+  });
+  return (
+    <ContentSubTab
+      platform={scope}
+      rows={rows}
+      showPlatform={false}
+      applications={applications}
+    />
+  );
 }
 
 async function renderTimeline(args: RenderArgs): Promise<ReactNode> {

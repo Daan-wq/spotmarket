@@ -87,16 +87,17 @@ export default function PostGrid({
           );
         const k = keyOf(post);
         return (
-          <PostCard
-            key={k}
-            post={post}
-            isSelected={selectedKeys.has(k)}
-            isSubmitted={submittedKeys.has(k)}
-            isSubmittingOne={submittingKeys.has(k)}
-            isEligible={eligible}
-            onToggle={() => onToggle(post)}
-            onSubmitOne={() => onSubmitOne(post)}
-          />
+          <div key={k} id={`submit-card-${k}`}>
+            <PostCard
+              post={post}
+              isSelected={selectedKeys.has(k)}
+              isSubmitted={submittedKeys.has(k)}
+              isSubmittingOne={submittingKeys.has(k)}
+              isEligible={eligible}
+              onToggle={() => onToggle(post)}
+              onSubmitOne={() => onSubmitOne(post)}
+            />
+          </div>
         );
       })}
     </div>
