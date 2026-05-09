@@ -2,6 +2,7 @@
 
 import type { TimelineEvent, TimelineContentType } from "@/lib/stats/timeline";
 import { PLATFORM_COLOR, PLATFORM_LABEL } from "@/lib/stats/types";
+import { PlatformIconMono } from "@/lib/stats/platform-icons";
 import { LiftSparkline } from "./LiftSparkline";
 
 interface TimelineFeedProps {
@@ -74,13 +75,11 @@ export function TimelineFeed({ events, lifts }: TimelineFeedProps) {
                 </Td>
                 <Td>
                   <span
-                    className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold uppercase tracking-wide"
-                    style={{
-                      background: `${PLATFORM_COLOR[e.platform]}1a`,
-                      color: PLATFORM_COLOR[e.platform],
-                    }}
+                    aria-label={PLATFORM_LABEL[e.platform]}
+                    className="inline-flex"
+                    style={{ color: "var(--text-primary)" }}
                   >
-                    {PLATFORM_LABEL[e.platform]}
+                    <PlatformIconMono platform={e.platform} size={28} />
                   </span>
                 </Td>
                 <Td>{CONTENT_TYPE_LABEL[e.contentType]}</Td>

@@ -3,10 +3,10 @@
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import ClipThumbnail from "@/components/shared/ClipThumbnail";
-import PlatformIcon from "@/components/shared/PlatformIcon";
 import { relativeTime } from "@/lib/relative-time";
 import type { ContentRow } from "@/lib/stats/content";
-import { type PlatformSlug } from "@/lib/stats/types";
+import { type PlatformSlug, PLATFORM_LABEL } from "@/lib/stats/types";
+import { PlatformIconMono } from "@/lib/stats/platform-icons";
 
 interface ContentTableProps {
   platform: PlatformSlug;
@@ -183,12 +183,10 @@ export function ContentTable({ platform, rows, showCreator, showPlatform }: Cont
                 ) : null}
                 {showPlatform ? (
                   <td className="px-2 py-3">
-                    <Link href={detailHref} className="block">
-                      {row.platformIcon ? (
-                        <PlatformIcon platform={row.platformIcon} size={28} />
-                      ) : (
-                        <span className="text-neutral-400">—</span>
-                      )}
+                    <Link href={detailHref} className="block" aria-label={PLATFORM_LABEL[row.platform]}>
+                      <span style={{ color: "var(--text-primary)" }} className="inline-flex">
+                        <PlatformIconMono platform={row.platform} size={28} />
+                      </span>
                     </Link>
                   </td>
                 ) : null}

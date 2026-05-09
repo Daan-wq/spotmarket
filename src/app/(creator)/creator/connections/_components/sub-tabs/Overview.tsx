@@ -7,7 +7,7 @@ import {
   type CreatorConnectionStats,
 } from "@/lib/stats/creator";
 import { type PlatformSlug, PLATFORM_LABEL } from "@/lib/stats/types";
-import { PLATFORM_ICONS } from "@/lib/stats/platform-icons";
+import { PlatformIconMono } from "@/lib/stats/platform-icons";
 import type { Range } from "@/lib/stats/range";
 
 type DailyPoint = { date: string; views: number; likes: number; comments: number; shares: number };
@@ -186,7 +186,7 @@ function ConnectionsList({
                     className="inline-flex shrink-0"
                     style={{ color: "var(--text-muted)" }}
                   >
-                    {PLATFORM_ICONS[c.platform]}
+                    <PlatformIconMono platform={c.platform} size={14} />
                   </span>
                 )}
               </div>
