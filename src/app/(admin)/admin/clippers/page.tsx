@@ -1,11 +1,9 @@
-import Link from "next/link";
 import { Users } from "@/components/animate-ui/icons/users";
-import { Badge } from "@/components/ui/badge";
 import { DataTable } from "@/components/ui/data-table";
 import { EmptyState } from "@/components/ui/empty-state";
 import { PageHeader, SectionHeader, StatCard } from "@/components/ui/page";
 import { prisma } from "@/lib/prisma";
-import { formatCurrencyPrecise, titleCaseEnum } from "@/lib/admin/agency-format";
+import { formatCurrencyPrecise, formatNumber, formatShortDate } from "@/lib/admin/agency-format";
 
 export const dynamic = "force-dynamic";
 
@@ -13,57 +11,79 @@ export default async function ClippersPage() {
   const clippers = await prisma.creatorProfile.findMany({
     orderBy: { updatedAt: "desc" },
     include: {
-      user: { select: { email: true } },
       operationalProfile: true,
-      applications: {
-        where: { status: { in: ["approved", "active"] } },
-        select: { campaign: { select: { id: true, name: true, brandId: true } } },
+      user: {
+        select: {
+          email: true,
+          campaignSubmissions: {
+            orderBy: { createdAt: "desc" },
+            select: {
+              id: true,
+              status: true,
+              createdAt: true,
+              earnedAmount: true,
+              claimedViews: true,
+              viewCount: true,
+              likeCount: true,
+              commentCount: true,
+              shareCount: true,
+              metricSnapshots: {
+                orderBy: { capturedAt: "desc" },
+                take: 1,
+                select: {
+                  viewCount: true,
+                  likeCount: true,
+                  commentCount: true,
+                  shareCount: true,
+                },
+              },
+            },
+          },
+        },
       },
-      productionAssignments: {
-        where: { status: { notIn: ["APPROVED", "POSTED", "PAID", "REJECTED"] } },
-        select: { id: true, campaign: { select: { name: true } } },
-      },
-      payouts: {
-        where: { status: { in: ["pending", "processing"] } },
-        select: { amount: true },
+      _count: {
+        select: {
+          igConnections: { where: { isVerified: true } },
+          ttConnections: { where: { isVerified: true } },
+          ytConnections: { where: { isVerified: true } },
+          fbConnections: { where: { isVerified: true } },
+        },
       },
     },
     take: 120,
   });
 
-  const assignedBrandIds = Array.from(
-    new Set(clippers.flatMap((clipper) => clipper.operationalProfile?.assignedBrandIds ?? [])),
-  );
-  const brands = assignedBrandIds.length
-    ? await prisma.brand.findMany({ where: { id: { in: assignedBrandIds } }, select: { id: true, name: true } })
-    : [];
-  const brandById = new Map(brands.map((brand) => [brand.id, brand.name]));
-
   const active = clippers.filter((clipper) => clipper.operationalProfile?.status === "ACTIVE");
   const missingOps = clippers.filter((clipper) => !clipper.operationalProfile);
   const totalCapacity = clippers.reduce((sum, clipper) => sum + (clipper.operationalProfile?.maxClipsPerWeek ?? 0), 0);
-  const assignedCount = clippers.filter((clipper) => (clipper.operationalProfile?.assignedBrandIds.length ?? 0) > 0).length;
+  const analytics = clippers.map((clipper) => buildClipperAnalytics(clipper));
+  const totalTrackedViews = analytics.reduce((sum, row) => sum + row.views, 0);
+  const totalTrackedPosts = analytics.reduce((sum, row) => sum + row.posts, 0);
+  const totalEarnings = analytics.reduce((sum, row) => sum + row.earnings, 0);
+  const totalAccounts = analytics.reduce((sum, row) => sum + row.verifiedConnections, 0);
+  const analyticsByProfileId = new Map(analytics.map((row) => [row.profileId, row]));
 
   return (
     <div className="space-y-9">
       <PageHeader
         eyebrow="Creator Operations"
         title="Clippers"
-        description="Operational clipper database with status, capacity, rate, reliability, niches, assigned brands, active work, and payout exposure."
+        description="Clipper analytics and operations: tracked views, engagement, clips, earnings, accounts, and recent activity."
       />
 
       <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
-        <StatCard label="Active clippers" value={String(active.length)} detail="Marked active in ops profile" />
-        <StatCard label="Weekly capacity" value={String(totalCapacity)} detail="Max clips/week across database" />
-        <StatCard label="Assigned to brands" value={String(assignedCount)} detail="Explicit assigned-brand visibility" />
-        <StatCard label="Missing ops profile" value={String(missingOps.length)} detail="Needs operational setup" tone={missingOps.length > 0 ? "warning" : "neutral"} />
+        <StatCard label="Tracked views" value={formatNumber(totalTrackedViews)} detail={`${formatNumber(totalTrackedPosts)} submitted clips`} />
+        <StatCard label="Creator earnings" value={formatCurrencyPrecise(totalEarnings)} detail="Approved/submitted earnings" />
+        <StatCard label="Accounts" value={String(totalAccounts)} detail="Verified connected accounts" />
+        <StatCard label="Missing ops profile" value={String(missingOps.length)} detail={`${active.length} active, ${totalCapacity} clips/week capacity`} tone={missingOps.length > 0 ? "warning" : "neutral"} />
       </div>
 
       <section>
-        <SectionHeader title="Clipper Database" description="Admin table is denser, but still CLIPPING: white, neutral, bordered, and action-first." />
+        <SectionHeader title="Clipper Analytics" description="Open a clipper to inspect their account analytics, posts, campaign activity, and payout context." />
         <DataTable
           rows={clippers}
           rowKey={(clipper) => clipper.id}
+          rowHref={(clipper) => `/admin/creators/${clipper.id}`}
           emptyState={<EmptyState icon={<Users className="h-5 w-5" />} title="No clippers yet" description="Creator profiles will appear here. Add operational profiles to turn creators into a production database." />}
           columns={[
             {
@@ -71,58 +91,120 @@ export default async function ClippersPage() {
               header: "Clipper",
               cell: (clipper) => (
                 <div>
-                  <Link href={`/admin/creators/${clipper.id}`} className="font-semibold text-neutral-950 underline-offset-2 hover:underline">
-                    {clipper.displayName}
-                  </Link>
+                  <p className="font-semibold text-neutral-950">{clipper.displayName}</p>
                   <p className="mt-1 text-xs text-neutral-500">{clipper.user?.email || "No email"}</p>
                 </div>
               ),
             },
             {
-              key: "status",
-              header: "Status",
-              cell: (clipper) => clipper.operationalProfile ? (
-                <Badge variant={clipper.operationalProfile.status === "ACTIVE" ? "verified" : "neutral"}>{titleCaseEnum(clipper.operationalProfile.status)}</Badge>
-              ) : (
-                <Badge variant="failed">No ops</Badge>
-              ),
+              key: "views",
+              header: "Views",
+              align: "right",
+              cell: (clipper) => formatNumber(analyticsByProfileId.get(clipper.id)?.views ?? 0),
             },
             {
-              key: "reliability",
-              header: "Reliability",
-              cell: (clipper) => <Badge variant={clipper.operationalProfile?.reliability === "HIGH" ? "verified" : "neutral"}>{titleCaseEnum(clipper.operationalProfile?.reliability ?? "UNKNOWN")}</Badge>,
+              key: "engagement",
+              header: "Eng.",
+              align: "right",
+              cell: (clipper) => formatPercent(analyticsByProfileId.get(clipper.id)?.engagementRate ?? null),
             },
-            { key: "capacity", header: "Capacity", align: "right", cell: (clipper) => clipper.operationalProfile?.maxClipsPerWeek ?? "-" },
-            { key: "rate", header: "Rate", align: "right", cell: (clipper) => formatCurrencyPrecise(clipper.operationalProfile?.ratePerClip ?? 0) },
             {
-              key: "brands",
-              header: "Assigned brands",
+              key: "clips",
+              header: "Clips",
+              align: "right",
               cell: (clipper) => {
-                const names = (clipper.operationalProfile?.assignedBrandIds ?? []).map((id) => brandById.get(id) ?? id);
-                return names.length > 0 ? names.join(", ") : <span className="text-neutral-400">None</span>;
+                const row = analyticsByProfileId.get(clipper.id);
+                return `${row?.approved ?? 0}/${row?.posts ?? 0}`;
               },
             },
             {
-              key: "campaigns",
-              header: "Active campaigns",
+              key: "earnings",
+              header: "Earned",
               align: "right",
-              cell: (clipper) => clipper.applications.length,
+              cell: (clipper) => formatCurrencyPrecise(analyticsByProfileId.get(clipper.id)?.earnings ?? 0),
             },
             {
-              key: "active",
-              header: "Active work",
+              key: "accounts",
+              header: "Accounts",
               align: "right",
-              cell: (clipper) => clipper.productionAssignments.length,
+              cell: (clipper) => analyticsByProfileId.get(clipper.id)?.verifiedConnections ?? 0,
             },
             {
-              key: "owed",
-              header: "Payout owed",
-              align: "right",
-              cell: (clipper) => formatCurrencyPrecise(clipper.payouts.reduce((sum, payout) => sum + Number(payout.amount), 0)),
+              key: "last",
+              header: "Last clip",
+              cell: (clipper) => formatShortDate(analyticsByProfileId.get(clipper.id)?.lastSubmissionAt),
             },
           ]}
         />
       </section>
     </div>
   );
+}
+
+type ClipperWithAnalytics = {
+  id: string;
+  user: {
+    campaignSubmissions: Array<{
+      status: string;
+      createdAt: Date;
+      earnedAmount: number | string | { toString(): string } | null;
+      claimedViews: number;
+      viewCount: number | null;
+      likeCount: number | null;
+      commentCount: number | null;
+      shareCount: number | null;
+      metricSnapshots: Array<{
+        viewCount: bigint;
+        likeCount: number;
+        commentCount: number;
+        shareCount: number;
+      }>;
+    }>;
+  } | null;
+  _count: {
+    igConnections: number;
+    ttConnections: number;
+    ytConnections: number;
+    fbConnections: number;
+  };
+};
+
+function buildClipperAnalytics(clipper: ClipperWithAnalytics) {
+  const submissions = clipper.user?.campaignSubmissions ?? [];
+  const totals = submissions.reduce(
+    (acc, submission) => {
+      const latest = submission.metricSnapshots[0];
+      const views = Number(latest?.viewCount ?? submission.viewCount ?? submission.claimedViews ?? 0);
+      const likes = latest?.likeCount ?? submission.likeCount ?? 0;
+      const comments = latest?.commentCount ?? submission.commentCount ?? 0;
+      const shares = latest?.shareCount ?? submission.shareCount ?? 0;
+
+      acc.views += views;
+      acc.engagements += likes + comments + shares;
+      acc.earnings += Number(submission.earnedAmount ?? 0);
+      if (submission.status === "APPROVED") acc.approved += 1;
+      return acc;
+    },
+    { views: 0, engagements: 0, earnings: 0, approved: 0 },
+  );
+
+  return {
+    profileId: clipper.id,
+    posts: submissions.length,
+    views: totals.views,
+    engagementRate: totals.views > 0 ? (totals.engagements / totals.views) * 100 : null,
+    approved: totals.approved,
+    earnings: totals.earnings,
+    verifiedConnections:
+      clipper._count.igConnections +
+      clipper._count.ttConnections +
+      clipper._count.ytConnections +
+      clipper._count.fbConnections,
+    lastSubmissionAt: submissions[0]?.createdAt ?? null,
+  };
+}
+
+function formatPercent(value: number | null | undefined) {
+  if (value == null) return "-";
+  return `${Math.round(value)}%`;
 }

@@ -6,7 +6,7 @@ interface Props {
   lastSyncedAt: string | null;
   /** Pre-rendered Remove*PageButton — kept as a ReactNode so each platform's server-action
    *  wiring stays untouched. */
-  removeButton: ReactNode;
+  removeButton?: ReactNode;
 }
 
 /**
@@ -24,7 +24,9 @@ export function AccountMetaRow({ label, meta, lastSyncedAt, removeButton }: Prop
           {meta} · last synced {formatSync(lastSyncedAt)}
         </p>
       </div>
-      <div className="flex flex-wrap items-center gap-2 md:justify-end">{removeButton}</div>
+      {removeButton ? (
+        <div className="flex flex-wrap items-center gap-2 md:justify-end">{removeButton}</div>
+      ) : null}
     </div>
   );
 }

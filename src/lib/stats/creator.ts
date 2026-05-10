@@ -26,12 +26,12 @@ export interface CreatorTopStats {
   byPlatform: Record<PlatformSlug, PlatformAggregate>;
 }
 
-interface ProfileScope {
+export interface CreatorStatsScope {
   userId: string;
   creatorProfileId: string;
 }
 
-async function getProfileScope(supabaseUserId: string): Promise<ProfileScope | null> {
+async function getProfileScope(supabaseUserId: string): Promise<CreatorStatsScope | null> {
   const user = await prisma.user.findUnique({
     where: { supabaseId: supabaseUserId },
     select: { id: true, creatorProfile: { select: { id: true } } },
@@ -145,6 +145,13 @@ export async function getCreatorSubmissionIdsByPlatform(
 ): Promise<Record<PlatformSlug, string[]> | null> {
   const scope = await getProfileScope(supabaseUserId);
   if (!scope) return null;
+  return getCreatorSubmissionIdsByPlatformForScope(scope, range);
+}
+
+export async function getCreatorSubmissionIdsByPlatformForScope(
+  scope: CreatorStatsScope,
+  range: Range,
+): Promise<Record<PlatformSlug, string[]>> {
   return getSubmissionIdsByPlatform(scope.userId, range);
 }
 
@@ -189,7 +196,13 @@ export async function getCreatorTopStats(
 ): Promise<CreatorTopStats | null> {
   const scope = await getProfileScope(supabaseUserId);
   if (!scope) return null;
+  return getCreatorTopStatsForScope(scope, range);
+}
 
+export async function getCreatorTopStatsForScope(
+  scope: CreatorStatsScope,
+  range: Range,
+): Promise<CreatorTopStats> {
   const connIds = await getConnectionIds(scope.creatorProfileId);
   const subsByPlatform = await getSubmissionIdsByPlatform(scope.userId, range);
   const allSubIds = PLATFORM_ALL.flatMap((p) => subsByPlatform[p]);
@@ -324,7 +337,14 @@ export async function getCreatorPlatformStats(
 ): Promise<CreatorPlatformStats | null> {
   const scope = await getProfileScope(supabaseUserId);
   if (!scope) return null;
+  return getCreatorPlatformStatsForScope(scope, slug, range);
+}
 
+export async function getCreatorPlatformStatsForScope(
+  scope: CreatorStatsScope,
+  slug: PlatformSlug,
+  range: Range,
+): Promise<CreatorPlatformStats> {
   const connIds = await getConnectionIds(scope.creatorProfileId);
   const subsByPlatform = await getSubmissionIdsByPlatform(scope.userId, range);
   const subIds = subsByPlatform[slug];
@@ -415,7 +435,15 @@ export async function getCreatorConnectionStats(
 ): Promise<CreatorConnectionStats | null> {
   const scope = await getProfileScope(supabaseUserId);
   if (!scope) return null;
+  return getCreatorConnectionStatsForScope(scope, slug, connectionId, range);
+}
 
+export async function getCreatorConnectionStatsForScope(
+  scope: CreatorStatsScope,
+  slug: PlatformSlug,
+  connectionId: string,
+  range: Range,
+): Promise<CreatorConnectionStats | null> {
   const meta = await resolveConnectionMeta(slug, connectionId, scope.creatorProfileId);
   if (!meta) return null;
 
@@ -557,6 +585,15 @@ export async function getCreatorDemographics(
 ) {
   const scope = await getProfileScope(supabaseUserId);
   if (!scope) return null;
+  return getCreatorDemographicsForScope(scope, slug, kind, connectionId);
+}
+
+export async function getCreatorDemographicsForScope(
+  scope: CreatorStatsScope,
+  slug: PlatformSlug | null,
+  kind?: "FOLLOWER" | "ENGAGED",
+  connectionId?: string,
+) {
   const connIds = await getConnectionIds(scope.creatorProfileId);
 
   let filterIds: string[];
@@ -598,6 +635,14 @@ export async function getConnectionSubmissionIds(
 ): Promise<string[]> {
   const scope = await getProfileScope(supabaseUserId);
   if (!scope) return [];
+  return getConnectionSubmissionIdsForScope(scope, slug, connectionId);
+}
+
+export async function getConnectionSubmissionIdsForScope(
+  scope: CreatorStatsScope,
+  slug: PlatformSlug,
+  connectionId: string,
+): Promise<string[]> {
   const meta = await resolveConnectionMeta(slug, connectionId, scope.creatorProfileId);
   if (!meta) return [];
   return findCreatorSubmissionsByHandle(scope.userId, slug, meta.matchHandle);
@@ -623,7 +668,15 @@ export async function getAccountGrowth(
 ): Promise<AccountGrowthPoint[]> {
   const scope = await getProfileScope(supabaseUserId);
   if (!scope) return [];
+  return getAccountGrowthForScope(scope, slug, range, connectionId);
+}
 
+export async function getAccountGrowthForScope(
+  scope: CreatorStatsScope,
+  slug: PlatformSlug,
+  range: Range,
+  connectionId?: string,
+): Promise<AccountGrowthPoint[]> {
   const connIds = await getConnectionIds(scope.creatorProfileId);
   const ids = connectionId ? [connectionId] : connIds[slug];
   if (ids.length === 0) return [];

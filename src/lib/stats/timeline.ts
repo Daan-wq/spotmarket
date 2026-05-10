@@ -41,12 +41,17 @@ export type TimelineScope =
   | { kind: "platform"; supabaseUserId: string; platform: PlatformSlug }
   | { kind: "account"; supabaseUserId: string; platform: PlatformSlug; connectionId: string };
 
-interface ProfileScope {
+export type TimelineFilter =
+  | { kind: "all" }
+  | { kind: "platform"; platform: PlatformSlug }
+  | { kind: "account"; platform: PlatformSlug; connectionId: string };
+
+export interface TimelineProfileScope {
   userId: string;
   creatorProfileId: string;
 }
 
-async function loadProfile(supabaseUserId: string): Promise<ProfileScope | null> {
+async function loadProfile(supabaseUserId: string): Promise<TimelineProfileScope | null> {
   const user = await prisma.user.findUnique({
     where: { supabaseId: supabaseUserId },
     select: { id: true, creatorProfile: { select: { id: true } } },
@@ -55,7 +60,7 @@ async function loadProfile(supabaseUserId: string): Promise<ProfileScope | null>
   return { userId: user.id, creatorProfileId: user.creatorProfile.id };
 }
 
-async function getIgConnectionIds(creatorProfileId: string, scope: TimelineScope): Promise<string[]> {
+async function getIgConnectionIds(creatorProfileId: string, scope: TimelineFilter): Promise<string[]> {
   if (scope.kind === "account") {
     return scope.platform === "ig" ? [scope.connectionId] : [];
   }
@@ -75,7 +80,7 @@ async function getIgConnectionIds(creatorProfileId: string, scope: TimelineScope
  *   sourcePlatform for legacy rows.
  * - account: submissions matched by the connection's authorHandle.
  */
-async function getSubmissionIds(profile: ProfileScope, scope: TimelineScope): Promise<string[]> {
+async function getSubmissionIds(profile: TimelineProfileScope, scope: TimelineFilter): Promise<string[]> {
   if (scope.kind === "account") {
     return getAccountSubmissionIds(profile, scope.platform, scope.connectionId);
   }
@@ -107,7 +112,7 @@ async function getSubmissionIds(profile: ProfileScope, scope: TimelineScope): Pr
 }
 
 async function getAccountSubmissionIds(
-  profile: ProfileScope,
+  profile: TimelineProfileScope,
   slug: PlatformSlug,
   connectionId: string,
 ): Promise<string[]> {
@@ -155,6 +160,12 @@ function classifySubmission(platform: PlatformSlug, mediaType: string | null | u
   return "post";
 }
 
+function toTimelineFilter(scope: TimelineScope): TimelineFilter {
+  if (scope.kind === "all") return { kind: "all" };
+  if (scope.kind === "platform") return { kind: "platform", platform: scope.platform };
+  return { kind: "account", platform: scope.platform, connectionId: scope.connectionId };
+}
+
 /**
  * Build a unified, chronological list of post events for the scope. Submissions become one event
  * each (kind="submission"); IG stories become one event each (kind="story"). Sorted desc by postedAt.
@@ -162,7 +173,16 @@ function classifySubmission(platform: PlatformSlug, mediaType: string | null | u
 export async function getTimelineEvents(scope: TimelineScope, range: Range): Promise<TimelineEvent[]> {
   const profile = await loadProfile(scope.supabaseUserId);
   if (!profile) return [];
+  const filter = toTimelineFilter(scope);
 
+  return getTimelineEventsForScope(profile, filter, range);
+}
+
+export async function getTimelineEventsForScope(
+  profile: TimelineProfileScope,
+  scope: TimelineFilter,
+  range: Range,
+): Promise<TimelineEvent[]> {
   const cap = withinRange(range);
 
   const [submissionIds, igConnectionIds] = await Promise.all([
@@ -182,7 +202,7 @@ export async function getTimelineEvents(scope: TimelineScope, range: Range): Pro
 
 async function buildSubmissionEvents(
   submissionIds: string[],
-  scope: TimelineScope,
+  scope: TimelineFilter,
   range: Range,
 ): Promise<TimelineEvent[]> {
   if (submissionIds.length === 0) return [];

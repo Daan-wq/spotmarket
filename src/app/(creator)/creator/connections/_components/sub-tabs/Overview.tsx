@@ -26,6 +26,7 @@ interface AllScopeProps {
   daily: DailyPoint[];
   range: Range;
   connections: ConnectionRow[];
+  basePath?: string;
 }
 interface PlatformScopeProps {
   kind: "platform";
@@ -33,6 +34,7 @@ interface PlatformScopeProps {
   stats: CreatorPlatformStats;
   daily: DailyPoint[];
   range: Range;
+  basePath?: string;
 }
 interface AccountScopeProps {
   kind: "account";
@@ -48,7 +50,7 @@ export function OverviewSubTab(props: AllScopeProps | PlatformScopeProps | Accou
   return <AccountScopeView {...props} />;
 }
 
-function AllScopeView({ stats, daily, range, connections }: AllScopeProps) {
+function AllScopeView({ stats, daily, range, connections, basePath }: AllScopeProps) {
   return (
     <div className="space-y-5">
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
@@ -77,14 +79,14 @@ function AllScopeView({ stats, daily, range, connections }: AllScopeProps) {
         />
       </div>
 
-      <ConnectionsList connections={connections} rangeKey={range.key} showPlatformTag />
+      <ConnectionsList connections={connections} rangeKey={range.key} showPlatformTag basePath={basePath} />
 
       <DailyViewsChart data={daily} />
     </div>
   );
 }
 
-function PlatformScopeView({ platform, stats, daily, range }: PlatformScopeProps) {
+function PlatformScopeView({ platform, stats, daily, range, basePath }: PlatformScopeProps) {
   return (
     <div className="space-y-5">
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
@@ -106,6 +108,7 @@ function PlatformScopeView({ platform, stats, daily, range }: PlatformScopeProps
           platform,
         }))}
         rangeKey={range.key}
+        basePath={basePath}
       />
       <DailyViewsChart data={daily} />
     </div>
@@ -138,10 +141,12 @@ function ConnectionsList({
   connections,
   rangeKey,
   showPlatformTag = false,
+  basePath = "/creator/connections",
 }: {
   connections: ConnectionRow[];
   rangeKey: string;
   showPlatformTag?: boolean;
+  basePath?: string;
 }) {
   if (connections.length === 0) {
     return (
@@ -174,7 +179,7 @@ function ConnectionsList({
             <div className="min-w-0">
               <div className="flex items-center gap-2 min-w-0">
                 <Link
-                  href={`/creator/connections?platform=${c.platform}&account=${c.id}${qs}`}
+                  href={`${basePath}?platform=${c.platform}&account=${c.id}${qs}`}
                   className="text-sm font-medium hover:underline truncate"
                   style={{ color: "var(--text-primary)" }}
                 >

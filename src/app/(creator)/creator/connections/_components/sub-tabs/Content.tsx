@@ -10,15 +10,17 @@ interface Props {
   rows: ContentRow[];
   showPlatform: boolean;
   applications: ApplicationOption[];
+  readOnly?: boolean;
 }
 
-export function ContentSubTab({ platform, rows, showPlatform, applications }: Props) {
+export function ContentSubTab({ platform, rows, showPlatform, applications, readOnly }: Props) {
   return (
     <ContentTable
       platform={platform}
       rows={rows}
       showPlatform={showPlatform}
       applications={applications}
+      readOnly={readOnly}
     />
   );
 }

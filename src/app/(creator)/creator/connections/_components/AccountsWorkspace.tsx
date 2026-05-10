@@ -22,8 +22,8 @@ export interface AccountsWorkspaceProps {
   rangeKey: RangeKey;
   /** Connection inventory keyed by platform — drives the chip row and the count badges. */
   accountsByPlatform: Record<PlatformSlug, AccountsWorkspaceAccount[]>;
-  /** Pre-rendered "Connect your page" button (incl. dialog). */
-  connect: ReactNode;
+  /** Pre-rendered "Connect your page" button (incl. dialog). Hidden for read-only/admin views. */
+  connect?: ReactNode;
   /** Server-rendered active-account meta row, when `scope` is a platform with a chosen chip. */
   meta?: ReactNode;
   /** Server-rendered active sub-tab body. */
@@ -132,7 +132,7 @@ export function AccountsWorkspace({
           onChange={handleScopeChange}
           countsByPlatform={countsByPlatform}
         />
-        <div className="shrink-0">{connect}</div>
+        {connect ? <div className="shrink-0">{connect}</div> : null}
       </div>
 
       {/* Row 2: Account chips (hidden when scope=all) */}
