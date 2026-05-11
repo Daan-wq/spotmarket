@@ -3,9 +3,15 @@
 import { useMemo, useState } from "react";
 import type { ReactNode } from "react";
 import Link from "next/link";
-import PlatformIcon from "@/components/shared/PlatformIcon";
 import { Badge } from "@/components/ui/badge";
 import { EmptyState } from "@/components/ui/empty-state";
+import {
+  CampaignAvatar,
+  CampaignBudgetProgress,
+  CampaignDeadlineBadge,
+  CampaignPlatformRow,
+  CampaignStatusBadge,
+} from "@/components/campaigns/campaign-display";
 import {
   DropdownMenu,
   DropdownMenuTrigger,
@@ -34,6 +40,7 @@ interface CampaignData {
   totalBudget: number;
   totalPaid: number;
   platforms: string[];
+  status: string;
   contentType: string;
   niche: string | null;
   brandName: string;
@@ -105,7 +112,7 @@ export function CampaignsClient({ marketplace, myCampaigns }: CampaignsClientPro
       <CreatorPageHeader
         eyebrow="Campaigns"
         title="Campaigns"
-        description="Find the campaign that fits your pages, then open the brief or submit from joined work."
+        description="Find the campaign that fits your pages, then open campaign info or submit from joined work."
       />
 
       <section className="rounded-2xl border border-neutral-200 bg-white p-5 md:p-6">
@@ -274,45 +281,27 @@ function sortCampaigns(list: CampaignData[], sort: SortKey): CampaignData[] {
   }
 }
 
-function daysUntil(iso: string): number | null {
-  const target = new Date(iso).getTime();
-  if (Number.isNaN(target)) return null;
-  const diff = target - Date.now();
-  if (diff < 0) return 0;
-  return Math.ceil(diff / (1000 * 60 * 60 * 24));
-}
-
 function CampaignCard({ campaign }: { campaign: CampaignData }) {
-  const progress = campaign.totalBudget > 0 ? Math.min((campaign.totalPaid / campaign.totalBudget) * 100, 100) : 0;
-  const brandInitial = campaign.brandName.charAt(0).toUpperCase();
-  const days = daysUntil(campaign.deadlineIso);
   const primaryHref = campaign.applicationId
     ? `/creator/applications/${campaign.applicationId}/submit`
     : `/creator/campaigns/${campaign.id}`;
-  const primaryLabel = campaign.applicationId ? "Submit clip" : "Review brief";
+  const primaryLabel = campaign.applicationId ? "Submit clip" : "Campaign info";
 
   return (
     <article className="flex h-full flex-col rounded-2xl border border-neutral-200 bg-neutral-50 p-5 transition hover:border-neutral-300 hover:bg-white">
       <div className="flex items-start gap-3">
-        {campaign.bannerUrl ? (
-          <img src={campaign.bannerUrl} alt="" className="h-11 w-11 shrink-0 rounded-xl object-cover" />
-        ) : (
-          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-neutral-950 text-sm font-bold text-white">
-            {brandInitial}
-          </div>
-        )}
+        <CampaignAvatar name={campaign.brandName || campaign.name} imageUrl={campaign.bannerUrl} size="md" />
         <div className="min-w-0 flex-1">
           <h3 className="line-clamp-2 text-lg font-semibold leading-tight tracking-normal text-neutral-950">
             {campaign.name}
           </h3>
           <div className="mt-2 flex flex-wrap items-center gap-1.5">
+            <CampaignStatusBadge status={campaign.status} deadline={campaign.deadlineIso} />
             {campaign.eligibility.status === "eligible" ? <Badge variant="eligible">You qualify</Badge> : null}
             {campaign.eligibility.status === "ineligible" && campaign.eligibility.reason ? (
               <Badge variant="ineligible">{campaign.eligibility.reason}</Badge>
             ) : null}
-            {days !== null && days <= 7 ? (
-              <Badge variant="ending-soon">{days === 0 ? "Ends today" : `${days}d left`}</Badge>
-            ) : null}
+            <CampaignDeadlineBadge deadline={campaign.deadlineIso} />
           </div>
         </div>
       </div>
@@ -326,21 +315,11 @@ function CampaignCard({ campaign }: { campaign: CampaignData }) {
       </div>
 
       <div className="mt-5">
-        <div className="h-1.5 overflow-hidden rounded-full bg-neutral-200">
-          <div className="h-full rounded-full bg-neutral-950 transition-all" style={{ width: `${progress}%` }} />
-        </div>
-        <div className="mt-2 flex justify-between text-xs text-neutral-500">
-          <span>${campaign.totalPaid.toFixed(0)} of ${campaign.totalBudget.toFixed(0)} paid</span>
-          <span>{progress.toFixed(0)}%</span>
-        </div>
+        <CampaignBudgetProgress totalPaid={campaign.totalPaid} totalBudget={campaign.totalBudget} compact />
       </div>
 
       <div className="mt-5 flex flex-wrap items-center justify-between gap-3">
-        <div className="flex items-center gap-1.5">
-          {campaign.platforms.slice(0, 4).map((platform) => (
-            <PlatformIcon key={platform} platform={platform} size={24} />
-          ))}
-        </div>
+        <CampaignPlatformRow platforms={campaign.platforms} size={24} />
         <span className="rounded-full bg-white px-2.5 py-1 text-xs font-medium text-neutral-600 ring-1 ring-neutral-200">
           {campaign.contentType}
         </span>
@@ -358,7 +337,7 @@ function CampaignCard({ campaign }: { campaign: CampaignData }) {
             href={`/creator/campaigns/${campaign.id}`}
             className="inline-flex h-10 items-center justify-center rounded-xl border border-neutral-200 bg-white px-4 text-sm font-semibold text-neutral-950 transition hover:bg-neutral-100"
           >
-            Brief
+            Campaign info
           </Link>
         ) : null}
       </div>

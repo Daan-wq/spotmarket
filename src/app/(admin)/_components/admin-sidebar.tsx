@@ -36,19 +36,19 @@ const NAV: Array<{ label: string; items: NavItem[] }> = [
     label: "Operate",
     items: [
       { href: "/admin", label: "Command Center", icon: LayoutDashboard },
-      { href: "/admin/crm", label: "Leads", icon: BriefcaseBusiness },
-      { href: "/admin/brands", label: "Brands", icon: FileText },
-      { href: "/admin/onboarding", label: "Onboarding", icon: ListChecks },
+      { href: "/admin/campaigns", label: "Campaigns", icon: Send },
+      { href: "/admin/clippers", label: "Clippers", icon: Users },
+      { href: "/admin/production", label: "Production", icon: GitPullRequestArrow },
+      { href: "/admin/review", label: "Clip review", icon: ClipboardCheck },
     ],
   },
   {
     label: "Delivery",
     items: [
-      { href: "/admin/clippers", label: "Clippers", icon: Users },
+      { href: "/admin/crm", label: "Leads", icon: BriefcaseBusiness },
       { href: "/admin/recruitment", label: "Recruitment", icon: Sparkles },
-      { href: "/admin/campaigns", label: "Campaigns", icon: Send },
-      { href: "/admin/production", label: "Production", icon: GitPullRequestArrow },
-      { href: "/admin/review", label: "Clip review", icon: ClipboardCheck },
+      { href: "/admin/brands", label: "Brands", icon: FileText },
+      { href: "/admin/onboarding", label: "Onboarding", icon: ListChecks },
     ],
   },
   {

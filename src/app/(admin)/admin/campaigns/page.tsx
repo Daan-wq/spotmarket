@@ -1,12 +1,16 @@
 import Link from "next/link";
 import { Plus } from "@/components/animate-ui/icons/plus";
-import { Badge } from "@/components/ui/badge";
 import { DataTable } from "@/components/ui/data-table";
 import { EmptyState } from "@/components/ui/empty-state";
 import { PageHeader, SectionHeader, StatCard } from "@/components/ui/page";
 import { ProgressiveActionDrawer } from "@/components/ui/progressive-action-drawer";
+import {
+  CampaignAvatar,
+  CampaignDeadlineBadge,
+  CampaignStatusBadge,
+} from "@/components/campaigns/campaign-display";
 import { prisma } from "@/lib/prisma";
-import { formatCurrencyPrecise, formatDate, formatNumber, titleCaseEnum } from "@/lib/admin/agency-format";
+import { formatCurrencyPrecise, formatNumber } from "@/lib/admin/agency-format";
 import { PublishButton } from "./_components/publish-button";
 import { CampaignActions } from "./_components/campaign-actions";
 
@@ -63,15 +67,18 @@ export default async function CampaignsPage() {
               key: "name",
               header: "Campaign",
               cell: (campaign) => (
-                <div>
-                  <Link href={`/admin/campaigns/${campaign.id}`} className="font-semibold text-neutral-950 underline-offset-2 hover:underline">
-                    {campaign.name}
-                  </Link>
-                  <p className="mt-1 text-xs text-neutral-500">{campaign.brand?.name || campaign.createdBy?.email || "No brand linked"}</p>
+                <div className="flex items-center gap-3">
+                  <CampaignAvatar name={campaign.name} imageUrl={campaign.bannerUrl} size="sm" />
+                  <div className="min-w-0">
+                    <Link href={`/admin/campaigns/${campaign.id}`} className="block truncate font-semibold text-neutral-950 underline-offset-2 hover:underline">
+                      {campaign.name}
+                    </Link>
+                    <p className="mt-1 truncate text-xs text-neutral-500">{campaign.brand?.name || campaign.createdBy?.email || "No brand linked"}</p>
+                  </div>
                 </div>
               ),
             },
-            { key: "status", header: "Status", cell: (campaign) => <Badge variant={campaign.status === "active" ? "verified" : campaign.status === "cancelled" ? "failed" : "neutral"}>{titleCaseEnum(campaign.status)}</Badge> },
+            { key: "status", header: "Status", cell: (campaign) => <CampaignStatusBadge status={campaign.status} deadline={campaign.deadline} /> },
             { key: "budget", header: "Budget", align: "right", cell: (campaign) => formatCurrencyPrecise(campaign.totalBudget, "USD") },
             { key: "creators", header: "Creators", align: "right", cell: (campaign) => campaign.applications.length },
             {
@@ -81,7 +88,7 @@ export default async function CampaignsPage() {
               cell: (campaign) => campaign.productionAssignments.filter((assignment) => !["APPROVED", "POSTED", "PAID", "REJECTED"].includes(assignment.status)).length,
             },
             { key: "submissions", header: "Submissions", align: "right", cell: (campaign) => campaign.campaignSubmissions.length },
-            { key: "deadline", header: "Deadline", cell: (campaign) => formatDate(campaign.deadline) },
+            { key: "deadline", header: "Deadline", cell: (campaign) => <CampaignDeadlineBadge deadline={campaign.deadline} /> },
             {
               key: "actions",
               header: "Actions",

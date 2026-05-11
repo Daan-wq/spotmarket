@@ -1,9 +1,40 @@
+import Link from "next/link";
+import type { ReactNode } from "react";
+import { notFound } from "next/navigation";
 import { requireAuth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { notFound } from "next/navigation";
-import Link from "next/link";
+import { resolveThumbnail } from "@/lib/clip-thumbnail";
+import { parseClipUrl, type ClipPlatform } from "@/lib/parse-clip-url";
+import {
+  submissionProjectedEarnings,
+  submissionViews,
+  totalProjectedEarnings,
+} from "@/lib/earnings";
+import {
+  CampaignAvatar,
+  CampaignBudgetProgress,
+  CampaignDeadlineBadge,
+  CampaignPlatformRow,
+  CampaignStatusBadge,
+} from "@/components/campaigns/campaign-display";
+import {
+  SubmittedClipsList,
+  type SubmittedClipData,
+} from "@/components/submissions/submitted-clips-list";
 import { CampaignDetailClient } from "./_components/campaign-detail-client";
-import PlatformIcon from "@/components/shared/PlatformIcon";
+
+const CLIP_TO_PLATFORM_ICON: Record<ClipPlatform, string | null> = {
+  INSTAGRAM: "INSTAGRAM",
+  TIKTOK: "TIKTOK",
+  FACEBOOK: "FACEBOOK",
+  YOUTUBE: "YOUTUBE_SHORTS",
+  UNKNOWN: null,
+};
+
+type ClipMediaType = "video" | "image" | "carousel";
+
+const asClipMediaType = (v: string | null | undefined): ClipMediaType | null =>
+  v === "video" || v === "image" || v === "carousel" ? v : null;
 
 export default async function CampaignDetailPage({
   params,
@@ -50,21 +81,28 @@ export default async function CampaignDetailPage({
     where: { campaignId, creatorProfileId: profile.id },
   });
 
-  // Get creator's submissions for this campaign
   const mySubmissions = await prisma.campaignSubmission.findMany({
     where: { campaignId, creatorId: user.id },
     orderBy: { createdAt: "desc" },
     select: {
       id: true,
       postUrl: true,
+      thumbnailUrl: true,
+      mediaType: true,
       status: true,
       earnedAmount: true,
       claimedViews: true,
+      viewCount: true,
       createdAt: true,
+      campaign: {
+        select: {
+          name: true,
+          creatorCpv: true,
+        },
+      },
     },
   });
 
-  // Get top earners for this campaign
   const topEarners = await prisma.campaignSubmission.groupBy({
     by: ["creatorId"],
     where: { campaignId, status: "APPROVED" },
@@ -75,72 +113,93 @@ export default async function CampaignDetailPage({
 
   const totalPaid = campaign.campaignSubmissions.reduce(
     (sum, s) => sum + Number(s.earnedAmount),
-    0
+    0,
   );
   const totalBudget = Number(campaign.totalBudget);
-  const paidPercent = totalBudget > 0 ? Math.min((totalPaid / totalBudget) * 100, 100) : 0;
   const rewardRate = Number(campaign.creatorCpv) * 1000;
-
   const hasDiscord = !!user.discordId;
   const canApply = isVerified && !existingApplication && hasDiscord;
-
-  // Parse requirements into steps
   const requirementSteps = campaign.requirements
     ? campaign.requirements.split("\n").filter((r) => r.trim())
     : [];
 
+  const videos: SubmittedClipData[] = await Promise.all(
+    mySubmissions.map(async (submission) => {
+      const parsed = submission.postUrl ? parseClipUrl(submission.postUrl) : null;
+      const derivedPlatform = parsed ? CLIP_TO_PLATFORM_ICON[parsed.platform] : null;
+      const { thumbnailUrl, mediaType } = await resolveThumbnail(
+        submission.postUrl,
+        submission.thumbnailUrl,
+        {
+          creatorId: user.id,
+          submissionId: submission.id,
+          storedMediaType: asClipMediaType(submission.mediaType),
+        },
+      );
+
+      return {
+        id: submission.id,
+        postUrl: submission.postUrl,
+        thumbnailUrl,
+        mediaType,
+        status: submission.status,
+        earned: submissionProjectedEarnings(submission),
+        views: submissionViews(submission),
+        createdAt: submission.createdAt.toISOString(),
+        campaignName: submission.campaign.name,
+        platform: derivedPlatform,
+      };
+    }),
+  );
+
+  const statusCounts = {
+    PENDING: videos.filter((v) => v.status === "PENDING").length,
+    FLAGGED: videos.filter((v) => v.status === "FLAGGED").length,
+    REJECTED: videos.filter((v) => v.status === "REJECTED").length,
+    APPROVED: videos.filter((v) => v.status === "APPROVED").length,
+    ALL: videos.length,
+  };
+  const myViews = videos.reduce((sum, video) => sum + video.views, 0);
+  const projectedEarned = totalProjectedEarnings(mySubmissions);
+
   return (
-    <div className="p-6 w-full">
-      {/* Top Bar */}
-      <div className="flex items-center justify-between mb-6">
+    <div className="w-full space-y-8 px-6 py-8">
+      <div className="flex items-center justify-between gap-3">
         <Link
           href="/creator/campaigns"
-          className="flex items-center gap-1 text-sm font-medium transition-colors"
-          style={{ color: "var(--text-secondary)" }}
+          className="text-sm font-medium text-neutral-500 transition hover:text-neutral-950"
         >
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <path d="m15 18-6-6 6-6" />
-          </svg>
-          Back
+          Back to campaigns
         </Link>
-        <div className="flex items-center gap-2">
-          <Link
-            href={`/creator/campaigns/${campaignId}/contact`}
-            className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium transition-colors"
-            style={{
-              border: "1px solid var(--border-default)",
-              color: "var(--text-primary)",
-              background: "var(--bg-card)",
-            }}
-          >
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M7.9 20A9 9 0 1 0 4 16.1L2 22Z" />
-            </svg>
-            Contact
-          </Link>
-        </div>
+        <Link
+          href={`/creator/campaigns/${campaignId}/contact`}
+          className="inline-flex h-10 items-center rounded-xl border border-neutral-200 bg-white px-4 text-sm font-semibold text-neutral-950 transition hover:bg-neutral-50"
+        >
+          Contact
+        </Link>
       </div>
 
-      {/* Campaign Header */}
-      <div className="text-center mb-6">
-        {campaign.bannerUrl ? (
-          <img src={campaign.bannerUrl} alt="" className="w-24 h-24 rounded-xl object-cover mx-auto mb-4" />
-        ) : (
-          <div
-            className="w-24 h-24 rounded-xl flex items-center justify-center text-3xl font-bold text-white mx-auto mb-4"
-            style={{ background: "#e5e7eb" }}
-          >
-            <span style={{ color: "var(--text-primary)" }}>
-              {campaign.name.charAt(0).toUpperCase()}
-            </span>
+      <header className="rounded-2xl border border-neutral-200 bg-neutral-50 p-5 md:p-6">
+        <div className="flex flex-col gap-5 md:flex-row md:items-center md:justify-between">
+          <div className="flex min-w-0 items-start gap-4">
+            <CampaignAvatar name={campaign.name} imageUrl={campaign.bannerUrl} size="lg" />
+            <div className="min-w-0">
+              <h1 className="text-3xl font-bold tracking-normal text-neutral-950">
+                {campaign.name}
+              </h1>
+              <div className="mt-2 flex flex-wrap items-center gap-2">
+                <CampaignStatusBadge status={campaign.status} deadline={campaign.deadline} />
+                <CampaignDeadlineBadge deadline={campaign.deadline} />
+                <CampaignPlatformRow platforms={campaign.platforms} />
+              </div>
+            </div>
           </div>
-        )}
-        <h1 className="text-3xl font-bold" style={{ color: "var(--text-primary)" }}>
-          {campaign.name}
-        </h1>
-      </div>
+          <div className="w-full md:max-w-xs">
+            <CampaignBudgetProgress totalPaid={totalPaid} totalBudget={totalBudget} />
+          </div>
+        </div>
+      </header>
 
-      {/* Primary CTA */}
       <CampaignDetailClient
         campaignId={campaignId}
         campaignName={campaign.name}
@@ -151,174 +210,204 @@ export default async function CampaignDetailPage({
         hasDiscord={hasDiscord}
       />
 
+      <section>
+        <SectionTitle title="Campaign info" />
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
+          <InfoCard
+            label="Payout per 1K"
+            value={`$${rewardRate.toFixed(1)}`}
+            detail="Base campaign rate"
+          />
+          <InfoCard
+            label="Start date"
+            value={formatDate(campaign.startsAt ?? campaign.createdAt)}
+            detail={campaign.startsAt ? "Campaign start" : "Campaign created"}
+          />
+          <InfoCard
+            label="Your clips"
+            value={String(videos.length)}
+            detail="Your campaign submissions"
+          />
+          <InfoCard
+            label="Your views"
+            value={myViews.toLocaleString()}
+            detail="Tracked in this campaign"
+          />
+        </div>
+      </section>
 
-      {/* Payout Progress */}
-      <div className="mb-6">
-        <div className="flex items-center gap-2 mb-1">
-          <span className="text-xs font-semibold tracking-wider uppercase" style={{ color: "var(--text-muted)" }}>
-            PAID OUT
-          </span>
-          <span className="text-sm font-bold" style={{ color: "var(--text-primary)" }}>
-            {paidPercent.toFixed(0)}%
-          </span>
-        </div>
-        <p className="text-xs mb-2" style={{ color: "var(--text-secondary)" }}>
-          ${totalPaid.toFixed(2)} of ${totalBudget.toFixed(2)} paid out
-        </p>
-        <div className="w-full h-1.5 rounded-full overflow-hidden" style={{ background: "var(--border-default)" }}>
-          <div className="h-full rounded-full" style={{ width: `${paidPercent}%`, background: "var(--primary)" }} />
-        </div>
-      </div>
-
-      {/* Metadata Row */}
-      <div
-        className="grid grid-cols-2 md:grid-cols-5 gap-4 p-4 rounded-xl mb-6"
-        style={{ background: "var(--bg-card)", border: "1px solid var(--border-default)" }}
-      >
-        <div>
-          <div className="text-xs font-semibold tracking-wider uppercase mb-1" style={{ color: "var(--text-muted)" }}>REWARD</div>
-          <span className="inline-flex items-center px-2.5 py-1 rounded-full text-sm font-semibold" style={{ background: "var(--success-bg)", color: "var(--success-text)" }}>
-            ${rewardRate.toFixed(1)} / 1K
-          </span>
-        </div>
-        <div>
-          <div className="text-xs font-semibold tracking-wider uppercase mb-1" style={{ color: "var(--text-muted)" }}>TYPE</div>
-          <div className="text-sm font-medium" style={{ color: "var(--text-primary)" }}>{campaign.contentType ?? "UGC"}</div>
-        </div>
-        <div>
-          <div className="text-xs font-semibold tracking-wider uppercase mb-1" style={{ color: "var(--text-muted)" }}>PAYOUT RANGE</div>
-          <div className="text-sm font-medium" style={{ color: "var(--text-primary)" }}>$0 - ${totalBudget.toFixed(0)}</div>
-        </div>
-        <div>
-          <div className="text-xs font-semibold tracking-wider uppercase mb-1" style={{ color: "var(--text-muted)" }}>CATEGORY</div>
-          <div className="text-sm font-medium" style={{ color: "var(--text-primary)" }}>{campaign.niche ?? "General"}</div>
-        </div>
-        <div>
-          <div className="text-xs font-semibold tracking-wider uppercase mb-1" style={{ color: "var(--text-muted)" }}>PLATFORMS</div>
-          <div className="flex items-center gap-1.5">
-            {campaign.platforms.map((p) => (
-              <PlatformIcon key={p} platform={p} size={24} />
-            ))}
-          </div>
-        </div>
-      </div>
-
-      {/* Requirements */}
-      {requirementSteps.length > 0 && (
-        <div className="mb-6">
-          <div className="text-xs font-semibold tracking-wider uppercase mb-3" style={{ color: "var(--text-muted)" }}>REQUIREMENTS</div>
-          <div className="flex flex-wrap gap-2">
-            {requirementSteps.map((step, i) => (
-              <span
-                key={i}
-                className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm"
-                style={{ background: "var(--bg-card)", border: "1px solid var(--border-default)", color: "var(--text-primary)" }}
-              >
-                <span className="font-semibold" style={{ color: "var(--text-muted)" }}>{i + 1}/</span>
-                {step.trim()}
-              </span>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* Content Guidelines */}
-      {(campaign.guidelinesUrl || (campaign.contentAssetUrls && campaign.contentAssetUrls.length > 0)) && (
-        <div className="mb-6">
-          <div className="text-xs font-semibold tracking-wider uppercase mb-3" style={{ color: "var(--text-muted)" }}>AVAILABLE CONTENT</div>
-          <div className="space-y-2">
-            {campaign.guidelinesUrl && (
-              <a href={campaign.guidelinesUrl} target="_blank" rel="noopener noreferrer" className="text-sm underline" style={{ color: "var(--primary)" }}>
-                Campaign Guidelines
-              </a>
-            )}
-          </div>
-        </div>
-      )}
-
-      {/* Your Submissions */}
-      <div className="mb-6">
-        <div className="text-xs font-semibold tracking-wider uppercase mb-1" style={{ color: "var(--text-muted)" }}>YOUR SUBMISSIONS</div>
-        <p className="text-xs mb-4" style={{ color: "var(--text-secondary)" }}>
-          See what content you&apos;ve submitted to this campaign. We&apos;ll show it here as soon as your upload starts processing.
-        </p>
-
-        {mySubmissions.length === 0 ? (
-          <div className="text-center py-12 space-y-3">
-            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="mx-auto" style={{ color: "var(--text-muted)" }}>
-              <polygon points="23 7 16 12 23 17 23 7" /><rect width="15" height="14" x="1" y="5" rx="2" ry="2" />
-            </svg>
-            <h3 className="text-base font-semibold" style={{ color: "var(--text-primary)" }}>No submissions yet</h3>
-            <p className="text-sm" style={{ color: "var(--text-secondary)" }}>
-              Upload your first video to this campaign and it will appear here once processing begins.
+      <section>
+        <SectionTitle title="Campaign details" />
+        <div className="overflow-hidden rounded-2xl border border-neutral-200 bg-neutral-50">
+          <div className="border-b border-neutral-200 bg-white px-5 py-4">
+            <h2 className="text-base font-semibold text-neutral-950">Program rules</h2>
+            <p className="mt-1 text-sm text-neutral-500">
+              Requirements and payout limits for this campaign.
             </p>
           </div>
-        ) : (
-          <div className="space-y-3">
-            {mySubmissions.map((sub) => (
-              <div
-                key={sub.id}
-                className="flex items-center justify-between p-4 rounded-xl"
-                style={{ background: "var(--bg-card)", border: "1px solid var(--border-default)" }}
-              >
-                <div>
-                  <div className="text-sm font-medium" style={{ color: "var(--text-primary)" }}>
-                    {sub.postUrl ? new URL(sub.postUrl).hostname : "Uploaded video"}
-                  </div>
-                  <div className="text-xs" style={{ color: "var(--text-muted)" }}>
-                    {new Date(sub.createdAt).toLocaleDateString()}
-                  </div>
-                </div>
-                <div className="flex items-center gap-3">
-                  <span className="text-sm" style={{ color: "var(--text-secondary)" }}>
-                    {sub.claimedViews.toLocaleString()} views
-                  </span>
-                  <span
-                    className="text-xs font-medium px-2.5 py-1 rounded-full"
-                    style={{
-                      background: sub.status === "APPROVED" ? "var(--success-bg)" : sub.status === "REJECTED" ? "var(--error-bg)" : "var(--warning-bg)",
-                      color: sub.status === "APPROVED" ? "var(--success-text)" : sub.status === "REJECTED" ? "var(--error-text)" : "var(--warning-text)",
-                    }}
-                  >
-                    {sub.status === "PENDING" ? "Pending" : sub.status === "APPROVED" ? "Approved" : "Rejected"}
-                  </span>
-                </div>
-              </div>
-            ))}
+          <div className="grid gap-4 px-5 py-4 md:grid-cols-2">
+            <DetailRow label="Account limit" value={campaign.maxSlots ? `${campaign.maxSlots} creators` : "Unlimited"} />
+            <DetailRow label="Category" value={campaign.contentType ?? campaign.niche ?? "General"} />
+            {campaign.referralLink ? (
+              <DetailRow
+                label="Tracking link"
+                value={<a className="underline" href={campaign.referralLink} target="_blank" rel="noreferrer">Open link</a>}
+              />
+            ) : null}
+            {campaign.guidelinesUrl ? (
+              <DetailRow
+                label="Guidelines"
+                value={<a className="underline" href={campaign.guidelinesUrl} target="_blank" rel="noreferrer">Open guidelines</a>}
+              />
+            ) : null}
           </div>
-        )}
-      </div>
+          {requirementSteps.length > 0 ? (
+            <div className="border-t border-neutral-200 px-5 py-4">
+              <p className="mb-3 text-xs font-semibold uppercase tracking-[0.14em] text-neutral-400">
+                Requirements
+              </p>
+              <div className="flex flex-wrap gap-2">
+                {requirementSteps.map((step, index) => (
+                  <span
+                    key={`${step}-${index}`}
+                    className="inline-flex items-center gap-1.5 rounded-lg border border-neutral-200 bg-white px-3 py-2 text-sm text-neutral-950"
+                  >
+                    <span className="font-semibold text-neutral-400">{index + 1}/</span>
+                    {step.trim()}
+                  </span>
+                ))}
+              </div>
+            </div>
+          ) : null}
+          {campaign.contentGuidelines ? (
+            <div className="border-t border-neutral-200 px-5 py-4">
+              <p className="mb-2 text-xs font-semibold uppercase tracking-[0.14em] text-neutral-400">
+                Content notes
+              </p>
+              <p className="whitespace-pre-wrap text-sm leading-6 text-neutral-700">
+                {campaign.contentGuidelines}
+              </p>
+            </div>
+          ) : null}
+        </div>
+      </section>
 
-      {/* Biggest Earners */}
-      <div>
-        <div className="text-xs font-semibold tracking-wider uppercase mb-1" style={{ color: "var(--text-muted)" }}>BIGGEST EARNERS</div>
-        <p className="text-xs mb-4" style={{ color: "var(--text-secondary)" }}>
-          See what content performs best, submit your own and join this Content Reward&apos;s top earners
-        </p>
+      <section>
+        <SectionTitle title="Payouts" />
+        <div className="rounded-2xl border border-neutral-200 bg-neutral-50 p-5">
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+            <InfoCard
+              label="Estimate"
+              value={`$${projectedEarned.toFixed(2)}`}
+              detail="Based on tracked or claimed views"
+            />
+            <InfoCard
+              label="Recorded"
+              value={`$${mySubmissions.reduce((sum, s) => sum + Number(s.earnedAmount ?? 0), 0).toFixed(2)}`}
+              detail="Current campaign earnings"
+            />
+          </div>
+        </div>
+      </section>
+
+      <section>
+        <SectionTitle title="Your clips" />
+        <div className="rounded-2xl border border-neutral-200 bg-neutral-50 p-5">
+          <SubmittedClipsList
+            videos={videos}
+            statusCounts={statusCounts}
+            mode="campaign"
+            detailBasePath="/creator/videos"
+            showCampaignColumn={false}
+            campaignFilterLabel={campaign.name}
+            emptyState={{
+              title: "No clips submitted yet",
+              description: "Submit a clip from your connected social accounts and it will appear here.",
+              primaryCta: existingApplication?.id
+                ? { label: "Submit clip", href: `/creator/applications/${existingApplication.id}/submit` }
+                : undefined,
+            }}
+          />
+        </div>
+      </section>
+
+      <section>
+        <SectionTitle title="Biggest earners" />
         {topEarners.length === 0 ? (
-          <p className="text-center py-8 text-sm" style={{ color: "var(--text-muted)" }}>No Creators Posted Yet</p>
+          <p className="rounded-2xl border border-neutral-200 bg-neutral-50 p-5 text-sm text-neutral-500">
+            No approved earners yet.
+          </p>
         ) : (
           <div className="space-y-2">
-            {topEarners.map((earner, i) => (
+            {topEarners.map((earner, index) => (
               <div
                 key={earner.creatorId}
-                className="flex items-center gap-3 p-3 rounded-lg"
-                style={{ background: "var(--bg-card)", border: "1px solid var(--border-default)" }}
+                className="flex items-center gap-3 rounded-xl border border-neutral-200 bg-white p-3"
               >
-                <span className="text-sm font-bold w-6 text-center" style={{ color: i < 3 ? "var(--primary)" : "var(--text-muted)" }}>
-                  #{i + 1}
+                <span className="w-8 text-center text-sm font-bold text-neutral-400">
+                  #{index + 1}
                 </span>
-                <span className="text-sm font-medium flex-1" style={{ color: "var(--text-primary)" }}>
+                <span className="flex-1 text-sm font-medium text-neutral-950">
                   Creator
                 </span>
-                <span className="text-sm font-semibold" style={{ color: "var(--success-text)" }}>
+                <span className="text-sm font-semibold text-emerald-600">
                   +${Number(earner._sum.earnedAmount ?? 0).toFixed(2)}
                 </span>
               </div>
             ))}
           </div>
         )}
-      </div>
+      </section>
     </div>
   );
+}
+
+function SectionTitle({ title }: { title: string }) {
+  return (
+    <div className="mb-4 flex items-center gap-3">
+      <h2 className="text-sm font-semibold text-neutral-950">{title}</h2>
+      <div className="h-px flex-1 bg-neutral-200" />
+    </div>
+  );
+}
+
+function InfoCard({
+  label,
+  value,
+  detail,
+}: {
+  label: string;
+  value: string;
+  detail: string;
+}) {
+  return (
+    <div className="rounded-2xl border border-neutral-200 bg-neutral-50 p-4">
+      <p className="text-sm font-medium text-neutral-700">{label}</p>
+      <p className="mt-2 text-2xl font-semibold tracking-normal text-neutral-950">{value}</p>
+      <p className="mt-1 text-xs text-neutral-500">{detail}</p>
+    </div>
+  );
+}
+
+function DetailRow({
+  label,
+  value,
+}: {
+  label: string;
+  value: ReactNode;
+}) {
+  return (
+    <div className="flex items-center justify-between gap-4 text-sm">
+      <span className="text-neutral-500">{label}</span>
+      <span className="text-right font-medium text-neutral-950">{value}</span>
+    </div>
+  );
+}
+
+function formatDate(date: Date) {
+  return new Intl.DateTimeFormat("en-GB", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+  }).format(date);
 }

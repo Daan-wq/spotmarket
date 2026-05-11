@@ -2,6 +2,13 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { KpiCard } from "@/components/admin/kpi-card";
+import {
+  CampaignAvatar,
+  CampaignBudgetProgress,
+  CampaignDeadlineBadge,
+  CampaignPlatformRow,
+  CampaignStatusBadge,
+} from "@/components/campaigns/campaign-display";
 
 export const dynamic = "force-dynamic";
 
@@ -82,17 +89,30 @@ export default async function CampaignHealthPage({ params }: PageProps) {
   return (
     <div className="w-full p-8">
       <div className="mb-6 flex flex-wrap items-start justify-between gap-3">
-        <div>
+        <div className="min-w-0 flex-1">
           <Link href="/admin/campaigns" className="text-xs underline" style={{ color: "var(--text-secondary)" }}>
             Back to all campaigns
           </Link>
-          <h1 className="mb-1 mt-2 text-3xl font-bold" style={{ color: "var(--text-primary)" }}>
-            {campaign.name}
-          </h1>
-          <p style={{ color: "var(--text-secondary)" }}>
+          <div className="mt-3 flex items-start gap-4">
+            <CampaignAvatar name={campaign.name} imageUrl={campaign.bannerUrl} size="lg" />
+            <div className="min-w-0">
+              <h1 className="mb-2 text-3xl font-bold" style={{ color: "var(--text-primary)" }}>
+                {campaign.name}
+              </h1>
+              <div className="flex flex-wrap items-center gap-2">
+                <CampaignStatusBadge status={campaign.status} deadline={campaign.deadline} />
+                <CampaignDeadlineBadge deadline={campaign.deadline} />
+                <CampaignPlatformRow platforms={campaign.platforms} />
+              </div>
+            </div>
+          </div>
+          <p className="hidden" style={{ color: "var(--text-secondary)" }}>
             {campaign.status} · deadline {campaign.deadline.toLocaleDateString()} ·{" "}
             {campaign.platforms.map((p) => p.toLowerCase()).join(" · ")}
           </p>
+          <div className="mt-5 max-w-xl">
+            <CampaignBudgetProgress totalPaid={totalEarned} totalBudget={totalBudget} />
+          </div>
         </div>
         <Link
           href={`/admin/campaigns/${campaign.id}/edit`}

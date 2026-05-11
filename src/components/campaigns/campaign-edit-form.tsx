@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { CampaignImageUploadField } from "@/components/campaigns/campaign-image-upload-field";
 
 const PLATFORM_OPTIONS = [
   { value: "INSTAGRAM", label: "Instagram" },
@@ -36,6 +37,7 @@ interface CampaignData {
   contentGuidelines?: string | null;
   requirements?: string | null;
   referralLink?: string | null;
+  bannerUrl?: string | null;
   targetCountry?: string | null;
   minEngagementRate?: number | null;
   bioRequirement?: string | null;
@@ -68,6 +70,7 @@ export function CampaignEditForm({ campaign, backUrl }: CampaignEditFormProps) {
 
   const [name, setName] = useState(campaign.name);
   const [description, setDescription] = useState(campaign.description ?? "");
+  const [bannerUrl, setBannerUrl] = useState<string | null>(campaign.bannerUrl ?? null);
   const [contentGuidelines, setContentGuidelines] = useState(campaign.contentGuidelines ?? "");
   const [requirements, setRequirements] = useState(campaign.requirements ?? "");
   const [referralLink, setReferralLink] = useState(campaign.referralLink ?? "");
@@ -104,6 +107,7 @@ export function CampaignEditForm({ campaign, backUrl }: CampaignEditFormProps) {
           contentGuidelines: contentGuidelines || null,
           requirements: requirements || null,
           referralLink: referralLink || null,
+          bannerUrl,
           targetCountry,
           minEngagementRate: minEngagementRate ? parseFloat(minEngagementRate) : null,
           bioRequirement: bioRequirement || null,
@@ -139,9 +143,9 @@ export function CampaignEditForm({ campaign, backUrl }: CampaignEditFormProps) {
   return (
     <div className="max-w-2xl">
       <div className="space-y-6">
-        {/* Campaign Brief */}
+        {/* Campaign info */}
         <section className="space-y-4">
-          <h2 className="text-lg font-semibold" style={{ color: "var(--text-primary)" }}>Campaign Brief</h2>
+          <h2 className="text-lg font-semibold" style={{ color: "var(--text-primary)" }}>Campaign info</h2>
 
           <div>
             <label className={labelStyle} style={{ color: "var(--text-primary)" }}>Campaign name *</label>
@@ -152,6 +156,14 @@ export function CampaignEditForm({ campaign, backUrl }: CampaignEditFormProps) {
               onChange={e => setName(e.target.value)}
             />
           </div>
+
+          <CampaignImageUploadField
+            value={bannerUrl}
+            onChange={setBannerUrl}
+            label="Campaign image"
+            campaignName={name || "Campaign"}
+            disabled={loading}
+          />
 
           <div>
             <label className={labelStyle} style={{ color: "var(--text-primary)" }}>Platforms</label>

@@ -17,6 +17,11 @@ const patchSchema = z.object({
   contentGuidelines: z.string().max(5000).optional().nullable(),
   requirements: z.string().max(2000).optional().nullable(),
   referralLink: z.string().optional().nullable(),
+  bannerUrl: z
+    .string()
+    .optional()
+    .nullable()
+    .refine((v) => !v || /^https?:\/\//.test(v), "Must be a valid URL"),
   targetCountry: z.string().optional().nullable(),
   minEngagementRate: z.number().min(0).max(100).optional(),
   bioRequirement: z.string().optional().nullable(),

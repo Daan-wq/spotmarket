@@ -28,6 +28,7 @@ export default async function CampaignsPage() {
         creatorCpv: true,
         totalBudget: true,
         platforms: true,
+        status: true,
         contentType: true,
         niche: true,
         bannerUrl: true,
@@ -54,6 +55,7 @@ export default async function CampaignsPage() {
                 creatorCpv: true,
                 totalBudget: true,
                 platforms: true,
+                status: true,
                 contentType: true,
                 niche: true,
                 bannerUrl: true,
@@ -117,6 +119,7 @@ export default async function CampaignsPage() {
       creatorCpv: { toString(): string } | number;
       totalBudget: { toString(): string } | number;
       platforms: Platform[];
+      status: string;
       contentType: string | null;
       niche: string | null;
       bannerUrl: string | null;
@@ -160,6 +163,7 @@ export default async function CampaignsPage() {
       totalBudget: Number(c.totalBudget),
       totalPaid,
       platforms: requiredPlatforms,
+      status: c.status,
       contentType: c.contentType ?? "UGC",
       niche: c.niche ?? null,
       brandName: c.name,
