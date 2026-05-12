@@ -18,14 +18,6 @@
       "schedule": "0 9 * * 1"
     },
     {
-      "path": "/api/cron/autopost-scheduler",
-      "schedule": "0 0 * * *"
-    },
-    {
-      "path": "/api/cron/autopost-auto-approve",
-      "schedule": "0 6 * * *"
-    },
-    {
       "path": "/api/cron/recompute-benchmarks",
       "schedule": "15 0 * * *"
     },

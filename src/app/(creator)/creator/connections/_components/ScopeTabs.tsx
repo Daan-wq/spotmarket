@@ -28,7 +28,7 @@ export function ScopeTabs({ active, onChange, countsByPlatform }: Props) {
   ];
 
   return (
-    <div className="flex items-center gap-1 flex-wrap">
+    <div className="flex w-full items-center gap-1 overflow-x-auto pb-1 md:w-auto md:flex-wrap md:overflow-visible md:pb-0">
       {tabs.map((tab) => {
         const isActive = active === tab.id;
         return (
@@ -36,7 +36,7 @@ export function ScopeTabs({ active, onChange, countsByPlatform }: Props) {
             key={tab.id}
             type="button"
             onClick={() => onChange(tab.id)}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors cursor-pointer"
+            className="flex shrink-0 cursor-pointer items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-medium transition-colors"
             style={{
               background: isActive ? "var(--primary)" : "transparent",
               color: isActive ? "#fff" : "var(--text-secondary)",

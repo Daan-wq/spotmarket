@@ -36,13 +36,13 @@ export default async function ApplicationDetailPage({
   };
 
   return (
-    <div className="p-6 w-full">
-      <div className="flex items-center gap-4 mb-6">
-        <h1 className="text-3xl font-bold" style={{ color: "var(--text-primary)" }}>
+    <div className="w-full space-y-6 md:p-6">
+      <div className="flex flex-col gap-3 md:flex-row md:items-center">
+        <h1 className="break-words text-2xl font-bold md:text-3xl" style={{ color: "var(--text-primary)" }}>
           {application.campaign.name}
         </h1>
         <span
-          className="px-3 py-1 rounded text-sm font-medium"
+          className="w-fit rounded px-3 py-1 text-sm font-medium"
           style={{
             color: getStatusColor(application.status),
             backgroundColor: `${getStatusColor(application.status)}20`,
@@ -53,9 +53,9 @@ export default async function ApplicationDetailPage({
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+      <div className="grid grid-cols-2 gap-3 md:grid-cols-3 md:gap-4">
         <div
-          className="rounded-lg p-6 border"
+          className="rounded-2xl border p-4 md:p-6"
           style={{
             background: "var(--bg-card)",
             borderColor: "var(--border)",
@@ -72,7 +72,7 @@ export default async function ApplicationDetailPage({
           </p>
         </div>
         <div
-          className="rounded-lg p-6 border"
+          className="rounded-2xl border p-4 md:p-6"
           style={{
             background: "var(--bg-card)",
             borderColor: "var(--border)",
@@ -89,7 +89,7 @@ export default async function ApplicationDetailPage({
           </p>
         </div>
         <div
-          className="rounded-lg p-6 border"
+          className="col-span-2 rounded-2xl border p-4 md:col-span-1 md:p-6"
           style={{
             background: "var(--bg-card)",
             borderColor: "var(--border)",
@@ -110,7 +110,7 @@ export default async function ApplicationDetailPage({
       {/* New Submission Button */}
       <Link href={`/creator/applications/${applicationId}/submit`}>
         <button
-          className="mb-6 px-6 py-3 rounded-lg font-medium"
+          className="w-full rounded-xl px-6 py-3 font-medium md:w-auto"
           style={{
             background: "var(--primary)",
             color: "#fff",
@@ -122,7 +122,7 @@ export default async function ApplicationDetailPage({
 
       {/* Submissions List */}
       <div
-        className="rounded-lg border overflow-hidden"
+        className="rounded-2xl border overflow-hidden"
         style={{
           background: "var(--bg-card)",
           borderColor: "var(--border)",
@@ -143,37 +143,74 @@ export default async function ApplicationDetailPage({
             <p style={{ color: "var(--text-secondary)" }}>No submissions yet</p>
           </div>
         ) : (
-          <table className="w-full text-sm">
-            <thead
-              style={{
-                borderBottomColor: "var(--border)",
-                backgroundColor: "rgba(99, 102, 241, 0.05)",
-              }}
-              className="border-b"
-            >
-              <tr style={{ color: "var(--text-secondary)" }}>
-                <th className="text-left py-4 px-6">Date</th>
-                <th className="text-left py-4 px-6">Claimed Views</th>
-                <th className="text-left py-4 px-6">Status</th>
-                <th className="text-left py-4 px-6">Earned</th>
-              </tr>
-            </thead>
-            <tbody>
-              {submissions.map((sub) => (
-                <tr
-                  key={sub.id}
-                  style={{ borderBottomColor: "var(--border)" }}
-                  className="border-b last:border-b-0"
+          <>
+            <div className="hidden overflow-x-auto md:block">
+              <table className="w-full text-sm">
+                <thead
+                  style={{
+                    borderBottomColor: "var(--border)",
+                    backgroundColor: "rgba(99, 102, 241, 0.05)",
+                  }}
+                  className="border-b"
                 >
-                  <td className="py-4 px-6" style={{ color: "var(--text-secondary)" }}>
-                    {new Date(sub.createdAt).toLocaleDateString()}
-                  </td>
-                  <td className="py-4 px-6" style={{ color: "var(--text-primary)" }}>
-                    {sub.claimedViews.toLocaleString()}
-                  </td>
-                  <td className="py-4 px-6">
+                  <tr style={{ color: "var(--text-secondary)" }}>
+                    <th className="text-left py-4 px-6">Date</th>
+                    <th className="text-left py-4 px-6">Claimed Views</th>
+                    <th className="text-left py-4 px-6">Status</th>
+                    <th className="text-left py-4 px-6">Earned</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {submissions.map((sub) => (
+                    <tr
+                      key={sub.id}
+                      style={{ borderBottomColor: "var(--border)" }}
+                      className="border-b last:border-b-0"
+                    >
+                      <td className="py-4 px-6" style={{ color: "var(--text-secondary)" }}>
+                        {new Date(sub.createdAt).toLocaleDateString()}
+                      </td>
+                      <td className="py-4 px-6" style={{ color: "var(--text-primary)" }}>
+                        {sub.claimedViews.toLocaleString()}
+                      </td>
+                      <td className="py-4 px-6">
+                        <span
+                          className="px-3 py-1 rounded text-xs font-medium"
+                          style={{
+                            color: getStatusColor(sub.status),
+                            backgroundColor: `${getStatusColor(sub.status)}20`,
+                          }}
+                        >
+                          {sub.status}
+                        </span>
+                      </td>
+                      <td className="py-4 px-6" style={{ color: "var(--text-secondary)" }}>
+                        ${Number(sub.earnedAmount).toFixed(2)}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            <div className="space-y-3 p-3 md:hidden">
+              {submissions.map((sub) => (
+                <article
+                  key={sub.id}
+                  className="rounded-2xl border p-4"
+                  style={{ borderColor: "var(--border)", background: "var(--bg-secondary)" }}
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <p className="text-xs" style={{ color: "var(--text-muted)" }}>
+                        {new Date(sub.createdAt).toLocaleDateString()}
+                      </p>
+                      <p className="mt-1 text-lg font-semibold" style={{ color: "var(--text-primary)" }}>
+                        {sub.claimedViews.toLocaleString()} views
+                      </p>
+                    </div>
                     <span
-                      className="px-3 py-1 rounded text-xs font-medium"
+                      className="shrink-0 rounded-full px-2.5 py-1 text-xs font-medium"
                       style={{
                         color: getStatusColor(sub.status),
                         backgroundColor: `${getStatusColor(sub.status)}20`,
@@ -181,14 +218,14 @@ export default async function ApplicationDetailPage({
                     >
                       {sub.status}
                     </span>
-                  </td>
-                  <td className="py-4 px-6" style={{ color: "var(--text-secondary)" }}>
-                    ${Number(sub.earnedAmount).toFixed(2)}
-                  </td>
-                </tr>
+                  </div>
+                  <p className="mt-3 text-sm" style={{ color: "var(--text-secondary)" }}>
+                    Earned: ${Number(sub.earnedAmount).toFixed(2)}
+                  </p>
+                </article>
               ))}
-            </tbody>
-          </table>
+            </div>
+          </>
         )}
       </div>
     </div>

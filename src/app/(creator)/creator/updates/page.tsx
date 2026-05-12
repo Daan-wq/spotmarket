@@ -10,9 +10,9 @@ export default async function UpdatesPage() {
   await requireAuth("creator");
 
   return (
-    <div className="p-6 space-y-6 max-w-3xl">
+    <div className="w-full max-w-3xl space-y-6 md:p-6">
       <header>
-        <h1 className="text-3xl font-bold" style={{ color: "var(--text-primary)" }}>
+        <h1 className="text-2xl font-bold md:text-3xl" style={{ color: "var(--text-primary)" }}>
           Updates
         </h1>
         <p className="mt-1 text-sm" style={{ color: "var(--text-secondary)" }}>

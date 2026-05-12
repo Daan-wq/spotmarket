@@ -32,7 +32,11 @@ export default async function CampaignHealthPage({ params }: PageProps) {
           createdAt: true,
           creator: { select: { id: true, email: true } },
           submissionSignals: {
-            where: { resolvedAt: null },
+            where: {
+              resolvedAt: null,
+              severity: { in: ["WARN", "CRITICAL"] },
+              type: { not: "VELOCITY_DROP" },
+            },
             select: { id: true, type: true, severity: true },
           },
         },

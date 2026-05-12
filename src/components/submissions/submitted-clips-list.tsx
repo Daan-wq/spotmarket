@@ -104,12 +104,52 @@ export function SubmittedClipsList({
   const colSpan = showCampaignColumn ? 8 : 7;
 
   return (
-    <div className="overflow-x-auto">
+    <div>
       {campaignFilterLabel ? (
         <p className="mb-3 text-xs font-medium text-neutral-500">
           Showing clips for {campaignFilterLabel}
         </p>
       ) : null}
+
+      <div className="mb-4 flex items-center justify-between gap-3 md:hidden">
+        <div className="flex min-w-0 flex-1 items-center gap-3">
+          <h2 className="shrink-0 text-sm font-semibold text-neutral-950">
+            Tracking Clips
+          </h2>
+          <div className="h-px flex-1 bg-neutral-200" />
+          <span className="text-xs font-medium text-neutral-500">
+            {filtered.length}
+          </span>
+        </div>
+        <FilterMenu
+          queue={queue}
+          sort={sort}
+          queueOptions={queueOptions}
+          onQueueChange={setQueue}
+          onSortChange={setSort}
+        />
+      </div>
+
+      <div className="space-y-3 md:hidden">
+        {filtered.length === 0 ? (
+          <InlineEmptyState
+            title={`No ${queue.toLowerCase()} clips`}
+            description="Use another queue to view the rest of the submitted clips."
+            primaryCta={{ label: "Show all clips", onClick: () => setQueue("ALL") }}
+          />
+        ) : (
+          filtered.map((video) => (
+            <SubmittedClipCard
+              key={video.id}
+              video={video}
+              href={`${detailBasePath.replace(/\/$/, "")}/${video.id}`}
+              showCampaign={showCampaignColumn}
+            />
+          ))
+        )}
+      </div>
+
+      <div className="hidden overflow-x-auto md:block">
       <table className="w-full text-sm">
         <thead>
           <tr className="border-b border-neutral-200 text-neutral-500">
@@ -217,7 +257,81 @@ export function SubmittedClipsList({
           })}
         </tbody>
       </table>
+      </div>
     </div>
+  );
+}
+
+function SubmittedClipCard({
+  video,
+  href,
+  showCampaign,
+}: {
+  video: SubmittedClipData;
+  href: string;
+  showCampaign: boolean;
+}) {
+  return (
+    <article className="rounded-2xl border border-neutral-200 bg-neutral-50 p-4">
+      <div className="flex items-start gap-3">
+        <Link href={href} className="shrink-0">
+          <ClipThumbnail
+            thumbnailUrl={video.thumbnailUrl}
+            mediaType={video.mediaType}
+            className="h-14 w-14 rounded-xl"
+          />
+        </Link>
+        <div className="min-w-0 flex-1">
+          <Link href={href} className="block">
+            <p className="truncate text-sm font-semibold text-neutral-950">
+              {showCampaign ? video.campaignName : "Submitted clip"}
+            </p>
+            <p className="mt-1 text-xs text-neutral-500">
+              Submitted {relativeTime(video.createdAt)}
+            </p>
+          </Link>
+          <div className="mt-2 flex flex-wrap items-center gap-2">
+            <SubmissionStatusBadge status={video.status} />
+            {video.platform ? <PlatformIcon platform={video.platform} size={24} /> : null}
+          </div>
+        </div>
+      </div>
+
+      <div className="mt-4 grid grid-cols-2 gap-3">
+        <div className="rounded-xl bg-white p-3 ring-1 ring-neutral-200">
+          <p className="text-xs text-neutral-500">Earned</p>
+          <p className="mt-1 text-lg font-semibold text-neutral-950">
+            ${video.earned.toFixed(2)}
+          </p>
+        </div>
+        <div className="rounded-xl bg-white p-3 ring-1 ring-neutral-200">
+          <p className="text-xs text-neutral-500">Views</p>
+          <p className="mt-1 text-lg font-semibold text-neutral-950">
+            {video.views.toLocaleString()}
+          </p>
+        </div>
+      </div>
+
+      <div className="mt-4 flex gap-2">
+        <Link
+          href={href}
+          className="inline-flex h-10 flex-1 items-center justify-center rounded-xl bg-neutral-950 px-4 text-sm font-semibold text-white shadow-[0_8px_18px_rgba(0,0,0,0.14)] transition hover:bg-neutral-800"
+        >
+          View details
+        </Link>
+        {video.postUrl ? (
+          <a
+            href={video.postUrl}
+            target="_blank"
+            rel="noreferrer noopener"
+            className="inline-flex h-10 items-center justify-center gap-1 rounded-xl border border-neutral-200 bg-white px-4 text-sm font-semibold text-neutral-700 transition hover:bg-neutral-100 hover:text-neutral-950"
+          >
+            Open
+            <ExternalIcon />
+          </a>
+        ) : null}
+      </div>
+    </article>
   );
 }
 

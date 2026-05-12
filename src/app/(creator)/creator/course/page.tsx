@@ -32,7 +32,7 @@ export default async function CourseHubPage() {
   const firstHref = firstAvailable ? `/creator/course/${platformToSlug(firstAvailable.platform)}` : "/creator/course/foundations";
 
   return (
-    <div className="w-full space-y-8 px-6 py-8">
+    <div className="w-full space-y-6 md:space-y-8 md:px-6 md:py-8">
       <CreatorPageHeader
         eyebrow="Training"
         title="Course hub"
@@ -47,10 +47,12 @@ export default async function CourseHubPage() {
         }
       />
 
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+      <div className="grid grid-cols-2 gap-3 md:grid-cols-3 md:gap-4">
         <SoftStat label="Lessons completed" value={`${completedLessons}/${totalLessons}`} detail="Across all available courses" />
         <SoftStat label="Badges earned" value={String(badgeCount)} detail="From lesson and section quizzes" />
-        <SoftStat label="Courses" value={String(overviews.filter((overview) => overview.totalLessons > 0).length)} detail="Ready to work through" />
+        <div className="col-span-2 md:col-span-1">
+          <SoftStat label="Courses" value={String(overviews.filter((overview) => overview.totalLessons > 0).length)} detail="Ready to work through" />
+        </div>
       </div>
 
       <section>

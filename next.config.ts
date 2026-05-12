@@ -25,7 +25,7 @@ const securityHeaders = [
       "style-src 'self' 'unsafe-inline'",
       "img-src 'self' data: https: blob:",
       "font-src 'self' data:",
-      "connect-src 'self' *.supabase.co api.instagram.com graph.instagram.com graph.facebook.com *.stripe.com",
+      "connect-src 'self' *.supabase.co api.instagram.com graph.instagram.com graph.facebook.com *.stripe.com eu.i.posthog.com",
       "frame-src 'self' js.stripe.com www.instagram.com www.facebook.com discord.com",
     ].join("; "),
   },

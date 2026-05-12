@@ -7,6 +7,7 @@ import { LogOut } from "@/components/animate-ui/icons/log-out";
 import { Settings } from "@/components/animate-ui/icons/settings";
 import { User } from "@/components/animate-ui/icons/user";
 import { cn } from "@/lib/cn";
+import { useCloseMobileMenu } from "./mobile-menu-close-context";
 
 export function CreatorIdentityMenu({
   name,
@@ -16,6 +17,7 @@ export function CreatorIdentityMenu({
   initial: string;
 }) {
   const pathname = usePathname();
+  const closeMobileMenu = useCloseMobileMenu();
 
   return (
     <div className="group relative">
@@ -36,6 +38,7 @@ export function CreatorIdentityMenu({
       <div className="invisible absolute bottom-[calc(100%+8px)] left-0 z-20 w-full translate-y-1 rounded-2xl border border-neutral-200 bg-white p-2 opacity-0 shadow-[0_18px_50px_rgba(0,0,0,0.12)] transition group-focus-within:visible group-focus-within:translate-y-0 group-focus-within:opacity-100 group-hover:visible group-hover:translate-y-0 group-hover:opacity-100">
         <Link
           href="/creator/profile"
+          onClick={closeMobileMenu}
           className={cn(
             "flex h-10 items-center gap-3 rounded-xl px-3 text-sm font-medium transition",
             pathname.startsWith("/creator/profile")
@@ -48,6 +51,7 @@ export function CreatorIdentityMenu({
         </Link>
         <Link
           href="/creator/settings"
+          onClick={closeMobileMenu}
           className={cn(
             "flex h-10 items-center gap-3 rounded-xl px-3 text-sm font-medium transition",
             pathname.startsWith("/creator/settings")
@@ -58,7 +62,7 @@ export function CreatorIdentityMenu({
           <Settings className="h-4 w-4" animateOnHover />
           Settings
         </Link>
-        <form action="/api/auth/signout" method="POST">
+        <form action="/api/auth/signout" method="POST" onSubmit={closeMobileMenu}>
           <button
             type="submit"
             className="flex h-10 w-full items-center gap-3 rounded-xl px-3 text-sm font-medium text-neutral-600 transition hover:bg-neutral-50 hover:text-neutral-950"

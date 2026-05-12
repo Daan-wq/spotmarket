@@ -396,7 +396,7 @@ export default function SubmitPageClient({
   const allPlatforms: Platform[] = ["ig", "tt", "fb"];
 
   return (
-    <div className="p-6 w-full">
+    <div className="w-full md:p-6">
       <SubmitHeader
         campaignName={campaign.name}
         requirements={campaign.requirements}
@@ -445,7 +445,7 @@ export default function SubmitPageClient({
       >
         {/* Platform tabs + submit button */}
         <div
-          className="flex items-center justify-between px-5 py-3 border-b gap-3"
+          className="flex flex-col items-stretch justify-between gap-3 border-b px-4 py-3 sm:flex-row sm:items-center md:px-5"
           style={{ borderColor: "var(--border)" }}
         >
           <PlatformTabs
@@ -456,7 +456,7 @@ export default function SubmitPageClient({
           <button
             onClick={submitSelected}
             disabled={selectedKeys.size === 0 || submitting}
-            className="flex items-center gap-1.5 px-4 py-1.5 rounded-lg text-sm font-medium transition-all disabled:opacity-30 cursor-pointer"
+            className="flex items-center justify-center gap-1.5 rounded-lg px-4 py-2 text-sm font-medium transition-all disabled:opacity-30 cursor-pointer"
             style={{ background: "var(--primary)", color: "#fff" }}
           >
             {submitting
@@ -467,7 +467,7 @@ export default function SubmitPageClient({
 
         {/* Account tabs + filters */}
         <div
-          className="flex flex-wrap items-center gap-3 px-5 py-2 border-b"
+          className="flex flex-wrap items-center gap-3 border-b px-4 py-3 md:px-5"
           style={{ borderColor: "var(--border)" }}
         >
           <AccountSwitcher

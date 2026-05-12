@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import type { ReactNode } from "react";
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
+import { Dialog } from "@/components/ui/dialog";
 import { EmptyState } from "@/components/ui/empty-state";
 import {
   CampaignAvatar,
@@ -80,6 +81,7 @@ export function CampaignsClient({ marketplace, myCampaigns }: CampaignsClientPro
   const [platformFilter, setPlatformFilter] = useState("all");
   const [typeFilter, setTypeFilter] = useState("all");
   const [sort, setSort] = useState<SortKey>("recommended");
+  const [guideDialog, setGuideDialog] = useState<"rules" | "how" | null>(null);
 
   const campaigns = activeTab === "my" ? myCampaigns : marketplace;
   const filtersActive =
@@ -108,12 +110,14 @@ export function CampaignsClient({ marketplace, myCampaigns }: CampaignsClientPro
   }
 
   return (
-    <div className="w-full space-y-8 px-6 py-8">
+    <div className="w-full space-y-6 md:space-y-8 md:px-6 md:py-8">
       <CreatorPageHeader
         eyebrow="Campaigns"
         title="Campaigns"
-        description="Find the campaign that fits your pages, then open campaign info or submit from joined work."
+        description={`${marketplace.length} campaigns available`}
       />
+
+      <CampaignGuideCard onOpen={setGuideDialog} />
 
       <section className="rounded-2xl border border-neutral-200 bg-white p-5 md:p-6">
         <div className="mb-5 flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
@@ -127,7 +131,7 @@ export function CampaignsClient({ marketplace, myCampaigns }: CampaignsClientPro
           </div>
 
           <div className="flex w-full flex-col gap-3 md:flex-row xl:max-w-3xl">
-            <label className="relative flex-1">
+            <label className="relative hidden flex-1 md:block">
               <span className="sr-only">Search campaigns</span>
               <SearchIcon className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400" />
               <input
@@ -142,7 +146,7 @@ export function CampaignsClient({ marketplace, myCampaigns }: CampaignsClientPro
               <DropdownMenuTrigger asChild>
                 <button
                   type="button"
-                  className="inline-flex h-11 items-center gap-2 rounded-xl border border-neutral-200 bg-white px-4 text-sm font-semibold text-neutral-700 transition hover:bg-neutral-50 hover:text-neutral-950"
+                  className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-xl border border-neutral-200 bg-white px-4 text-sm font-semibold text-neutral-700 transition hover:bg-neutral-50 hover:text-neutral-950 md:w-auto"
                 >
                   Filters
                   {filtersActive ? <Badge variant="eligible">On</Badge> : null}
@@ -227,7 +231,149 @@ export function CampaignsClient({ marketplace, myCampaigns }: CampaignsClientPro
           </div>
         )}
       </section>
+
+      <CampaignGuideDialog type={guideDialog} onClose={() => setGuideDialog(null)} />
     </div>
+  );
+}
+
+function CampaignGuideCard({
+  onOpen,
+}: {
+  onOpen: (dialog: "rules" | "how") => void;
+}) {
+  return (
+    <section className="rounded-2xl border border-neutral-200 bg-neutral-50 p-4">
+      <p className="text-sm text-neutral-600">
+        New to campaigns? Learn how they work.
+      </p>
+      <div className="mt-3 flex flex-wrap gap-2">
+        <button
+          type="button"
+          onClick={() => onOpen("rules")}
+          className="inline-flex h-9 items-center justify-center rounded-xl border border-neutral-200 bg-white px-4 text-sm font-semibold text-neutral-950 shadow-sm transition hover:bg-neutral-100"
+        >
+          Rules
+        </button>
+        <button
+          type="button"
+          onClick={() => onOpen("how")}
+          className="inline-flex h-9 items-center justify-center rounded-xl border border-neutral-200 bg-white px-4 text-sm font-semibold text-neutral-950 shadow-sm transition hover:bg-neutral-100"
+        >
+          How it works
+        </button>
+      </div>
+    </section>
+  );
+}
+
+function CampaignGuideDialog({
+  type,
+  onClose,
+}: {
+  type: "rules" | "how" | null;
+  onClose: () => void;
+}) {
+  if (!type) return null;
+
+  const isRules = type === "rules";
+
+  return (
+    <Dialog
+      open
+      onClose={onClose}
+      title={isRules ? "Campaign Rules" : "How it works"}
+      size="lg"
+      className="max-h-[82vh] overflow-hidden rounded-3xl sm:rounded-2xl"
+      footer={
+        <button
+          type="button"
+          onClick={onClose}
+          className="inline-flex h-10 min-w-24 items-center justify-center rounded-xl bg-neutral-950 px-5 text-sm font-semibold text-white shadow-[0_8px_18px_rgba(0,0,0,0.18)] transition hover:bg-neutral-800"
+        >
+          {isRules ? "I understand" : "Got it"}
+        </button>
+      }
+    >
+      <div className="max-h-[58vh] space-y-5 overflow-y-auto pr-1 text-sm leading-6 text-neutral-600">
+        {isRules ? <CampaignRulesContent /> : <CampaignHowItWorksContent />}
+      </div>
+    </Dialog>
+  );
+}
+
+function CampaignHowItWorksContent() {
+  return (
+    <>
+      <p>
+        Understanding how campaigns work helps you choose the right work,
+        submit clips cleanly, and track earnings without surprises.
+      </p>
+      <GuideSection title="Campaign Duration">
+        <p>
+          <strong className="text-neutral-950">Deadline-based:</strong> posts
+          can be submitted until the campaign deadline. After that, submissions
+          close.
+        </p>
+        <p>
+          <strong className="text-neutral-950">Budget-based:</strong> campaigns
+          may continue until the budget is spent or the sponsor ends the work.
+        </p>
+      </GuideSection>
+      <GuideSection title="Payout Calculation">
+        <p>
+          <strong className="text-neutral-950">Payrate-based:</strong> you earn
+          a flat rate per tracked view.
+        </p>
+        <p>
+          <strong className="text-neutral-950">Pot-style:</strong> payouts are
+          proportional to your share of total campaign views.
+        </p>
+      </GuideSection>
+    </>
+  );
+}
+
+function CampaignRulesContent() {
+  return (
+    <>
+      <p>
+        By participating in campaigns, you agree to follow these rules.
+        Violations may result in removal and forfeiture of earnings.
+      </p>
+      <GuideSection title="No Botting or Fake Engagement">
+        <p>Botting and fake engagement are not allowed in any capacity.</p>
+      </GuideSection>
+      <GuideSection title="Audience Requirements">
+        <p>
+          Do not join campaigns with audience requirements that do not match
+          your own audience.
+        </p>
+      </GuideSection>
+      <GuideSection title="Follow Campaign Requirements">
+        <p>
+          Submitted posts must follow the campaign-specific creative,
+          disclosure, and platform requirements.
+        </p>
+      </GuideSection>
+    </>
+  );
+}
+
+function GuideSection({
+  title,
+  children,
+}: {
+  title: string;
+  children: ReactNode;
+}) {
+  return (
+    <section>
+      <h3 className="border-b border-neutral-200 pb-2 text-sm font-semibold text-neutral-950">
+        {title}
+      </h3>
+      <div className="mt-3 space-y-3">{children}</div>
+    </section>
   );
 }
 
@@ -288,11 +434,11 @@ function CampaignCard({ campaign }: { campaign: CampaignData }) {
   const primaryLabel = campaign.applicationId ? "Submit clip" : "Campaign info";
 
   return (
-    <article className="flex h-full flex-col rounded-2xl border border-neutral-200 bg-neutral-50 p-5 transition hover:border-neutral-300 hover:bg-white">
+    <article className="flex h-full flex-col rounded-2xl border border-neutral-200 bg-neutral-50 p-4 transition hover:border-neutral-300 hover:bg-white md:p-5">
       <div className="flex items-start gap-3">
         <CampaignAvatar name={campaign.brandName || campaign.name} imageUrl={campaign.bannerUrl} size="md" />
         <div className="min-w-0 flex-1">
-          <h3 className="line-clamp-2 text-lg font-semibold leading-tight tracking-normal text-neutral-950">
+          <h3 className="line-clamp-2 text-base font-semibold leading-tight tracking-normal text-neutral-950 md:text-lg">
             {campaign.name}
           </h3>
           <div className="mt-2 flex flex-wrap items-center gap-1.5">
@@ -308,7 +454,7 @@ function CampaignCard({ campaign }: { campaign: CampaignData }) {
 
       <p className="mt-5 text-xs font-medium text-neutral-500">Payout</p>
       <div className="mt-1 flex items-baseline gap-1">
-        <span className="text-3xl font-semibold tracking-normal text-neutral-950">
+        <span className="text-2xl font-semibold tracking-normal text-neutral-950 md:text-3xl">
           ${campaign.rewardRate.toFixed(1)}
         </span>
         <span className="text-sm text-neutral-500">/1K views</span>

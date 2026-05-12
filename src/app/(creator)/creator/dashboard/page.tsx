@@ -39,7 +39,7 @@ export default async function DashboardPage() {
     header.creatorProfile.displayName;
 
   return (
-    <div className="w-full space-y-8 px-6 py-8">
+    <div className="w-full space-y-6 md:space-y-8 md:px-6 md:py-8">
       <CreatorPageHeader
         eyebrow="Creator home"
         title={`Good to see you, ${firstName}`}

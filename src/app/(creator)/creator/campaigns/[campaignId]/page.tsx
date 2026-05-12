@@ -163,7 +163,7 @@ export default async function CampaignDetailPage({
   const projectedEarned = totalProjectedEarnings(mySubmissions);
 
   return (
-    <div className="w-full space-y-8 px-6 py-8">
+    <div className="w-full space-y-6 md:space-y-8 md:px-6 md:py-8">
       <div className="flex items-center justify-between gap-3">
         <Link
           href="/creator/campaigns"
@@ -184,7 +184,7 @@ export default async function CampaignDetailPage({
           <div className="flex min-w-0 items-start gap-4">
             <CampaignAvatar name={campaign.name} imageUrl={campaign.bannerUrl} size="lg" />
             <div className="min-w-0">
-              <h1 className="text-3xl font-bold tracking-normal text-neutral-950">
+              <h1 className="break-words text-2xl font-bold tracking-normal text-neutral-950 md:text-3xl">
                 {campaign.name}
               </h1>
               <div className="mt-2 flex flex-wrap items-center gap-2">

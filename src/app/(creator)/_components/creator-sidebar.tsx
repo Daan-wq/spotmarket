@@ -1,35 +1,19 @@
 "use client";
 
-import type { ComponentType, ReactNode } from "react";
+import type { ReactNode } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { motion } from "motion/react";
 import { Search } from "lucide-react";
 import { AnimateIcon } from "@/components/animate-ui/icons/icon";
-import { CreditCard } from "@/components/animate-ui/icons/credit-card";
-import { GraduationCap } from "@/components/animate-ui/icons/graduation-cap";
-import { Megaphone } from "@/components/animate-ui/icons/megaphone";
-import { Video } from "@/components/animate-ui/icons/video";
-import { ChartSpline } from "@/components/animate-ui/icons/chart-spline";
-import { Users } from "@/components/animate-ui/icons/users";
 import { Logo } from "@/components/shared/logo";
 import { cn } from "@/lib/cn";
+import { CREATOR_NAV_ITEMS } from "./creator-nav-items";
 
 interface CreatorSidebarProps {
   identitySlot: ReactNode;
   balanceSlot: ReactNode;
 }
-
-type NavIcon = ComponentType<{ className?: string; strokeWidth?: number }>;
-
-const NAV: Array<{ href: string; label: string; icon: NavIcon }> = [
-  { href: "/creator/campaigns", label: "Campaigns", icon: Megaphone },
-  { href: "/creator/connections", label: "Accounts", icon: ChartSpline },
-  { href: "/creator/videos", label: "My Clips", icon: Video },
-  { href: "/creator/payouts", label: "Payments", icon: CreditCard },
-  { href: "/creator/course", label: "Course", icon: GraduationCap },
-  { href: "/creator/referral", label: "Referral", icon: Users },
-];
 
 export function CreatorSidebar({ identitySlot, balanceSlot }: CreatorSidebarProps) {
   const pathname = usePathname();
@@ -63,7 +47,7 @@ export function CreatorSidebar({ identitySlot, balanceSlot }: CreatorSidebarProp
       </label>
 
       <nav className="flex-1 space-y-1 overflow-y-auto pr-1">
-        {NAV.map((item) => {
+        {CREATOR_NAV_ITEMS.map((item) => {
           const active = isActive(item.href);
           const Icon = item.icon;
           return (

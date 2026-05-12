@@ -65,19 +65,19 @@ export function PaymentsTabs({
         </div>
       ) : null}
 
-      <section className="rounded-2xl border border-neutral-200 bg-white p-5 md:p-6">
+      <section className="rounded-2xl border border-neutral-200 bg-white p-4 md:p-6">
         <div className="mb-5 flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
           <CreatorSectionHeader
             title="Payment workspace"
             description={`${paymentFocus}. Paid out: $${totalPaid.toFixed(2)}.`}
           />
-          <div className="inline-flex rounded-xl border border-neutral-200 bg-neutral-50 p-1">
+          <div className="inline-flex w-full rounded-xl border border-neutral-200 bg-neutral-50 p-1 md:w-auto">
             {TAB_ITEMS.map((item) => (
               <button
                 key={item.key}
                 type="button"
                 onClick={() => handleChange(item.key)}
-                className={`h-10 rounded-lg px-4 text-sm font-semibold transition ${
+                className={`h-10 flex-1 rounded-lg px-4 text-sm font-semibold transition md:flex-none ${
                   tab === item.key ? "bg-white text-neutral-950 shadow-sm" : "text-neutral-500 hover:text-neutral-950"
                 }`}
               >

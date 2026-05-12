@@ -119,12 +119,12 @@ export function AccountsWorkspace({
 
   return (
     <div
-      className="rounded-lg border"
+      className="overflow-hidden rounded-2xl border"
       style={{ background: "var(--bg-card)", borderColor: "var(--border)" }}
     >
       {/* Row 1: Scope tabs + Connect */}
       <div
-        className="flex items-center justify-between gap-3 border-b px-5 py-3 flex-wrap"
+        className="flex flex-col gap-3 border-b px-4 py-4 md:flex-row md:items-center md:justify-between md:px-5 md:py-3"
         style={{ borderColor: "var(--border)" }}
       >
         <ScopeTabs
@@ -137,7 +137,7 @@ export function AccountsWorkspace({
 
       {/* Row 2: Account chips (hidden when scope=all) */}
       {scope !== "all" ? (
-        <div className="border-b px-5 py-2" style={{ borderColor: "var(--border)" }}>
+        <div className="border-b px-4 py-3 md:px-5 md:py-2" style={{ borderColor: "var(--border)" }}>
           {activePlatformAccounts.length > 0 ? (
             <AccountChipsRow
               accounts={activePlatformAccounts}
@@ -157,10 +157,10 @@ export function AccountsWorkspace({
 
       {/* Row 4: Sub-tabs + TimeRangeSelector */}
       <div
-        className="flex items-center justify-between gap-3 border-b px-5 flex-wrap"
+        className="flex flex-col gap-3 border-b px-4 py-3 md:flex-row md:items-center md:justify-between md:px-5 md:py-0"
         style={{ borderColor: "var(--border)" }}
       >
-        <div className="flex gap-0.5 overflow-x-auto" role="tablist">
+        <div className="flex w-full gap-0.5 overflow-x-auto md:w-auto" role="tablist">
           {visibleSubTabs.map((tab) => {
             const isActive = tab === subTab;
             return (
@@ -170,7 +170,7 @@ export function AccountsWorkspace({
                 role="tab"
                 aria-selected={isActive}
                 onClick={() => handleSubTabChange(tab)}
-                className="text-sm font-medium px-4 py-2.5 transition-colors whitespace-nowrap"
+                className="whitespace-nowrap px-4 py-2.5 text-sm font-medium transition-colors"
                 style={{
                   color: isActive ? "var(--text-primary)" : "var(--text-secondary)",
                   borderBottom: isActive ? "2px solid var(--accent)" : "2px solid transparent",
@@ -182,13 +182,13 @@ export function AccountsWorkspace({
             );
           })}
         </div>
-        <div className="py-2 shrink-0">
+        <div className="shrink-0 md:py-2">
           <TimeRangeSelector value={rangeKey} />
         </div>
       </div>
 
       {/* Row 5: Sub-tab body */}
-      <div className="px-5 py-5">{body}</div>
+      <div className="px-4 py-4 md:px-5 md:py-5">{body}</div>
     </div>
   );
 }

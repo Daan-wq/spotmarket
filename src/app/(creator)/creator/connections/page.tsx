@@ -21,7 +21,7 @@ export default async function CreatorConnectionsPage({ searchParams }: PageProps
   if (!header.creatorProfile) throw new Error("Creator profile not found");
 
   return (
-    <div className="w-full px-6 py-8">
+    <div className="w-full md:px-6 md:py-8">
       <AccountsAnalyticsWorkspace
         mode="creator"
         basePath="/creator/connections"

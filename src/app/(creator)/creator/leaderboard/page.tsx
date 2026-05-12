@@ -73,10 +73,10 @@ export default async function LeaderboardPage() {
   };
 
   return (
-    <div className="p-6 w-full">
+    <div className="w-full md:p-6">
       {/* Personal Stats Card */}
       <div
-        className="rounded-xl p-6 mb-8 text-center"
+        className="mb-6 rounded-xl p-4 text-center md:mb-8 md:p-6"
         style={{ background: "var(--bg-card)", border: "1px solid var(--border-default)" }}
       >
         <div
@@ -116,7 +116,7 @@ export default async function LeaderboardPage() {
       </div>
 
       {/* Three Column Leaderboard */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-3 md:gap-6">
         <LeaderboardColumn title="Today" entries={today} currentUserId={user?.id} />
         <LeaderboardColumn title="Last 7 Days" entries={week} currentUserId={user?.id} />
         <LeaderboardColumn title="All-Time" entries={allTime} currentUserId={user?.id} />

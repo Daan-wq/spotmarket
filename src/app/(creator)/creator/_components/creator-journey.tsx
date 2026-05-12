@@ -15,11 +15,11 @@ export function CreatorPageHeader({
     <header className="flex flex-col gap-5 md:flex-row md:items-start md:justify-between">
       <div className="max-w-3xl">
         {eyebrow ? (
-          <p className="mb-2 text-xs font-semibold uppercase tracking-[0.14em] text-neutral-400">
+          <p className="mb-2 text-xs font-semibold uppercase text-neutral-400 md:tracking-[0.14em]">
             {eyebrow}
           </p>
         ) : null}
-        <h1 className="text-[32px] font-semibold leading-tight tracking-normal text-neutral-950 md:text-[36px]">
+        <h1 className="text-[26px] font-semibold leading-tight tracking-normal text-neutral-950 md:text-[36px]">
           {title}
         </h1>
         {description ? (
@@ -72,9 +72,9 @@ export function SoftStat({
   detail?: string;
 }) {
   return (
-    <div className="rounded-2xl border border-neutral-200 bg-neutral-50 p-5">
+    <div className="rounded-2xl border border-neutral-200 bg-neutral-50 p-4 md:p-5">
       <p className="text-sm text-neutral-500">{label}</p>
-      <p className="mt-1 text-3xl font-semibold tracking-normal text-neutral-950">
+      <p className="mt-1 text-2xl font-semibold tracking-normal text-neutral-950 md:text-3xl">
         {value}
       </p>
       {detail ? <p className="mt-1 text-xs text-neutral-500">{detail}</p> : null}

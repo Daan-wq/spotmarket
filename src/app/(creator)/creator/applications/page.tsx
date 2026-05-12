@@ -30,14 +30,14 @@ export default async function ApplicationsPage() {
   };
 
   return (
-    <div className="p-6">
-      <h1 className="text-3xl font-bold mb-6" style={{ color: "var(--text-primary)" }}>
+    <div className="w-full space-y-5 md:p-6">
+      <h1 className="text-2xl font-bold md:text-3xl" style={{ color: "var(--text-primary)" }}>
         My Applications
       </h1>
 
       {applications.length === 0 ? (
         <div
-          className="rounded-lg p-12 text-center border"
+          className="rounded-2xl p-8 text-center border md:p-12"
           style={{
             background: "var(--bg-card)",
             borderColor: "var(--border)",
@@ -55,7 +55,8 @@ export default async function ApplicationsPage() {
             borderColor: "var(--border)",
           }}
         >
-          <table className="w-full text-sm">
+          <div className="hidden overflow-x-auto md:block">
+            <table className="w-full text-sm">
             <thead
               style={{
                 borderBottomColor: "var(--border)",
@@ -110,7 +111,61 @@ export default async function ApplicationsPage() {
                 </tr>
               ))}
             </tbody>
-          </table>
+            </table>
+          </div>
+
+          <div className="space-y-3 p-3 md:hidden">
+            {applications.map((app) => (
+              <article
+                key={app.id}
+                className="rounded-2xl border p-4"
+                style={{ borderColor: "var(--border)", background: "var(--bg-secondary)" }}
+              >
+                <div className="flex items-start justify-between gap-3">
+                  <h2
+                    className="min-w-0 break-words text-base font-semibold"
+                    style={{ color: "var(--text-primary)" }}
+                  >
+                    {app.campaign.name}
+                  </h2>
+                  <span
+                    className="shrink-0 rounded-full px-2.5 py-1 text-xs font-medium"
+                    style={{
+                      color: getStatusColor(app.status),
+                      backgroundColor: `${getStatusColor(app.status)}20`,
+                    }}
+                  >
+                    {app.status.charAt(0).toUpperCase() + app.status.slice(1)}
+                  </span>
+                </div>
+                <div className="mt-4 grid grid-cols-2 gap-3 text-sm">
+                  <div>
+                    <p className="text-xs" style={{ color: "var(--text-muted)" }}>
+                      Earned
+                    </p>
+                    <p className="font-semibold" style={{ color: "var(--text-primary)" }}>
+                      ${(app.earnedAmount / 100).toFixed(2)}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-xs" style={{ color: "var(--text-muted)" }}>
+                      Applied
+                    </p>
+                    <p className="font-semibold" style={{ color: "var(--text-primary)" }}>
+                      {new Date(app.appliedAt).toLocaleDateString()}
+                    </p>
+                  </div>
+                </div>
+                <Link
+                  href={`/creator/applications/${app.id}`}
+                  className="mt-4 inline-flex h-10 w-full items-center justify-center rounded-xl text-sm font-semibold"
+                  style={{ background: "var(--primary)", color: "#fff" }}
+                >
+                  View
+                </Link>
+              </article>
+            ))}
+          </div>
         </div>
       )}
     </div>

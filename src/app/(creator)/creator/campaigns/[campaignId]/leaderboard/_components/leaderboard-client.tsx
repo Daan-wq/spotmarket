@@ -106,7 +106,8 @@ export function CampaignLeaderboardClient({ campaignId }: { campaignId: string }
           </p>
         </div>
       ) : (
-        <table className="w-full text-sm">
+        <div className="overflow-x-auto">
+        <table className="w-full min-w-[760px] text-sm">
           <thead>
             <tr
               style={{
@@ -186,6 +187,7 @@ export function CampaignLeaderboardClient({ campaignId }: { campaignId: string }
             ))}
           </tbody>
         </table>
+        </div>
       )}
     </div>
   );

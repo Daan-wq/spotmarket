@@ -207,7 +207,17 @@ export async function pollSubmissions(opts: RunOptions): Promise<PollResult> {
   };
 }
 
-async function emitFlag(submissionId: string, flag: FlagDraft): Promise<void> {
+export async function emitFlag(submissionId: string, flag: FlagDraft): Promise<void> {
+  const existingOpenSignal = await prisma.submissionSignal.findFirst({
+    where: {
+      submissionId,
+      type: flag.type,
+      resolvedAt: null,
+    },
+    select: { id: true },
+  });
+  if (existingOpenSignal) return;
+
   const signal = await prisma.submissionSignal.create({
     data: {
       submissionId,

@@ -80,7 +80,7 @@ export default async function PaymentsPage() {
   );
 
   return (
-    <div className="w-full space-y-8 px-6 py-8">
+    <div className="w-full space-y-6 md:space-y-8 md:px-6 md:py-8">
       <CreatorPageHeader
         eyebrow="Payments"
         title="Payments"
@@ -138,13 +138,13 @@ function OverviewTab({
 
   return (
     <div className="space-y-5">
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
+      <div className="grid grid-cols-2 gap-3 md:grid-cols-2 md:gap-4 xl:grid-cols-4">
         {cards.map((card) => (
           <SoftStat key={card.label} label={card.label} value={card.value} detail={card.detail} />
         ))}
       </div>
 
-      <section className="rounded-2xl border border-neutral-200 bg-white p-5">
+      <section className="rounded-2xl border border-neutral-200 bg-white p-4 md:p-5">
         <CreatorSectionHeader
           title="Earnings by campaign"
           description="Approved clip earnings grouped by campaign."
@@ -156,8 +156,9 @@ function OverviewTab({
             primaryCta={{ label: "Browse campaigns", href: "/creator/campaigns" }}
           />
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
+          <>
+            <div className="hidden overflow-x-auto md:block">
+              <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-neutral-200 text-neutral-500">
                   <th className="px-5 py-2 text-left text-[11px] font-medium uppercase tracking-wide">Campaign</th>
@@ -178,8 +179,39 @@ function OverviewTab({
                   </tr>
                 ))}
               </tbody>
-            </table>
-          </div>
+              </table>
+            </div>
+            <div className="space-y-3 md:hidden">
+              {earningsByCampaign.map((row) => (
+                <div
+                  key={row.campaignId}
+                  className="rounded-2xl border border-neutral-200 bg-neutral-50 p-4"
+                >
+                  <p className="text-sm font-semibold text-neutral-950">
+                    {row.campaignName}
+                  </p>
+                  <div className="mt-3 grid grid-cols-3 gap-2 text-sm">
+                    <div>
+                      <p className="text-xs text-neutral-500">Clips</p>
+                      <p className="mt-1 font-semibold text-neutral-950">{row.count}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-neutral-500">Views</p>
+                      <p className="mt-1 font-semibold text-neutral-950">
+                        {row.totalViews.toLocaleString()}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-neutral-500">Earned</p>
+                      <p className="mt-1 font-semibold text-neutral-950">
+                        ${row.totalEarned.toFixed(2)}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </>
         )}
       </section>
     </div>
@@ -209,7 +241,12 @@ function HistoryTab({
 
   return (
     <div className="overflow-hidden rounded-2xl border border-neutral-200 bg-white">
-      <table className="w-full text-sm">
+      <div className="space-y-3 p-4 md:hidden">
+        {payouts.map((p) => (
+          <PayoutHistoryCard key={p.id} payout={p} />
+        ))}
+      </div>
+      <table className="hidden w-full text-sm md:table">
         <thead>
           <tr className="border-b border-neutral-200 bg-neutral-50 text-neutral-500">
             <th className="px-5 py-2 text-left text-[11px] font-medium uppercase tracking-wide">Date</th>
@@ -242,6 +279,48 @@ function HistoryTab({
         </tbody>
       </table>
     </div>
+  );
+}
+
+function PayoutHistoryCard({
+  payout,
+}: {
+  payout: {
+    amount: { toString(): string } | number;
+    type: string;
+    status: string;
+    paymentMethod: string | null;
+    createdAt: Date;
+  };
+}) {
+  return (
+    <article className="rounded-2xl border border-neutral-200 bg-neutral-50 p-4">
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <p className="text-xs text-neutral-500">
+            {new Date(payout.createdAt).toLocaleDateString()}
+          </p>
+          <p className="mt-1 text-xl font-semibold text-neutral-950">
+            ${Number(payout.amount).toFixed(2)}
+          </p>
+        </div>
+        <Badge variant={payoutBadge(payout.status)}>{payout.status}</Badge>
+      </div>
+      <div className="mt-4 grid grid-cols-2 gap-3 text-sm">
+        <div>
+          <p className="text-xs text-neutral-500">Type</p>
+          <p className="mt-1 font-medium text-neutral-950">
+            {payout.type.charAt(0).toUpperCase() + payout.type.slice(1)}
+          </p>
+        </div>
+        <div>
+          <p className="text-xs text-neutral-500">Method</p>
+          <p className="mt-1 font-medium text-neutral-950">
+            {payout.paymentMethod || "-"}
+          </p>
+        </div>
+      </div>
+    </article>
   );
 }
 

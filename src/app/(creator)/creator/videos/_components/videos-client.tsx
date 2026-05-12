@@ -25,11 +25,15 @@ export function VideosClient({
   const hasUnsettled = videos.some((v) => v.status !== "APPROVED");
 
   return (
-    <div className="w-full space-y-8 px-6 py-8">
-      <CreatorPageHeader eyebrow="Submitted clips" title="Clips" />
+    <div className="w-full space-y-6 md:space-y-8 md:px-6 md:py-8">
+      <CreatorPageHeader
+        eyebrow="Submitted clips"
+        title="My Clips"
+        description="Manage your clips and track performance"
+      />
 
       <section>
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+        <div className="grid grid-cols-2 gap-3 md:grid-cols-3 md:gap-4">
           <SoftStat
             label="Total clips"
             value={videos.length.toString()}
@@ -40,14 +44,16 @@ export function VideosClient({
             value={totalViews.toLocaleString()}
             detail="Tracked or claimed"
           />
-          <EarningsCard
-            amount={totalEarnedProjected}
-            disclaimer={
-              hasUnsettled
-                ? "Posts have to be accepted for the earnings to enter the wallet."
-                : null
-            }
-          />
+          <div className="col-span-2 md:col-span-1">
+            <EarningsCard
+              amount={totalEarnedProjected}
+              disclaimer={
+                hasUnsettled
+                  ? "Posts have to be accepted for the earnings to enter the wallet."
+                  : null
+              }
+            />
+          </div>
         </div>
 
         <div className="mt-6">

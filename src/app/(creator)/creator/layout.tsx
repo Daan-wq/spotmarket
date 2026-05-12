@@ -9,6 +9,7 @@ import {
   CreatorIdentity,
   CreatorIdentitySkeleton,
 } from "../_components/creator-identity";
+import { MobileCreatorChrome } from "../_components/mobile-creator-chrome";
 import { ScopeErrorDialog } from "@/components/auth/scope-error-dialog";
 import { DashboardShell } from "@/components/layout/dashboard-shell";
 
@@ -30,6 +31,20 @@ export default async function CreatorLayout({
       <DashboardShell
         sidebar={
           <CreatorSidebar
+            identitySlot={
+              <Suspense fallback={<CreatorIdentitySkeleton />}>
+                <CreatorIdentity supabaseId={supabaseId} />
+              </Suspense>
+            }
+            balanceSlot={
+              <Suspense fallback={<BalanceSkeleton />}>
+                <BalanceWidget supabaseId={supabaseId} />
+              </Suspense>
+            }
+          />
+        }
+        mobileChrome={
+          <MobileCreatorChrome
             identitySlot={
               <Suspense fallback={<CreatorIdentitySkeleton />}>
                 <CreatorIdentity supabaseId={supabaseId} />

@@ -62,7 +62,7 @@ export default async function CoursePlatformPage({
   const lessonSlug = Array.isArray(sp.lesson) ? sp.lesson[0] : sp.lesson ?? null;
 
   return (
-    <div className="p-6">
+    <div className="w-full md:p-6">
       <div className="flex gap-8">
         <div className="min-w-0 flex-1">
           <PlatformTabs active={platform} overviews={overviews} />
@@ -73,7 +73,9 @@ export default async function CoursePlatformPage({
             initialLessonSlug={lessonSlug}
           />
         </div>
-        <ProgressRail overviews={overviews} totalBadgeCount={badgeCount} />
+        <div className="hidden shrink-0 lg:block">
+          <ProgressRail overviews={overviews} totalBadgeCount={badgeCount} />
+        </div>
       </div>
     </div>
   );
