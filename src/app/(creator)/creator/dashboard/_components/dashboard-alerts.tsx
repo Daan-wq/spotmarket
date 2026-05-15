@@ -22,7 +22,7 @@ export function DashboardAlerts({
         key="connect"
         tone="warning"
         title="Connect a social account to start earning"
-        description="We need an OAuth-verified account to track your views and match clips to campaigns."
+        description="We need a connected account to track your views and match clips to campaigns."
         cta={{ label: "Connect now", href: "/creator/connections" }}
       />,
     );

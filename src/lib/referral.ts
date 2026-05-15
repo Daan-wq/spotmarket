@@ -8,6 +8,11 @@ interface ReferralSplitResult {
   referrerId: string | null;
 }
 
+export function normalizeReferralCode(value: string | null | undefined): string | undefined {
+  const code = value?.trim().toUpperCase();
+  return code || undefined;
+}
+
 /**
  * Calculate referral bonus for an approved submission.
  *

@@ -5,7 +5,6 @@ import { BioVerifyCard } from "./bio-verify-card";
 export function FacebookConnectButton() {
   return (
     <BioVerifyCard
-      platform="facebook"
       brand={{ name: "Facebook Page", color: "#1877F2" }}
       oauthHref="/api/auth/facebook"
       oauthAvailable={true}

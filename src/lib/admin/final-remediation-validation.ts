@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { isoDate, optionalIsoDate } from "@/lib/admin/agency-api";
 
-const platformValues = ["INSTAGRAM", "TIKTOK", "YOUTUBE_SHORTS", "FACEBOOK", "X", "BOTH"] as const;
+const platformValues = ["INSTAGRAM", "TIKTOK", "YOUTUBE_SHORTS", "FACEBOOK", "X"] as const;
 
 export const pricingPackageSchema = z.object({
   name: z.string().min(1).max(160),

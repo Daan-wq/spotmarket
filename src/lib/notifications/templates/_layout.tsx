@@ -13,7 +13,10 @@ import {
   Text,
 } from "@react-email/components";
 
-const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? "https://app.clipprofit.com";
+const APP_URL =
+  process.env.NEXT_PUBLIC_APP_URL_NL ??
+  process.env.NEXT_PUBLIC_APP_URL ??
+  "https://app.clipprofit.nl";
 
 export function EmailShell({
   preview,

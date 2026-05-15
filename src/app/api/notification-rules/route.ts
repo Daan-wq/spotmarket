@@ -20,7 +20,7 @@ export async function GET() {
     const { userId: supabaseId } = await requireAuth("creator", "admin");
     const user = await prisma.user.findUnique({
       where: { supabaseId },
-      select: { id: true },
+      select: { id: true, role: true },
     });
     if (!user) return NextResponse.json({ error: "User not found" }, { status: 404 });
 
@@ -32,9 +32,14 @@ export async function GET() {
     const merged = NOTIFICATION_TYPES.map((type) => {
       const existing = map.get(type);
       const defaultChannels = (DEFAULT_CHANNELS[type] ?? ["IN_APP"]) as NotificationChannel[];
+      const channels = existing ? (existing.channels as NotificationChannel[]) : defaultChannels;
+      const allowedChannels =
+        user.role === "admin" && type === "SIGNAL_FLAGGED"
+          ? channels
+          : channels.filter((channel) => channel !== "DISCORD");
       return {
         type,
-        channels: existing ? (existing.channels as NotificationChannel[]) : defaultChannels,
+        channels: allowedChannels,
         enabled: existing?.enabled ?? true,
         isDefault: !existing,
       };
@@ -58,7 +63,7 @@ export async function PUT(req: Request) {
     const { userId: supabaseId } = await requireAuth("creator", "admin");
     const user = await prisma.user.findUnique({
       where: { supabaseId },
-      select: { id: true },
+      select: { id: true, role: true },
     });
     if (!user) return NextResponse.json({ error: "User not found" }, { status: 404 });
 
@@ -79,6 +84,9 @@ export async function PUT(req: Request) {
       channels.some((c) => !NOTIFICATION_CHANNELS.includes(c))
     ) {
       return NextResponse.json({ error: "Invalid channels" }, { status: 400 });
+    }
+    if (channels.includes("DISCORD") && !(user.role === "admin" && type === "SIGNAL_FLAGGED")) {
+      return NextResponse.json({ error: "Discord is only available for admin signal alerts" }, { status: 400 });
     }
 
     const rule = await prisma.notificationRule.upsert({

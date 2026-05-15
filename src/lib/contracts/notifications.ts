@@ -28,7 +28,7 @@ export const DEFAULT_CHANNELS: Record<string, NotificationChannel[]> = {
   EARNINGS_CREDITED: ["IN_APP"],
   WITHDRAWAL_PROCESSED: ["IN_APP", "EMAIL"],
   // New (foundation)
-  PERFORMANCE_VIRAL: ["IN_APP", "EMAIL", "DISCORD"],
+  PERFORMANCE_VIRAL: ["IN_APP", "EMAIL"],
   PERFORMANCE_UNDERPERFORM: ["IN_APP"],
   EARNINGS_MILESTONE: ["IN_APP"],
   SIGNAL_FLAGGED: ["IN_APP", "DISCORD"], // admin alert

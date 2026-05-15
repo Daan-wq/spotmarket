@@ -3,6 +3,7 @@
 import type { ReactNode } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { motion } from "motion/react";
 import { Search } from "lucide-react";
 import { AnimateIcon } from "@/components/animate-ui/icons/icon";
@@ -17,6 +18,7 @@ interface CreatorSidebarProps {
 
 export function CreatorSidebar({ identitySlot, balanceSlot }: CreatorSidebarProps) {
   const pathname = usePathname();
+  const t = useTranslations("navigation.creatorNav");
 
   function isActive(href: string) {
     return pathname.startsWith(href);
@@ -31,18 +33,18 @@ export function CreatorSidebar({ identitySlot, balanceSlot }: CreatorSidebarProp
           transition={{ type: "spring", stiffness: 320, damping: 22 }}
           className="origin-left cursor-pointer select-none w-full max-w-full overflow-hidden"
         >
-          <Link href="/creator/dashboard" aria-label="Dashboard" className="block w-full">
+          <Link href="/creator/dashboard" aria-label={t("dashboard")} className="block w-full">
             <Logo variant="light" size="fill" />
           </Link>
         </motion.div>
-        <p className="mt-1 text-xs text-neutral-500">Creator</p>
+        <p className="mt-1 text-xs text-neutral-500">{t("dashboard")}</p>
       </div>
 
       <label className="relative mb-7 block">
         <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-neutral-400" />
         <input
           className="h-11 w-full rounded-xl border border-neutral-200 bg-white pl-10 pr-3 text-sm outline-none placeholder:text-neutral-400 focus:border-neutral-400"
-          placeholder="Search"
+          placeholder={t("search")}
         />
       </label>
 
@@ -62,7 +64,7 @@ export function CreatorSidebar({ identitySlot, balanceSlot }: CreatorSidebarProp
                 )}
               >
                 <Icon className="h-[18px] w-[18px]" strokeWidth={2} />
-                {item.label}
+                {t(item.labelKey)}
               </Link>
             </AnimateIcon>
           );

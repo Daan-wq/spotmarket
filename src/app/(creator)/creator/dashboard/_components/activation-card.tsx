@@ -29,7 +29,7 @@ export function ActivationCard({ activation }: ActivationCardProps) {
       key: "accountConnected",
       label: "Connect a social account",
       description:
-        "OAuth-verified accounts unlock campaigns and let us track your views.",
+        "Connected accounts unlock campaigns and let us track your views.",
       status: activation.accountConnected ? "complete" : "incomplete",
       cta: activation.accountConnected
         ? undefined

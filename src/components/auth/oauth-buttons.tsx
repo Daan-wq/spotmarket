@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useTranslations } from "next-intl";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import { safeRedirectPath } from "@/lib/safe-redirect";
 
@@ -29,14 +30,19 @@ interface OAuthButtonsProps {
 
 export function OAuthButtons({ mode }: OAuthButtonsProps) {
   const [loading, setLoading] = useState<"google" | "discord" | null>(null);
-
-  const label = mode === "signin" ? "Sign in" : "Sign up";
+  const t = useTranslations("auth.oauth");
 
   async function handleOAuth(provider: "google" | "discord") {
     setLoading(provider);
     const supabase = createSupabaseBrowserClient();
     const params = new URLSearchParams(window.location.search);
-    const next = safeRedirectPath(params.get("redirect_url"), "/");
+    const ref = params.get("ref");
+    const signupFallback = mode === "signup"
+      ? ref
+        ? `/onboarding?ref=${encodeURIComponent(ref)}`
+        : "/onboarding"
+      : "/";
+    const next = safeRedirectPath(params.get("redirect_url"), signupFallback);
 
     const options: { redirectTo: string; scopes?: string } = {
       redirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent(next)}`,
@@ -69,7 +75,9 @@ export function OAuthButtons({ mode }: OAuthButtonsProps) {
         onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.opacity = "1"; }}
       >
         <GoogleIcon />
-        {loading === "google" ? "Redirecting..." : `${label} with Google`}
+        {loading === "google"
+          ? t("redirecting")
+          : t(mode === "signin" ? "signInWith" : "signUpWith", { provider: "Google" })}
       </button>
 
       <button
@@ -82,17 +90,21 @@ export function OAuthButtons({ mode }: OAuthButtonsProps) {
         onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.opacity = "1"; }}
       >
         <DiscordIcon />
-        {loading === "discord" ? "Redirecting..." : `${label} with Discord`}
+        {loading === "discord"
+          ? t("redirecting")
+          : t(mode === "signin" ? "signInWith" : "signUpWith", { provider: "Discord" })}
       </button>
     </div>
   );
 }
 
 export function OAuthDivider() {
+  const t = useTranslations("auth.oauth");
+
   return (
     <div className="flex items-center gap-3 my-5">
       <div className="flex-1 h-px" style={{ background: "rgba(255,255,255,0.1)" }} />
-      <span className="text-xs" style={{ color: "var(--text-secondary)" }}>or</span>
+      <span className="text-xs" style={{ color: "var(--text-secondary)" }}>{t("or")}</span>
       <div className="flex-1 h-px" style={{ background: "rgba(255,255,255,0.1)" }} />
     </div>
   );

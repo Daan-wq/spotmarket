@@ -2,6 +2,8 @@
 
 import { useState, useEffect, useRef } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import { useTranslations } from "next-intl";
+import posthog from "posthog-js";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import { Logo } from "@/components/shared/logo";
 import Link from "next/link";
@@ -10,6 +12,8 @@ import { OAuthButtons, OAuthDivider } from "@/components/auth/oauth-buttons";
 export function SignUpForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const t = useTranslations("auth.signUp");
+  const commonT = useTranslations("common");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -58,7 +62,7 @@ export function SignUpForm() {
     setError(null);
 
     if (password !== confirmPassword) {
-      setError("Passwords do not match.");
+      setError(t("passwordMismatch"));
       return;
     }
 
@@ -75,11 +79,15 @@ export function SignUpForm() {
     const data = await res.json();
 
     if (!res.ok) {
-      setError(data.error || "Something went wrong.");
+      setError(data.error || t("fallbackError"));
       setLoading(false);
       return;
     }
 
+    posthog.capture("clipprofit_signup_completed", {
+      has_referral: Boolean(ref),
+      role: "creator",
+    });
     setTicketId(data.ticketId);
     setEmailSent(true);
   }
@@ -100,14 +108,14 @@ export function SignUpForm() {
                 <path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7" />
               </svg>
             </div>
-            <h1 className="text-xl font-semibold mb-2 text-white">Check your email</h1>
+            <h1 className="text-xl font-semibold mb-2 text-white">{t("checkEmailTitle")}</h1>
             <p className="text-sm mb-6" style={{ color: "var(--text-secondary)" }}>
-              We sent a verification link to <span className="text-white font-medium">{email}</span>. Click it to activate your account and get started.
+              {t("checkEmailBody", { email })}
             </p>
             <p className="text-xs" style={{ color: "#d4d4d8" }}>
-              Already verified?{" "}
+              {t("alreadyVerified")}{" "}
               <Link href="/sign-in" className="font-medium text-white hover:underline">
-                Sign in
+                {t("signIn")}
               </Link>
             </p>
           </div>
@@ -125,11 +133,11 @@ export function SignUpForm() {
           </Link>
         </div>
         <div className="rounded-xl p-8" style={{ background: "#111111", border: "1px solid rgba(255,255,255,0.07)" }}>
-          <h1 className="text-xl font-semibold mb-1 text-white">Create account</h1>
+          <h1 className="text-xl font-semibold mb-1 text-white">{t("title")}</h1>
           <p className="text-sm mb-6" style={{ color: "#d4d4d8" }}>
-            Already have an account?{" "}
+            {t("hasAccount")}{" "}
             <Link href="/sign-in" className="font-medium text-white hover:underline">
-              Sign in
+              {t("signIn")}
             </Link>
           </p>
 
@@ -138,7 +146,7 @@ export function SignUpForm() {
 
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-              <label className="block text-sm font-medium mb-1.5" style={{ color: "var(--text-secondary)" }}>Email</label>
+              <label className="block text-sm font-medium mb-1.5" style={{ color: "var(--text-secondary)" }}>{commonT("email")}</label>
               <input
                 type="email"
                 value={email}
@@ -152,7 +160,7 @@ export function SignUpForm() {
             </div>
             <div>
               <label className="block text-sm font-medium mb-1.5" style={{ color: "var(--text-secondary)" }}>
-                Password <span style={{ color: "var(--text-secondary)" }}>(min 6 chars)</span>
+                {commonT("password")} <span style={{ color: "var(--text-secondary)" }}>({t("passwordHint")})</span>
               </label>
               <input
                 type="password"
@@ -167,7 +175,7 @@ export function SignUpForm() {
               />
             </div>
             <div>
-              <label className="block text-sm font-medium mb-1.5" style={{ color: "var(--text-secondary)" }}>Confirm password</label>
+              <label className="block text-sm font-medium mb-1.5" style={{ color: "var(--text-secondary)" }}>{t("confirmPassword")}</label>
               <input
                 type="password"
                 value={confirmPassword}
@@ -195,7 +203,7 @@ export function SignUpForm() {
               onMouseEnter={(e) => { if (!loading) (e.currentTarget as HTMLElement).style.opacity = "0.88"; }}
               onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.opacity = "1"; }}
             >
-              {loading ? "Creating account…" : "Create account"}
+              {loading ? t("submitting") : t("submit")}
             </button>
           </form>
         </div>

@@ -36,7 +36,7 @@ export const UPDATES: UpdateEntry[] = [
   },
   {
     date: "2026-05-03",
-    title: "We now ask before redirecting you to OAuth",
+    title: "We now ask before connecting an account",
     category: "Improved",
     description:
       "Connecting an account opens a short panel explaining exactly what we'll access and what we won't do — before sending you to the platform.",

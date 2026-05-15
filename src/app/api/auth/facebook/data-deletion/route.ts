@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import crypto from "node:crypto";
 import { prisma } from "@/lib/prisma";
+import { buildAppUrl, getAppUrlFromRequest } from "@/lib/app-url";
 
 /**
  * Facebook Data Deletion Request Callback.
@@ -61,7 +62,10 @@ export async function POST(req: NextRequest) {
   const confirmationCode = crypto.randomBytes(16).toString("hex");
 
   return NextResponse.json({
-    url: `https://app.clipprofit.com/api/auth/facebook/data-deletion/status?code=${confirmationCode}`,
+    url: buildAppUrl(
+      `/api/auth/facebook/data-deletion/status?code=${confirmationCode}`,
+      getAppUrlFromRequest(req)
+    ),
     confirmation_code: confirmationCode,
   });
 }

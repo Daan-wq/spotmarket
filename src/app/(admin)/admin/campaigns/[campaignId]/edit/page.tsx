@@ -23,8 +23,30 @@ export default async function AdminEditCampaignPage({ params: paramsPromise }: E
     );
   }
 
+  const [brands, pricingTemplates] = await Promise.all([
+    prisma.brand.findMany({
+      orderBy: [{ status: "asc" }, { name: "asc" }],
+      select: { id: true, name: true, status: true },
+      take: 200,
+    }),
+    prisma.pricingPackageTemplate.findMany({
+      where: campaign.pricingTemplateId
+        ? { OR: [{ isActive: true }, { id: campaign.pricingTemplateId }] }
+        : { isActive: true },
+      orderBy: [{ isActive: "desc" }, { sortOrder: "asc" }, { name: "asc" }],
+      select: { id: true, name: true, price: true, currency: true, isActive: true },
+      take: 200,
+    }),
+  ]);
+
   const serialized = JSON.parse(
     JSON.stringify(campaign, (_k, v) => (typeof v === "bigint" ? Number(v) : v))
+  );
+  const brandOptions = JSON.parse(
+    JSON.stringify(brands, (_k, v) => (typeof v === "bigint" ? Number(v) : v))
+  );
+  const pricingTemplateOptions = JSON.parse(
+    JSON.stringify(pricingTemplates, (_k, v) => (typeof v === "bigint" ? Number(v) : v))
   );
 
   return (
@@ -41,6 +63,8 @@ export default async function AdminEditCampaignPage({ params: paramsPromise }: E
       </h1>
       <CampaignEditForm
         campaign={serialized}
+        brands={brandOptions}
+        pricingTemplates={pricingTemplateOptions}
         backUrl="/admin/campaigns"
       />
     </div>

@@ -1,57 +1,14 @@
 import { requireAuth } from "@/lib/auth";
 import { NextResponse } from "next/server";
-import { v2 as cloudinary, type UploadApiResponse } from "cloudinary";
+import { uploadCampaignAssetImage } from "@/lib/supabase/storage";
 
 export const runtime = "nodejs";
 
 const MAX_IMAGE_SIZE = 5 * 1024 * 1024;
 
-function configureCloudinary() {
-  const cloudName = process.env.CLOUDINARY_CLOUD_NAME;
-  const apiKey = process.env.CLOUDINARY_API_KEY;
-  const apiSecret = process.env.CLOUDINARY_API_SECRET;
-
-  if (!cloudName || !apiKey || !apiSecret) {
-    throw new Error("Cloudinary is not configured");
-  }
-
-  cloudinary.config({
-    cloud_name: cloudName,
-    api_key: apiKey,
-    api_secret: apiSecret,
-    secure: true,
-  });
-}
-
-function uploadBuffer(buffer: Buffer, filename: string, contentType: string) {
-  return new Promise<UploadApiResponse>((resolve, reject) => {
-    const stream = cloudinary.uploader.upload_stream(
-      {
-        folder: "clipprofit/campaigns",
-        resource_type: "image",
-        filename_override: filename,
-        use_filename: true,
-        unique_filename: true,
-        overwrite: false,
-        context: { content_type: contentType },
-      },
-      (error, result) => {
-        if (error || !result) {
-          reject(error ?? new Error("Cloudinary upload failed"));
-          return;
-        }
-        resolve(result);
-      },
-    );
-
-    stream.end(buffer);
-  });
-}
-
 export async function POST(req: Request) {
   try {
     await requireAuth("admin");
-    configureCloudinary();
 
     const formData = await req.formData();
     const file = formData.get("file");
@@ -68,13 +25,15 @@ export async function POST(req: Request) {
     }
 
     const arrayBuffer = await file.arrayBuffer();
-    const result = await uploadBuffer(Buffer.from(arrayBuffer), file.name, file.type);
+    const result = await uploadCampaignAssetImage({
+      buffer: Buffer.from(arrayBuffer),
+      filename: file.name,
+      contentType: file.type,
+    });
 
     return NextResponse.json({
-      secureUrl: result.secure_url,
-      publicId: result.public_id,
-      width: result.width,
-      height: result.height,
+      secureUrl: result.publicUrl,
+      publicId: result.path,
     });
   } catch (err) {
     console.error("[POST /api/admin/campaign-assets]", err);

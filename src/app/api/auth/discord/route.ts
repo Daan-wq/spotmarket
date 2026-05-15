@@ -13,7 +13,7 @@ export async function GET(req: NextRequest) {
   const redirectUri = process.env.DISCORD_OAUTH_REDIRECT_URI;
   if (!clientId || !redirectUri) {
     return NextResponse.json(
-      { error: "Discord OAuth not configured" },
+      { error: "Discord account connection is not configured" },
       { status: 500 }
     );
   }

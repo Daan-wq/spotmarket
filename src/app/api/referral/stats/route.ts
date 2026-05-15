@@ -1,8 +1,9 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireAuth } from "@/lib/auth";
+import { buildAppUrl, getAppUrlFromRequest } from "@/lib/app-url";
 
-export async function GET() {
+export async function GET(req: Request) {
   try {
     await requireAuth("creator");
 
@@ -34,15 +35,13 @@ export async function GET() {
       }),
     ]);
 
-    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "https://app.clipprofit.com";
-
     return NextResponse.json({
       totalInvited,
       totalEarnings: parseFloat(user.referralEarnings.toString()),
       pendingEarnings: parseFloat(pendingResult._sum.amount?.toString() ?? "0"),
       thisMonthEarnings: parseFloat(thisMonthResult._sum.amount?.toString() ?? "0"),
       referralCode: user.referralCode,
-      referralUrl: `${baseUrl}/sign-up?ref=${user.referralCode}`,
+      referralUrl: buildAppUrl(`/sign-up?ref=${user.referralCode}`, getAppUrlFromRequest(req)),
     });
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : "Internal error";

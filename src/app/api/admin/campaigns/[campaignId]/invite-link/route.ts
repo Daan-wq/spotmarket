@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireAuth } from "@/lib/auth";
 import { nanoid } from "nanoid";
+import { buildAppUrl, getAppUrlFromRequest } from "@/lib/app-url";
 
 export async function POST(
   req: Request,
@@ -31,12 +32,10 @@ export async function POST(
     },
   });
 
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://app.clipprofit.com";
-
   return NextResponse.json({
     id: link.id,
     token: link.token,
-    url: `${appUrl}/join/invite/${token}`,
+    url: buildAppUrl(`/join/invite/${token}`, getAppUrlFromRequest(req)),
     maxUses: link.maxUses,
     expiresAt: link.expiresAt,
   });

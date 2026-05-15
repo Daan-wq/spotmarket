@@ -58,7 +58,7 @@ export async function GET(request: Request) {
   const user = session.user;
   const provider = user.app_metadata?.provider;
 
-  // Discord OAuth: auto-join guild (must happen now while provider_token is available)
+  // Discord account connection: auto-join guild while provider_token is available.
   if (provider === "discord" && session.provider_token) {
     const discordId = user.user_metadata?.provider_id ?? user.user_metadata?.sub;
     if (discordId) {
@@ -89,5 +89,5 @@ export async function GET(request: Request) {
   }
 
   // New OAuth user → redirect to onboarding
-  return NextResponse.redirect(`${origin}/onboarding`);
+  return NextResponse.redirect(`${origin}${next}`);
 }

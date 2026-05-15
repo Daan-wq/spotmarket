@@ -48,7 +48,11 @@ export default async function SubmissionsPage() {
               cell: (submission) => (
                 <div className="flex flex-col gap-1">
                   <span className="text-xs text-neutral-500">{submission.sourcePlatform?.toLowerCase() ?? "-"}</span>
-                  {submission.sourceMethod ? <Badge variant={submission.sourceMethod === "OAUTH" ? "verified" : "pending"}>{titleCaseEnum(submission.sourceMethod)}</Badge> : null}
+                  {submission.sourceMethod ? (
+                    <Badge variant={submission.sourceMethod === "OAUTH" ? "verified" : "pending"}>
+                      {submission.sourceMethod === "OAUTH" ? "Connected account" : titleCaseEnum(submission.sourceMethod)}
+                    </Badge>
+                  ) : null}
                   {submission.authorHandle ? <span className="text-xs text-neutral-400">@{submission.authorHandle}</span> : null}
                 </div>
               ),

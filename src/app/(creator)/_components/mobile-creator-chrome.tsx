@@ -3,6 +3,7 @@
 import { useEffect, useState, type ReactNode } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { Menu, X } from "lucide-react";
 import { Logo } from "@/components/shared/logo";
 import { cn } from "@/lib/cn";
@@ -22,6 +23,7 @@ export function MobileCreatorChrome({
   balanceSlot,
 }: MobileCreatorChromeProps) {
   const pathname = usePathname();
+  const t = useTranslations("navigation.creatorNav");
   const [open, setOpen] = useState(false);
 
   useEffect(() => {
@@ -39,14 +41,14 @@ export function MobileCreatorChrome({
         <div className="mx-auto flex h-14 w-full max-w-[520px] items-center justify-between rounded-2xl border border-neutral-200 bg-neutral-50 px-3 shadow-[0_10px_24px_rgba(0,0,0,0.04)]">
           <Link
             href="/creator/dashboard"
-            aria-label="Creator dashboard"
+            aria-label={t("dashboard")}
             className="block w-36 max-w-[55vw] overflow-hidden"
           >
             <Logo variant="light" size="fill" />
           </Link>
           <button
             type="button"
-            aria-label="Open creator menu"
+            aria-label={t("openMenu")}
             aria-expanded={open}
             onClick={() => setOpen(true)}
             className="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-neutral-950 text-white shadow-[0_8px_18px_rgba(0,0,0,0.18)] transition hover:bg-neutral-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neutral-950 focus-visible:ring-offset-2"
@@ -60,12 +62,12 @@ export function MobileCreatorChrome({
         <div
           role="dialog"
           aria-modal="true"
-          aria-label="Creator menu"
+          aria-label={t("menu")}
           className="fixed inset-0 z-50 bg-black/35 backdrop-blur-sm"
         >
           <button
             type="button"
-            aria-label="Close creator menu backdrop"
+            aria-label={t("closeMenu")}
             className="absolute inset-0 h-full w-full cursor-default"
             onClick={() => setOpen(false)}
           />
@@ -73,7 +75,7 @@ export function MobileCreatorChrome({
             <div className="flex items-center justify-between border-b border-neutral-200 px-4 py-4">
               <Link
                 href="/creator/dashboard"
-                aria-label="Creator dashboard"
+                aria-label={t("dashboard")}
                 onClick={() => setOpen(false)}
                 className="block w-36 overflow-hidden"
               >
@@ -81,7 +83,7 @@ export function MobileCreatorChrome({
               </Link>
               <button
                 type="button"
-                aria-label="Close creator menu"
+                aria-label={t("closeMenu")}
                 onClick={() => setOpen(false)}
                 className="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-neutral-100 text-neutral-950 transition hover:bg-neutral-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neutral-950"
               >
@@ -107,7 +109,7 @@ export function MobileCreatorChrome({
                       )}
                     >
                       <Icon className="h-[18px] w-[18px]" strokeWidth={2} />
-                      {item.label}
+                      {t(item.labelKey)}
                     </Link>
                   );
                 })}
@@ -127,7 +129,7 @@ export function MobileCreatorChrome({
       ) : null}
 
       <nav
-        aria-label="Primary creator navigation"
+        aria-label={t("menu")}
         className="fixed inset-x-3 bottom-3 z-40 mx-auto grid max-w-[420px] grid-cols-3 gap-1 rounded-2xl border border-neutral-200 bg-white p-1.5 shadow-[0_16px_40px_rgba(0,0,0,0.16)] lg:hidden"
       >
         {CREATOR_BOTTOM_NAV_ITEMS.map((item) => {
@@ -145,7 +147,7 @@ export function MobileCreatorChrome({
               )}
             >
               <Icon className="h-5 w-5" strokeWidth={2} />
-              <span className="leading-none">{item.label}</span>
+              <span className="leading-none">{t(item.labelKey)}</span>
             </Link>
           );
         })}

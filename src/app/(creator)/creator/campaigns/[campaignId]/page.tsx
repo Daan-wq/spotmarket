@@ -17,6 +17,7 @@ import {
   CampaignPlatformRow,
   CampaignStatusBadge,
 } from "@/components/campaigns/campaign-display";
+import { evaluateCampaignJoinEligibility } from "@/lib/campaign-eligibility";
 import {
   SubmittedClipsList,
   type SubmittedClipData,
@@ -71,11 +72,12 @@ export default async function CampaignDetailPage({
     prisma.creatorTikTokConnection.findMany({ where: { creatorProfileId: profile.id } }),
     prisma.creatorFbConnection.findMany({ where: { creatorProfileId: profile.id } }),
   ]);
-  const isVerified =
-    igConnections.some((c) => c.isVerified) ||
-    ytConnections.length > 0 ||
-    ttConnections.length > 0 ||
-    fbConnections.length > 0;
+  const eligibility = evaluateCampaignJoinEligibility(campaign.platforms, {
+    instagram: igConnections.some((c) => c.isVerified),
+    youtube: ytConnections.some((c) => c.isVerified),
+    tiktok: ttConnections.some((c) => c.isVerified),
+    facebook: fbConnections.some((c) => c.isVerified),
+  });
 
   const existingApplication = await prisma.campaignApplication.findFirst({
     where: { campaignId, creatorProfileId: profile.id },
@@ -118,7 +120,7 @@ export default async function CampaignDetailPage({
   const totalBudget = Number(campaign.totalBudget);
   const rewardRate = Number(campaign.creatorCpv) * 1000;
   const hasDiscord = !!user.discordId;
-  const canApply = isVerified && !existingApplication && hasDiscord;
+  const canApply = eligibility.eligible && !existingApplication && hasDiscord;
   const requirementSteps = campaign.requirements
     ? campaign.requirements.split("\n").filter((r) => r.trim())
     : [];
@@ -206,7 +208,8 @@ export default async function CampaignDetailPage({
         canApply={canApply}
         hasApplication={!!existingApplication}
         applicationId={existingApplication?.id}
-        isVerified={isVerified}
+        hasRequiredPlatform={eligibility.eligible}
+        missingPlatformLabels={eligibility.missingPlatformLabels}
         hasDiscord={hasDiscord}
       />
 

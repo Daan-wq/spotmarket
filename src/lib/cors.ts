@@ -2,7 +2,11 @@ import { NextResponse } from "next/server";
 
 const ALLOWED_ORIGINS = [
   process.env.NEXT_PUBLIC_APP_URL,
+  process.env.NEXT_PUBLIC_APP_URL_NL,
+  process.env.NEXT_PUBLIC_APP_URL_EN,
+  "https://app.clipprofit.nl",
   "https://app.clipprofit.com",
+  "https://clipprofit.nl",
   "https://clipprofit.com",
 ].filter(Boolean) as string[];
 

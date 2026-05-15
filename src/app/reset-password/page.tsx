@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { Logo } from "@/components/shared/logo";
 import Link from "next/link";
 
@@ -20,6 +21,7 @@ function EyeIcon({ open }: { open: boolean }) {
 
 export default function ResetPasswordPage() {
   const router = useRouter();
+  const t = useTranslations("auth.reset");
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -31,11 +33,11 @@ export default function ResetPasswordPage() {
     setError(null);
 
     if (password !== confirm) {
-      setError("Passwords do not match.");
+      setError(t("passwordMismatch"));
       return;
     }
     if (password.length < 6) {
-      setError("Password must be at least 6 characters.");
+      setError(t("passwordTooShort"));
       return;
     }
 
@@ -65,12 +67,12 @@ export default function ResetPasswordPage() {
         </div>
 
         <div className="rounded-xl p-8" style={{ background: "var(--dark-card)", border: "1px solid rgba(255,255,255,0.07)" }}>
-          <h1 className="text-xl font-semibold mb-1 text-white">Set new password</h1>
-          <p className="text-sm mb-6" style={{ color: "var(--text-secondary)" }}>Choose a new password for your account.</p>
+          <h1 className="text-xl font-semibold mb-1 text-white">{t("title")}</h1>
+          <p className="text-sm mb-6" style={{ color: "var(--text-secondary)" }}>{t("description")}</p>
 
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-              <label className="block text-sm font-medium mb-1.5" style={{ color: "var(--text-muted)" }}>New password</label>
+              <label className="block text-sm font-medium mb-1.5" style={{ color: "var(--text-muted)" }}>{t("newPassword")}</label>
               <div className="relative">
                 <input
                   type={showPassword ? "text" : "password"}
@@ -90,7 +92,7 @@ export default function ResetPasswordPage() {
               </div>
             </div>
             <div>
-              <label className="block text-sm font-medium mb-1.5" style={{ color: "var(--text-muted)" }}>Confirm password</label>
+              <label className="block text-sm font-medium mb-1.5" style={{ color: "var(--text-muted)" }}>{t("confirmPassword")}</label>
               <div className="relative">
                 <input
                   type={showPassword ? "text" : "password"}
@@ -120,7 +122,7 @@ export default function ResetPasswordPage() {
               onMouseEnter={(e) => { if (!loading) (e.currentTarget as HTMLElement).style.opacity = "0.88"; }}
               onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.opacity = "1"; }}
             >
-              {loading ? "Saving…" : "Set new password"}
+              {loading ? t("submitting") : t("submit")}
             </button>
           </form>
         </div>

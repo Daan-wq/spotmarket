@@ -104,7 +104,7 @@ export async function routeMetric(
         }),
         (c) => (c.igUsername ?? "").toLowerCase(),
       );
-      if (!conn) return failure("NO_CONNECTION", "No verified IG OAuth connection", null);
+      if (!conn) return failure("NO_CONNECTION", "No verified IG account connection", null);
       return await fetchInstagramMetric(conn, parsed, submission.id);
     }
     case "TIKTOK": {
@@ -119,7 +119,7 @@ export async function routeMetric(
         }),
         (c) => (c.username ?? "").toLowerCase(),
       );
-      if (!conn) return failure("NO_CONNECTION", "No verified TT OAuth connection", null);
+      if (!conn) return failure("NO_CONNECTION", "No verified TT account connection", null);
       return await fetchTikTokMetric(conn, parsed, submission.id);
     }
     case "YOUTUBE": {
@@ -132,7 +132,7 @@ export async function routeMetric(
         orderBy: { updatedAt: "desc" },
       });
       if (conns.length === 0) {
-        return failure("NO_CONNECTION", "No verified YT OAuth connection", null);
+        return failure("NO_CONNECTION", "No verified YT account connection", null);
       }
       // YouTube post URLs don't carry the channel handle reliably; use first connection.
       // The fetcher itself can verify ownership via videos.list (channelId match).
@@ -150,7 +150,7 @@ export async function routeMetric(
         }),
         (c) => [(c.pageHandle ?? "").toLowerCase(), (c.pageName ?? "").toLowerCase()].filter(Boolean).join("|"),
       );
-      if (!conn) return failure("NO_CONNECTION", "No verified FB OAuth connection", null);
+      if (!conn) return failure("NO_CONNECTION", "No verified FB account connection", null);
       return await fetchFacebookMetric(conn, parsed, submission.id);
     }
   }

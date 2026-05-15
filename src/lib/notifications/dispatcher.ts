@@ -148,14 +148,20 @@ export async function dispatchNotification(
   data: Record<string, unknown>,
   options: DispatchOptions = {},
 ): Promise<string | null> {
-  const channels = options.channelsOverride ?? (await resolveChannels(userId, type));
-  if (channels.length === 0) return null;
+  const requestedChannels = options.channelsOverride ?? (await resolveChannels(userId, type));
+  if (requestedChannels.length === 0) return null;
 
   const user = await prisma.user.findUnique({
     where: { id: userId },
-    select: { id: true, email: true, discordId: true },
+    select: { id: true, email: true, role: true },
   });
   if (!user) return null;
+
+  const discordAllowed = type === "SIGNAL_FLAGGED" && user.role === "admin";
+  const channels = discordAllowed
+    ? requestedChannels
+    : requestedChannels.filter((channel) => channel !== "DISCORD");
+  if (channels.length === 0) return null;
 
   const wantInApp = channels.includes("IN_APP");
   const wantEmail = channels.includes("EMAIL");
@@ -263,7 +269,7 @@ export async function retryFailedDeliveries(limit = 50): Promise<{
       userId: true,
       type: true,
       data: true,
-      user: { select: { email: true, discordId: true } },
+      user: { select: { email: true, role: true } },
     },
   });
 
@@ -278,7 +284,9 @@ export async function retryFailedDeliveries(limit = 50): Promise<{
 
     const emailFailed =
       delivery.email?.status === "failed" && (delivery.email.attempts ?? 0) < MAX_ATTEMPTS;
+    const discordAllowed = n.type === "SIGNAL_FLAGGED" && n.user?.role === "admin";
     const discordFailed =
+      discordAllowed &&
       delivery.discord?.status === "failed" &&
       (delivery.discord.attempts ?? 0) < MAX_ATTEMPTS;
 

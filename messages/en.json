@@ -1,0 +1,174 @@
+{
+  "metadata": {
+    "title": "ClipProfit - Creator Campaign Marketplace",
+    "description": "Connect casino businesses with social media creators for view-based ad campaigns."
+  },
+  "common": {
+    "back": "Back",
+    "cancel": "Cancel",
+    "continue": "Continue",
+    "email": "Email",
+    "password": "Password",
+    "creator": "Creator",
+    "admin": "Admin"
+  },
+  "auth": {
+    "signIn": {
+      "title": "Welcome back",
+      "noAccount": "No account?",
+      "createOne": "Create one",
+      "forgotPassword": "Forgot password?",
+      "submit": "Sign in",
+      "submitting": "Signing in...",
+      "passwordUpdated": "Password updated. Sign in with your new password.",
+      "callbackFailed": "We could not finish signing you in. Please try again."
+    },
+    "forgot": {
+      "title": "Reset password",
+      "description": "Enter your email and we'll send you a reset link.",
+      "submit": "Send reset link",
+      "submitting": "Sending...",
+      "success": "Check your email - we sent a password reset link.",
+      "back": "Back to sign in"
+    },
+    "signUp": {
+      "title": "Create account",
+      "hasAccount": "Already have an account?",
+      "signIn": "Sign in",
+      "confirmPassword": "Confirm password",
+      "passwordHint": "min 6 chars",
+      "submit": "Create account",
+      "submitting": "Creating account...",
+      "passwordMismatch": "Passwords do not match.",
+      "fallbackError": "Something went wrong.",
+      "checkEmailTitle": "Check your email",
+      "checkEmailBody": "We sent a verification link to {email}. Click it to activate your account and get started.",
+      "alreadyVerified": "Already verified?"
+    },
+    "oauth": {
+      "or": "or",
+      "redirecting": "Redirecting...",
+      "signInWith": "Sign in with {provider}",
+      "signUpWith": "Sign up with {provider}"
+    },
+    "email": {
+      "subject": "Confirm your ClipProfit account",
+      "title": "Confirm your account",
+      "body": "Click the button below to verify your email and activate your ClipProfit account.",
+      "button": "Confirm my account",
+      "footer": "This link expires in 15 minutes. If you did not create a ClipProfit account, you can ignore this email."
+    },
+    "confirm": {
+      "title": "Confirm your account",
+      "body": "Click the button below to verify your email and activate your ClipProfit account.",
+      "button": "Confirm my account",
+      "submitting": "Confirming...",
+      "invalidTitle": "Invalid link",
+      "invalidBody": "This verification link is invalid or has expired.",
+      "signUpAgain": "Sign up again",
+      "failed": "Verification failed. Please try again."
+    },
+    "reset": {
+      "title": "Set new password",
+      "description": "Choose a new password for your account.",
+      "newPassword": "New password",
+      "confirmPassword": "Confirm password",
+      "submit": "Set new password",
+      "submitting": "Saving...",
+      "passwordMismatch": "Passwords do not match.",
+      "passwordTooShort": "Password must be at least 6 characters."
+    },
+    "api": {
+      "invalidInput": "Invalid input",
+      "rateLimited": "Please wait before requesting another verification email.",
+      "alreadyExists": "An account with this email already exists.",
+      "createFailed": "Failed to create account."
+    }
+  },
+  "onboarding": {
+    "page": {
+      "panelTitle": "Almost there. Let's set up your account.",
+      "panelDescription": "Just one step before you can start browsing campaigns and tracking earnings.",
+      "title": "Welcome to ClipProfit",
+      "description": "Just a few quick questions to get you started."
+    },
+    "form": {
+      "steps": ["Source", "Info", "Niche", "Experience", "Done"],
+      "sourceQuestion": "Where did you hear about us?",
+      "sourceOtherPlaceholder": "Tell us where...",
+      "nameLabel": "Your name or page name",
+      "namePlaceholder": "e.g. John or @mypagename",
+      "nicheQuestion": "What niche(s) do you create content for?",
+      "nicheOtherPlaceholder": "Describe your niche...",
+      "experienceQuestion": "What's your content creation experience?",
+      "back": "Back",
+      "next": "Next",
+      "getStarted": "Get started",
+      "submitting": "Setting up...",
+      "submitFailed": "Failed to complete setup",
+      "unknownError": "Something went wrong",
+      "completeTitle": "You're set up",
+      "completeBody": "Two more things unlock your first payout: connecting a social account and joining a campaign. Pick one to start.",
+      "connectAccount": "Connect a social account",
+      "browseCampaigns": "Browse campaigns",
+      "skip": "Skip for now - go to campaigns",
+      "niches": ["Memes", "Sport", "Gaming", "Lifestyle", "Finance", "Tech", "Other"],
+      "sources": ["Google Search", "A friend or colleague", "Instagram", "TikTok", "Discord", "Twitter/X", "YouTube", "Other"],
+      "experienceLevels": [
+        { "value": "none", "label": "No experience", "description": "I'm just getting started" },
+        { "value": "some", "label": "Some experience", "description": "I've made a few videos" },
+        { "value": "experienced", "label": "Experienced", "description": "I create content regularly" },
+        { "value": "professional", "label": "Professional", "description": "This is my full-time job" }
+      ]
+    }
+  },
+  "legal": {
+    "englishOnlyNotice": "These legal documents are currently available in English only."
+  },
+  "unauthorized": {
+    "title": "Access Denied",
+    "description": "You don't have permission to view this page.",
+    "home": "Go home"
+  },
+  "navigation": {
+    "creatorNav": {
+      "campaigns": "Campaigns",
+      "connections": "Accounts",
+      "videos": "My Clips",
+      "payouts": "Payments",
+      "course": "Course",
+      "referral": "Referral",
+      "profile": "Profile",
+      "settings": "Settings",
+      "search": "Search",
+      "signOut": "Sign out",
+      "dashboard": "Creator dashboard",
+      "openMenu": "Open creator menu",
+      "closeMenu": "Close creator menu",
+      "menu": "Creator menu"
+    },
+    "adminNav": {
+      "operate": "Operate",
+      "delivery": "Delivery",
+      "control": "Control",
+      "commandCenter": "Command Center",
+      "campaigns": "Campaigns",
+      "clippers": "Clippers",
+      "production": "Production",
+      "clipReview": "Clip review",
+      "leads": "Leads",
+      "recruitment": "Recruitment",
+      "brands": "Brands",
+      "onboarding": "Onboarding",
+      "payouts": "Payouts",
+      "pricing": "Pricing",
+      "documents": "Documents",
+      "reports": "Reports",
+      "siteAnalytics": "Site analytics",
+      "guides": "Guides",
+      "signals": "Signals",
+      "search": "Search",
+      "signOut": "Log out"
+    }
+  }
+}

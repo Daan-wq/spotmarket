@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { ChevronDown } from "@/components/animate-ui/icons/chevron-down";
 import { LogOut } from "@/components/animate-ui/icons/log-out";
 import { Settings } from "@/components/animate-ui/icons/settings";
@@ -18,6 +19,7 @@ export function CreatorIdentityMenu({
 }) {
   const pathname = usePathname();
   const closeMobileMenu = useCloseMobileMenu();
+  const t = useTranslations("navigation.creatorNav");
 
   return (
     <div className="group relative">
@@ -30,7 +32,7 @@ export function CreatorIdentityMenu({
         </div>
         <div className="min-w-0 flex-1">
           <p className="truncate text-sm font-semibold text-neutral-950">{name}</p>
-          <p className="truncate text-xs text-neutral-500">Creator</p>
+          <p className="truncate text-xs text-neutral-500">{t("dashboard")}</p>
         </div>
         <ChevronDown className="h-4 w-4 text-neutral-400 transition group-focus-within:rotate-180 group-hover:text-neutral-950" animateOnHover />
       </button>
@@ -47,7 +49,7 @@ export function CreatorIdentityMenu({
           )}
         >
           <User className="h-4 w-4" animateOnHover />
-          Profile
+          {t("profile")}
         </Link>
         <Link
           href="/creator/settings"
@@ -60,7 +62,7 @@ export function CreatorIdentityMenu({
           )}
         >
           <Settings className="h-4 w-4" animateOnHover />
-          Settings
+          {t("settings")}
         </Link>
         <form action="/api/auth/signout" method="POST" onSubmit={closeMobileMenu}>
           <button
@@ -68,7 +70,7 @@ export function CreatorIdentityMenu({
             className="flex h-10 w-full items-center gap-3 rounded-xl px-3 text-sm font-medium text-neutral-600 transition hover:bg-neutral-50 hover:text-neutral-950"
           >
             <LogOut className="h-4 w-4" animateOnHover />
-            Sign out
+            {t("signOut")}
           </button>
         </form>
       </div>

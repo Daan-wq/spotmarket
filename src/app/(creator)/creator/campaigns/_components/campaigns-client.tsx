@@ -42,7 +42,7 @@ interface CampaignData {
   totalPaid: number;
   platforms: string[];
   status: string;
-  contentType: string;
+  contentType: string | null;
   niche: string | null;
   brandName: string;
   bannerUrl: string | null;
@@ -87,7 +87,13 @@ export function CampaignsClient({ marketplace, myCampaigns }: CampaignsClientPro
   const filtersActive =
     search.trim().length > 0 || platformFilter !== "all" || typeFilter !== "all";
   const typeOptions = useMemo(() => {
-    const values = Array.from(new Set([...marketplace, ...myCampaigns].map((c) => c.contentType).filter(Boolean)));
+    const values = Array.from(
+      new Set(
+        [...marketplace, ...myCampaigns]
+          .map((c) => c.contentType)
+          .filter((value): value is string => Boolean(value)),
+      ),
+    );
     return [{ value: "all", label: "All types" }, ...values.map((value) => ({ value, label: value }))];
   }, [marketplace, myCampaigns]);
 
@@ -466,9 +472,11 @@ function CampaignCard({ campaign }: { campaign: CampaignData }) {
 
       <div className="mt-5 flex flex-wrap items-center justify-between gap-3">
         <CampaignPlatformRow platforms={campaign.platforms} size={24} />
-        <span className="rounded-full bg-white px-2.5 py-1 text-xs font-medium text-neutral-600 ring-1 ring-neutral-200">
-          {campaign.contentType}
-        </span>
+        {campaign.contentType && campaign.contentType !== "UGC" ? (
+          <span className="rounded-full bg-white px-2.5 py-1 text-xs font-medium text-neutral-600 ring-1 ring-neutral-200">
+            {campaign.contentType}
+          </span>
+        ) : null}
       </div>
 
       <div className="mt-5 flex flex-col gap-2 sm:flex-row">

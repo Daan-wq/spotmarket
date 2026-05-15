@@ -51,7 +51,7 @@ export default async function AdminStatsPage({ searchParams }: PageProps) {
           hint={range.label}
         />
         <KpiCard
-          label="OAuth success rate"
+          label="Account connection success"
           value={`${stats.oauthSuccessRate.value.toFixed(1)}%`}
           trend={stats.oauthSuccessRate.delta}
           tone={stats.oauthSuccessRate.value < 80 ? "warning" : "success"}

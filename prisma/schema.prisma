@@ -542,7 +542,6 @@ enum Platform {
   YOUTUBE_SHORTS
   FACEBOOK
   X
-  BOTH
 }
 
 // ─────────────────────────────────────────
@@ -1183,6 +1182,28 @@ enum WithdrawalStatus {
   SENT
   CONFIRMED
   REJECTED
+}
+
+// SITE USAGE ANALYTICS (PostHog rollups)
+
+model SiteAnalyticsSnapshot {
+  id          String   @id @default(cuid())
+  granularity String
+  segment     String   @default("non_admin")
+  periodStart DateTime
+  periodEnd   DateTime
+  metrics     Json     @default("{}")
+  topPages    Json     @default("[]")
+  referrers   Json     @default("[]")
+  funnel      Json     @default("[]")
+  recordings  Json     @default("[]")
+  syncedAt    DateTime @default(now())
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([granularity, segment, periodStart])
+  @@index([granularity, segment, periodStart])
+  @@index([periodStart])
 }
 
 // ─────────────────────────────────────────

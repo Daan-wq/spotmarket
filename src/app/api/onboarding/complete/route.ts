@@ -4,6 +4,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { nanoid } from "nanoid";
 import { isValidTronAddress } from "@/lib/validation/tron";
+import { normalizeReferralCode } from "@/lib/referral";
 
 const VALID_ROLES = ["creator"] as const;
 
@@ -31,7 +32,7 @@ export async function POST(req: Request) {
 
   const body = await req.json();
   const displayName = (body.displayName as string)?.trim();
-  const refCode = (body.referralCode as string | undefined)?.trim().toUpperCase();
+  const refCode = normalizeReferralCode(body.referralCode as string | undefined);
   const tronsAddress = (body.tronsAddress as string | undefined)?.trim();
   const role = body.role as string | undefined;
   const attributionSource = (body.attributionSource as string | undefined)?.trim();
@@ -55,9 +56,10 @@ export async function POST(req: Request) {
   if (refCode) {
     const referrer = await prisma.user.findUnique({
       where: { referralCode: refCode },
-      select: { id: true, role: true },
+      select: { id: true, role: true, email: true, supabaseId: true },
     });
-    if (referrer && referrer.role === "creator") {
+    const isSelfReferral = referrer?.supabaseId === authUser.id || referrer?.email === authUser.email;
+    if (referrer && referrer.role === "creator" && !isSelfReferral) {
       referredById = referrer.id;
     }
   }

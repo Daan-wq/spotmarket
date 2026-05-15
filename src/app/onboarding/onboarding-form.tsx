@@ -3,6 +3,8 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
+import { useTranslations } from "next-intl";
+import posthog from "posthog-js";
 import { StepIndicator } from "@/components/onboarding/step-indicator";
 
 const NICHES = ["Memes", "Sport", "Gaming", "Lifestyle", "Finance", "Tech", "Other"] as const;
@@ -18,13 +20,6 @@ const ATTRIBUTION_SOURCES = [
   "Other",
 ] as const;
 
-const EXPERIENCE_LEVELS = [
-  { value: "none", label: "No experience", description: "I'm just getting started" },
-  { value: "some", label: "Some experience", description: "I've made a few videos" },
-  { value: "experienced", label: "Experienced", description: "I create content regularly" },
-  { value: "professional", label: "Professional", description: "This is my full-time job" },
-] as const;
-
 interface FormData {
   attributionSource: string;
   attributionOther: string;
@@ -34,13 +29,23 @@ interface FormData {
   experienceLevel: string;
 }
 
-const STEP_LABELS = ["Source", "Info", "Niche", "Experience", "Done"];
-const TOTAL_STEPS = STEP_LABELS.length;
-const FORM_STEPS = STEP_LABELS.length - 1; // last step is the completion screen
+const TOTAL_STEPS = 5;
+const FORM_STEPS = TOTAL_STEPS - 1; // last step is the completion screen
+
+type ExperienceLevelCopy = {
+  value: string;
+  label: string;
+  description: string;
+};
 
 export function OnboardingForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const t = useTranslations("onboarding.form");
+  const stepLabels = t.raw("steps") as string[];
+  const sourceLabels = t.raw("sources") as string[];
+  const nicheLabels = t.raw("niches") as string[];
+  const experienceLevels = t.raw("experienceLevels") as ExperienceLevelCopy[];
   const referralCode = searchParams.get("ref") ?? undefined;
 
   const [step, setStep] = useState(1);
@@ -88,13 +93,20 @@ export function OnboardingForm() {
       });
       if (!res.ok) {
         const data = await res.json();
-        throw new Error(data.error ?? "Failed to complete setup");
+        throw new Error(data.error ?? t("submitFailed"));
       }
+      posthog.capture("clipprofit_onboarding_completed", {
+        attribution_source: attribution || "Unknown",
+        experience_level: form.experienceLevel || "unknown",
+        has_referral: Boolean(referralCode),
+        selected_niche_count: niches.length,
+        role: "creator",
+      });
       // Advance to the completion screen instead of redirecting immediately —
       // gives the user a clear "what next" moment with explicit CTAs.
       setStep(TOTAL_STEPS);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Something went wrong");
+      setError(err instanceof Error ? err.message : t("unknownError"));
     } finally {
       setLoading(false);
     }
@@ -118,14 +130,14 @@ export function OnboardingForm() {
 
   return (
     <div>
-      <StepIndicator currentStep={step} totalSteps={TOTAL_STEPS} labels={STEP_LABELS} />
+      <StepIndicator currentStep={step} totalSteps={TOTAL_STEPS} labels={stepLabels} />
 
       {/* Step 1: Attribution */}
       {step === 1 && (
         <div>
-          <p className="text-sm font-medium mb-4 text-gray-500">Where did you hear about us?</p>
+          <p className="text-sm font-medium mb-4 text-gray-500">{t("sourceQuestion")}</p>
           <div className="space-y-2">
-            {ATTRIBUTION_SOURCES.map((source) => (
+            {ATTRIBUTION_SOURCES.map((source, index) => (
               <button
                 key={source}
                 onClick={() => setForm({ ...form, attributionSource: source, attributionOther: "" })}
@@ -136,7 +148,7 @@ export function OnboardingForm() {
                   color: form.attributionSource === source ? "var(--accent)" : "#374151",
                 }}
               >
-                {source}
+                {sourceLabels[index] ?? source}
               </button>
             ))}
           </div>
@@ -146,7 +158,7 @@ export function OnboardingForm() {
               autoFocus
               value={form.attributionOther}
               onChange={(e) => setForm({ ...form, attributionOther: e.target.value })}
-              placeholder="Tell us where..."
+              placeholder={t("sourceOtherPlaceholder")}
               className={`${inputClass} mt-3`}
               style={inputStyle}
             />
@@ -158,12 +170,12 @@ export function OnboardingForm() {
       {step === 2 && (
         <div className="space-y-4">
           <div>
-            <label className={labelClass}>Your name or page name</label>
+            <label className={labelClass}>{t("nameLabel")}</label>
             <input
               type="text"
               value={form.displayName}
               onChange={(e) => setForm({ ...form, displayName: e.target.value })}
-              placeholder="e.g. John or @mypagename"
+              placeholder={t("namePlaceholder")}
               required
               autoFocus
               className={inputClass}
@@ -176,9 +188,9 @@ export function OnboardingForm() {
       {/* Step 3: Niche Selection */}
       {step === 3 && (
         <div>
-          <p className="text-sm font-medium mb-4 text-gray-500">What niche(s) do you create content for?</p>
+          <p className="text-sm font-medium mb-4 text-gray-500">{t("nicheQuestion")}</p>
           <div className="flex flex-wrap gap-2">
-            {NICHES.map((niche) => {
+            {NICHES.map((niche, index) => {
               const selected = form.niches.includes(niche);
               return (
                 <button
@@ -199,7 +211,7 @@ export function OnboardingForm() {
                     color: selected ? "var(--accent)" : "#374151",
                   }}
                 >
-                  {niche}
+                  {nicheLabels[index] ?? niche}
                 </button>
               );
             })}
@@ -210,7 +222,7 @@ export function OnboardingForm() {
               autoFocus
               value={form.nicheOther}
               onChange={(e) => setForm({ ...form, nicheOther: e.target.value })}
-              placeholder="Describe your niche..."
+              placeholder={t("nicheOtherPlaceholder")}
               className={`${inputClass} mt-4`}
               style={inputStyle}
             />
@@ -222,10 +234,10 @@ export function OnboardingForm() {
       {step === 4 && (
         <div>
           <p className="text-sm font-medium mb-4 text-gray-500">
-            What&apos;s your content creation experience?
+            {t("experienceQuestion")}
           </p>
           <div className="grid grid-cols-2 gap-3">
-            {EXPERIENCE_LEVELS.map((level) => (
+            {experienceLevels.map((level) => (
               <button
                 key={level.value}
                 onClick={() => setForm({ ...form, experienceLevel: level.value })}
@@ -254,10 +266,9 @@ export function OnboardingForm() {
               <polyline points="20 6 9 17 4 12" />
             </svg>
           </div>
-          <h2 className="text-xl font-bold text-gray-900">You&apos;re set up</h2>
+          <h2 className="text-xl font-bold text-gray-900">{t("completeTitle")}</h2>
           <p className="mt-1.5 text-sm text-gray-600 max-w-sm mx-auto">
-            Two more things unlock your first payout: connecting a social
-            account and joining a campaign. Pick one to start.
+            {t("completeBody")}
           </p>
 
           <div className="mt-6 grid gap-2.5">
@@ -266,7 +277,7 @@ export function OnboardingForm() {
               className="block py-3 rounded-xl text-sm font-semibold text-white transition-colors"
               style={{ background: "var(--accent)" }}
             >
-              Connect a social account
+              {t("connectAccount")}
             </Link>
             <Link
               href="/creator/campaigns"
@@ -277,14 +288,14 @@ export function OnboardingForm() {
                 background: "#fff",
               }}
             >
-              Browse campaigns
+              {t("browseCampaigns")}
             </Link>
             <button
               type="button"
               onClick={() => router.push("/creator/campaigns")}
               className="text-xs font-medium text-gray-500 hover:text-gray-700 mt-1"
             >
-              Skip for now — go to campaigns
+              {t("skip")}
             </button>
           </div>
         </div>
@@ -305,7 +316,7 @@ export function OnboardingForm() {
               onClick={() => setStep(step - 1)}
               className="flex-1 py-3 rounded-xl text-sm font-semibold transition-colors cursor-pointer text-gray-600 bg-gray-100 hover:bg-gray-200"
             >
-              Back
+              {t("back")}
             </button>
           )}
           <button
@@ -314,7 +325,7 @@ export function OnboardingForm() {
             className="flex-1 py-3 rounded-xl text-sm font-semibold text-white transition-colors disabled:opacity-40 cursor-pointer"
             style={{ background: "var(--accent)" }}
           >
-            {loading ? "Setting up..." : step === FORM_STEPS ? "Get started" : "Next"}
+            {loading ? t("submitting") : step === FORM_STEPS ? t("getStarted") : t("next")}
           </button>
         </div>
       )}

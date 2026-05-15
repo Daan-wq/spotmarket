@@ -46,7 +46,7 @@ export default async function SettingsPage() {
         year: "numeric",
       }).format(joinedAt)
     : "-";
-  const authProvider = user?.discordId ? "Discord OAuth" : "OAuth";
+  const authProvider = user?.discordId ? "Discord" : "Connected account";
 
   return (
     <div className="w-full space-y-6 md:px-6 md:py-8">
@@ -69,7 +69,7 @@ export default async function SettingsPage() {
         />
         <SoftStat label="Joined" value={joinedLabel} detail="ClipProfit" />
         <SoftStat
-          label="Auth"
+          label="Login"
           value={authProvider}
           detail={user?.discordUsername ?? "Connected"}
         />
@@ -99,7 +99,7 @@ export default async function SettingsPage() {
         <div className="text-sm">
           <Row label="Email" value={user?.email ?? "-"} />
           <Row label="Joined" value={joinedLabel} />
-          <Row label="Auth provider" value={authProvider} />
+          <Row label="Login method" value={authProvider} />
           <Row label="User ID" value={user?.supabaseId ?? "-"} />
         </div>
       </section>

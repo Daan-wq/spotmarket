@@ -2,6 +2,9 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { Button } from "@/components/ui/button";
+import { Dialog } from "@/components/ui/dialog";
+import { buildConnectRequiredMessage } from "@/lib/campaign-eligibility";
 
 interface CampaignDetailClientProps {
   campaignId: string;
@@ -9,7 +12,8 @@ interface CampaignDetailClientProps {
   canApply: boolean;
   hasApplication: boolean;
   applicationId?: string;
-  isVerified: boolean;
+  hasRequiredPlatform: boolean;
+  missingPlatformLabels: string[];
   hasDiscord: boolean;
 }
 
@@ -17,17 +21,24 @@ export function CampaignDetailClient({
   campaignId,
   hasApplication,
   applicationId,
-  isVerified,
+  hasRequiredPlatform,
+  missingPlatformLabels,
   hasDiscord,
 }: CampaignDetailClientProps) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [showConnectDialog, setShowConnectDialog] = useState(false);
   const [resolvedAppId, setResolvedAppId] = useState(applicationId);
   const router = useRouter();
 
   const handleSubmitContent = async () => {
     if (hasApplication && resolvedAppId) {
       router.push(`/creator/applications/${resolvedAppId}/submit`);
+      return;
+    }
+
+    if (!hasRequiredPlatform) {
+      setShowConnectDialog(true);
       return;
     }
 
@@ -53,24 +64,7 @@ export function CampaignDetailClient({
     }
   };
 
-  if (!isVerified) {
-    return (
-      <div className="mb-6 p-4 rounded-xl flex items-center justify-between gap-4" style={{ background: "var(--warning-bg)" }}>
-        <p className="text-sm" style={{ color: "var(--warning-text)" }}>
-          Connect at least one social account (Instagram, YouTube, TikTok, or Facebook) to join campaigns.
-        </p>
-        <a
-          href="/creator/connections"
-          className="shrink-0 px-4 py-2 rounded-lg font-semibold text-sm text-white"
-          style={{ background: "var(--primary)" }}
-        >
-          Connect account
-        </a>
-      </div>
-    );
-  }
-
-  if (!hasDiscord && !hasApplication) {
+  if (hasRequiredPlatform && !hasDiscord && !hasApplication) {
     return (
       <div className="mb-6 p-4 rounded-xl flex items-center justify-between" style={{ background: "var(--accent-bg)", border: "1px solid var(--primary)" }}>
         <p className="text-sm" style={{ color: "var(--primary)" }}>
@@ -86,6 +80,8 @@ export function CampaignDetailClient({
       </div>
     );
   }
+
+  const connectMessage = buildConnectRequiredMessage(missingPlatformLabels);
 
   return (
     <div className="mb-6 space-y-3">
@@ -119,6 +115,31 @@ export function CampaignDetailClient({
           </>
         )}
       </button>
+      <Dialog
+        open={showConnectDialog}
+        onClose={() => setShowConnectDialog(false)}
+        title="Connect account"
+        description={connectMessage}
+        footer={
+          <>
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={() => setShowConnectDialog(false)}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              onClick={() => router.push("/creator/connections")}
+            >
+              Go to accounts
+            </Button>
+          </>
+        }
+      />
     </div>
   );
 }

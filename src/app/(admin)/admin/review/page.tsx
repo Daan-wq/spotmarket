@@ -9,6 +9,8 @@ import SubmissionActions from "../submissions/_components/submission-actions";
 import { prisma } from "@/lib/prisma";
 import { formatDate, titleCaseEnum } from "@/lib/admin/agency-format";
 import { ClipReviewForm } from "./clip-review-form";
+import { resolveThumbnail } from "@/lib/clip-thumbnail";
+import type { ClipMediaType } from "@/lib/instagram-media-type";
 
 export const dynamic = "force-dynamic";
 
@@ -48,6 +50,20 @@ export default async function ReviewPage() {
   const logoMissing = submissions.filter((submission) => submission.logoStatus === "MISSING").length;
   const revisions = submissions.filter((submission) => submission.status === "NEEDS_REVISION").length;
   const flagged = submissions.filter((submission) => submission.status === "FLAGGED").length;
+  const reviewRows = await Promise.all(
+    submissions.map(async (submission) => {
+      const resolved = await resolveThumbnail(submission.postUrl, submission.thumbnailUrl, {
+        creatorId: submission.creator.id,
+        submissionId: submission.id,
+        storedMediaType: submission.mediaType as ClipMediaType | null,
+      });
+
+      return {
+        submission,
+        thumbnailUrl: resolved.thumbnailUrl ?? submission.screenshotUrl,
+      };
+    }),
+  );
 
   return (
     <div className="space-y-9">
@@ -79,7 +95,7 @@ export default async function ReviewPage() {
           />
         ) : (
           <div className="space-y-4">
-            {submissions.map((submission) => {
+            {reviewRows.map(({ submission, thumbnailUrl }) => {
               const latestReview = submission.qcReviews[0] ?? null;
               const canApprove = submission.logoStatus === "PRESENT";
               return (
@@ -121,7 +137,7 @@ export default async function ReviewPage() {
                   <div className="mt-5 grid grid-cols-1 gap-4 xl:grid-cols-[1.3fr_1fr]">
                     <LogoReviewWidget
                       submissionId={submission.id}
-                      thumbnailUrl={submission.screenshotUrl}
+                      thumbnailUrl={thumbnailUrl}
                       postUrl={submission.postUrl}
                       initialStatus={(submission.logoStatus ?? "PENDING") as "PENDING" | "PRESENT" | "MISSING"}
                       initialVerifiedAt={submission.logoVerifiedAt?.toISOString() ?? null}

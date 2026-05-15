@@ -1,0 +1,174 @@
+{
+  "metadata": {
+    "title": "ClipProfit - Campagneplatform voor creators",
+    "description": "Koppel casino bedrijven aan social media creators voor campagnes op basis van views."
+  },
+  "common": {
+    "back": "Terug",
+    "cancel": "Annuleren",
+    "continue": "Doorgaan",
+    "email": "E-mail",
+    "password": "Wachtwoord",
+    "creator": "Creator",
+    "admin": "Admin"
+  },
+  "auth": {
+    "signIn": {
+      "title": "Welkom terug",
+      "noAccount": "Nog geen account?",
+      "createOne": "Maak er een aan",
+      "forgotPassword": "Wachtwoord vergeten?",
+      "submit": "Inloggen",
+      "submitting": "Inloggen...",
+      "passwordUpdated": "Wachtwoord bijgewerkt. Log in met je nieuwe wachtwoord.",
+      "callbackFailed": "We konden het inloggen niet afronden. Probeer het opnieuw."
+    },
+    "forgot": {
+      "title": "Wachtwoord resetten",
+      "description": "Vul je e-mail in, dan sturen we je een resetlink.",
+      "submit": "Resetlink sturen",
+      "submitting": "Versturen...",
+      "success": "Check je e-mail - we hebben een resetlink gestuurd.",
+      "back": "Terug naar inloggen"
+    },
+    "signUp": {
+      "title": "Account aanmaken",
+      "hasAccount": "Heb je al een account?",
+      "signIn": "Inloggen",
+      "confirmPassword": "Bevestig wachtwoord",
+      "passwordHint": "min. 6 tekens",
+      "submit": "Account aanmaken",
+      "submitting": "Account aanmaken...",
+      "passwordMismatch": "Wachtwoorden komen niet overeen.",
+      "fallbackError": "Er ging iets mis.",
+      "checkEmailTitle": "Check je e-mail",
+      "checkEmailBody": "We hebben een verificatielink gestuurd naar {email}. Klik erop om je account te activeren en te starten.",
+      "alreadyVerified": "Al geverifieerd?"
+    },
+    "oauth": {
+      "or": "of",
+      "redirecting": "Doorsturen...",
+      "signInWith": "Inloggen met {provider}",
+      "signUpWith": "Aanmelden met {provider}"
+    },
+    "email": {
+      "subject": "Bevestig je ClipProfit-account",
+      "title": "Bevestig je account",
+      "body": "Klik op de knop hieronder om je e-mail te verifieren en je ClipProfit-account te activeren.",
+      "button": "Bevestig mijn account",
+      "footer": "Deze link verloopt na 15 minuten. Heb je geen ClipProfit-account aangemaakt, dan kun je deze e-mail negeren."
+    },
+    "confirm": {
+      "title": "Bevestig je account",
+      "body": "Klik op de knop hieronder om je e-mail te verifieren en je ClipProfit-account te activeren.",
+      "button": "Bevestig mijn account",
+      "submitting": "Bevestigen...",
+      "invalidTitle": "Ongeldige link",
+      "invalidBody": "Deze verificatielink is ongeldig of verlopen.",
+      "signUpAgain": "Opnieuw aanmelden",
+      "failed": "Verificatie is mislukt. Probeer het opnieuw."
+    },
+    "reset": {
+      "title": "Nieuw wachtwoord instellen",
+      "description": "Kies een nieuw wachtwoord voor je account.",
+      "newPassword": "Nieuw wachtwoord",
+      "confirmPassword": "Bevestig wachtwoord",
+      "submit": "Nieuw wachtwoord instellen",
+      "submitting": "Opslaan...",
+      "passwordMismatch": "Wachtwoorden komen niet overeen.",
+      "passwordTooShort": "Wachtwoord moet minimaal 6 tekens zijn."
+    },
+    "api": {
+      "invalidInput": "Ongeldige invoer",
+      "rateLimited": "Wacht even voordat je nog een verificatie-e-mail aanvraagt.",
+      "alreadyExists": "Er bestaat al een account met dit e-mailadres.",
+      "createFailed": "Account aanmaken is mislukt."
+    }
+  },
+  "onboarding": {
+    "page": {
+      "panelTitle": "Bijna klaar. Laten we je account instellen.",
+      "panelDescription": "Nog een korte stap voordat je campagnes kunt bekijken en verdiensten kunt volgen.",
+      "title": "Welkom bij ClipProfit",
+      "description": "Beantwoord een paar korte vragen zodat je kunt starten."
+    },
+    "form": {
+      "steps": ["Bron", "Info", "Niche", "Ervaring", "Klaar"],
+      "sourceQuestion": "Waar heb je ons gevonden?",
+      "sourceOtherPlaceholder": "Vertel ons waar...",
+      "nameLabel": "Je naam of paginanaam",
+      "namePlaceholder": "bijv. Daan of @mijnpagina",
+      "nicheQuestion": "Voor welke niche(s) maak je content?",
+      "nicheOtherPlaceholder": "Beschrijf je niche...",
+      "experienceQuestion": "Hoeveel ervaring heb je met content maken?",
+      "back": "Terug",
+      "next": "Volgende",
+      "getStarted": "Starten",
+      "submitting": "Instellen...",
+      "submitFailed": "Instellen is mislukt",
+      "unknownError": "Er ging iets mis",
+      "completeTitle": "Je bent klaar",
+      "completeBody": "Nog twee dingen ontgrendelen je eerste uitbetaling: koppel een social account en doe mee aan een campagne. Kies waarmee je wilt starten.",
+      "connectAccount": "Social account koppelen",
+      "browseCampaigns": "Campagnes bekijken",
+      "skip": "Overslaan - naar campagnes",
+      "niches": ["Memes", "Sport", "Gaming", "Lifestyle", "Finance", "Tech", "Anders"],
+      "sources": ["Google Search", "Een vriend of collega", "Instagram", "TikTok", "Discord", "Twitter/X", "YouTube", "Anders"],
+      "experienceLevels": [
+        { "value": "none", "label": "Geen ervaring", "description": "Ik begin net" },
+        { "value": "some", "label": "Wat ervaring", "description": "Ik heb een paar videos gemaakt" },
+        { "value": "experienced", "label": "Ervaren", "description": "Ik maak regelmatig content" },
+        { "value": "professional", "label": "Professioneel", "description": "Dit is mijn fulltime werk" }
+      ]
+    }
+  },
+  "legal": {
+    "englishOnlyNotice": "Deze juridische documenten zijn momenteel alleen beschikbaar in het Engels."
+  },
+  "unauthorized": {
+    "title": "Geen toegang",
+    "description": "Je hebt geen toestemming om deze pagina te bekijken.",
+    "home": "Naar start"
+  },
+  "navigation": {
+    "creatorNav": {
+      "campaigns": "Campagnes",
+      "connections": "Accounts",
+      "videos": "Mijn clips",
+      "payouts": "Betalingen",
+      "course": "Training",
+      "referral": "Referral",
+      "profile": "Profiel",
+      "settings": "Instellingen",
+      "search": "Zoeken",
+      "signOut": "Uitloggen",
+      "dashboard": "Creator dashboard",
+      "openMenu": "Creator menu openen",
+      "closeMenu": "Creator menu sluiten",
+      "menu": "Creator menu"
+    },
+    "adminNav": {
+      "operate": "Operatie",
+      "delivery": "Levering",
+      "control": "Controle",
+      "commandCenter": "Command center",
+      "campaigns": "Campagnes",
+      "clippers": "Clippers",
+      "production": "Productie",
+      "clipReview": "Clipreview",
+      "leads": "Leads",
+      "recruitment": "Recruitment",
+      "brands": "Merken",
+      "onboarding": "Onboarding",
+      "payouts": "Uitbetalingen",
+      "pricing": "Prijzen",
+      "documents": "Documenten",
+      "reports": "Rapportages",
+      "siteAnalytics": "Site analytics",
+      "guides": "Handleidingen",
+      "signals": "Signalen",
+      "search": "Zoeken",
+      "signOut": "Uitloggen"
+    }
+  }
+}

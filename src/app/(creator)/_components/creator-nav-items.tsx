@@ -16,14 +16,15 @@ export type CreatorNavIcon = ComponentType<{
 export const CREATOR_NAV_ITEMS: Array<{
   href: string;
   label: string;
+  labelKey: "campaigns" | "connections" | "videos" | "payouts" | "course" | "referral";
   icon: CreatorNavIcon;
 }> = [
-  { href: "/creator/campaigns", label: "Campaigns", icon: Megaphone },
-  { href: "/creator/connections", label: "Accounts", icon: ChartSpline },
-  { href: "/creator/videos", label: "My Clips", icon: Video },
-  { href: "/creator/payouts", label: "Payments", icon: CreditCard },
-  { href: "/creator/course", label: "Course", icon: GraduationCap },
-  { href: "/creator/referral", label: "Referral", icon: Users },
+  { href: "/creator/campaigns", label: "Campaigns", labelKey: "campaigns", icon: Megaphone },
+  { href: "/creator/connections", label: "Accounts", labelKey: "connections", icon: ChartSpline },
+  { href: "/creator/videos", label: "My Clips", labelKey: "videos", icon: Video },
+  { href: "/creator/payouts", label: "Payments", labelKey: "payouts", icon: CreditCard },
+  { href: "/creator/course", label: "Course", labelKey: "course", icon: GraduationCap },
+  { href: "/creator/referral", label: "Referral", labelKey: "referral", icon: Users },
 ];
 
 export const CREATOR_BOTTOM_NAV_ITEMS = CREATOR_NAV_ITEMS.filter((item) =>

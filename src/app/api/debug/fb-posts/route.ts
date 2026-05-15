@@ -56,7 +56,7 @@ export async function GET(req: NextRequest) {
   if (publishedPosts.count === 0 && feed.count === 0 && posts.count === 0) {
     hint =
       "No posts returned. If any edge has an error with code 12 (deprecated), the fields string still references deprecated fields. " +
-      "If errors are permission-related, the FB user must be added as Tester in Meta App Dashboard → App Roles and re-run OAuth to get a new token.";
+        "If errors are permission-related, the FB user must be added as Tester in Meta App Dashboard → App Roles and reconnect the account.";
   }
 
   return NextResponse.json({

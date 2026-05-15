@@ -1,8 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { useState, type CSSProperties, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import { CampaignImageUploadField } from "@/components/campaigns/campaign-image-upload-field";
+import {
+  buildCampaignEditPayload,
+  cpvToCpmPerM,
+  type CampaignEditFormState,
+} from "@/lib/campaign-edit";
 
 const PLATFORM_OPTIONS = [
   { value: "INSTAGRAM", label: "Instagram" },
@@ -13,86 +18,214 @@ const PLATFORM_OPTIONS = [
 ] as const;
 
 const NICHE_OPTIONS = [
-  { value: "MEMES", label: "Memes" },
-  { value: "SPORT", label: "Sport" },
-  { value: "CLIPS", label: "Clips" },
-  { value: "GAMING", label: "Gaming" },
-  { value: "LIFESTYLE", label: "Lifestyle" },
-  { value: "FINANCE", label: "Finance" },
-  { value: "OTHER", label: "Other" },
+  "FINANCE",
+  "TECH",
+  "MOTIVATION",
+  "FOOD",
+  "HUMOR",
+  "LIFESTYLE",
+  "CASINO",
+  "MEMES",
+  "SPORT",
+  "CLIPS",
+  "GAMING",
+  "OTHER",
 ] as const;
 
-const GEO_OPTIONS = ["US","GB","NL","BE","DE","GR","AU","CA","SE","NO","FI","DK","AT","CH","ES","FR","IT","PT","PL","CZ","HU","RO","BG","HR","SK","SI","EE","LV","LT","MT","CY","LU","IE"];
+const STATUS_OPTIONS = [
+  { value: "draft", label: "Draft" },
+  { value: "pending_payment", label: "Pending payment" },
+  { value: "pending_review", label: "Pending review" },
+  { value: "active", label: "Active" },
+  { value: "paused", label: "Paused" },
+  { value: "completed", label: "Completed" },
+  { value: "cancelled", label: "Cancelled" },
+] as const;
 
-const inputStyle = {
+const GEO_OPTIONS = [
+  "US",
+  "GB",
+  "NL",
+  "BE",
+  "DE",
+  "GR",
+  "AU",
+  "CA",
+  "SE",
+  "NO",
+  "FI",
+  "DK",
+  "AT",
+  "CH",
+  "ES",
+  "FR",
+  "IT",
+  "PT",
+  "PL",
+  "CZ",
+  "HU",
+  "RO",
+  "BG",
+  "HR",
+  "SK",
+  "SI",
+  "EE",
+  "LV",
+  "LT",
+  "MT",
+  "CY",
+  "LU",
+  "IE",
+];
+
+const inputStyle: CSSProperties = {
   border: "1px solid var(--border)",
   background: "var(--bg-primary)",
   color: "var(--text-primary)",
 };
 
+const controlClass = "w-full rounded-lg px-3 py-2.5 text-sm outline-none";
+const labelClass = "block text-sm font-medium";
+
+type NumericValue = number | string | null | undefined;
+
 interface CampaignData {
   id: string;
   name: string;
+  status?: string;
+  brandId?: string | null;
+  pricingTemplateId?: string | null;
+  platforms?: string[];
+  niche?: string | null;
   description?: string | null;
+  contentType?: string | null;
   contentGuidelines?: string | null;
   requirements?: string | null;
+  otherNotes?: string | null;
+  pageStats?: string | null;
+  minAge?: string | null;
   referralLink?: string | null;
   bannerUrl?: string | null;
+  bannerVideoUrl?: string | null;
+  briefAssetUrl?: string | null;
+  guidelinesUrl?: string | null;
+  contentAssetUrls?: string[];
+  requiredHashtags?: string[];
   targetCountry?: string | null;
-  minEngagementRate?: number | null;
+  targetCountryPercent?: number | null;
+  targetMinAge18Percent?: number | null;
+  targetMalePercent?: number | null;
+  minFollowers?: number | null;
+  minEngagementRate?: NumericValue;
   bioRequirement?: string | null;
   linkInBioRequired?: string | null;
-  totalBudget?: number | null;
-  goalViews?: number | null;
+  totalBudget?: NumericValue;
+  goalViews?: NumericValue;
+  creatorCpv?: NumericValue;
+  adminMargin?: NumericValue;
   deadline?: string | null;
+  startsAt?: string | null;
   maxSlots?: number | null;
   requiresApproval?: boolean;
-  niche?: string | null;
-  platforms?: string[];
+}
+
+interface BrandOption {
+  id: string;
+  name: string;
+  status: string;
+}
+
+interface PricingTemplateOption {
+  id: string;
+  name: string;
+  price: NumericValue;
+  currency: string;
+  isActive: boolean;
 }
 
 interface CampaignEditFormProps {
   campaign: CampaignData;
+  brands: BrandOption[];
+  pricingTemplates: PricingTemplateOption[];
   backUrl: string;
 }
 
-export function CampaignEditForm({ campaign, backUrl }: CampaignEditFormProps) {
+export function CampaignEditForm({
+  campaign,
+  brands,
+  pricingTemplates,
+  backUrl,
+}: CampaignEditFormProps) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
+  const [form, setForm] = useState<CampaignEditFormState>(() => ({
+    name: campaign.name,
+    status: campaign.status ?? "draft",
+    brandId: campaign.brandId ?? "",
+    pricingTemplateId: campaign.pricingTemplateId ?? "",
+    platforms: campaign.platforms ?? [],
+    niche: campaign.niche ?? "",
+    description: campaign.description ?? "",
+    contentType: campaign.contentType ?? "",
+    contentGuidelines: campaign.contentGuidelines ?? "",
+    requirements: campaign.requirements ?? "",
+    otherNotes: campaign.otherNotes ?? "",
+    pageStats: campaign.pageStats ?? "",
+    minAge: campaign.minAge ?? "",
+    referralLink: campaign.referralLink ?? "",
+    bannerUrl: campaign.bannerUrl ?? null,
+    bannerVideoUrl: campaign.bannerVideoUrl ?? "",
+    briefAssetUrl: campaign.briefAssetUrl ?? "",
+    guidelinesUrl: campaign.guidelinesUrl ?? "",
+    contentAssetUrlsText: (campaign.contentAssetUrls ?? []).join("\n"),
+    requiredHashtagsText: (campaign.requiredHashtags ?? []).join("\n"),
+    targetCountry: campaign.targetCountry ?? "US",
+    targetCountryPercent: toInputValue(campaign.targetCountryPercent),
+    targetMinAge18Percent: toInputValue(campaign.targetMinAge18Percent),
+    targetMalePercent: toInputValue(campaign.targetMalePercent),
+    minFollowers: toInputValue(campaign.minFollowers),
+    minEngagementRate: toInputValue(campaign.minEngagementRate),
+    bioRequirement: campaign.bioRequirement ?? "",
+    linkInBioRequired: campaign.linkInBioRequired ?? "",
+    totalBudget: toInputValue(campaign.totalBudget),
+    goalViews: toInputValue(campaign.goalViews),
+    creatorCpmPerM: toInputValue(cpvToCpmPerM(campaign.creatorCpv)),
+    adminMarginPerM: toInputValue(cpvToCpmPerM(campaign.adminMargin)),
+    deadline: toDateInput(campaign.deadline),
+    startsAt: toDateInput(campaign.startsAt),
+    maxSlots: toInputValue(campaign.maxSlots),
+    requiresApproval: campaign.requiresApproval ?? false,
+  }));
 
-  const initialPlatforms = campaign.platforms ?? [];
+  const creatorCpm = numberValue(form.creatorCpmPerM);
+  const adminMargin = numberValue(form.adminMarginPerM);
+  const businessCpm = creatorCpm + adminMargin;
 
-  const initialNiches = campaign.niche
-    ? campaign.niche.split(", ").filter(Boolean)
-    : [];
+  function setField<K extends keyof CampaignEditFormState>(
+    field: K,
+    value: CampaignEditFormState[K],
+  ) {
+    setForm((current) => ({ ...current, [field]: value }));
+  }
 
-  const [name, setName] = useState(campaign.name);
-  const [description, setDescription] = useState(campaign.description ?? "");
-  const [bannerUrl, setBannerUrl] = useState<string | null>(campaign.bannerUrl ?? null);
-  const [contentGuidelines, setContentGuidelines] = useState(campaign.contentGuidelines ?? "");
-  const [requirements, setRequirements] = useState(campaign.requirements ?? "");
-  const [referralLink, setReferralLink] = useState(campaign.referralLink ?? "");
-  const [targetCountry, setTargetCountry] = useState(campaign.targetCountry ?? "US");
-  const [minEngagementRate, setMinEngagementRate] = useState(
-    campaign.minEngagementRate ? String(campaign.minEngagementRate) : ""
-  );
-  const [bioRequirement, setBioRequirement] = useState(campaign.bioRequirement ?? "");
-  const [linkInBioRequired, setLinkInBioRequired] = useState(campaign.linkInBioRequired ?? "");
-  const [totalBudget, setTotalBudget] = useState(campaign.totalBudget ? String(campaign.totalBudget) : "");
-  const [goalViews, setGoalViews] = useState(campaign.goalViews ? String(campaign.goalViews) : "");
-  const [deadline, setDeadline] = useState(
-    campaign.deadline ? new Date(campaign.deadline).toISOString().slice(0, 10) : ""
-  );
-  const [maxSlots, setMaxSlots] = useState(campaign.maxSlots ? String(campaign.maxSlots) : "");
-  const [requiresApproval, setRequiresApproval] = useState(campaign.requiresApproval ?? false);
-  const [platforms, setPlatforms] = useState<string[]>(initialPlatforms);
-  const [niches, setNiches] = useState<string[]>(initialNiches);
-  const [nicheOther, setNicheOther] = useState("");
+  function togglePlatform(value: string) {
+    setForm((current) => ({
+      ...current,
+      platforms: current.platforms.includes(value)
+        ? current.platforms.filter((platform) => platform !== value)
+        : [...current.platforms, value],
+    }));
+  }
 
   async function handleSave() {
-    if (!name.trim()) { setError("Campaign name is required"); return; }
+    const validationError = validateForm(form);
+    if (validationError) {
+      setError(validationError);
+      return;
+    }
+
     setLoading(true);
     setError(null);
     setSuccess(false);
@@ -101,36 +234,17 @@ export function CampaignEditForm({ campaign, backUrl }: CampaignEditFormProps) {
       const res = await fetch(`/api/campaigns/${campaign.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          name,
-          description: description || null,
-          contentGuidelines: contentGuidelines || null,
-          requirements: requirements || null,
-          referralLink: referralLink || null,
-          bannerUrl,
-          targetCountry,
-          minEngagementRate: minEngagementRate ? parseFloat(minEngagementRate) : null,
-          bioRequirement: bioRequirement || null,
-          linkInBioRequired: linkInBioRequired || null,
-          totalBudget: totalBudget ? parseFloat(totalBudget) : undefined,
-          goalViews: goalViews ? parseInt(goalViews) : null,
-          deadline: deadline ? new Date(deadline).toISOString() : undefined,
-          maxSlots: maxSlots ? parseInt(maxSlots) : null,
-          requiresApproval,
-          platforms,
-          niche: niches.includes("OTHER")
-            ? [...niches.filter(n => n !== "OTHER"), nicheOther || "OTHER"].join(", ")
-            : niches.join(", "),
-        }),
+        body: JSON.stringify(buildCampaignEditPayload(form)),
       });
 
       if (!res.ok) {
-        const data = await res.json();
+        const data = await res.json().catch(() => ({}));
         throw new Error(data.error ?? "Failed to update campaign");
       }
 
       setSuccess(true);
-      setTimeout(() => router.push(backUrl), 1000);
+      router.refresh();
+      setTimeout(() => router.push(backUrl), 700);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Something went wrong");
     } finally {
@@ -138,48 +252,78 @@ export function CampaignEditForm({ campaign, backUrl }: CampaignEditFormProps) {
     }
   }
 
-  const labelStyle = "block text-sm font-medium mb-1";
-
   return (
-    <div className="max-w-2xl">
-      <div className="space-y-6">
-        {/* Campaign info */}
-        <section className="space-y-4">
-          <h2 className="text-lg font-semibold" style={{ color: "var(--text-primary)" }}>Campaign info</h2>
+    <div className="max-w-4xl">
+      <div className="space-y-8">
+        <Section title="Campaign Setup">
+          <div className="grid gap-4 md:grid-cols-2">
+            <Field label="Campaign name *">
+              <input
+                className={controlClass}
+                style={inputStyle}
+                value={form.name}
+                onChange={(event) => setField("name", event.target.value)}
+              />
+            </Field>
 
-          <div>
-            <label className={labelStyle} style={{ color: "var(--text-primary)" }}>Campaign name *</label>
-            <input
-              className="w-full px-3 py-2.5 rounded-lg text-sm outline-none"
-              style={inputStyle}
-              value={name}
-              onChange={e => setName(e.target.value)}
-            />
+            <Field label="Status">
+              <select
+                className={controlClass}
+                style={inputStyle}
+                value={form.status}
+                onChange={(event) => setField("status", event.target.value)}
+              >
+                {STATUS_OPTIONS.map((status) => (
+                  <option key={status.value} value={status.value}>
+                    {status.label}
+                  </option>
+                ))}
+              </select>
+            </Field>
+
+            <Field label="Brand">
+              <select
+                className={controlClass}
+                style={inputStyle}
+                value={form.brandId}
+                onChange={(event) => setField("brandId", event.target.value)}
+              >
+                <option value="">No brand linked</option>
+                {brands.map((brand) => (
+                  <option key={brand.id} value={brand.id}>
+                    {brand.name} ({brand.status.toLowerCase()})
+                  </option>
+                ))}
+              </select>
+            </Field>
+
+            <Field label="Pricing template">
+              <select
+                className={controlClass}
+                style={inputStyle}
+                value={form.pricingTemplateId}
+                onChange={(event) => setField("pricingTemplateId", event.target.value)}
+              >
+                <option value="">No pricing template</option>
+                {pricingTemplates.map((template) => (
+                  <option key={template.id} value={template.id}>
+                    {formatTemplateLabel(template)}
+                  </option>
+                ))}
+              </select>
+            </Field>
           </div>
 
-          <CampaignImageUploadField
-            value={bannerUrl}
-            onChange={setBannerUrl}
-            label="Campaign image"
-            campaignName={name || "Campaign"}
-            disabled={loading}
-          />
-
-          <div>
-            <label className={labelStyle} style={{ color: "var(--text-primary)" }}>Platforms</label>
+          <Field label="Platforms *">
             <div className="flex flex-wrap gap-2">
               {PLATFORM_OPTIONS.map(({ value, label }) => {
-                const selected = platforms.includes(value);
+                const selected = form.platforms.includes(value);
                 return (
                   <button
                     key={value}
                     type="button"
-                    onClick={() =>
-                      setPlatforms(prev =>
-                        selected ? prev.filter(p => p !== value) : [...prev, value]
-                      )
-                    }
-                    className="px-3 py-1.5 rounded-lg text-sm font-medium transition-colors cursor-pointer"
+                    onClick={() => togglePlatform(value)}
+                    className="rounded-lg px-3 py-1.5 text-sm font-medium transition-colors"
                     style={{
                       border: `1px solid ${selected ? "var(--accent)" : "var(--border)"}`,
                       background: selected ? "var(--accent-bg)" : "var(--bg-primary)",
@@ -191,243 +335,518 @@ export function CampaignEditForm({ campaign, backUrl }: CampaignEditFormProps) {
                 );
               })}
             </div>
-          </div>
+          </Field>
 
-          <div>
-            <label className={labelStyle} style={{ color: "var(--text-primary)" }}>Niche</label>
-            <div className="flex flex-wrap gap-2">
-              {NICHE_OPTIONS.map(({ value, label }) => {
-                const selected = niches.includes(value);
-                return (
-                  <button
-                    key={value}
-                    type="button"
-                    onClick={() =>
-                      setNiches(prev =>
-                        selected ? prev.filter(n => n !== value) : [...prev, value]
-                      )
-                    }
-                    className="px-3 py-1.5 rounded-lg text-sm font-medium transition-colors cursor-pointer"
-                    style={{
-                      border: `1px solid ${selected ? "var(--accent)" : "var(--border)"}`,
-                      background: selected ? "var(--accent-bg)" : "var(--bg-primary)",
-                      color: selected ? "var(--accent)" : "var(--text-secondary)",
-                    }}
-                  >
-                    {label}
-                  </button>
-                );
-              })}
-            </div>
-            {niches.includes("OTHER") && (
-              <input
-                className="w-full px-3 py-2.5 rounded-lg text-sm outline-none mt-2"
+          <div className="grid gap-4 md:grid-cols-2">
+            <Field label="Niche">
+              <select
+                className={controlClass}
                 style={inputStyle}
-                value={nicheOther}
-                onChange={e => setNicheOther(e.target.value)}
-                placeholder="Specify niche..."
-              />
-            )}
-          </div>
+                value={form.niche}
+                onChange={(event) => setField("niche", event.target.value)}
+              >
+                <option value="">No niche</option>
+                {NICHE_OPTIONS.map((niche) => (
+                  <option key={niche} value={niche}>
+                    {titleCase(niche)}
+                  </option>
+                ))}
+              </select>
+            </Field>
 
-          <div>
-            <label className={labelStyle} style={{ color: "var(--text-primary)" }}>Description</label>
-            <textarea
-              className="w-full px-3 py-2.5 rounded-lg text-sm outline-none resize-none"
-              style={inputStyle}
-              rows={3}
-              value={description}
-              onChange={e => setDescription(e.target.value)}
-            />
-          </div>
-
-          <div>
-            <label className={labelStyle} style={{ color: "var(--text-primary)" }}>Content guidelines</label>
-            <textarea
-              className="w-full px-3 py-2.5 rounded-lg text-sm outline-none resize-none"
-              style={inputStyle}
-              rows={3}
-              value={contentGuidelines}
-              onChange={e => setContentGuidelines(e.target.value)}
-            />
-          </div>
-
-          <div>
-            <label className={labelStyle} style={{ color: "var(--text-primary)" }}>Requirements</label>
-            <textarea
-              className="w-full px-3 py-2.5 rounded-lg text-sm outline-none resize-none"
-              style={inputStyle}
-              rows={2}
-              value={requirements}
-              onChange={e => setRequirements(e.target.value)}
-            />
-          </div>
-        </section>
-
-        {/* Targeting */}
-        <section className="space-y-4">
-          <h2 className="text-lg font-semibold" style={{ color: "var(--text-primary)" }}>Targeting</h2>
-
-          <div>
-            <label className={labelStyle} style={{ color: "var(--text-primary)" }}>Target country</label>
-            <select
-              className="w-full px-3 py-2.5 rounded-lg text-sm outline-none cursor-pointer"
-              style={inputStyle}
-              value={targetCountry}
-              onChange={e => setTargetCountry(e.target.value)}
-            >
-              {GEO_OPTIONS.map(c => <option key={c} value={c}>{c}</option>)}
-            </select>
-          </div>
-
-          <div>
-            <label className={labelStyle} style={{ color: "var(--text-primary)" }}>
-              Min. engagement rate (%) <span style={{ color: "var(--text-muted)" }}>(optional)</span>
-            </label>
-            <input
-              className="w-full px-3 py-2.5 rounded-lg text-sm outline-none"
-              style={inputStyle}
-              type="number"
-              step="0.1"
-              min="0"
-              max="100"
-              value={minEngagementRate}
-              onChange={e => setMinEngagementRate(e.target.value)}
-              placeholder="e.g. 2"
-            />
-          </div>
-
-          <div>
-            <label className={labelStyle} style={{ color: "var(--text-primary)" }}>Bio requirement</label>
-            <input
-              className="w-full px-3 py-2.5 rounded-lg text-sm outline-none"
-              style={inputStyle}
-              value={bioRequirement}
-              onChange={e => setBioRequirement(e.target.value)}
-            />
-          </div>
-
-          <div>
-            <label className={labelStyle} style={{ color: "var(--text-primary)" }}>Link in bio</label>
-            <input
-              className="w-full px-3 py-2.5 rounded-lg text-sm outline-none"
-              style={inputStyle}
-              value={linkInBioRequired}
-              onChange={e => setLinkInBioRequired(e.target.value)}
-            />
-          </div>
-
-          <div>
-            <label className={labelStyle} style={{ color: "var(--text-primary)" }}>Referral / tracking link</label>
-            <input
-              className="w-full px-3 py-2.5 rounded-lg text-sm outline-none"
-              style={inputStyle}
-              value={referralLink}
-              onChange={e => setReferralLink(e.target.value)}
-            />
-          </div>
-        </section>
-
-        {/* Budget */}
-        <section className="space-y-4">
-          <h2 className="text-lg font-semibold" style={{ color: "var(--text-primary)" }}>Budget & Timeline</h2>
-
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className={labelStyle} style={{ color: "var(--text-primary)" }}>Total budget (USD)</label>
-              <input
-                className="w-full px-3 py-2.5 rounded-lg text-sm outline-none"
-                style={inputStyle}
-                type="number"
-                min="100"
-                step="50"
-                value={totalBudget}
-                onChange={e => setTotalBudget(e.target.value)}
-              />
-            </div>
-            <div>
-              <label className={labelStyle} style={{ color: "var(--text-primary)" }}>Goal views</label>
-              <input
-                className="w-full px-3 py-2.5 rounded-lg text-sm outline-none"
-                style={inputStyle}
-                type="number"
-                min="1000"
-                step="1000"
-                value={goalViews}
-                onChange={e => setGoalViews(e.target.value)}
-              />
-            </div>
-          </div>
-
-          <div>
-            <label className={labelStyle} style={{ color: "var(--text-primary)" }}>Deadline</label>
-            <input
-              className="w-full px-3 py-2.5 rounded-lg text-sm outline-none"
-              style={inputStyle}
-              type="date"
-              value={deadline}
-              onChange={e => setDeadline(e.target.value)}
-            />
-          </div>
-
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className={labelStyle} style={{ color: "var(--text-primary)" }}>Max creators</label>
-              <input
-                className="w-full px-3 py-2.5 rounded-lg text-sm outline-none"
-                style={inputStyle}
-                type="number"
-                min="1"
-                value={maxSlots}
-                onChange={e => setMaxSlots(e.target.value)}
-                placeholder="Unlimited"
-              />
-            </div>
-            <div className="flex items-end pb-1">
-              <label className="flex items-center gap-2 cursor-pointer">
+            <div className="flex items-end pb-2">
+              <label className="flex items-center gap-2 text-sm" style={{ color: "var(--text-secondary)" }}>
                 <input
                   type="checkbox"
-                  checked={requiresApproval}
-                  onChange={e => setRequiresApproval(e.target.checked)}
-                  className="rounded"
+                  checked={form.requiresApproval}
+                  onChange={(event) => setField("requiresApproval", event.target.checked)}
                 />
-                <span className="text-sm" style={{ color: "var(--text-secondary)" }}>Require approval</span>
+                Require approval before creators can participate
               </label>
             </div>
           </div>
-        </section>
+        </Section>
 
-        {/* Error / Success */}
+        <Section title="Creative And Brief">
+          <CampaignImageUploadField
+            value={form.bannerUrl}
+            onChange={(value) => setField("bannerUrl", value)}
+            label="Campaign image"
+            campaignName={form.name || "Campaign"}
+            disabled={loading}
+          />
+
+          <div className="grid gap-4 md:grid-cols-2">
+            <Field label="Content type">
+              <input
+                className={controlClass}
+                style={inputStyle}
+                value={form.contentType}
+                onChange={(event) => setField("contentType", event.target.value)}
+              />
+            </Field>
+
+            <Field label="Referral / tracking link">
+              <input
+                className={controlClass}
+                style={inputStyle}
+                value={form.referralLink}
+                onChange={(event) => setField("referralLink", event.target.value)}
+                placeholder="https://..."
+              />
+            </Field>
+          </div>
+
+          <Field label="Description">
+            <textarea
+              className={controlClass}
+              style={inputStyle}
+              rows={3}
+              value={form.description}
+              onChange={(event) => setField("description", event.target.value)}
+            />
+          </Field>
+
+          <Field label="Requirements">
+            <textarea
+              className={controlClass}
+              style={inputStyle}
+              rows={3}
+              value={form.requirements}
+              onChange={(event) => setField("requirements", event.target.value)}
+            />
+          </Field>
+
+          <Field label="Content guidelines">
+            <textarea
+              className={controlClass}
+              style={inputStyle}
+              rows={4}
+              value={form.contentGuidelines}
+              onChange={(event) => setField("contentGuidelines", event.target.value)}
+            />
+          </Field>
+
+          <div className="grid gap-4 md:grid-cols-2">
+            <Field label="Other notes">
+              <textarea
+                className={controlClass}
+                style={inputStyle}
+                rows={3}
+                value={form.otherNotes}
+                onChange={(event) => setField("otherNotes", event.target.value)}
+              />
+            </Field>
+
+            <Field label="Page stats">
+              <textarea
+                className={controlClass}
+                style={inputStyle}
+                rows={3}
+                value={form.pageStats}
+                onChange={(event) => setField("pageStats", event.target.value)}
+              />
+            </Field>
+          </div>
+
+          <div className="grid gap-4 md:grid-cols-2">
+            <Field label="Minimum age">
+              <input
+                className={controlClass}
+                style={inputStyle}
+                value={form.minAge}
+                onChange={(event) => setField("minAge", event.target.value)}
+                placeholder="e.g. 25+"
+              />
+            </Field>
+
+            <Field label="Required hashtags">
+              <textarea
+                className={controlClass}
+                style={inputStyle}
+                rows={2}
+                value={form.requiredHashtagsText}
+                onChange={(event) => setField("requiredHashtagsText", event.target.value)}
+                placeholder="#tag per line"
+              />
+            </Field>
+          </div>
+        </Section>
+
+        <Section title="Assets">
+          <div className="grid gap-4 md:grid-cols-2">
+            <Field label="Banner video URL">
+              <input
+                className={controlClass}
+                style={inputStyle}
+                value={form.bannerVideoUrl}
+                onChange={(event) => setField("bannerVideoUrl", event.target.value)}
+                placeholder="https://..."
+              />
+            </Field>
+
+            <Field label="Brief asset URL">
+              <input
+                className={controlClass}
+                style={inputStyle}
+                value={form.briefAssetUrl}
+                onChange={(event) => setField("briefAssetUrl", event.target.value)}
+                placeholder="https://..."
+              />
+            </Field>
+
+            <Field label="Guidelines URL">
+              <input
+                className={controlClass}
+                style={inputStyle}
+                value={form.guidelinesUrl}
+                onChange={(event) => setField("guidelinesUrl", event.target.value)}
+                placeholder="https://..."
+              />
+            </Field>
+
+            <Field label="Content asset URLs">
+              <textarea
+                className={controlClass}
+                style={inputStyle}
+                rows={3}
+                value={form.contentAssetUrlsText}
+                onChange={(event) => setField("contentAssetUrlsText", event.target.value)}
+                placeholder="One URL per line"
+              />
+            </Field>
+          </div>
+        </Section>
+
+        <Section title="Targeting">
+          <div className="grid gap-4 md:grid-cols-2">
+            <Field label="Target country">
+              <select
+                className={controlClass}
+                style={inputStyle}
+                value={form.targetCountry}
+                onChange={(event) => setField("targetCountry", event.target.value)}
+              >
+                <option value="">No target country</option>
+                {GEO_OPTIONS.map((country) => (
+                  <option key={country} value={country}>
+                    {country}
+                  </option>
+                ))}
+              </select>
+            </Field>
+
+            <Field label="Target country audience (%)">
+              <NumberInput
+                value={form.targetCountryPercent}
+                onChange={(value) => setField("targetCountryPercent", value)}
+                min={0}
+                max={100}
+              />
+            </Field>
+
+            <Field label="Target 18+ audience (%)">
+              <NumberInput
+                value={form.targetMinAge18Percent}
+                onChange={(value) => setField("targetMinAge18Percent", value)}
+                min={0}
+                max={100}
+              />
+            </Field>
+
+            <Field label="Target male audience (%)">
+              <NumberInput
+                value={form.targetMalePercent}
+                onChange={(value) => setField("targetMalePercent", value)}
+                min={0}
+                max={100}
+              />
+            </Field>
+
+            <Field label="Minimum followers">
+              <NumberInput
+                value={form.minFollowers}
+                onChange={(value) => setField("minFollowers", value)}
+                min={0}
+                step={1}
+              />
+            </Field>
+
+            <Field label="Minimum engagement rate (%)">
+              <NumberInput
+                value={form.minEngagementRate}
+                onChange={(value) => setField("minEngagementRate", value)}
+                min={0}
+                max={100}
+                step={0.1}
+              />
+            </Field>
+          </div>
+
+          <div className="grid gap-4 md:grid-cols-2">
+            <Field label="Bio requirement">
+              <input
+                className={controlClass}
+                style={inputStyle}
+                value={form.bioRequirement}
+                onChange={(event) => setField("bioRequirement", event.target.value)}
+              />
+            </Field>
+
+            <Field label="Link in bio requirement">
+              <input
+                className={controlClass}
+                style={inputStyle}
+                value={form.linkInBioRequired}
+                onChange={(event) => setField("linkInBioRequired", event.target.value)}
+              />
+            </Field>
+          </div>
+        </Section>
+
+        <Section title="Budget, CPM, Timeline">
+          <div className="grid gap-4 md:grid-cols-2">
+            <Field label="Total budget (USD) *">
+              <NumberInput
+                value={form.totalBudget}
+                onChange={(value) => setField("totalBudget", value)}
+                min={0}
+                step={0.01}
+              />
+            </Field>
+
+            <Field label="Goal views">
+              <NumberInput
+                value={form.goalViews}
+                onChange={(value) => setField("goalViews", value)}
+                min={1}
+                step={1}
+              />
+            </Field>
+
+            <Field label="Creator CPM / 1M views">
+              <NumberInput
+                value={form.creatorCpmPerM}
+                onChange={(value) => setField("creatorCpmPerM", value)}
+                min={0}
+                step={0.01}
+              />
+            </Field>
+
+            <Field label="Admin margin / 1M views">
+              <NumberInput
+                value={form.adminMarginPerM}
+                onChange={(value) => setField("adminMarginPerM", value)}
+                min={0}
+                step={0.01}
+              />
+            </Field>
+          </div>
+
+          <div
+            className="rounded-lg px-4 py-3 text-sm"
+            style={{ background: "var(--bg-secondary, var(--bg-primary))", border: "1px solid var(--border)" }}
+          >
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <span style={{ color: "var(--text-secondary)" }}>Client / business CPM</span>
+              <span className="font-semibold tabular-nums" style={{ color: "var(--text-primary)" }}>
+                ${businessCpm.toFixed(2)} per 1M views
+              </span>
+            </div>
+          </div>
+
+          <div className="grid gap-4 md:grid-cols-2">
+            <Field label="Deadline *">
+              <input
+                className={controlClass}
+                style={inputStyle}
+                type="date"
+                value={form.deadline}
+                onChange={(event) => setField("deadline", event.target.value)}
+              />
+            </Field>
+
+            <Field label="Start date">
+              <input
+                className={controlClass}
+                style={inputStyle}
+                type="date"
+                value={form.startsAt}
+                onChange={(event) => setField("startsAt", event.target.value)}
+              />
+            </Field>
+
+            <Field label="Max creators">
+              <NumberInput
+                value={form.maxSlots}
+                onChange={(value) => setField("maxSlots", value)}
+                min={1}
+                step={1}
+              />
+            </Field>
+          </div>
+        </Section>
+
         {error && (
-          <p className="text-sm px-3 py-2 rounded-lg" style={{ color: "var(--error)", background: "var(--error-bg)" }}>
+          <p className="rounded-lg px-3 py-2 text-sm" style={{ color: "var(--error)", background: "var(--error-bg)" }}>
             {error}
           </p>
         )}
         {success && (
-          <p className="text-sm px-3 py-2 rounded-lg" style={{ color: "var(--success-text)", background: "var(--success-bg)" }}>
-            Campaign updated! Redirecting...
+          <p className="rounded-lg px-3 py-2 text-sm" style={{ color: "var(--success-text)", background: "var(--success-bg)" }}>
+            Campaign updated. Redirecting...
           </p>
         )}
 
-        {/* Actions */}
-        <div className="flex gap-3">
+        <div className="flex flex-col gap-3 sm:flex-row">
           <button
+            type="button"
             onClick={() => router.push(backUrl)}
-            className="flex-1 py-2.5 rounded-lg text-sm font-medium transition-colors cursor-pointer"
+            className="h-11 flex-1 rounded-lg text-sm font-medium transition-colors"
             style={{ border: "1px solid var(--border)", color: "var(--text-secondary)" }}
           >
             Cancel
           </button>
           <button
+            type="button"
             onClick={handleSave}
-            disabled={loading || !name.trim()}
-            className="flex-1 py-2.5 rounded-lg text-sm font-medium text-white transition-colors disabled:opacity-50 cursor-pointer"
+            disabled={loading || !form.name.trim()}
+            className="h-11 flex-1 rounded-lg text-sm font-medium text-white transition-colors disabled:opacity-50"
             style={{ background: "var(--accent)" }}
           >
-            {loading ? "Saving..." : "Save Changes"}
+            {loading ? "Saving..." : "Save changes"}
           </button>
         </div>
       </div>
     </div>
   );
+}
+
+function Section({ title, children }: { title: string; children: ReactNode }) {
+  return (
+    <section className="space-y-4">
+      <h2 className="text-lg font-semibold" style={{ color: "var(--text-primary)" }}>
+        {title}
+      </h2>
+      {children}
+    </section>
+  );
+}
+
+function Field({ label, children }: { label: string; children: ReactNode }) {
+  return (
+    <div className="space-y-1.5">
+      <span className={labelClass} style={{ color: "var(--text-primary)" }}>
+        {label}
+      </span>
+      {children}
+    </div>
+  );
+}
+
+function NumberInput({
+  value,
+  onChange,
+  min,
+  max,
+  step = "any",
+}: {
+  value: string;
+  onChange: (value: string) => void;
+  min?: number;
+  max?: number;
+  step?: number | string;
+}) {
+  return (
+    <input
+      className={controlClass}
+      style={inputStyle}
+      type="number"
+      min={min}
+      max={max}
+      step={step}
+      value={value}
+      onChange={(event) => onChange(event.target.value)}
+    />
+  );
+}
+
+function validateForm(state: CampaignEditFormState): string | null {
+  if (!state.name.trim()) return "Campaign name is required";
+  if (state.platforms.length === 0) return "Select at least one platform";
+  if (!state.deadline) return "Deadline is required";
+
+  const positiveChecks: Array<[string, string]> = [["Total budget", state.totalBudget]];
+  for (const [label, value] of positiveChecks) {
+    const parsed = Number(value);
+    if (!Number.isFinite(parsed) || parsed <= 0) return `${label} must be greater than 0`;
+  }
+
+  const percentageChecks: Array<[string, string]> = [
+    ["Target country audience", state.targetCountryPercent],
+    ["Target 18+ audience", state.targetMinAge18Percent],
+    ["Target male audience", state.targetMalePercent],
+    ["Minimum engagement rate", state.minEngagementRate],
+  ];
+  for (const [label, value] of percentageChecks) {
+    if (!value.trim()) continue;
+    const parsed = Number(value);
+    if (!Number.isFinite(parsed) || parsed < 0 || parsed > 100) {
+      return `${label} must be between 0 and 100`;
+    }
+  }
+
+  const nonNegativeChecks: Array<[string, string]> = [
+    ["Minimum followers", state.minFollowers],
+    ["Creator CPM", state.creatorCpmPerM],
+    ["Admin margin", state.adminMarginPerM],
+  ];
+  for (const [label, value] of nonNegativeChecks) {
+    if (!value.trim()) continue;
+    const parsed = Number(value);
+    if (!Number.isFinite(parsed) || parsed < 0) return `${label} cannot be negative`;
+  }
+
+  const positiveOptionalChecks: Array<[string, string]> = [
+    ["Goal views", state.goalViews],
+    ["Max creators", state.maxSlots],
+  ];
+  for (const [label, value] of positiveOptionalChecks) {
+    if (!value.trim()) continue;
+    const parsed = Number(value);
+    if (!Number.isFinite(parsed) || parsed <= 0) return `${label} must be greater than 0`;
+  }
+
+  return null;
+}
+
+function toDateInput(value: string | null | undefined): string {
+  if (!value) return "";
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? "" : date.toISOString().slice(0, 10);
+}
+
+function toInputValue(value: NumericValue): string {
+  if (value === null || value === undefined) return "";
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed)) return "";
+  return Number.isInteger(parsed) ? String(parsed) : String(Number(parsed.toFixed(6)));
+}
+
+function numberValue(value: string): number {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : 0;
+}
+
+function titleCase(value: string): string {
+  return value
+    .toLowerCase()
+    .replace(/_/g, " ")
+    .replace(/\b\w/g, (character) => character.toUpperCase());
+}
+
+function formatTemplateLabel(template: PricingTemplateOption): string {
+  const price = Number(template.price ?? 0);
+  const suffix = template.isActive ? "" : " - inactive";
+  return `${template.name} (${template.currency} ${price.toFixed(2)})${suffix}`;
 }

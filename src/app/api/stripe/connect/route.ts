@@ -3,6 +3,7 @@ import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { prisma } from "@/lib/prisma";
 import Stripe from "stripe";
 import { rateLimit, PAYMENT_LIMIT, getClientIp } from "@/lib/rate-limit";
+import { buildAppUrl, getAppUrlFromRequest } from "@/lib/app-url";
 
 export async function POST(req: Request) {
   if (!process.env.STRIPE_SECRET_KEY) {
@@ -51,10 +52,11 @@ export async function POST(req: Request) {
     });
   }
 
+  const appUrl = getAppUrlFromRequest(req);
   const accountLink = await stripe.accountLinks.create({
     account: stripeAccountId,
-    refresh_url: `${process.env.NEXT_PUBLIC_APP_URL}/creator/settings?stripe=refresh`,
-    return_url: `${process.env.NEXT_PUBLIC_APP_URL}/creator/settings?stripe=success`,
+    refresh_url: buildAppUrl("/creator/settings?stripe=refresh", appUrl),
+    return_url: buildAppUrl("/creator/settings?stripe=success", appUrl),
     type: "account_onboarding",
   });
 

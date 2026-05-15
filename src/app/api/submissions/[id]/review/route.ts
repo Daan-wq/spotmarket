@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireAuth } from "@/lib/auth";
-import { notifySubmissionReview } from "@/lib/discord";
 import { calculateReferralSplit } from "@/lib/referral";
 import { z } from "zod";
 
@@ -62,6 +61,8 @@ export async function POST(
     }
 
     const updated = await prisma.$transaction(async (tx) => {
+      const isFirstApproval = status === "APPROVED" && submission.status !== "APPROVED";
+
       // Fetch creator to check referral status
       const creator = await tx.user.findUnique({
         where: { id: submission.creatorId },
@@ -72,15 +73,25 @@ export async function POST(
       let creatorAmount = earnedAmount;
 
       // Calculate referral bonus if creator was referred
-      if (status === "APPROVED" && creator?.referredBy) {
+      if (isFirstApproval && creator?.referredBy) {
         // Check how much has already been paid to referrer for this creator ($100 cap)
-        const alreadyPaid = await tx.referralPayout.aggregate({
-          where: {
-            referrerId: creator.referredBy,
-            referredUserId: submission.creatorId,
-          },
-          _sum: { amount: true },
-        });
+        const [existingPayout, alreadyPaid] = await Promise.all([
+          tx.referralPayout.findFirst({
+            where: {
+              referrerId: creator.referredBy,
+              referredUserId: submission.creatorId,
+              submissionId: submission.id,
+            },
+            select: { id: true },
+          }),
+          tx.referralPayout.aggregate({
+            where: {
+              referrerId: creator.referredBy,
+              referredUserId: submission.creatorId,
+            },
+            _sum: { amount: true },
+          }),
+        ]);
         const totalPaidSoFar = Number(alreadyPaid._sum.amount ?? 0);
 
         const split = calculateReferralSplit(
@@ -92,7 +103,7 @@ export async function POST(
         // Creator keeps full amount (no deduction)
         creatorAmount = split.creatorAmount;
 
-        if (split.referralFee > 0 && split.referrerId) {
+        if (!existingPayout && split.referralFee > 0 && split.referrerId) {
           await tx.referralPayout.create({
             data: {
               referrerId: split.referrerId,
@@ -138,7 +149,7 @@ export async function POST(
         include: { campaign: true, creator: true },
       });
 
-      if (status === "APPROVED" && submission.application) {
+      if (isFirstApproval && submission.application) {
         await tx.campaignApplication.update({
           where: { id: submission.application.id },
           data: {
@@ -162,15 +173,6 @@ export async function POST(
 
       return sub;
     });
-
-    // Send Discord DM to creator (non-blocking)
-    notifySubmissionReview({
-      creatorDiscordId: updated.creator.discordId ?? null,
-      status,
-      campaignName: updated.campaign.name,
-      earnedAmount: status === "APPROVED" ? earnedAmount : undefined,
-      rejectionNote,
-    }).catch((err) => console.error("[discord dm notify]", err));
 
     return NextResponse.json({ submission: updated });
   } catch (err: unknown) {

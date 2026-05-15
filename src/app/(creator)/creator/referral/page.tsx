@@ -6,6 +6,9 @@ import { Leaderboard } from "./_components/leaderboard";
 import { ActivityFeed } from "./_components/activity-feed";
 import { ReferredUsersTable, type ReferredUserRow } from "./_components/referred-users-table";
 import { MilestoneCard } from "./_components/milestone-card";
+import { getLocale } from "next-intl/server";
+import { buildAppUrl, getAppUrlForLocale } from "@/lib/app-url";
+import type { Locale } from "@/i18n/routing";
 
 export default async function ReferralPage() {
   const { userId } = await requireAuth("creator");
@@ -16,8 +19,8 @@ export default async function ReferralPage() {
   });
   if (!user) throw new Error("User not found");
 
-  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "https://app.clipprofit.com";
-  const referralUrl = `${baseUrl}/sign-up?ref=${user.referralCode}`;
+  const locale = (await getLocale()) as Locale;
+  const referralUrl = buildAppUrl(`/sign-up?ref=${user.referralCode}`, getAppUrlForLocale(locale));
 
   // Fetch all data in parallel
   const now = new Date();

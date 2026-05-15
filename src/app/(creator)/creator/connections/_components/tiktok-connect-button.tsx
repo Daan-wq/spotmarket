@@ -5,7 +5,6 @@ import { BioVerifyCard } from "./bio-verify-card";
 export function TikTokConnectButton() {
   return (
     <BioVerifyCard
-      platform="tiktok"
       brand={{ name: "TikTok", color: "#010101" }}
       oauthHref="/api/auth/tiktok"
       oauthAvailable={true}

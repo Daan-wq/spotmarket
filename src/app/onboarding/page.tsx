@@ -2,10 +2,12 @@ import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { prisma } from "@/lib/prisma";
 import { redirect } from "next/navigation";
 import { Suspense } from "react";
+import { getTranslations } from "next-intl/server";
 import { Logo } from "@/components/shared/logo";
 import { OnboardingForm } from "./onboarding-form";
 
 export default async function OnboardingPage() {
+  const t = await getTranslations("onboarding.page");
   const supabase = await createSupabaseServerClient();
   const { data: { user } } = await supabase.auth.getUser();
 
@@ -28,10 +30,10 @@ export default async function OnboardingPage() {
         <Logo variant="dark" size="sm" />
         <div>
           <p className="text-2xl font-semibold text-white leading-snug mb-3">
-            Almost there. Let&apos;s set up your account.
+            {t("panelTitle")}
           </p>
           <p className="text-sm" style={{ color: "var(--text-secondary)" }}>
-            Just one step before you can start browsing campaigns and tracking earnings.
+            {t("panelDescription")}
           </p>
         </div>
         <p className="text-xs" style={{ color: "var(--dark-text-light)" }}>
@@ -43,10 +45,10 @@ export default async function OnboardingPage() {
       <div className="flex-1 flex items-center justify-center px-6 py-12 bg-white">
         <div className="w-full max-w-sm">
           <h1 className="text-2xl font-semibold mb-1 text-gray-900">
-            Welcome to ClipProfit
+            {t("title")}
           </h1>
           <p className="text-sm mb-8 text-gray-500">
-            Just a few quick questions to get you started.
+            {t("description")}
           </p>
           <Suspense><OnboardingForm /></Suspense>
         </div>

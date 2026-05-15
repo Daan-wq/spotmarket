@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import { Logo } from "@/components/shared/logo";
 import Link from "next/link";
@@ -9,6 +10,7 @@ import Link from "next/link";
 export function ConfirmForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const t = useTranslations("auth.confirm");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -28,7 +30,7 @@ export function ConfirmForm() {
     const data = await res.json();
 
     if (!res.ok) {
-      setError(data.error || "Verification failed. Please try again.");
+      setError(data.error || t("failed"));
       setLoading(false);
       return;
     }
@@ -61,9 +63,9 @@ export function ConfirmForm() {
                   <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
                 </svg>
               </div>
-              <h1 className="text-xl font-semibold mb-2 text-white">Confirm your account</h1>
+              <h1 className="text-xl font-semibold mb-2 text-white">{t("title")}</h1>
               <p className="text-sm mb-6" style={{ color: "var(--text-secondary)" }}>
-                Click the button below to verify your email and activate your ClipProfit account.
+                {t("body")}
               </p>
 
               {error && (
@@ -80,21 +82,21 @@ export function ConfirmForm() {
                 onMouseEnter={(e) => { if (!loading) (e.currentTarget as HTMLElement).style.opacity = "0.88"; }}
                 onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.opacity = "1"; }}
               >
-                {loading ? "Confirming…" : "Confirm my account"}
+                {loading ? t("submitting") : t("button")}
               </button>
             </>
           ) : (
             <>
-              <h1 className="text-xl font-semibold mb-2 text-white">Invalid link</h1>
+              <h1 className="text-xl font-semibold mb-2 text-white">{t("invalidTitle")}</h1>
               <p className="text-sm mb-6" style={{ color: "var(--text-secondary)" }}>
-                This verification link is invalid or has expired.
+                {t("invalidBody")}
               </p>
               <Link
                 href="/sign-up"
                 className="w-full block py-2.5 rounded-lg text-sm font-semibold text-white"
                 style={{ background: "var(--accent)" }}
               >
-                Sign up again
+                {t("signUpAgain")}
               </Link>
             </>
           )}

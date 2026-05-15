@@ -44,6 +44,10 @@
     {
       "path": "/api/cron/poll-platform-account-snapshots",
       "schedule": "10 2 * * *"
+    },
+    {
+      "path": "/api/cron/sync-site-analytics",
+      "schedule": "7 5 * * *"
     }
   ]
 }

@@ -49,9 +49,9 @@ export async function GET(req: NextRequest) {
 
     if (!tokenRes.ok) {
       const errBody = await tokenRes.text();
-      console.error("[discord oauth] token exchange failed:", tokenRes.status, errBody);
-      console.error("[discord oauth] redirect_uri used:", redirectUri);
-      console.error("[discord oauth] client_id length:", clientId.length, "client_secret length:", clientSecret.length);
+      console.error("[discord connection] token exchange failed:", tokenRes.status, errBody);
+      console.error("[discord connection] redirect_uri used:", redirectUri);
+      console.error("[discord connection] client_id length:", clientId.length, "client_secret length:", clientSecret.length);
       return NextResponse.redirect(new URL(`${returnTo}?error=discord_token_failed`, req.url));
     }
 
@@ -73,7 +73,7 @@ export async function GET(req: NextRequest) {
     });
 
     if (!userRes.ok) {
-      console.error("[discord oauth] user fetch failed:", await userRes.text());
+      console.error("[discord connection] user fetch failed:", await userRes.text());
       return NextResponse.redirect(new URL(`${returnTo}?error=discord_user_failed`, req.url));
     }
 
@@ -90,7 +90,7 @@ export async function GET(req: NextRequest) {
 
     return NextResponse.redirect(new URL(`${returnTo}?discord=linked`, req.url));
   } catch (err) {
-    console.error("[discord oauth]", err);
+    console.error("[discord connection]", err);
     return NextResponse.redirect(new URL(`${returnTo}?error=discord_error`, req.url));
   }
 }

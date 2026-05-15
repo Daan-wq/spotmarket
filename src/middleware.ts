@@ -1,5 +1,12 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
+import {
+  getLocaleFromHost,
+  isLocale,
+  LOCALE_COOKIE_MAX_AGE,
+  LOCALE_COOKIE_NAME,
+  type Locale,
+} from "@/i18n/routing";
 
 const PUBLIC_ROUTES = [
   "/sign-in",
@@ -17,15 +24,46 @@ function isPublicRoute(pathname: string) {
   return PUBLIC_ROUTES.some((route) => pathname.startsWith(route));
 }
 
+function applyLocaleHeaders(response: NextResponse, locale: Locale) {
+  response.headers.set("Content-Language", locale);
+  response.headers.set("x-locale", locale);
+  return response;
+}
+
+function persistLocaleCookie(response: NextResponse, locale: Locale, cookieLocale: string | undefined) {
+  if (!isLocale(cookieLocale)) {
+    response.cookies.set(LOCALE_COOKIE_NAME, locale, {
+      maxAge: LOCALE_COOKIE_MAX_AGE,
+      sameSite: "lax",
+      path: "/",
+    });
+  }
+  return response;
+}
+
+function createLocalizedNextResponse(headers: Headers, locale: Locale) {
+  return applyLocaleHeaders(NextResponse.next({ request: { headers } }), locale);
+}
+
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
+  const cookieLocale = request.cookies.get(LOCALE_COOKIE_NAME)?.value;
+  const host = request.headers.get("host") ?? "";
+  const locale = isLocale(cookieLocale) ? cookieLocale : getLocaleFromHost(host);
 
-  // API routes handle their own auth — skip middleware overhead
+  const requestHeaders = new Headers(request.headers);
+  requestHeaders.set("x-locale", locale);
+  requestHeaders.set("x-host", host);
+
   if (pathname.startsWith("/api/")) {
-    return NextResponse.next({ request });
+    return persistLocaleCookie(
+      createLocalizedNextResponse(requestHeaders, locale),
+      locale,
+      cookieLocale
+    );
   }
 
-  let supabaseResponse = NextResponse.next({ request });
+  let supabaseResponse = createLocalizedNextResponse(requestHeaders, locale);
 
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -40,10 +78,8 @@ export async function middleware(request: NextRequest) {
           return request.cookies.getAll();
         },
         setAll(cookiesToSet) {
-          cookiesToSet.forEach(({ name, value }) =>
-            request.cookies.set(name, value)
-          );
-          supabaseResponse = NextResponse.next({ request });
+          cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value));
+          supabaseResponse = createLocalizedNextResponse(requestHeaders, locale);
           cookiesToSet.forEach(({ name, value, options }) =>
             supabaseResponse.cookies.set(name, value, options)
           );
@@ -52,19 +88,21 @@ export async function middleware(request: NextRequest) {
     }
   );
 
-  // Local JWT verification (no network round-trip to Supabase auth)
   const { data } = await supabase.auth.getClaims();
   const claims = data?.claims ?? null;
 
-  // Redirect unauthenticated users away from protected routes
   if (!claims && !isPublicRoute(pathname) && pathname !== "/") {
     const signInUrl = request.nextUrl.clone();
     signInUrl.pathname = "/sign-in";
     signInUrl.searchParams.set("redirect_url", pathname);
-    return NextResponse.redirect(signInUrl);
+    return persistLocaleCookie(
+      applyLocaleHeaders(NextResponse.redirect(signInUrl), locale),
+      locale,
+      cookieLocale
+    );
   }
 
-  return supabaseResponse;
+  return persistLocaleCookie(supabaseResponse, locale, cookieLocale);
 }
 
 export const config = {

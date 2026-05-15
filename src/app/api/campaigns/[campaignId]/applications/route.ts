@@ -1,6 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireAuth } from "@/lib/auth";
+import {
+  buildConnectRequiredMessage,
+  evaluateCampaignJoinEligibility,
+} from "@/lib/campaign-eligibility";
 
 export async function GET(
   req: NextRequest,
@@ -51,15 +55,39 @@ export async function POST(
 
     const user = await prisma.user.findUnique({
       where: { supabaseId: userId },
-      include: { creatorProfile: { include: { igConnections: true } } },
+      include: {
+        creatorProfile: {
+          include: {
+            igConnections: true,
+            ttConnections: true,
+            ytConnections: true,
+            fbConnections: true,
+          },
+        },
+      },
     });
 
     if (!user?.creatorProfile) {
       return NextResponse.json({ error: "Creator profile not found" }, { status: 404 });
     }
 
-    if (!user.creatorProfile.igConnections?.some(c => c.isVerified)) {
-      return NextResponse.json({ error: "Creator bio must be verified first" }, { status: 400 });
+    const eligibility = evaluateCampaignJoinEligibility(campaign.platforms, {
+      instagram: user.creatorProfile.igConnections.some((c) => c.isVerified),
+      tiktok: user.creatorProfile.ttConnections.some((c) => c.isVerified),
+      youtube: user.creatorProfile.ytConnections.some((c) => c.isVerified),
+      facebook: user.creatorProfile.fbConnections.some((c) => c.isVerified),
+    });
+
+    if (!eligibility.eligible) {
+      return NextResponse.json(
+        {
+          code: "CONNECT_REQUIRED",
+          error: buildConnectRequiredMessage(eligibility.missingPlatformLabels),
+          missingPlatforms: eligibility.missingPlatforms,
+          requiredPlatformLabels: eligibility.missingPlatformLabels,
+        },
+        { status: 400 },
+      );
     }
 
     const existing = await prisma.campaignApplication.findFirst({
@@ -95,7 +123,7 @@ export async function POST(
       },
     });
 
-    return NextResponse.json({ application }, { status: 201 });
+    return NextResponse.json({ id: application.id, application }, { status: 201 });
   } catch (err: unknown) {
     console.error("[campaigns applications POST]", err);
     return NextResponse.json({ error: err instanceof Error ? err.message : "Internal error" }, { status: 500 });

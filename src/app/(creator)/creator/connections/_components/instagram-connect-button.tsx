@@ -5,7 +5,6 @@ import { BioVerifyCard } from "./bio-verify-card";
 export function InstagramConnectButton() {
   return (
     <BioVerifyCard
-      platform="instagram"
       brand={{
         name: "Instagram",
         color: "#E1306C",

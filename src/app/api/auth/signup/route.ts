@@ -2,7 +2,9 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
+import { buildAppUrl, getAppUrlFromRequest, getLocaleFromRequest } from "@/lib/app-url";
 import { Resend } from "resend";
+import { getTranslations } from "next-intl/server";
 
 function getResend() {
   return new Resend(process.env.RESEND_API_KEY);
@@ -15,12 +17,15 @@ const signupSchema = z.object({
 });
 
 export async function POST(request: Request) {
+  const locale = getLocaleFromRequest(request);
+  const t = await getTranslations({ locale, namespace: "auth.api" });
+  const emailT = await getTranslations({ locale, namespace: "auth.email" });
   const body = await request.json();
   const parsed = signupSchema.safeParse(body);
 
   if (!parsed.success) {
     return NextResponse.json(
-      { error: "Invalid input", details: parsed.error.flatten().fieldErrors },
+      { error: t("invalidInput"), details: parsed.error.flatten().fieldErrors },
       { status: 400 }
     );
   }
@@ -37,7 +42,7 @@ export async function POST(request: Request) {
   });
   if (recentTicket) {
     return NextResponse.json(
-      { error: "Please wait before requesting another verification email." },
+      { error: t("rateLimited") },
       { status: 429 }
     );
   }
@@ -54,12 +59,12 @@ export async function POST(request: Request) {
   if (createError) {
     if (createError.message?.includes("already been registered")) {
       return NextResponse.json(
-        { error: "An account with this email already exists." },
+        { error: t("alreadyExists") },
         { status: 409 }
       );
     }
     return NextResponse.json(
-      { error: createError.message || "Failed to create account." },
+      { error: createError.message || t("createFailed") },
       { status: 500 }
     );
   }
@@ -74,25 +79,24 @@ export async function POST(request: Request) {
   });
 
   // Send verification email via Resend
-  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "https://app.clipprofit.com";
-  const confirmUrl = `${baseUrl}/auth/confirm?ticket=${ticket.id}`;
+  const confirmUrl = buildAppUrl(`/auth/confirm?ticket=${ticket.id}`, getAppUrlFromRequest(request));
 
   await getResend().emails.send({
     from: "ClipProfit <noreply@clipprofit.com>",
     to: email,
-    subject: "Confirm your ClipProfit account",
+    subject: emailT("subject"),
     html: `
       <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 480px; margin: 0 auto; padding: 40px 20px;">
-        <h2 style="color: #ffffff; margin-bottom: 8px;">Confirm your account</h2>
+        <h2 style="color: #ffffff; margin-bottom: 8px;">${emailT("title")}</h2>
         <p style="color: #a0a0a0; font-size: 14px; line-height: 1.6;">
-          Click the button below to verify your email and activate your ClipProfit account.
+          ${emailT("body")}
         </p>
         <a href="${confirmUrl}"
            style="display: inline-block; background: #6366f1; color: #ffffff; text-decoration: none; padding: 12px 32px; border-radius: 8px; font-size: 14px; font-weight: 600; margin-top: 16px;">
-          Confirm my account
+          ${emailT("button")}
         </a>
         <p style="color: #666; font-size: 12px; margin-top: 24px;">
-          This link expires in 15 minutes. If you didn't create a ClipProfit account, you can ignore this email.
+          ${emailT("footer")}
         </p>
       </div>
     `,

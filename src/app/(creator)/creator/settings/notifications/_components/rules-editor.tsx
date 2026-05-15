@@ -10,7 +10,7 @@ interface RuleRow {
   isDefault: boolean;
 }
 
-const ALL_CHANNELS: NotificationChannel[] = ["IN_APP", "EMAIL", "DISCORD"];
+const ALL_CHANNELS: NotificationChannel[] = ["IN_APP", "EMAIL"];
 
 const TYPE_LABELS: Partial<Record<NotificationType, string>> = {
   CAMPAIGN_LAUNCHED: "New campaign launched",

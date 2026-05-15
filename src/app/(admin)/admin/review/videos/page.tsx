@@ -2,14 +2,16 @@ import { prisma } from "@/lib/prisma";
 import Link from "next/link";
 import { LogoReviewWidget } from "@/components/admin/logo-review-widget";
 import SubmissionActions from "../../submissions/_components/submission-actions";
+import { resolveThumbnail } from "@/lib/clip-thumbnail";
+import type { ClipMediaType } from "@/lib/instagram-media-type";
 
 export const dynamic = "force-dynamic";
 
 /**
  * Submission review queue with manual logo verification widget.
  *
- * Per charter: thumbnail comes from platform OAuth fetchers (Subsystem A).
- * Until A ships those, we render a placeholder — the verdict buttons still work.
+ * Thumbnails come from stored metadata or official platform account data.
+ * Creator screenshots are used as the final fallback.
  */
 function platformFromBio(p: string | null): "INSTAGRAM" | "TIKTOK" | "YOUTUBE_SHORTS" | "FACEBOOK" | null {
   if (!p) return null;
@@ -31,6 +33,20 @@ export default async function VideoReviewPage() {
     },
     take: 100,
   });
+  const reviewRows = await Promise.all(
+    submissions.map(async (submission) => {
+      const resolved = await resolveThumbnail(submission.postUrl, submission.thumbnailUrl, {
+        creatorId: submission.creator.id,
+        submissionId: submission.id,
+        storedMediaType: submission.mediaType as ClipMediaType | null,
+      });
+
+      return {
+        submission,
+        thumbnailUrl: resolved.thumbnailUrl ?? submission.screenshotUrl,
+      };
+    }),
+  );
 
   return (
     <div className="w-full p-8">
@@ -57,11 +73,8 @@ export default async function VideoReviewPage() {
         </div>
       ) : (
         <div className="space-y-4">
-          {submissions.map((s) => {
+          {reviewRows.map(({ submission: s, thumbnailUrl }) => {
             const platform = platformFromBio(s.sourcePlatform);
-            // Thumbnail: TODO once Subsystem A ships platform OAuth fetchers.
-            // For now we rely on screenshotUrl if the creator provided one as a fallback.
-            const thumbnailUrl = s.screenshotUrl ?? null;
             const logoStatus = (s.logoStatus ?? "PENDING") as "PENDING" | "PRESENT" | "MISSING";
             const canApprove = logoStatus === "PRESENT";
 

@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { getCachedAuthClaims, resolveRoleFor } from "@/lib/auth";
 import { AdminSidebar } from "./_components/admin-sidebar";
 import { DashboardShell } from "@/components/layout/dashboard-shell";
+import { PostHogIdentify } from "@/components/providers/posthog-identify";
 
 export default async function AdminLayout({ children }: { children: ReactNode }) {
   const claims = await getCachedAuthClaims();
@@ -16,6 +17,7 @@ export default async function AdminLayout({ children }: { children: ReactNode })
 
   return (
     <DashboardShell sidebar={<AdminSidebar initials={initials} email={email} />} mainClassName="admin-content">
+      <PostHogIdentify userId={claims.sub} role="admin" />
       {children}
     </DashboardShell>
   );

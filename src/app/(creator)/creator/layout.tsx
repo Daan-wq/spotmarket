@@ -12,6 +12,7 @@ import {
 import { MobileCreatorChrome } from "../_components/mobile-creator-chrome";
 import { ScopeErrorDialog } from "@/components/auth/scope-error-dialog";
 import { DashboardShell } from "@/components/layout/dashboard-shell";
+import { PostHogIdentify } from "@/components/providers/posthog-identify";
 
 export default async function CreatorLayout({
   children,
@@ -58,6 +59,7 @@ export default async function CreatorLayout({
           />
         }
       >
+        <PostHogIdentify userId={supabaseId} role="creator" />
         {children}
       </DashboardShell>
       <Suspense fallback={null}>

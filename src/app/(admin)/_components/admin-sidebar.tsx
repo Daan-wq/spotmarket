@@ -3,8 +3,9 @@
 import type { ComponentType } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { motion } from "motion/react";
-import { Search } from "lucide-react";
+import { BarChart3, Search } from "lucide-react";
 import { AnimateIcon } from "@/components/animate-ui/icons/icon";
 import { Banknote } from "@/components/animate-ui/icons/banknote";
 import { BookOpen } from "@/components/animate-ui/icons/book-open";
@@ -26,40 +27,41 @@ type NavIcon = ComponentType<{ className?: string; strokeWidth?: number }>;
 
 interface NavItem {
   href: string;
-  label: string;
+  labelKey: string;
   icon: NavIcon;
   description?: string;
 }
 
-const NAV: Array<{ label: string; items: NavItem[] }> = [
+const NAV: Array<{ labelKey: string; items: NavItem[] }> = [
   {
-    label: "Operate",
+    labelKey: "operate",
     items: [
-      { href: "/admin", label: "Command Center", icon: LayoutDashboard },
-      { href: "/admin/campaigns", label: "Campaigns", icon: Send },
-      { href: "/admin/clippers", label: "Clippers", icon: Users },
-      { href: "/admin/production", label: "Production", icon: GitPullRequestArrow },
-      { href: "/admin/review", label: "Clip review", icon: ClipboardCheck },
+      { href: "/admin", labelKey: "commandCenter", icon: LayoutDashboard },
+      { href: "/admin/campaigns", labelKey: "campaigns", icon: Send },
+      { href: "/admin/clippers", labelKey: "clippers", icon: Users },
+      { href: "/admin/production", labelKey: "production", icon: GitPullRequestArrow },
+      { href: "/admin/review", labelKey: "clipReview", icon: ClipboardCheck },
     ],
   },
   {
-    label: "Delivery",
+    labelKey: "delivery",
     items: [
-      { href: "/admin/crm", label: "Leads", icon: BriefcaseBusiness },
-      { href: "/admin/recruitment", label: "Recruitment", icon: Sparkles },
-      { href: "/admin/brands", label: "Brands", icon: FileText },
-      { href: "/admin/onboarding", label: "Onboarding", icon: ListChecks },
+      { href: "/admin/crm", labelKey: "leads", icon: BriefcaseBusiness },
+      { href: "/admin/recruitment", labelKey: "recruitment", icon: Sparkles },
+      { href: "/admin/brands", labelKey: "brands", icon: FileText },
+      { href: "/admin/onboarding", labelKey: "onboarding", icon: ListChecks },
     ],
   },
   {
-    label: "Control",
+    labelKey: "control",
     items: [
-      { href: "/admin/payouts", label: "Payouts", icon: Banknote },
-      { href: "/admin/pricing", label: "Pricing", icon: FileText },
-      { href: "/admin/documents", label: "Documents", icon: ClipboardCheck },
-      { href: "/admin/reports", label: "Reports", icon: Gauge },
-      { href: "/admin/sops", label: "Guides", icon: BookOpen },
-      { href: "/admin/signals", label: "Signals", icon: ShieldCheck },
+      { href: "/admin/payouts", labelKey: "payouts", icon: Banknote },
+      { href: "/admin/pricing", labelKey: "pricing", icon: FileText },
+      { href: "/admin/documents", labelKey: "documents", icon: ClipboardCheck },
+      { href: "/admin/reports", labelKey: "reports", icon: Gauge },
+      { href: "/admin/site-analytics", labelKey: "siteAnalytics", icon: BarChart3 },
+      { href: "/admin/sops", labelKey: "guides", icon: BookOpen },
+      { href: "/admin/signals", labelKey: "signals", icon: ShieldCheck },
     ],
   },
 ];
@@ -71,6 +73,7 @@ interface AdminSidebarProps {
 
 export function AdminSidebar({ initials, email }: AdminSidebarProps) {
   const pathname = usePathname();
+  const t = useTranslations("navigation.adminNav");
 
   function isActive(href: string) {
     if (href === "/admin") return pathname === "/admin";
@@ -88,7 +91,7 @@ export function AdminSidebar({ initials, email }: AdminSidebarProps) {
           transition={{ type: "spring", stiffness: 320, damping: 22 }}
           className="origin-left cursor-pointer select-none"
         >
-          <Link href="/admin" aria-label="Command Center" className="block">
+          <Link href="/admin" aria-label={t("commandCenter")} className="block">
             <Logo variant="light" size="fill" />
           </Link>
         </motion.div>
@@ -99,15 +102,15 @@ export function AdminSidebar({ initials, email }: AdminSidebarProps) {
         <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-neutral-400" />
         <input
           className="h-11 w-full rounded-xl border border-neutral-200 bg-white pl-10 pr-3 text-sm outline-none placeholder:text-neutral-400 focus:border-neutral-400"
-          placeholder="Search"
+          placeholder={t("search")}
         />
       </label>
 
       <nav className="flex-1 space-y-6 overflow-y-auto pr-1">
         {NAV.map((section) => (
-          <div key={section.label}>
+          <div key={section.labelKey}>
             <p className="mb-2 px-2 text-[11px] font-semibold uppercase tracking-[0.16em] text-neutral-400">
-              {section.label}
+              {t(section.labelKey)}
             </p>
             <div className="space-y-1">
               {section.items.map((item) => {
@@ -125,7 +128,7 @@ export function AdminSidebar({ initials, email }: AdminSidebarProps) {
                       )}
                     >
                       <Icon className="h-[18px] w-[18px]" strokeWidth={2} />
-                      <span className="truncate">{item.label}</span>
+                      <span className="truncate">{t(item.labelKey)}</span>
                     </Link>
                   </AnimateIcon>
                 );
@@ -146,7 +149,7 @@ export function AdminSidebar({ initials, email }: AdminSidebarProps) {
           </div>
         </div>
         <a href="/api/auth/signout" className="block px-2 text-sm font-medium text-neutral-500 hover:text-neutral-950">
-          Log out
+          {t("signOut")}
         </a>
       </div>
     </aside>

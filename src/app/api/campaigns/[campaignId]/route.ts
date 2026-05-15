@@ -3,7 +3,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { Platform, Niche } from "@prisma/client";
 import { z } from "zod";
-import { notifyCampaignLive } from "@/lib/discord";
+import { cpmPerMToCpv } from "@/lib/campaign-edit";
 
 function serialize<T>(data: T): T {
   return JSON.parse(
@@ -13,25 +13,55 @@ function serialize<T>(data: T): T {
 
 const patchSchema = z.object({
   name: z.string().min(1).max(200).optional(),
+  brandId: z.string().optional().nullable(),
+  pricingTemplateId: z.string().optional().nullable(),
   description: z.string().max(2000).optional().nullable(),
+  contentType: z.string().max(100).optional().nullable(),
   contentGuidelines: z.string().max(5000).optional().nullable(),
   requirements: z.string().max(2000).optional().nullable(),
+  otherNotes: z.string().max(2000).optional().nullable(),
+  pageStats: z.string().max(2000).optional().nullable(),
+  minAge: z.string().max(10).optional().nullable(),
   referralLink: z.string().optional().nullable(),
   bannerUrl: z
     .string()
     .optional()
     .nullable()
     .refine((v) => !v || /^https?:\/\//.test(v), "Must be a valid URL"),
+  bannerVideoUrl: z
+    .string()
+    .optional()
+    .nullable()
+    .refine((v) => !v || /^https?:\/\//.test(v), "Must be a valid URL"),
+  briefAssetUrl: z
+    .string()
+    .optional()
+    .nullable()
+    .refine((v) => !v || /^https?:\/\//.test(v), "Must be a valid URL"),
+  guidelinesUrl: z
+    .string()
+    .optional()
+    .nullable()
+    .refine((v) => !v || /^https?:\/\//.test(v), "Must be a valid URL"),
+  contentAssetUrls: z.array(z.string().url()).optional(),
+  requiredHashtags: z.array(z.string()).optional(),
   targetCountry: z.string().optional().nullable(),
+  targetCountryPercent: z.number().int().min(0).max(100).optional().nullable(),
+  targetMinAge18Percent: z.number().int().min(0).max(100).optional().nullable(),
+  targetMalePercent: z.number().int().min(0).max(100).optional().nullable(),
+  minFollowers: z.number().int().min(0).optional(),
   minEngagementRate: z.number().min(0).max(100).optional(),
   bioRequirement: z.string().optional().nullable(),
   linkInBioRequired: z.string().optional().nullable(),
   totalBudget: z.number().positive().optional(),
   goalViews: z.number().int().positive().optional().nullable(),
+  creatorCpmPerM: z.number().min(0).optional(),
+  adminMarginPerM: z.number().min(0).optional(),
   maxSlots: z.number().int().positive().optional().nullable(),
   requiresApproval: z.boolean().optional(),
-  status: z.enum(["draft", "active", "paused", "completed", "cancelled"]).optional(),
+  status: z.enum(["draft", "pending_payment", "pending_review", "active", "paused", "completed", "cancelled"]).optional(),
   deadline: z.string().optional().nullable(),
+  startsAt: z.string().optional().nullable(),
   niche: z
     .string()
     .nullable()
@@ -43,11 +73,7 @@ const patchSchema = z.object({
       const first = trimmed.split(",")[0]!.trim().toUpperCase();
       return (Object.values(Niche) as string[]).includes(first) ? (first as Niche) : null;
     }),
-  platforms: z.array(z.string()).optional(),
-  contentType: z.string().max(100).optional().nullable(),
-  otherNotes: z.string().max(2000).optional().nullable(),
-  pageStats: z.string().max(2000).optional().nullable(),
-  minAge: z.string().max(10).optional().nullable(),
+  platforms: z.array(z.enum(["INSTAGRAM", "TIKTOK", "YOUTUBE_SHORTS", "FACEBOOK", "X"])).optional(),
 });
 
 async function getAuthorizedAdmin(supabaseId: string, campaignId: string) {
@@ -122,35 +148,41 @@ export async function PATCH(
     return NextResponse.json({ error: parsed.error.issues[0]?.message ?? "Invalid input" }, { status: 400 });
   }
 
-  const { deadline, platforms, goalViews, minEngagementRate, ...rest } = parsed.data;
-  const wasActive = authorized.campaign.status !== "active" && rest.status === "active";
+  const {
+    deadline,
+    startsAt,
+    platforms,
+    goalViews,
+    minEngagementRate,
+    creatorCpmPerM,
+    adminMarginPerM,
+    ...rest
+  } = parsed.data;
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const data: Record<string, any> = { ...rest };
   if (deadline) data.deadline = new Date(deadline);
+  if (startsAt !== undefined) data.startsAt = startsAt ? new Date(startsAt) : null;
   if (platforms) {
     data.platforms = platforms as Platform[];
   }
   if (goalViews !== undefined) data.goalViews = goalViews ? BigInt(goalViews) : null;
   if (minEngagementRate !== undefined) data.minEngagementRate = minEngagementRate;
+  if (creatorCpmPerM !== undefined || adminMarginPerM !== undefined) {
+    const nextCreatorCpmPerM = creatorCpmPerM ?? Number(authorized.campaign.creatorCpv) * 1_000_000;
+    const nextAdminMarginPerM = adminMarginPerM ?? Number(authorized.campaign.adminMargin) * 1_000_000;
+    const creatorCpv = cpmPerMToCpv(nextCreatorCpmPerM);
+    const adminMargin = cpmPerMToCpv(nextAdminMarginPerM);
+    data.creatorCpv = creatorCpv;
+    data.adminMargin = adminMargin;
+    data.businessCpv = creatorCpv + adminMargin;
+  }
 
   try {
     const updated = await prisma.campaign.update({
       where: { id: campaignId },
       data,
     });
-
-    if (wasActive) {
-      await notifyCampaignLive({
-        id: updated.id,
-        name: updated.name,
-        platforms: updated.platforms,
-        totalBudget: Number(updated.totalBudget),
-        businessCpv: Number(updated.businessCpv),
-        targetCountry: updated.targetCountry,
-        minEngagementRate: Number(updated.minEngagementRate),
-      });
-    }
 
     return NextResponse.json(serialize(updated));
   } catch (err) {

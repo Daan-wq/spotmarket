@@ -1,10 +1,20 @@
-export const metadata = { title: "Privacy Policy – ClipProfit" };
+import { getLocale, getTranslations } from "next-intl/server";
 
-export default function PrivacyPage() {
+export const metadata = { title: "Privacy Policy - ClipProfit" };
+
+export default async function PrivacyPage() {
+  const locale = await getLocale();
+  const t = await getTranslations("legal");
+
   return (
     <main className="max-w-2xl mx-auto px-6 py-16 text-sm text-gray-700">
       <h1 className="text-2xl font-bold text-gray-900 mb-2">Privacy Policy</h1>
       <p className="text-gray-400 mb-8">Last updated: March 2025</p>
+      {locale === "nl" ? (
+        <p className="mb-8 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-amber-900">
+          {t("englishOnlyNotice")}
+        </p>
+      ) : null}
 
       <section className="mb-6">
         <h2 className="font-semibold text-gray-900 mb-2">1. What we collect</h2>
@@ -13,7 +23,7 @@ export default function PrivacyPage() {
 
       <section className="mb-6">
         <h2 className="font-semibold text-gray-900 mb-2">2. How we use it</h2>
-        <p>We use your data solely to operate the ClipProfit platform — matching creators with brand campaigns, calculating earnings, and processing payouts. We do not sell your data to third parties.</p>
+        <p>We use your data solely to operate the ClipProfit platform - matching creators with brand campaigns, calculating earnings, and processing payouts. We do not sell your data to third parties.</p>
       </section>
 
       <section className="mb-6">

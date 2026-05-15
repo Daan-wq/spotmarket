@@ -2,6 +2,10 @@ import { requireAuth, getCreatorHeader } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import type { Platform } from "@prisma/client";
 import { CampaignsClient } from "./_components/campaigns-client";
+import {
+  evaluateCampaignJoinEligibility,
+  formatPlatformList,
+} from "@/lib/campaign-eligibility";
 
 export default async function CampaignsPage() {
   const { userId: supabaseId } = await requireAuth("creator");
@@ -97,11 +101,12 @@ export default async function CampaignsPage() {
       : Promise.resolve([]),
   ]);
 
-  const verifiedPlatforms = new Set<Platform>();
-  if (igConnections.length > 0) verifiedPlatforms.add("INSTAGRAM");
-  if (fbConnections.length > 0) verifiedPlatforms.add("FACEBOOK");
-  if (ytConnections.length > 0) verifiedPlatforms.add("YOUTUBE_SHORTS");
-  if (ttConnections.length > 0) verifiedPlatforms.add("TIKTOK");
+  const verifiedConnections = {
+    instagram: igConnections.length > 0,
+    facebook: fbConnections.length > 0,
+    youtube: ytConnections.length > 0,
+    tiktok: ttConnections.length > 0,
+  };
 
   const maxFollowers = Math.max(
     0,
@@ -134,8 +139,9 @@ export default async function CampaignsPage() {
       0,
     );
     const requiredPlatforms = c.platforms;
-    const hasPlatform = requiredPlatforms.some((p) =>
-      verifiedPlatforms.has(p),
+    const platformEligibility = evaluateCampaignJoinEligibility(
+      requiredPlatforms,
+      verifiedConnections,
     );
     const meetsFollowers = maxFollowers >= c.minFollowers;
     const eligibility: {
@@ -143,10 +149,10 @@ export default async function CampaignsPage() {
       reason?: string;
     } = !creatorProfileId
       ? { status: "unknown" }
-      : !hasPlatform
+      : !platformEligibility.eligible
         ? {
             status: "ineligible",
-            reason: `Connect ${requiredPlatforms.map(platformLabel).join(" or ")}`,
+            reason: `Connect ${formatPlatformList(platformEligibility.missingPlatformLabels)}`,
           }
         : !meetsFollowers
           ? {
@@ -164,7 +170,7 @@ export default async function CampaignsPage() {
       totalPaid,
       platforms: requiredPlatforms,
       status: c.status,
-      contentType: c.contentType ?? "UGC",
+      contentType: c.contentType ?? null,
       niche: c.niche ?? null,
       brandName: c.name,
       bannerUrl: c.bannerUrl ?? null,
@@ -181,25 +187,6 @@ export default async function CampaignsPage() {
   );
 
   return <CampaignsClient marketplace={marketplace} myCampaigns={myCampaigns} />;
-}
-
-function platformLabel(p: Platform): string {
-  switch (p) {
-    case "INSTAGRAM":
-      return "Instagram";
-    case "TIKTOK":
-      return "TikTok";
-    case "YOUTUBE_SHORTS":
-      return "YouTube";
-    case "FACEBOOK":
-      return "Facebook";
-    case "X":
-      return "X";
-    case "BOTH":
-      return "any platform";
-    default:
-      return p;
-  }
 }
 
 function formatFollowers(n: number): string {
