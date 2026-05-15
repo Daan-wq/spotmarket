@@ -41,6 +41,7 @@ describe("POST /api/campaigns/[campaignId]/applications", () => {
       id: "creator-user-1",
       creatorProfile: {
         id: "creator-profile-1",
+        isVerified: false,
         displayName: "Creator",
         totalFollowers: 1200,
         engagementRate: 3.2,
@@ -84,6 +85,93 @@ describe("POST /api/campaigns/[campaignId]/applications", () => {
     );
   });
 
+  it.each([
+    [
+      "Instagram",
+      "INSTAGRAM",
+      {
+        igConnections: [{ isVerified: true }],
+        ttConnections: [],
+        ytConnections: [],
+        fbConnections: [],
+      },
+    ],
+    [
+      "TikTok",
+      "TIKTOK",
+      {
+        igConnections: [],
+        ttConnections: [{ isVerified: true }],
+        ytConnections: [],
+        fbConnections: [],
+      },
+    ],
+    [
+      "YouTube",
+      "YOUTUBE_SHORTS",
+      {
+        igConnections: [],
+        ttConnections: [],
+        ytConnections: [{ isVerified: true }],
+        fbConnections: [],
+      },
+    ],
+    [
+      "Facebook",
+      "FACEBOOK",
+      {
+        igConnections: [],
+        ttConnections: [],
+        ytConnections: [],
+        fbConnections: [{ isVerified: true }],
+      },
+    ],
+  ])(
+    "allows a %s verified connection to join when the creator profile is not profile-verified",
+    async (_label, platform, connections) => {
+      routeMocks.campaignFindUnique.mockResolvedValueOnce({
+        id: "campaign-1",
+        createdByUserId: "admin-user-1",
+        platforms: [platform],
+      });
+      routeMocks.userFindUnique.mockResolvedValueOnce({
+        id: "creator-user-1",
+        creatorProfile: {
+          id: "creator-profile-1",
+          isVerified: false,
+          displayName: "Creator",
+          totalFollowers: 1200,
+          engagementRate: 3.2,
+          ...connections,
+        },
+      });
+
+      const response = await POST(
+        new Request("https://app.test/api/campaigns/campaign-1/applications", {
+          method: "POST",
+        }) as never,
+        params,
+      );
+
+      expect(response.status).toBe(201);
+      await expect(response.json()).resolves.toEqual({
+        id: "application-1",
+        application: {
+          id: "application-1",
+          status: "pending",
+        },
+      });
+      expect(routeMocks.applicationCreate).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            campaignId: "campaign-1",
+            creatorProfileId: "creator-profile-1",
+          }),
+        }),
+      );
+    },
+  );
+
   it("returns a structured connect-required response when no matching platform is verified", async () => {
     routeMocks.campaignFindUnique.mockResolvedValueOnce({
       id: "campaign-1",
@@ -98,12 +186,15 @@ describe("POST /api/campaigns/[campaignId]/applications", () => {
       params,
     );
 
-    await expect(response.json()).resolves.toEqual({
+    const body = await response.json();
+    expect(body).toEqual({
       code: "CONNECT_REQUIRED",
       error: "Connect your YouTube account to join this campaign.",
       missingPlatforms: ["YOUTUBE_SHORTS"],
       requiredPlatformLabels: ["YouTube"],
     });
+    expect(body.error).not.toMatch(/bio/i);
+    expect(body.error).not.toBe("Creator bio must be verified first");
     expect(response.status).toBe(400);
     expect(routeMocks.applicationCreate).not.toHaveBeenCalled();
   });

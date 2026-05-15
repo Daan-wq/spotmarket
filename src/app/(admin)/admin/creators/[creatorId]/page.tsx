@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { PageHeader, SectionHeader, StatCard } from "@/components/ui/page";
 import { AccountsAnalyticsWorkspace, type AccountsAnalyticsSearchParams } from "@/components/creator-analytics/accounts-analytics-workspace";
 import { ScoreCard } from "@/components/clipper-score/score-card";
+import { getCreatorAccountStatusCopy } from "@/lib/creator-account-status";
 import { prisma } from "@/lib/prisma";
 import { parseRange } from "@/lib/stats/range";
 import { getCreatorTopStatsForScope, type CreatorStatsScope } from "@/lib/stats/creator";
@@ -93,13 +94,19 @@ export default async function CreatorProfilePage({ params, searchParams }: PageP
   const accounts = buildAccounts(profile);
   const accountCount = accounts.length;
   const verifiedAccounts = accounts.filter((account) => account.isVerified).length;
+  const accountStatus = getCreatorAccountStatusCopy({
+    instagram: profile.igConnections.some((connection) => connection.isVerified),
+    tiktok: profile.ttConnections.some((connection) => connection.isVerified),
+    youtube: profile.ytConnections.some((connection) => connection.isVerified),
+    facebook: profile.fbConnections.some((connection) => connection.isVerified),
+  });
 
   return (
     <div className="space-y-9">
       <PageHeader
         eyebrow="Clipper analytics"
         title={profile.displayName}
-        description={`${profile.user.email} - joined ${formatDate(profile.user.createdAt)}${profile.isVerified ? " - verified profile" : ""}`}
+        description={`${profile.user.email} - joined ${formatDate(profile.user.createdAt)} - ${accountStatus.value}`}
         actions={[{ label: "All clippers", href: "/admin/clippers" }]}
       />
 

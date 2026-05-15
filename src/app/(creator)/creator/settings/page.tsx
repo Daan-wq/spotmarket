@@ -7,6 +7,7 @@ import {
   CreatorSectionHeader,
   SoftStat,
 } from "../_components/creator-journey";
+import { getCreatorAccountStatusCopy } from "@/lib/creator-account-status";
 
 export const metadata = {
   title: "Settings",
@@ -29,8 +30,27 @@ export default async function SettingsPage() {
           bio: true,
           avatarUrl: true,
           tronsAddress: true,
-          isVerified: true,
           createdAt: true,
+          igConnections: {
+            where: { isVerified: true },
+            select: { id: true },
+            take: 1,
+          },
+          ttConnections: {
+            where: { isVerified: true },
+            select: { id: true },
+            take: 1,
+          },
+          ytConnections: {
+            where: { isVerified: true },
+            select: { id: true },
+            take: 1,
+          },
+          fbConnections: {
+            where: { isVerified: true },
+            select: { id: true },
+            take: 1,
+          },
         },
       },
     },
@@ -39,6 +59,12 @@ export default async function SettingsPage() {
   const profile = user?.creatorProfile;
   const displayName = profile?.displayName || "Creator";
   const joinedAt = profile?.createdAt ?? user?.createdAt;
+  const accountStatus = getCreatorAccountStatusCopy({
+    instagram: Boolean(profile?.igConnections.length),
+    tiktok: Boolean(profile?.ttConnections.length),
+    youtube: Boolean(profile?.ytConnections.length),
+    facebook: Boolean(profile?.fbConnections.length),
+  });
   const joinedLabel = joinedAt
     ? new Intl.DateTimeFormat("en", {
         month: "short",
@@ -63,9 +89,9 @@ export default async function SettingsPage() {
           imageUrl={profile?.avatarUrl ?? null}
         />
         <SoftStat
-          label="Status"
-          value={profile?.isVerified ? "Verified" : "Active"}
-          detail={profile?.isVerified ? "Profile verified" : "Ready to clip"}
+          label="Accounts"
+          value={accountStatus.value}
+          detail={accountStatus.detail}
         />
         <SoftStat label="Joined" value={joinedLabel} detail="ClipProfit" />
         <SoftStat
