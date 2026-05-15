@@ -15,6 +15,7 @@
 import crypto from "crypto";
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { getRequiredOAuthEnv } from "@/lib/oauth-env";
 import { pollStoriesForConnection } from "@/lib/stories";
 
 export const dynamic = "force-dynamic";
@@ -67,8 +68,12 @@ export async function POST(req: NextRequest) {
 }
 
 function verifySignature(req: NextRequest, rawBody: string): boolean {
-  const secret = process.env.INSTAGRAM_APP_SECRET;
-  if (!secret) return false;
+  let secret: string;
+  try {
+    secret = getRequiredOAuthEnv("INSTAGRAM_APP_SECRET");
+  } catch {
+    return false;
+  }
   const sigHeader = req.headers.get("x-hub-signature-256");
   if (!sigHeader || !sigHeader.startsWith("sha256=")) return false;
   const provided = sigHeader.slice("sha256=".length);
