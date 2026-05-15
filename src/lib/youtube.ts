@@ -10,6 +10,7 @@ import type {
   YtAnalyticsWindow,
   YtDailyAnalytics,
 } from "@/types/youtube";
+import { getRequiredOAuthEnv, getRequiredOAuthRedirectUri } from "@/lib/oauth-env";
 
 export type { YtChannelProfile, YtVideoItem, YtDemographics, YtAnalyticsWindow, YtDailyAnalytics };
 
@@ -26,8 +27,8 @@ export const REQUIRED_YT_SCOPES = [
 
 export function getYoutubeAuthUrl(state: string): string {
   const params = new URLSearchParams({
-    client_id: process.env.GOOGLE_CLIENT_ID!,
-    redirect_uri: process.env.YOUTUBE_REDIRECT_URI!,
+    client_id: getRequiredOAuthEnv("GOOGLE_CLIENT_ID"),
+    redirect_uri: getRequiredOAuthRedirectUri("YOUTUBE_REDIRECT_URI"),
     response_type: "code",
     scope: REQUIRED_YT_SCOPES.join(" "),
     access_type: "offline",
@@ -46,9 +47,9 @@ export async function exchangeCodeForTokens(
     headers: { "Content-Type": "application/x-www-form-urlencoded" },
     body: new URLSearchParams({
       code,
-      client_id: process.env.GOOGLE_CLIENT_ID!,
-      client_secret: process.env.GOOGLE_CLIENT_SECRET!,
-      redirect_uri: process.env.YOUTUBE_REDIRECT_URI!,
+      client_id: getRequiredOAuthEnv("GOOGLE_CLIENT_ID"),
+      client_secret: getRequiredOAuthEnv("GOOGLE_CLIENT_SECRET"),
+      redirect_uri: getRequiredOAuthRedirectUri("YOUTUBE_REDIRECT_URI"),
       grant_type: "authorization_code",
     }),
   });
@@ -75,8 +76,8 @@ export async function refreshYoutubeToken(
     headers: { "Content-Type": "application/x-www-form-urlencoded" },
     body: new URLSearchParams({
       refresh_token: refreshToken,
-      client_id: process.env.GOOGLE_CLIENT_ID!,
-      client_secret: process.env.GOOGLE_CLIENT_SECRET!,
+      client_id: getRequiredOAuthEnv("GOOGLE_CLIENT_ID"),
+      client_secret: getRequiredOAuthEnv("GOOGLE_CLIENT_SECRET"),
       grant_type: "refresh_token",
     }),
   });

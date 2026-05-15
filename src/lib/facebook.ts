@@ -9,6 +9,7 @@ import type {
   FbDailyPageInsight,
   FbPageInsightsResult,
 } from "@/types/facebook";
+import { getRequiredOAuthEnv, getRequiredOAuthRedirectUri } from "@/lib/oauth-env";
 
 export type { FbPageProfile, FbPagePost, FbDailyPageInsight, FbPageInsightsResult };
 
@@ -27,8 +28,8 @@ export const REQUIRED_FB_SCOPES = [
 
 export function getFacebookAuthUrl(state: string): string {
   const params = new URLSearchParams({
-    client_id: process.env.FACEBOOK_APP_ID!,
-    redirect_uri: process.env.FACEBOOK_REDIRECT_URI!,
+    client_id: getRequiredOAuthEnv("FACEBOOK_APP_ID"),
+    redirect_uri: getRequiredOAuthRedirectUri("FACEBOOK_REDIRECT_URI"),
     scope: REQUIRED_FB_SCOPES.join(","),
     response_type: "code",
     auth_type: "rerequest",
@@ -42,9 +43,9 @@ export async function exchangeFbCodeForToken(
 ): Promise<{ accessToken: string; expiresIn: number; grantedScopes: string[] }> {
   // Step 1: Exchange code for short-lived user token
   const params = new URLSearchParams({
-    client_id: process.env.FACEBOOK_APP_ID!,
-    client_secret: process.env.FACEBOOK_APP_SECRET!,
-    redirect_uri: process.env.FACEBOOK_REDIRECT_URI!,
+    client_id: getRequiredOAuthEnv("FACEBOOK_APP_ID"),
+    client_secret: getRequiredOAuthEnv("FACEBOOK_APP_SECRET"),
+    redirect_uri: getRequiredOAuthRedirectUri("FACEBOOK_REDIRECT_URI"),
     code,
   });
   const shortRes = await fetch(`${GRAPH_BASE}/oauth/access_token?${params}`);
@@ -57,8 +58,8 @@ export async function exchangeFbCodeForToken(
   // Step 2: Exchange for long-lived user token (~60 days)
   const longParams = new URLSearchParams({
     grant_type: "fb_exchange_token",
-    client_id: process.env.FACEBOOK_APP_ID!,
-    client_secret: process.env.FACEBOOK_APP_SECRET!,
+    client_id: getRequiredOAuthEnv("FACEBOOK_APP_ID"),
+    client_secret: getRequiredOAuthEnv("FACEBOOK_APP_SECRET"),
     fb_exchange_token: shortLivedToken,
   });
   const longRes = await fetch(`${GRAPH_BASE}/oauth/access_token?${longParams}`);

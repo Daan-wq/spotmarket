@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import crypto from "node:crypto";
 import { prisma } from "@/lib/prisma";
 import { buildAppUrl, getAppUrlFromRequest } from "@/lib/app-url";
+import { getRequiredOAuthEnv } from "@/lib/oauth-env";
 
 /**
  * Facebook Deauthorize Callback.
@@ -22,8 +23,10 @@ export async function POST(req: NextRequest) {
   }
 
   const [encodedSig, encodedPayload] = signedRequest.split(".");
-  const appSecret = process.env.FACEBOOK_APP_SECRET;
-  if (!appSecret) {
+  let appSecret: string;
+  try {
+    appSecret = getRequiredOAuthEnv("FACEBOOK_APP_SECRET");
+  } catch {
     return NextResponse.json({ error: "server misconfigured" }, { status: 500 });
   }
 

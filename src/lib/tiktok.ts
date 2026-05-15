@@ -3,6 +3,8 @@
  * Uses TikTok v2 API with encrypted tokens stored in DB.
  */
 
+import { getRequiredOAuthEnv, getRequiredOAuthRedirectUri } from "@/lib/oauth-env";
+
 const TIKTOK_OAUTH_BASE = "https://open.tiktokapis.com/v2/oauth";
 const TIKTOK_API_BASE = "https://open.tiktokapis.com/v2";
 
@@ -17,8 +19,8 @@ export const REQUIRED_TT_SCOPES = [
 
 export function getTikTokAuthUrl(state: string): string {
   const params = new URLSearchParams({
-    client_key: process.env.TIKTOK_CLIENT_KEY!,
-    redirect_uri: process.env.TIKTOK_REDIRECT_URI!,
+    client_key: getRequiredOAuthEnv("TIKTOK_CLIENT_KEY"),
+    redirect_uri: getRequiredOAuthRedirectUri("TIKTOK_REDIRECT_URI"),
     response_type: "code",
     scope: REQUIRED_TT_SCOPES.join(","),
     state,
@@ -37,11 +39,11 @@ export async function exchangeCodeForTokens(code: string): Promise<{
     method: "POST",
     headers: { "Content-Type": "application/x-www-form-urlencoded" },
     body: new URLSearchParams({
-      client_key: process.env.TIKTOK_CLIENT_KEY!,
-      client_secret: process.env.TIKTOK_CLIENT_SECRET!,
+      client_key: getRequiredOAuthEnv("TIKTOK_CLIENT_KEY"),
+      client_secret: getRequiredOAuthEnv("TIKTOK_CLIENT_SECRET"),
       code,
       grant_type: "authorization_code",
-      redirect_uri: process.env.TIKTOK_REDIRECT_URI!,
+      redirect_uri: getRequiredOAuthRedirectUri("TIKTOK_REDIRECT_URI"),
     }),
   });
 
@@ -72,8 +74,8 @@ export async function refreshTikTokToken(refreshToken: string): Promise<{
     method: "POST",
     headers: { "Content-Type": "application/x-www-form-urlencoded" },
     body: new URLSearchParams({
-      client_key: process.env.TIKTOK_CLIENT_KEY!,
-      client_secret: process.env.TIKTOK_CLIENT_SECRET!,
+      client_key: getRequiredOAuthEnv("TIKTOK_CLIENT_KEY"),
+      client_secret: getRequiredOAuthEnv("TIKTOK_CLIENT_SECRET"),
       grant_type: "refresh_token",
       refresh_token: refreshToken,
     }),

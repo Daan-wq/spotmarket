@@ -4,6 +4,7 @@
  */
 
 import type { IgDemographics, IgMediaItem, ComputedCreatorStats } from "@/types/instagram";
+import { getRequiredOAuthEnv, getRequiredOAuthRedirectUri } from "@/lib/oauth-env";
 
 // Re-export types for convenience
 export type { IgDemographics, IgMediaItem, ComputedCreatorStats };
@@ -17,9 +18,9 @@ export const REQUIRED_IG_SCOPES = [
 ] as const;
 
 export async function getInstagramAuthUrl(state: string): Promise<string> {
-  const redirectUri = process.env.INSTAGRAM_REDIRECT_URI!;
+  const redirectUri = getRequiredOAuthRedirectUri("INSTAGRAM_REDIRECT_URI");
   const params = new URLSearchParams({
-    client_id: process.env.INSTAGRAM_APP_ID!,
+    client_id: getRequiredOAuthEnv("INSTAGRAM_APP_ID"),
     redirect_uri: redirectUri,
     scope: REQUIRED_IG_SCOPES.join(","),
     response_type: "code",
@@ -34,10 +35,11 @@ export async function exchangeCodeForToken(
   code: string
 ): Promise<{ accessToken: string; expiresIn: number; grantedScopes: string[] }> {
   // Step 1: Short-lived token
-  const tokenRedirectUri = process.env.INSTAGRAM_REDIRECT_URI!;
+  const tokenRedirectUri = getRequiredOAuthRedirectUri("INSTAGRAM_REDIRECT_URI");
+  const appSecret = getRequiredOAuthEnv("INSTAGRAM_APP_SECRET");
   const body = new URLSearchParams({
-    client_id: process.env.INSTAGRAM_APP_ID!,
-    client_secret: process.env.INSTAGRAM_APP_SECRET!,
+    client_id: getRequiredOAuthEnv("INSTAGRAM_APP_ID"),
+    client_secret: appSecret,
     grant_type: "authorization_code",
     redirect_uri: tokenRedirectUri,
     code,
@@ -61,9 +63,12 @@ export async function exchangeCodeForToken(
     : [];
 
   // Step 2: Exchange short-lived token for long-lived token (60 days)
-  const longRes = await fetch(
-    `${GRAPH_BASE}/access_token?grant_type=ig_exchange_token&client_secret=${process.env.INSTAGRAM_APP_SECRET!}&access_token=${shortLivedToken}`
-  );
+  const longParams = new URLSearchParams({
+    grant_type: "ig_exchange_token",
+    client_secret: appSecret,
+    access_token: shortLivedToken,
+  });
+  const longRes = await fetch(`${GRAPH_BASE}/access_token?${longParams}`);
 
   if (!longRes.ok) {
     const longErr = await longRes.text();
