@@ -134,9 +134,9 @@ export default async function CampaignsPage() {
       0,
     );
     const requiredPlatforms = c.platforms;
-    const hasPlatform = requiredPlatforms.some((p) =>
-      verifiedPlatforms.has(p),
-    );
+    const hasPlatform = requiredPlatforms.length === 0
+      ? verifiedPlatforms.size > 0
+      : requiredPlatforms.some((p) => verifiedPlatforms.has(p));
     const meetsFollowers = maxFollowers >= c.minFollowers;
     const eligibility: {
       status: "eligible" | "ineligible" | "unknown";
@@ -146,7 +146,7 @@ export default async function CampaignsPage() {
       : !hasPlatform
         ? {
             status: "ineligible",
-            reason: `Connect ${requiredPlatforms.map(platformLabel).join(" or ")}`,
+            reason: `Connect ${formatPlatformRequirement(requiredPlatforms)}`,
           }
         : !meetsFollowers
           ? {
@@ -164,7 +164,7 @@ export default async function CampaignsPage() {
       totalPaid,
       platforms: requiredPlatforms,
       status: c.status,
-      contentType: c.contentType ?? "UGC",
+      contentType: c.contentType ?? null,
       niche: c.niche ?? null,
       brandName: c.name,
       bannerUrl: c.bannerUrl ?? null,
@@ -195,11 +195,14 @@ function platformLabel(p: Platform): string {
       return "Facebook";
     case "X":
       return "X";
-    case "BOTH":
-      return "any platform";
     default:
       return p;
   }
+}
+
+function formatPlatformRequirement(platforms: Platform[]): string {
+  if (platforms.length === 0) return "social";
+  return platforms.map(platformLabel).join(" or ");
 }
 
 function formatFollowers(n: number): string {

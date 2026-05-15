@@ -6,7 +6,6 @@ const PLATFORM_LABELS: Record<string, string> = {
   YOUTUBE_SHORTS: "YouTube Shorts",
   FACEBOOK: "Facebook",
   X: "X",
-  BOTH: "Instagram & TikTok",
 };
 
 function formatPlatforms(platforms: string[] | null | undefined, separator = " · "): string {

@@ -542,7 +542,6 @@ enum Platform {
   YOUTUBE_SHORTS
   FACEBOOK
   X
-  BOTH
 }
 
 // ─────────────────────────────────────────

@@ -43,7 +43,7 @@ const patchSchema = z.object({
       const first = trimmed.split(",")[0]!.trim().toUpperCase();
       return (Object.values(Niche) as string[]).includes(first) ? (first as Niche) : null;
     }),
-  platforms: z.array(z.string()).optional(),
+  platforms: z.array(z.enum(["INSTAGRAM", "TIKTOK", "YOUTUBE_SHORTS", "FACEBOOK", "X"])).optional(),
   contentType: z.string().max(100).optional().nullable(),
   otherNotes: z.string().max(2000).optional().nullable(),
   pageStats: z.string().max(2000).optional().nullable(),

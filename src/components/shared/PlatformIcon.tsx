@@ -59,15 +59,6 @@ function XIcon({ size }: { size: number }) {
 }
 
 export default function PlatformIcon({ platform, size = 24 }: PlatformIconProps) {
-  if (platform === "BOTH") {
-    return (
-      <div className="flex items-center gap-1">
-        <PlatformIcon platform="INSTAGRAM" size={size} />
-        <PlatformIcon platform="TIKTOK" size={size} />
-      </div>
-    );
-  }
-
   if (platform === "INSTAGRAM") return <InstagramIcon size={size} />;
   if (platform === "TIKTOK") return <TikTokIcon size={size} />;
   if (platform === "YOUTUBE_SHORTS") return <YouTubeIcon size={size} />;
