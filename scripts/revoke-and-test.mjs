@@ -2,9 +2,13 @@ import { chromium } from "playwright";
 import https from "https";
 
 const CLIENT_ID = "2199789334158131";
-const SECRET = "7c90d5bbf3acd4e82bd5c8e9816757f6";
+const SECRET = process.env.INSTAGRAM_APP_SECRET ?? "";
 const REDIRECT_URI = "https://spotmarket-gamma.vercel.app/api/auth/instagram/callback";
 const APP_URL = "https://spotmarket-gamma.vercel.app";
+const APP_TEST_EMAIL = process.env.APP_TEST_EMAIL ?? "";
+const APP_TEST_PASSWORD = process.env.APP_TEST_PASSWORD ?? "";
+const INSTAGRAM_TEST_USERNAME = process.env.INSTAGRAM_TEST_USERNAME ?? "";
+const INSTAGRAM_TEST_PASSWORD = process.env.INSTAGRAM_TEST_PASSWORD ?? "";
 
 function exchange(code) {
   return new Promise((resolve) => {
@@ -34,8 +38,8 @@ await dismissCookies(page);
 
 // Check if already logged in
 if (page.url().includes("accounts/login")) {
-  await page.fill('input[name="username"]', "emperorsagency").catch(() => {});
-  await page.fill('input[name="password"]', "Danuel69!").catch(() => {});
+  await page.fill('input[name="username"]', INSTAGRAM_TEST_USERNAME).catch(() => {});
+  await page.fill('input[name="password"]', INSTAGRAM_TEST_PASSWORD).catch(() => {});
   await page.locator('button[type="submit"]').click({ force: true }).catch(() => {});
   await page.waitForTimeout(4000);
   if (page.url().includes("onetap")) {
@@ -78,8 +82,8 @@ console.log("\n2. Now doing fresh OAuth...");
 const lp = await ctx.newPage();
 await lp.goto(`${APP_URL}/sign-in`);
 await lp.waitForLoadState("networkidle");
-await lp.fill('input[type="email"]', "daan0529@icloud.com");
-await lp.fill('input[type="password"]', "Test123");
+await lp.fill('input[type="email"]', APP_TEST_EMAIL);
+await lp.fill('input[type="password"]', APP_TEST_PASSWORD);
 await lp.click('button[type="submit"]');
 await lp.waitForLoadState("networkidle");
 await lp.waitForTimeout(2000);
@@ -92,8 +96,8 @@ await dismissCookies(oauthPage);
 
 const u = oauthPage.locator('input[name="username"], input[autocomplete="username"]').first();
 if (await u.isVisible({ timeout: 5000 }).catch(() => false)) {
-  await u.fill("emperorsagency");
-  await oauthPage.locator('input[type="password"]').first().fill("Danuel69!");
+  await u.fill(INSTAGRAM_TEST_USERNAME);
+  await oauthPage.locator('input[type="password"]').first().fill(INSTAGRAM_TEST_PASSWORD);
   await oauthPage.locator('button[type="submit"]').first().dispatchEvent("click");
   await oauthPage.waitForTimeout(5000);
 }

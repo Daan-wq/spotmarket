@@ -1,6 +1,8 @@
 import { chromium } from "playwright";
 
 const APP_URL = "https://spotmarket-gamma.vercel.app";
+const APP_TEST_EMAIL = process.env.APP_TEST_EMAIL ?? "";
+const APP_TEST_PASSWORD = process.env.APP_TEST_PASSWORD ?? "";
 
 const browser = await chromium.launch({ headless: true });
 const page = await browser.newPage();
@@ -20,8 +22,8 @@ const passInput = await page.$('input[type="password"]');
 console.log("Email input found:", !!emailInput, "Password input found:", !!passInput);
 
 if (emailInput && passInput) {
-  await emailInput.fill("daan0529@icloud.com");
-  await passInput.fill("Test123");
+  await emailInput.fill(APP_TEST_EMAIL);
+  await passInput.fill(APP_TEST_PASSWORD);
   await page.screenshot({ path: "scripts/signin-filled.png" });
   
   await page.click('button[type="submit"]');

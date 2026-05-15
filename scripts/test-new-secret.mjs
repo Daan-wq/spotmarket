@@ -3,8 +3,12 @@ import https from "https";
 
 const APP_URL = "https://spotmarket-gamma.vercel.app";
 const IG_APP_ID = "2199789334158131";
-const IG_SECRET = "5a1b55705d4f4e1ecb72fc662662cc5c";
+const IG_SECRET = process.env.INSTAGRAM_APP_SECRET ?? "";
 const REDIRECT_URI = "https://spotmarket-gamma.vercel.app/api/auth/instagram/callback";
+const APP_TEST_EMAIL = process.env.APP_TEST_EMAIL ?? "";
+const APP_TEST_PASSWORD = process.env.APP_TEST_PASSWORD ?? "";
+const INSTAGRAM_TEST_USERNAME = process.env.INSTAGRAM_TEST_USERNAME ?? "";
+const INSTAGRAM_TEST_PASSWORD = process.env.INSTAGRAM_TEST_PASSWORD ?? "";
 
 function exchange(code, secret, label) {
   return new Promise((resolve) => {
@@ -28,8 +32,8 @@ const ctx = await browser.newContext();
 const lp = await ctx.newPage();
 await lp.goto(`${APP_URL}/sign-in`);
 await lp.waitForLoadState("networkidle");
-await lp.fill('input[type="email"]', "daan0529@icloud.com");
-await lp.fill('input[type="password"]', "Test123");
+await lp.fill('input[type="email"]', APP_TEST_EMAIL);
+await lp.fill('input[type="password"]', APP_TEST_PASSWORD);
 await lp.click('button[type="submit"]');
 await lp.waitForLoadState("networkidle");
 await lp.waitForTimeout(2000);
@@ -42,8 +46,8 @@ await dismissCookies(page);
 
 const u = page.locator('input[name="username"], input[autocomplete="username"]').first();
 if (await u.isVisible({ timeout: 5000 }).catch(() => false)) {
-  await u.fill("emperorsagency");
-  await page.locator('input[type="password"]').first().fill("Danuel69!");
+  await u.fill(INSTAGRAM_TEST_USERNAME);
+  await page.locator('input[type="password"]').first().fill(INSTAGRAM_TEST_PASSWORD);
   await page.locator('button[type="submit"]').first().dispatchEvent("click");
   await page.waitForTimeout(5000);
 }

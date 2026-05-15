@@ -1,6 +1,8 @@
 import { chromium } from "playwright";
 
 const APP_URL = "https://spotmarket-gamma.vercel.app";
+const APP_TEST_EMAIL = process.env.APP_TEST_EMAIL ?? "";
+const APP_TEST_PASSWORD = process.env.APP_TEST_PASSWORD ?? "";
 
 const browser = await chromium.launch({ headless: true });
 const ctx = await browser.newContext();
@@ -9,8 +11,8 @@ const page = await ctx.newPage();
 // Login
 await page.goto(`${APP_URL}/sign-in`);
 await page.waitForLoadState("networkidle");
-await page.fill('input[type="email"]', "daan0529@icloud.com");
-await page.fill('input[type="password"]', "Test123");
+await page.fill('input[type="email"]', APP_TEST_EMAIL);
+await page.fill('input[type="password"]', APP_TEST_PASSWORD);
 await page.click('button[type="submit"]');
 await page.waitForLoadState("networkidle");
 await page.waitForTimeout(2000);

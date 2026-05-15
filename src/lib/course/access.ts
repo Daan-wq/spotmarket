@@ -1,7 +1,7 @@
 import type { CoursePlatform } from "@prisma/client";
 
 export const COURSE_ADMIN_EMAILS = (
-  process.env.COURSE_ADMIN_EMAILS ?? "daan0529@icloud.com"
+  process.env.COURSE_ADMIN_EMAILS ?? ""
 )
   .split(",")
   .map((e) => e.trim().toLowerCase())
