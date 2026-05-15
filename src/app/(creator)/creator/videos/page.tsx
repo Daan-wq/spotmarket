@@ -1,10 +1,20 @@
 import { requireAuth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { resolveThumbnail } from "@/lib/clip-thumbnail";
+import { parseClipUrl, type ClipPlatform } from "@/lib/parse-clip-url";
+import {
+  submissionProjectedEarnings,
+  submissionViews,
+  totalProjectedEarnings,
+} from "@/lib/earnings";
 import { VideosClient } from "./_components/videos-client";
 
-type UnderperformPayload = {
-  weakDimensions?: Array<"views" | "likeRatio" | "commentRatio" | "watchTime">;
-  reason?: string;
+const CLIP_TO_PLATFORM_ICON: Record<ClipPlatform, string | null> = {
+  INSTAGRAM: "INSTAGRAM",
+  TIKTOK: "TIKTOK",
+  FACEBOOK: "FACEBOOK",
+  YOUTUBE: "YOUTUBE_SHORTS",
+  UNKNOWN: null,
 };
 
 export default async function MyVideosPage() {
@@ -22,6 +32,8 @@ export default async function MyVideosPage() {
     select: {
       id: true,
       postUrl: true,
+      thumbnailUrl: true,
+      mediaType: true,
       status: true,
       earnedAmount: true,
       claimedViews: true,
@@ -30,72 +42,43 @@ export default async function MyVideosPage() {
       campaign: {
         select: {
           name: true,
-          platform: true,
+          creatorCpv: true,
         },
       },
     },
   });
 
-  // Pull unresolved "underperform" signals for this clipper's submissions.
-  // Subsystem B writes these. We read directly from Prisma — the integration
-  // contract across subsystems is the schema, not cross-imports.
-  // The schema enum doesn't have an UNDERPERFORM type; B records underperform
-  // events as VELOCITY_DROP / RATIO_ANOMALY signals with weakDimensions in the
-  // payload, matching the SubmissionUnderperformEvent contract.
-  const submissionIds = submissions.map((s) => s.id);
-  const signals = submissionIds.length
-    ? await prisma.submissionSignal.findMany({
-        where: {
-          submissionId: { in: submissionIds },
-          resolvedAt: null,
-          type: { in: ["VELOCITY_DROP", "RATIO_ANOMALY"] },
-        },
-        select: {
-          submissionId: true,
-          type: true,
-          severity: true,
-          payload: true,
-          createdAt: true,
-        },
-      })
-    : [];
+  type ClipMediaType = "video" | "image" | "carousel";
+  const asClipMediaType = (v: string | null | undefined): ClipMediaType | null =>
+    v === "video" || v === "image" || v === "carousel" ? v : null;
 
-  const underperformBySubmission = new Map<
-    string,
-    { weakDimensions: string[]; reason: string | null }
-  >();
-  for (const sig of signals) {
-    const payload = (sig.payload ?? {}) as UnderperformPayload;
-    const existing = underperformBySubmission.get(sig.submissionId);
-    const weakSet = new Set(existing?.weakDimensions ?? []);
-    if (Array.isArray(payload.weakDimensions)) {
-      for (const d of payload.weakDimensions) weakSet.add(d);
-    } else if (sig.type === "VELOCITY_DROP") {
-      weakSet.add("views");
-    } else if (sig.type === "RATIO_ANOMALY") {
-      weakSet.add("likeRatio");
-    }
-    underperformBySubmission.set(sig.submissionId, {
-      weakDimensions: Array.from(weakSet),
-      reason: payload.reason ?? existing?.reason ?? null,
-    });
-  }
-
-  const videos = submissions.map((s) => {
-    const u = underperformBySubmission.get(s.id);
-    return {
-      id: s.id,
-      postUrl: s.postUrl,
-      status: s.status,
-      earned: Number(s.earnedAmount),
-      views: s.viewCount ?? s.claimedViews,
-      createdAt: s.createdAt.toISOString(),
-      campaignName: s.campaign.name,
-      brandName: s.campaign.name,
-      platform: s.campaign.platform,
-      underperform: u ?? null,
-    };
-  });
+  const videos = await Promise.all(
+    submissions.map(async (s) => {
+      const parsed = s.postUrl ? parseClipUrl(s.postUrl) : null;
+      const derivedPlatform = parsed ? CLIP_TO_PLATFORM_ICON[parsed.platform] : null;
+      const { thumbnailUrl, mediaType } = await resolveThumbnail(
+        s.postUrl,
+        s.thumbnailUrl,
+        {
+          creatorId: user.id,
+          submissionId: s.id,
+          storedMediaType: asClipMediaType(s.mediaType),
+        },
+      );
+      return {
+        id: s.id,
+        postUrl: s.postUrl,
+        thumbnailUrl,
+        mediaType,
+        status: s.status,
+        earned: submissionProjectedEarnings(s),
+        views: submissionViews(s),
+        createdAt: s.createdAt.toISOString(),
+        campaignName: s.campaign.name,
+        platform: derivedPlatform,
+      };
+    }),
+  );
 
   const statusCounts = {
     PENDING: videos.filter((v) => v.status === "PENDING").length,
@@ -105,5 +88,13 @@ export default async function MyVideosPage() {
     ALL: videos.length,
   };
 
-  return <VideosClient videos={videos} statusCounts={statusCounts} />;
+  const totalEarnedProjected = totalProjectedEarnings(submissions);
+
+  return (
+    <VideosClient
+      videos={videos}
+      statusCounts={statusCounts}
+      totalEarnedProjected={totalEarnedProjected}
+    />
+  );
 }

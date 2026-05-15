@@ -7,25 +7,33 @@ import Link from "next/link";
 interface Props {
   posts: NormalizedPost[];
   isLoading: boolean;
-  selectedUrls: Set<string>;
-  submittedUrls: Set<string>;
+  selectedKeys: Set<string>;
+  submittedKeys: Set<string>;
+  submittingKeys: Set<string>;
   requiredHashtags: string[];
   hasConnectedAccount: boolean;
   platform: "ig" | "tt" | "fb";
-  onToggle: (url: string) => void;
+  onToggle: (post: NormalizedPost) => void;
+  onSubmitOne: (post: NormalizedPost) => void;
 }
 
 const PLATFORM_NAMES = { ig: "Instagram", tt: "TikTok", fb: "Facebook" };
 
+// Must mirror keyOf() in SubmitPageClient.
+const keyOf = (p: { platform: NormalizedPost["platform"]; id: string }) =>
+  `${p.platform}:${p.id}`;
+
 export default function PostGrid({
   posts,
   isLoading,
-  selectedUrls,
-  submittedUrls,
+  selectedKeys,
+  submittedKeys,
+  submittingKeys,
   requiredHashtags,
   hasConnectedAccount,
   platform,
   onToggle,
+  onSubmitOne,
 }: Props) {
   if (!hasConnectedAccount) {
     return (
@@ -46,14 +54,37 @@ export default function PostGrid({
 
   if (isLoading) {
     return (
-      <div className="grid grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
-        {Array.from({ length: 10 }).map((_, i) => (
-          <div
-            key={i}
-            className="rounded-lg animate-pulse"
-            style={{ aspectRatio: "1", background: "var(--bg-primary)" }}
-          />
-        ))}
+      <div>
+        <div
+          className="flex items-center gap-2 mb-3 text-sm"
+          style={{ color: "var(--text-muted)" }}
+          role="status"
+          aria-live="polite"
+        >
+          <svg
+            className="animate-spin"
+            width="14"
+            height="14"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2.5"
+            strokeLinecap="round"
+            aria-hidden
+          >
+            <path d="M21 12a9 9 0 1 1-6.219-8.56" />
+          </svg>
+          Loading {PLATFORM_NAMES[platform]} posts…
+        </div>
+        <div className="grid grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
+          {Array.from({ length: 10 }).map((_, i) => (
+            <div
+              key={i}
+              className="rounded-lg skeleton-shimmer"
+              style={{ aspectRatio: "1" }}
+            />
+          ))}
+        </div>
       </div>
     );
   }
@@ -77,15 +108,19 @@ export default function PostGrid({
           requiredHashtags.every((tag) =>
             post.caption!.toLowerCase().includes(tag.toLowerCase())
           );
+        const k = keyOf(post);
         return (
-          <PostCard
-            key={post.id}
-            post={post}
-            isSelected={selectedUrls.has(post.url)}
-            isSubmitted={submittedUrls.has(post.url)}
-            isEligible={eligible}
-            onToggle={() => onToggle(post.url)}
-          />
+          <div key={k} id={`submit-card-${k}`}>
+            <PostCard
+              post={post}
+              isSelected={selectedKeys.has(k)}
+              isSubmitted={submittedKeys.has(k)}
+              isSubmittingOne={submittingKeys.has(k)}
+              isEligible={eligible}
+              onToggle={() => onToggle(post)}
+              onSubmitOne={() => onSubmitOne(post)}
+            />
+          </div>
         );
       })}
     </div>

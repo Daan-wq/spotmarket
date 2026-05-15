@@ -8,5 +8,5 @@ export default async function AppLayout() {
 
   const role = await resolveRoleFor(claims);
   if (role === "admin") redirect("/admin");
-  redirect("/creator/dashboard");
+  redirect("/creator/campaigns");
 }

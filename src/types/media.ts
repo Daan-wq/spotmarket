@@ -6,6 +6,7 @@ export interface NormalizedPost {
   caption: string | null;
   publishedAt: string; // ISO 8601
   likeCount: number | null;
+  commentCount: number | null;
   mediaType: "video" | "image" | "carousel";
 }
 

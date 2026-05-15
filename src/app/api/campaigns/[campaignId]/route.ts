@@ -1,7 +1,7 @@
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { Platform } from "@prisma/client";
+import { Platform, Niche } from "@prisma/client";
 import { z } from "zod";
 import { notifyCampaignLive } from "@/lib/discord";
 
@@ -17,6 +17,11 @@ const patchSchema = z.object({
   contentGuidelines: z.string().max(5000).optional().nullable(),
   requirements: z.string().max(2000).optional().nullable(),
   referralLink: z.string().optional().nullable(),
+  bannerUrl: z
+    .string()
+    .optional()
+    .nullable()
+    .refine((v) => !v || /^https?:\/\//.test(v), "Must be a valid URL"),
   targetCountry: z.string().optional().nullable(),
   minEngagementRate: z.number().min(0).max(100).optional(),
   bioRequirement: z.string().optional().nullable(),
@@ -27,7 +32,17 @@ const patchSchema = z.object({
   requiresApproval: z.boolean().optional(),
   status: z.enum(["draft", "active", "paused", "completed", "cancelled"]).optional(),
   deadline: z.string().optional().nullable(),
-  niche: z.string().optional().nullable(),
+  niche: z
+    .string()
+    .nullable()
+    .optional()
+    .transform((v) => {
+      if (v == null) return v;
+      const trimmed = v.trim();
+      if (trimmed === "") return null;
+      const first = trimmed.split(",")[0]!.trim().toUpperCase();
+      return (Object.values(Niche) as string[]).includes(first) ? (first as Niche) : null;
+    }),
   platforms: z.array(z.string()).optional(),
   contentType: z.string().max(100).optional().nullable(),
   otherNotes: z.string().max(2000).optional().nullable(),
@@ -115,7 +130,6 @@ export async function PATCH(
   if (deadline) data.deadline = new Date(deadline);
   if (platforms) {
     data.platforms = platforms as Platform[];
-    data.platform = (platforms[0] ?? authorized.campaign.platform) as Platform;
   }
   if (goalViews !== undefined) data.goalViews = goalViews ? BigInt(goalViews) : null;
   if (minEngagementRate !== undefined) data.minEngagementRate = minEngagementRate;
@@ -130,7 +144,7 @@ export async function PATCH(
       await notifyCampaignLive({
         id: updated.id,
         name: updated.name,
-        platform: updated.platform,
+        platforms: updated.platforms,
         totalBudget: Number(updated.totalBudget),
         businessCpv: Number(updated.businessCpv),
         targetCountry: updated.targetCountry,

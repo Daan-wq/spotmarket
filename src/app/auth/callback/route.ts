@@ -1,6 +1,7 @@
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { prisma } from "@/lib/prisma";
 import { NextResponse } from "next/server";
+import { safeRedirectPath } from "@/lib/safe-redirect";
 
 const DISCORD_GUILD_ID = process.env.DISCORD_GUILD_ID ?? "1486482870272000102";
 
@@ -39,7 +40,7 @@ async function joinDiscordGuild(discordUserId: string, accessToken: string) {
 export async function GET(request: Request) {
   const { searchParams, origin } = new URL(request.url);
   const code = searchParams.get("code");
-  const next = searchParams.get("next") ?? "/";
+  const next = safeRedirectPath(searchParams.get("next"), "/");
 
   if (!code) {
     return NextResponse.redirect(`${origin}${next}`);

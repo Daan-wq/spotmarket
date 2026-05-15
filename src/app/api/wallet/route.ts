@@ -3,13 +3,16 @@ import { prisma } from "@/lib/prisma";
 import { requireAuth } from "@/lib/auth";
 import { getCreatorTotalEarnings } from "@/lib/earnings";
 
-export async function GET(req: NextRequest) {
+export async function GET(_req: NextRequest) {
   try {
     const { userId } = await requireAuth("creator");
 
     const user = await prisma.user.findUnique({
       where: { supabaseId: userId },
-      select: { id: true },
+      select: {
+        id: true,
+        creatorProfile: { select: { tronsAddress: true } },
+      },
     });
 
     if (!user) {
@@ -31,6 +34,7 @@ export async function GET(req: NextRequest) {
 
     return NextResponse.json({
       balance: wallet ? Number(wallet.balance) : 0,
+      tronsAddress: user.creatorProfile?.tronsAddress ?? null,
       totalEarnings: earnings.total,
       settledEarnings: earnings.settled,
       estimatedEarnings: earnings.estimated,
@@ -42,8 +46,8 @@ export async function GET(req: NextRequest) {
         createdAt: w.createdAt,
       })) ?? [],
     });
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error("[wallet GET]", err);
-    return NextResponse.json({ error: err.message || "Internal error" }, { status: 500 });
+    return NextResponse.json({ error: err instanceof Error ? err.message : "Internal error" }, { status: 500 });
   }
 }

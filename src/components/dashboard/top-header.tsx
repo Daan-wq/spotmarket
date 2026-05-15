@@ -2,14 +2,23 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { z } from "zod";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 
-interface NotificationItem {
-  id: string;
-  type: string;
-  data: Record<string, unknown>;
-  read: boolean;
-  createdAt: string;
+const notificationSchema = z.object({
+  id: z.string().min(1),
+  type: z.string().min(1),
+  data: z.record(z.string(), z.unknown()),
+  read: z.boolean(),
+  createdAt: z.string().min(1),
+});
+
+type NotificationItem = z.infer<typeof notificationSchema>;
+
+interface NotificationsResponse {
+  notifications: NotificationItem[];
+  unreadCount: number;
 }
 
 type TopHeaderProps = {
@@ -18,6 +27,8 @@ type TopHeaderProps = {
   followers?: number;
   userId?: string; // supabaseId for realtime
 };
+
+const NOTIFICATIONS_KEY = ["notifications"] as const;
 
 function timeAgo(date: string) {
   const diff = Date.now() - new Date(date).getTime();
@@ -34,7 +45,11 @@ function notifText(n: NotificationItem): string {
   const d = n.data;
   if (n.type === "NEW_FOLLOWER") return `${d.followerName} started following you`;
   if (n.type === "CAMPAIGN_LAUNCHED") return `${d.launcherName} launched a new campaign: ${d.campaignName}`;
-  if (n.type === "REVIEW_RECEIVED") return `${d.reviewerName} left you a ${"★".repeat(Number(d.rating))} review on ${d.campaignName}`;
+  if (n.type === "REVIEW_RECEIVED") {
+    const rawRating = Number(d.rating);
+    const stars = Number.isFinite(rawRating) ? Math.max(0, Math.min(5, Math.floor(rawRating))) : 0;
+    return `${d.reviewerName} left you a ${"★".repeat(stars)} review on ${d.campaignName}`;
+  }
   return "New notification";
 }
 
@@ -47,31 +62,65 @@ function notifHref(n: NotificationItem): string {
 }
 
 export function TopHeader({ title, displayName, followers, userId }: TopHeaderProps) {
-  const [notifications, setNotifications] = useState<NotificationItem[]>([]);
-  const [unread, setUnread] = useState(0);
+  const queryClient = useQueryClient();
   const [open, setOpen] = useState(false);
   const dropRef = useRef<HTMLDivElement>(null);
 
-  useEffect(() => {
-    fetch("/api/notifications")
-      .then(r => r.json())
-      .then(d => {
-        setNotifications(d.notifications ?? []);
-        setUnread(d.unreadCount ?? 0);
-      });
-  }, []);
+  const { data } = useQuery({
+    queryKey: NOTIFICATIONS_KEY,
+    queryFn: async (): Promise<NotificationsResponse> => {
+      const r = await fetch("/api/notifications");
+      if (!r.ok) throw new Error(`HTTP ${r.status}`);
+      const json = (await r.json()) as Partial<NotificationsResponse>;
+      return {
+        notifications: json.notifications ?? [],
+        unreadCount: json.unreadCount ?? 0,
+      };
+    },
+  });
 
-  // Subscribe to realtime notifications
+  const notifications = data?.notifications ?? [];
+  const unread = data?.unreadCount ?? 0;
+
+  const markRead = useMutation({
+    mutationFn: async () => {
+      const r = await fetch("/api/notifications", { method: "PATCH" });
+      if (!r.ok) throw new Error(`HTTP ${r.status}`);
+    },
+    onMutate: async () => {
+      await queryClient.cancelQueries({ queryKey: NOTIFICATIONS_KEY });
+      const previous = queryClient.getQueryData<NotificationsResponse>(NOTIFICATIONS_KEY);
+      queryClient.setQueryData<NotificationsResponse>(NOTIFICATIONS_KEY, (old) => ({
+        notifications: (old?.notifications ?? []).map((n) => ({ ...n, read: true })),
+        unreadCount: 0,
+      }));
+      return { previous };
+    },
+    onError: (_err, _vars, ctx) => {
+      if (ctx?.previous) queryClient.setQueryData(NOTIFICATIONS_KEY, ctx.previous);
+    },
+  });
+
+  // Subscribe to realtime notifications — push new entries into the cache
   useEffect(() => {
     if (!userId) return;
     const supabase = createSupabaseBrowserClient();
     const channel = supabase.channel(`user-notifications-${userId}`);
-    channel.on("broadcast", { event: "notification:new" }, ({ payload }) => {
-      setNotifications(prev => [payload as NotificationItem, ...prev].slice(0, 20));
-      setUnread(c => c + 1);
-    }).subscribe();
-    return () => { supabase.removeChannel(channel); };
-  }, [userId]);
+    channel
+      .on("broadcast", { event: "notification:new" }, ({ payload }) => {
+        const parsed = notificationSchema.safeParse(payload);
+        if (!parsed.success) return;
+        const incoming = parsed.data;
+        queryClient.setQueryData<NotificationsResponse>(NOTIFICATIONS_KEY, (old) => ({
+          notifications: [incoming, ...(old?.notifications ?? [])].slice(0, 20),
+          unreadCount: (old?.unreadCount ?? 0) + 1,
+        }));
+      })
+      .subscribe();
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [userId, queryClient]);
 
   // Close dropdown on outside click
   useEffect(() => {
@@ -84,13 +133,13 @@ export function TopHeader({ title, displayName, followers, userId }: TopHeaderPr
     return () => document.removeEventListener("mousedown", handler);
   }, []);
 
-  async function openDropdown() {
-    setOpen(o => !o);
-    if (unread > 0) {
-      setUnread(0);
-      setNotifications(prev => prev.map(n => ({ ...n, read: true })));
-      await fetch("/api/notifications", { method: "PATCH" });
-    }
+  function openDropdown() {
+    setOpen((wasOpen) => {
+      if (!wasOpen && unread > 0) {
+        markRead.mutate();
+      }
+      return !wasOpen;
+    });
   }
 
   return (

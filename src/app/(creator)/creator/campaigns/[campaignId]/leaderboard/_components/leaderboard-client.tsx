@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 
 type Sort = "views" | "earnings" | "score";
 
@@ -33,29 +34,21 @@ const SORT_OPTIONS: Array<{ key: Sort; label: string }> = [
 
 export function CampaignLeaderboardClient({ campaignId }: { campaignId: string }) {
   const [sort, setSort] = useState<Sort>("views");
-  const [data, setData] = useState<LeaderboardResponse | null>(null);
-  const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    let cancelled = false;
-    setLoading(true);
-    fetch(`/api/campaigns/${campaignId}/leaderboard?sort=${sort}`, {
-      cache: "no-store",
-    })
-      .then((r) => (r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`))))
-      .then((json: LeaderboardResponse) => {
-        if (!cancelled) setData(json);
-      })
-      .catch(() => {
-        if (!cancelled) setData(null);
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [campaignId, sort]);
+  const { data, isFetching } = useQuery({
+    queryKey: ["campaign-leaderboard", campaignId, sort],
+    queryFn: async (): Promise<LeaderboardResponse> => {
+      const r = await fetch(
+        `/api/campaigns/${campaignId}/leaderboard?sort=${sort}`,
+        { cache: "no-store" },
+      );
+      if (!r.ok) throw new Error(`HTTP ${r.status}`);
+      return (await r.json()) as LeaderboardResponse;
+    },
+    placeholderData: (previousData) => previousData,
+  });
+
+  const loading = isFetching && !data;
 
   return (
     <div
@@ -113,7 +106,8 @@ export function CampaignLeaderboardClient({ campaignId }: { campaignId: string }
           </p>
         </div>
       ) : (
-        <table className="w-full text-sm">
+        <div className="overflow-x-auto">
+        <table className="w-full min-w-[760px] text-sm">
           <thead>
             <tr
               style={{
@@ -193,6 +187,7 @@ export function CampaignLeaderboardClient({ campaignId }: { campaignId: string }
             ))}
           </tbody>
         </table>
+        </div>
       )}
     </div>
   );

@@ -146,13 +146,23 @@ export async function fetchInstagramMetric(
         ? Math.round(insights.avgWatchTime)
         : null;
 
-  // Best-effort views — REEL/FEED return `views`; STORY also returns `views`.
-  const viewCount = insights.views ?? 0;
+  // Best-effort views — REEL returns real `views`; STORY also returns `views`.
+  // For FEED media that isn't a video (IMAGE / CAROUSEL_ALBUM photo posts),
+  // IG's `views` insights metric is effectively 0 — only video content gets a
+  // views count. Fall back to `reach` (unique accounts that saw the post) so
+  // photo/carousel submissions can still earn on view-based campaigns.
+  const isVideoLike =
+    mediaType === "REEL" || matched.mediaType.toUpperCase() === "VIDEO";
+  const rawViews = insights.views ?? 0;
+  const reachCount = insights.reach ?? null;
+  const viewCount =
+    !isVideoLike && rawViews === 0 && reachCount != null
+      ? reachCount
+      : rawViews;
   const likeCount = insights.likes ?? matched.likeCount;
   const commentCount = insights.comments ?? matched.commentCount;
   const shareCount = insights.shares ?? 0;
   const saveCount = insights.saved ?? null;
-  const reachCount = insights.reach ?? null;
 
   const rawPayload = {
     media: matched,

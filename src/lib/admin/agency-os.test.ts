@@ -117,16 +117,18 @@ describe("calculateAgencyOsMetrics", () => {
 });
 
 describe("buildOperatingAreas", () => {
-  it("marks the six live OS modules and leaves missing modules manual", () => {
+  it("marks all final remediation operating modules live", () => {
     const areas = buildOperatingAreas();
     const byName = new Map(areas.map((area) => [area.name, area]));
 
     expect(areas).toHaveLength(12);
-    expect(areas.filter((area) => area.status === "live")).toHaveLength(6);
-    expect(byName.get("CEO Dashboard")?.status).toBe("live");
-    expect(byName.get("Quality Control")?.status).toBe("live");
-    expect(byName.get("Brand CRM")?.status).toBe("manual");
-    expect(byName.get("Contracts")?.status).toBe("manual");
-    expect(byName.get("SOP Library")?.status).toBe("manual");
+    expect(areas.filter((area) => area.status === "live")).toHaveLength(12);
+    expect(byName.get("Command Center")?.status).toBe("live");
+    expect(byName.get("Clip Review")?.status).toBe("live");
+    expect(byName.get("Leads")?.status).toBe("live");
+    expect(byName.get("Brand Onboarding")?.status).toBe("live");
+    expect(byName.get("Documents")?.status).toBe("live");
+    expect(byName.get("Guides")?.status).toBe("live");
+    expect(byName.get("Weekly Numbers")?.status).toBe("live");
   });
 });

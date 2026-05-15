@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
+import { safeRedirectPath } from "@/lib/safe-redirect";
 
 function GoogleIcon() {
   return (
@@ -34,9 +35,11 @@ export function OAuthButtons({ mode }: OAuthButtonsProps) {
   async function handleOAuth(provider: "google" | "discord") {
     setLoading(provider);
     const supabase = createSupabaseBrowserClient();
+    const params = new URLSearchParams(window.location.search);
+    const next = safeRedirectPath(params.get("redirect_url"), "/");
 
     const options: { redirectTo: string; scopes?: string } = {
-      redirectTo: `${window.location.origin}/auth/callback`,
+      redirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent(next)}`,
     };
 
     if (provider === "discord") {

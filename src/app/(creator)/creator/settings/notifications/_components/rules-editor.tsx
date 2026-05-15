@@ -102,7 +102,7 @@ export function NotificationRulesEditor({
 
   return (
     <div
-      className="rounded-lg border overflow-hidden"
+      className="rounded-lg border overflow-x-auto"
       style={{ background: "var(--bg-card)", borderColor: "var(--border)" }}
     >
       {error ? (
@@ -114,7 +114,7 @@ export function NotificationRulesEditor({
         </div>
       ) : null}
 
-      <table className="w-full text-sm">
+      <table className="w-full min-w-[640px] text-sm">
         <thead>
           <tr style={{ borderBottom: "1px solid var(--border)" }}>
             <th className="text-left p-3" style={{ color: "var(--text-secondary)" }}>

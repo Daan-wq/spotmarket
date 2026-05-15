@@ -173,11 +173,11 @@ export async function POST(
     }).catch((err) => console.error("[discord dm notify]", err));
 
     return NextResponse.json({ submission: updated });
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error("[submissions review]", err);
     if (err instanceof z.ZodError) {
       return NextResponse.json({ error: "Invalid input", details: err.issues }, { status: 400 });
     }
-    return NextResponse.json({ error: err.message || "Internal error" }, { status: 500 });
+    return NextResponse.json({ error: err instanceof Error ? err.message : "Internal error" }, { status: 500 });
   }
 }

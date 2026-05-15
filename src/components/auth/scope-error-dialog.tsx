@@ -1,6 +1,5 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 
@@ -31,21 +30,13 @@ const ERROR_TO_PROVIDER: Record<string, ProviderKey> = {
 export function ScopeErrorDialog() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const [provider, setProvider] = useState<ProviderKey | null>(null);
-
-  useEffect(() => {
-    const err = searchParams.get("error");
-    if (!err) return;
-    const match = ERROR_TO_PROVIDER[err];
-    if (match) setProvider(match);
-  }, [searchParams]);
+  const provider = ERROR_TO_PROVIDER[searchParams.get("error") ?? ""] ?? null;
 
   if (!provider) return null;
 
   const meta = PROVIDERS[provider];
 
   const handleClose = () => {
-    setProvider(null);
     const params = new URLSearchParams(searchParams.toString());
     params.delete("error");
     params.delete("missing");

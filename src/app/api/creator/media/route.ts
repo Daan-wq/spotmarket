@@ -2,10 +2,11 @@ import { type NextRequest, NextResponse } from "next/server";
 import { requireAuth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { decrypt } from "@/lib/crypto";
-import { getFreshTikTokAccessToken } from "@/lib/token-refresh";
+import { getFreshTikTokAccessToken, forceRefreshTikTokAccessToken } from "@/lib/token-refresh";
 import { fetchRecentMedia } from "@/lib/instagram";
 import { fetchTikTokVideos } from "@/lib/tiktok";
 import { fetchFacebookPagePostsPaginated } from "@/lib/facebook";
+import { normalizeIgMediaType } from "@/lib/instagram-media-type";
 import type { NormalizedPost, MediaResponse } from "@/types/media";
 
 const DEFAULT_LIMIT = 10;
@@ -79,11 +80,23 @@ async function handleIg(
     caption: m.caption,
     publishedAt: m.timestamp,
     likeCount: m.like_count,
+    commentCount: m.comments_count ?? null,
     mediaType: normalizeIgMediaType(m.media_type, m.media_product_type),
   }));
 
-  return NextResponse.json<MediaResponse>({ posts, nextCursor, hasMore: nextCursor !== null });
+  return NextResponse.json<MediaResponse>({
+    posts: dedupePosts(posts),
+    nextCursor,
+    hasMore: nextCursor !== null,
+  });
 }
+
+// TikTok rejects expired/revoked tokens with these error codes — treat both
+// as a signal to force-refresh and retry once before giving up. The codes
+// can appear in either the response body (`data.error.code`) or the raw
+// text body of a non-2xx response, so we string-match on the thrown
+// message from `fetchTikTokVideos`.
+const TT_INVALID_TOKEN_PATTERN = /access_token_invalid|access_token_expired/i;
 
 async function handleTt(
   creatorProfileId: string,
@@ -105,12 +118,41 @@ async function handleTt(
   if (!conn) {
     return NextResponse.json({ error: "Connection not found" }, { status: 404 });
   }
-  const token = await getFreshTikTokAccessToken(conn);
+  let token = await getFreshTikTokAccessToken(conn);
   if (!token) {
     return NextResponse.json({ error: "Connection not found" }, { status: 404 });
   }
   const cursorNum = cursor !== undefined ? parseInt(cursor, 10) : undefined;
-  const { videos, nextCursor, hasMore } = await fetchTikTokVideos(token, limit, cursorNum);
+
+  let result: Awaited<ReturnType<typeof fetchTikTokVideos>>;
+  try {
+    result = await fetchTikTokVideos(token, limit, cursorNum);
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    if (!TT_INVALID_TOKEN_PATTERN.test(message)) throw err;
+    const refreshed = await forceRefreshTikTokAccessToken(conn).catch(() => null);
+    if (!refreshed) {
+      return NextResponse.json(
+        { error: "TikTok session expired. Please reconnect your TikTok account in Connections." },
+        { status: 401 }
+      );
+    }
+    token = refreshed;
+    try {
+      result = await fetchTikTokVideos(token, limit, cursorNum);
+    } catch (retryErr) {
+      const retryMessage = retryErr instanceof Error ? retryErr.message : String(retryErr);
+      if (TT_INVALID_TOKEN_PATTERN.test(retryMessage)) {
+        return NextResponse.json(
+          { error: "TikTok session expired. Please reconnect your TikTok account in Connections." },
+          { status: 401 }
+        );
+      }
+      throw retryErr;
+    }
+  }
+
+  const { videos, nextCursor, hasMore } = result;
 
   const posts: NormalizedPost[] = videos.map((v) => ({
     id: v.id,
@@ -120,11 +162,12 @@ async function handleTt(
     caption: v.title || null,
     publishedAt: new Date(v.createTime * 1000).toISOString(),
     likeCount: v.likeCount,
+    commentCount: v.commentCount ?? null,
     mediaType: "video",
   }));
 
   return NextResponse.json<MediaResponse>({
-    posts,
+    posts: dedupePosts(posts),
     nextCursor: nextCursor !== null ? String(nextCursor) : null,
     hasMore,
   });
@@ -159,22 +202,30 @@ async function handleFb(
     caption: p.message,
     publishedAt: p.createdTime,
     likeCount: p.reactions,
+    commentCount: p.comments ?? null,
     mediaType: normalizeFbMediaType(p.type),
   }));
 
-  return NextResponse.json<MediaResponse>({ posts, nextCursor, hasMore: nextCursor !== null });
+  return NextResponse.json<MediaResponse>({
+    posts: dedupePosts(posts),
+    nextCursor,
+    hasMore: nextCursor !== null,
+  });
 }
 
-function normalizeIgMediaType(
-  mediaType: string,
-  mediaProductType: string
-): "video" | "image" | "carousel" {
-  const product = (mediaProductType ?? "").toUpperCase();
-  const type = (mediaType ?? "").toUpperCase();
-  if (product === "REELS" || product === "REEL") return "video";
-  if (type === "CAROUSEL_ALBUM") return "carousel";
-  if (type === "VIDEO") return "video";
-  return "image";
+// Drops posts with empty/missing url and dedupes by url, preserving order.
+// Two cards with the same url would otherwise share UI state on the client
+// (selection, submitting, submitted overlay) — see SubmitPageClient.
+function dedupePosts(posts: NormalizedPost[]): NormalizedPost[] {
+  const seen = new Set<string>();
+  const out: NormalizedPost[] = [];
+  for (const p of posts) {
+    if (!p.url) continue;
+    if (seen.has(p.url)) continue;
+    seen.add(p.url);
+    out.push(p);
+  }
+  return out;
 }
 
 function normalizeFbMediaType(type: string): "video" | "image" | "carousel" {

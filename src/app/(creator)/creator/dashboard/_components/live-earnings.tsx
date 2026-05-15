@@ -10,7 +10,7 @@
  * MetricSnapshots arrive from Subsystem A. "Settled" is locked, paid-or-payable.
  */
 
-import { useEffect, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 
 interface LiveEarningsResponse {
   settled: number;
@@ -23,37 +23,21 @@ interface LiveEarningsResponse {
 
 const POLL_INTERVAL_MS = 60_000;
 
+async function fetchLiveEarnings(): Promise<LiveEarningsResponse> {
+  const r = await fetch("/api/clipper/live-earnings", { cache: "no-store" });
+  if (!r.ok) throw new Error(`HTTP ${r.status}`);
+  return (await r.json()) as LiveEarningsResponse;
+}
+
 export function LiveEarnings() {
-  const [data, setData] = useState<LiveEarningsResponse | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
+  const { data, error, isLoading } = useQuery({
+    queryKey: ["live-earnings"],
+    queryFn: fetchLiveEarnings,
+    refetchInterval: POLL_INTERVAL_MS,
+    refetchIntervalInBackground: false,
+  });
 
-  useEffect(() => {
-    let cancelled = false;
-
-    async function fetchOnce() {
-      try {
-        const r = await fetch("/api/clipper/live-earnings", { cache: "no-store" });
-        if (!r.ok) throw new Error(`HTTP ${r.status}`);
-        const json = (await r.json()) as LiveEarningsResponse;
-        if (!cancelled) {
-          setData(json);
-          setError(null);
-        }
-      } catch (e) {
-        if (!cancelled) setError(e instanceof Error ? e.message : "Failed to load");
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
-    }
-
-    fetchOnce();
-    const id = setInterval(fetchOnce, POLL_INTERVAL_MS);
-    return () => {
-      cancelled = true;
-      clearInterval(id);
-    };
-  }, []);
+  const loading = isLoading && !data;
 
   return (
     <div
@@ -83,7 +67,7 @@ export function LiveEarnings() {
         <Metric
           label="Estimated"
           value={data?.estimated ?? 0}
-          loading={loading && !data}
+          loading={loading}
           subtitle={
             data && data.estimatedCount > 0
               ? `${data.estimatedCount} active clip${data.estimatedCount === 1 ? "" : "s"}`
@@ -95,7 +79,7 @@ export function LiveEarnings() {
         <Metric
           label="Settled"
           value={data?.settled ?? 0}
-          loading={loading && !data}
+          loading={loading}
           subtitle={
             data && data.settledCount > 0
               ? `${data.settledCount} settled`

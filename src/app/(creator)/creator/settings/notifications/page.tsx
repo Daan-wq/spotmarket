@@ -32,9 +32,9 @@ export default async function NotificationSettingsPage() {
   });
 
   return (
-    <div className="p-6 w-full space-y-6">
+    <div className="w-full space-y-6 md:p-6">
       <div>
-        <h1 className="text-3xl font-bold" style={{ color: "var(--text-primary)" }}>
+        <h1 className="text-2xl font-bold md:text-3xl" style={{ color: "var(--text-primary)" }}>
           Notifications
         </h1>
         <p className="mt-1 text-sm" style={{ color: "var(--text-secondary)" }}>

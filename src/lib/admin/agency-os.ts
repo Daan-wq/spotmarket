@@ -5,12 +5,18 @@ const DAY_MS = 24 * 60 * 60 * 1000;
 
 export const PIPELINE_CAMPAIGN_STATUSES: CampaignStatus[] = ["draft", "pending_payment", "pending_review"];
 export const LIVE_OPERATING_AREAS = new Set([
-  "CEO Dashboard",
+  "Command Center",
+  "Leads",
+  "Brand Onboarding",
   "Clipper Database",
+  "Recruitment Pipeline",
   "Content Production",
-  "Quality Control",
+  "Clip Review",
   "Payouts",
-  "Weekly KPI Review",
+  "Pricing",
+  "Documents",
+  "Guides",
+  "Weekly Numbers",
 ]);
 
 export interface AgencyOsDateWindows {
@@ -141,18 +147,18 @@ export function calculateApprovalRate(approved: number, rejectedOrRevised: numbe
 
 export function buildOperatingAreas(): OperatingArea[] {
   const areas: Array<Omit<OperatingArea, "status">> = [
-    { name: "CEO Dashboard", detail: "Live executive KPIs from the app", href: "/admin" },
-    { name: "Brand CRM", detail: "Manual lead sheet; no CRM model yet" },
-    { name: "Brand Onboarding", detail: "Manual checklist; no onboarding model yet" },
-    { name: "Clipper Database", detail: "Creator profiles and platform connections", href: "/admin/creators" },
-    { name: "Recruitment Pipeline", detail: "Manual sourcing flow; no applicant model yet" },
-    { name: "Content Production", detail: "Submissions from assignment to review", href: "/admin/submissions" },
-    { name: "Quality Control", detail: "Logo review, approvals, and signals", href: "/admin/review/videos" },
+    { name: "Command Center", detail: "Today first view of work, money, and risk", href: "/admin" },
+    { name: "Leads", detail: "Lead pipeline, follow-ups, owner, and value", href: "/admin/crm" },
+    { name: "Brand Onboarding", detail: "Contract, payment, brief, assets, and assigned clippers", href: "/admin/onboarding" },
+    { name: "Clipper Database", detail: "Creator profiles, operations, capacity, and assigned brands", href: "/admin/clippers" },
+    { name: "Recruitment Pipeline", detail: "Candidates, trials, scores, and approvals", href: "/admin/recruitment" },
+    { name: "Content Production", detail: "Assignments, due dates, revisions, and submissions", href: "/admin/production" },
+    { name: "Clip Review", detail: "Scorecards, logo review, approvals, and signals", href: "/admin/review" },
     { name: "Payouts", detail: "Creator payout obligations and history", href: "/admin/payouts" },
-    { name: "Pricing", detail: "Manual package model; campaign CPV exists" },
-    { name: "Contracts", detail: "Manual document tracker; no contract model yet" },
-    { name: "SOP Library", detail: "Manual process library; no SOP model yet" },
-    { name: "Weekly KPI Review", detail: "Derived founder review numbers from live data", href: "/admin" },
+    { name: "Pricing", detail: "Reusable package templates for brand and campaign planning", href: "/admin/pricing" },
+    { name: "Documents", detail: "Contracts, briefs, owners, links, and renewal dates", href: "/admin/documents" },
+    { name: "Guides", detail: "Searchable operating guides with review owners", href: "/admin/sops" },
+    { name: "Weekly Numbers", detail: "Saved weekly review snapshots from live data", href: "/admin/reports" },
   ];
 
   return areas.map((area) => ({
@@ -202,7 +208,7 @@ export function calculateAgencyOsMetrics(input: AgencyOsCalculationInput): Agenc
   ).length;
   const clipsRejectedOrRevisedThisWeek = input.submissions.filter(
     (submission) =>
-      (submission.status === "REJECTED" || submission.status === "FLAGGED") &&
+      (submission.status === "REJECTED" || submission.status === "FLAGGED" || submission.status === "NEEDS_REVISION") &&
       isThisWeek(submission.reviewedAt ?? submission.createdAt),
   ).length;
 

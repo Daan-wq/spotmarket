@@ -19,7 +19,6 @@ export async function POST(
       name: true,
       totalBudget: true,
       otherNotes: true,
-      platform: true,
       platforms: true,
       contentType: true,
       requirements: true,
@@ -27,6 +26,7 @@ export async function POST(
       pageStats: true,
       niche: true,
       targetCountry: true,
+      targetGeo: true,
       contentGuidelines: true,
     },
   });
@@ -65,12 +65,13 @@ export async function POST(
     name: campaign.name,
     totalBudget: Number(campaign.totalBudget),
     otherNotes: regions,
-    platform: campaign.platform,
     platforms: campaign.platforms,
     contentType,
     requirements: campaign.requirements,
     minAge: campaign.minAge,
     pageStats: campaign.pageStats,
+    targetCountry: campaign.targetCountry,
+    targetGeo: campaign.targetGeo,
   });
 
   return NextResponse.json({ success: true });

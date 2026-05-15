@@ -14,11 +14,11 @@ export async function POST(req: NextRequest) {
     const { screenshotUrl } = uploadSchema.parse(body);
 
     return NextResponse.json({ url: screenshotUrl }, { status: 200 });
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error("[upload screenshot]", err);
     if (err instanceof z.ZodError) {
       return NextResponse.json({ error: "Invalid input" }, { status: 400 });
     }
-    return NextResponse.json({ error: err.message }, { status: 500 });
+    return NextResponse.json({ error: err instanceof Error ? err.message : "Internal error" }, { status: 500 });
   }
 }

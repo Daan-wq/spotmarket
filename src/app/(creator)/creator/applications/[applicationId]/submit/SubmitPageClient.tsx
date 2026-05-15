@@ -3,8 +3,8 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { useRouter } from "next/navigation";
 import type { NormalizedPost } from "@/types/media";
-import PlatformTabs from "./_components/PlatformTabs";
-import AccountSwitcher from "./_components/AccountSwitcher";
+import PlatformTabs from "@/components/shared/connections/PlatformTabs";
+import AccountSwitcher from "@/components/shared/connections/AccountSwitcher";
 import PostGrid from "./_components/PostGrid";
 import PaginationControls from "./_components/PaginationControls";
 import SearchBar from "./_components/SearchBar";
@@ -30,13 +30,24 @@ interface Props {
   connections: Record<Platform, Connection[]>;
   campaign: Campaign;
   initialSubmittedUrls: string[];
+  /** When set, the client tries to find this post in the grid and pre-select it. */
+  prefillUrl?: string | null;
+  prefillPlatform?: Platform | null;
 }
+
+// Per-card identity. Two cards rendered in the grid can share a `url`
+// (empty/missing permalink, upstream duplicates), so URL is not safe as
+// the UI state key. Id is unique within a platform; prefix with platform
+// to stay safe across platform tabs.
+const keyOf = (p: { platform: Platform; id: string }) => `${p.platform}:${p.id}`;
 
 export default function SubmitPageClient({
   applicationId,
   connections,
   campaign,
   initialSubmittedUrls,
+  prefillUrl,
+  prefillPlatform,
 }: Props) {
   const router = useRouter();
 
@@ -48,11 +59,19 @@ export default function SubmitPageClient({
     return p;
   }, [connections]);
 
-  const defaultPlatform: Platform = platforms[0] ?? "ig";
+  // If we got a prefill platform that the creator has connected, start there.
+  const initialPlatform: Platform =
+    prefillPlatform && platforms.includes(prefillPlatform)
+      ? prefillPlatform
+      : platforms[0] ?? "ig";
+  const defaultPlatform = initialPlatform;
   const defaultConnectionId = connections[defaultPlatform]?.[0]?.id ?? "";
 
   const [activePlatform, setActivePlatform] = useState<Platform>(defaultPlatform);
   const [activeConnectionId, setActiveConnectionId] = useState<string>(defaultConnectionId);
+  // One-shot flag: once we've handled a prefillUrl, don't keep trying.
+  const prefillHandledRef = useRef(false);
+  const [prefillNotFound, setPrefillNotFound] = useState(false);
 
   // Page cache: connectionId → pages array (each page is NormalizedPost[])
   const pageCache = useRef<Map<string, NormalizedPost[][]>>(new Map());
@@ -70,13 +89,39 @@ export default function SubmitPageClient({
     from: campaign.startsAt ?? undefined,
   });
 
-  const [selectedPostUrls, setSelectedPostUrls] = useState<Set<string>>(new Set());
-  const [submittedPostUrls, setSubmittedPostUrls] = useState<Set<string>>(
-    new Set(initialSubmittedUrls)
+  const [selectedKeys, setSelectedKeys] = useState<Set<string>>(new Set());
+  const [submittingKeys, setSubmittingKeys] = useState<Set<string>>(new Set());
+  // URLs known to be in the DB on initial page load (frozen). For these, URL
+  // match marks the matching card(s) as submitted on first render.
+  const initialSubmittedUrlSet = useMemo(
+    () => new Set(initialSubmittedUrls),
+    [initialSubmittedUrls]
+  );
+  // Cards submitted during this session — tracked by id-key so a URL collision
+  // can't cascade the "Submitted" overlay onto an unrelated card.
+  const [sessionSubmittedKeys, setSessionSubmittedKeys] = useState<Set<string>>(
+    new Set()
   );
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+
+  // Synchronous single-flight lock across submitOne + submitSelected. Two
+  // rapid clicks on different per-card Submit buttons (or per-card + bulk)
+  // would otherwise both pass the per-key submitting guard because
+  // setState is async, leading to two unintended submissions.
+  const submitInFlightRef = useRef(false);
+
+  const submittedKeys = useMemo(() => {
+    const s = new Set<string>();
+    for (const p of currentPosts) {
+      const k = keyOf(p);
+      if (sessionSubmittedKeys.has(k) || initialSubmittedUrlSet.has(p.url)) {
+        s.add(k);
+      }
+    }
+    return s;
+  }, [currentPosts, sessionSubmittedKeys, initialSubmittedUrlSet]);
 
   const fetchPage = useCallback(
     async (
@@ -117,7 +162,11 @@ export default function SubmitPageClient({
           setCurrentPosts([]);
           return;
         }
-        if (!res.ok) throw new Error("Failed to load posts");
+        if (!res.ok) {
+          const body = await res.json().catch(() => ({}));
+          const apiError = typeof body?.error === "string" ? body.error : null;
+          throw new Error(apiError || "Failed to load posts");
+        }
 
         const data = await res.json();
         const posts: NormalizedPost[] = data.posts ?? [];
@@ -136,9 +185,10 @@ export default function SubmitPageClient({
         cursorCache.current.set(connectionId, newCursors);
 
         setCurrentPosts(posts);
-      } catch {
+      } catch (err) {
         setCurrentPosts([]);
-        setError("Failed to load posts. Please try again.");
+        const fallback = "Failed to load posts. Please try again.";
+        setError(err instanceof Error && err.message ? err.message : fallback);
       } finally {
         setIsLoading(false);
       }
@@ -154,13 +204,36 @@ export default function SubmitPageClient({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Prefill: when the page was opened via "Submit for Campaign" on Accounts → Content,
+  // try to find the matching post in the freshly-fetched grid and pre-select it.
+  useEffect(() => {
+    if (prefillHandledRef.current) return;
+    if (!prefillUrl) return;
+    if (currentPosts.length === 0) return;
+    const match = currentPosts.find((p) => p.url === prefillUrl);
+    if (!match) {
+      // Don't latch — user can still flip platform tabs to find it.
+      setPrefillNotFound(true);
+      return;
+    }
+    prefillHandledRef.current = true;
+    setPrefillNotFound(false);
+    setSelectedKeys((prev) => new Set(prev).add(keyOf(match)));
+    // Defer scroll until DOM has the new card.
+    const id = `submit-card-${keyOf(match)}`;
+    requestAnimationFrame(() => {
+      const el = document.getElementById(id);
+      if (el) el.scrollIntoView({ behavior: "smooth", block: "center" });
+    });
+  }, [prefillUrl, currentPosts]);
+
   const handlePlatformChange = (platform: Platform) => {
     const firstConn = connections[platform][0];
     if (!firstConn) return;
     setActivePlatform(platform);
     setActiveConnectionId(firstConn.id);
     setCurrentPageIndex(0);
-    setSelectedPostUrls(new Set());
+    setSelectedKeys(new Set());
     setSearchQuery("");
     fetchPage(platform, firstConn.id, 0);
   };
@@ -168,20 +241,20 @@ export default function SubmitPageClient({
   const handleConnectionChange = (connectionId: string) => {
     setActiveConnectionId(connectionId);
     setCurrentPageIndex(0);
-    setSelectedPostUrls(new Set());
+    setSelectedKeys(new Set());
     fetchPage(activePlatform, connectionId, 0);
   };
 
   const handleRefresh = () => {
     setCurrentPageIndex(0);
-    setSelectedPostUrls(new Set());
+    setSelectedKeys(new Set());
     fetchPage(activePlatform, activeConnectionId, 0, true);
   };
 
   const handleNext = () => {
     const nextIndex = currentPageIndex + 1;
     setCurrentPageIndex(nextIndex);
-    setSelectedPostUrls(new Set());
+    setSelectedKeys(new Set());
     fetchPage(activePlatform, activeConnectionId, nextIndex);
   };
 
@@ -189,7 +262,7 @@ export default function SubmitPageClient({
     const prevIndex = currentPageIndex - 1;
     if (prevIndex < 0) return;
     setCurrentPageIndex(prevIndex);
-    setSelectedPostUrls(new Set());
+    setSelectedKeys(new Set());
     fetchPage(activePlatform, activeConnectionId, prevIndex);
   };
 
@@ -213,35 +286,90 @@ export default function SubmitPageClient({
     });
   }, [currentPosts, searchQuery, dateFilter]);
 
-  const togglePost = (url: string) => {
-    if (submittedPostUrls.has(url)) return;
-    setSelectedPostUrls((prev) => {
+  const togglePost = (post: NormalizedPost) => {
+    const k = keyOf(post);
+    if (submittedKeys.has(k)) return;
+    setSelectedKeys((prev) => {
       const next = new Set(prev);
-      if (next.has(url)) next.delete(url);
-      else next.add(url);
+      if (next.has(k)) next.delete(k);
+      else next.add(k);
       return next;
     });
   };
 
+  const submitOne = async (post: NormalizedPost) => {
+    const k = keyOf(post);
+    if (submittedKeys.has(k)) return;
+    if (submitInFlightRef.current) return;
+    submitInFlightRef.current = true;
+    setError(null);
+    setSuccess(null);
+    setSubmittingKeys((prev) => new Set(prev).add(k));
+    try {
+      const res = await fetch("/api/submissions", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          applicationId,
+          postUrl: post.url,
+          thumbnailUrl: post.thumbnail ?? undefined,
+          mediaType: post.mediaType,
+        }),
+      });
+      if (res.ok) {
+        setSessionSubmittedKeys((prev) => new Set(prev).add(k));
+        setSelectedKeys((prev) => {
+          if (!prev.has(k)) return prev;
+          const next = new Set(prev);
+          next.delete(k);
+          return next;
+        });
+        setSuccess("Clip submitted.");
+      } else {
+        const data = await res.json().catch(() => ({}));
+        setError(data.error || "Failed to submit");
+      }
+    } catch {
+      setError("Submission failed. Please try again.");
+    } finally {
+      setSubmittingKeys((prev) => {
+        const next = new Set(prev);
+        next.delete(k);
+        return next;
+      });
+      submitInFlightRef.current = false;
+    }
+  };
+
   const submitSelected = async () => {
-    if (selectedPostUrls.size === 0) return;
+    if (selectedKeys.size === 0) return;
+    if (submitInFlightRef.current) return;
+    submitInFlightRef.current = true;
     setSubmitting(true);
     setError(null);
     setSuccess(null);
 
-    const urls = Array.from(selectedPostUrls);
+    const keys = Array.from(selectedKeys);
+    const postsByKey = new Map(currentPosts.map((p) => [keyOf(p), p]));
     let submitted = 0;
 
-    for (const url of urls) {
+    for (const k of keys) {
+      const post = postsByKey.get(k);
+      if (!post) continue;
       try {
         const res = await fetch("/api/submissions", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ applicationId, postUrl: url }),
+          body: JSON.stringify({
+            applicationId,
+            postUrl: post.url,
+            thumbnailUrl: post.thumbnail ?? undefined,
+            mediaType: post.mediaType,
+          }),
         });
         if (res.ok) {
           submitted++;
-          setSubmittedPostUrls((prev) => new Set([...prev, url]));
+          setSessionSubmittedKeys((prev) => new Set(prev).add(k));
         } else {
           const data = await res.json();
           setError(data.error || `Failed to submit`);
@@ -252,13 +380,14 @@ export default function SubmitPageClient({
     }
 
     setSubmitting(false);
-    setSelectedPostUrls(new Set());
+    setSelectedKeys(new Set());
+    submitInFlightRef.current = false;
 
     if (submitted > 0) {
-      if (submitted === urls.length) {
+      if (submitted === keys.length) {
         router.push(`/creator/applications/${applicationId}`);
       } else {
-        setSuccess(`${submitted} of ${urls.length} posts submitted successfully.`);
+        setSuccess(`${submitted} of ${keys.length} posts submitted successfully.`);
       }
     }
   };
@@ -267,7 +396,7 @@ export default function SubmitPageClient({
   const allPlatforms: Platform[] = ["ig", "tt", "fb"];
 
   return (
-    <div className="p-6 w-full">
+    <div className="w-full md:p-6">
       <SubmitHeader
         campaignName={campaign.name}
         requirements={campaign.requirements}
@@ -301,13 +430,22 @@ export default function SubmitPageClient({
         </div>
       )}
 
+      {prefillNotFound && (
+        <div
+          className="p-3 rounded-lg mb-4 text-sm"
+          style={{ background: "rgba(234,179,8,0.1)", color: "#ca8a04" }}
+        >
+          We couldn&apos;t auto-select that post on this page. Try switching the platform tab or paging back to find it.
+        </div>
+      )}
+
       <div
         className="rounded-lg border"
         style={{ background: "var(--bg-card)", borderColor: "var(--border)" }}
       >
         {/* Platform tabs + submit button */}
         <div
-          className="flex items-center justify-between px-5 py-3 border-b gap-3"
+          className="flex flex-col items-stretch justify-between gap-3 border-b px-4 py-3 sm:flex-row sm:items-center md:px-5"
           style={{ borderColor: "var(--border)" }}
         >
           <PlatformTabs
@@ -317,19 +455,19 @@ export default function SubmitPageClient({
           />
           <button
             onClick={submitSelected}
-            disabled={selectedPostUrls.size === 0 || submitting}
-            className="flex items-center gap-1.5 px-4 py-1.5 rounded-lg text-sm font-medium transition-all disabled:opacity-30 cursor-pointer"
+            disabled={selectedKeys.size === 0 || submitting}
+            className="flex items-center justify-center gap-1.5 rounded-lg px-4 py-2 text-sm font-medium transition-all disabled:opacity-30 cursor-pointer"
             style={{ background: "var(--primary)", color: "#fff" }}
           >
             {submitting
               ? "Submitting…"
-              : `Submit${selectedPostUrls.size > 0 ? ` (${selectedPostUrls.size})` : ""}`}
+              : `Submit${selectedKeys.size > 0 ? ` (${selectedKeys.size})` : ""}`}
           </button>
         </div>
 
         {/* Account tabs + filters */}
         <div
-          className="flex flex-wrap items-center gap-3 px-5 py-2 border-b"
+          className="flex flex-wrap items-center gap-3 border-b px-4 py-3 md:px-5"
           style={{ borderColor: "var(--border)" }}
         >
           <AccountSwitcher
@@ -348,8 +486,8 @@ export default function SubmitPageClient({
         {/* Selection hint */}
         <div className="px-5 pt-4 pb-1">
           <p className="text-sm" style={{ color: "var(--text-secondary)" }}>
-            {selectedPostUrls.size > 0
-              ? `${selectedPostUrls.size} post${selectedPostUrls.size !== 1 ? "s" : ""} selected`
+            {selectedKeys.size > 0
+              ? `${selectedKeys.size} post${selectedKeys.size !== 1 ? "s" : ""} selected`
               : "Select the posts you want to submit"}
           </p>
         </div>
@@ -359,12 +497,14 @@ export default function SubmitPageClient({
           <PostGrid
             posts={filteredPosts}
             isLoading={isLoading}
-            selectedUrls={selectedPostUrls}
-            submittedUrls={submittedPostUrls}
+            selectedKeys={selectedKeys}
+            submittedKeys={submittedKeys}
+            submittingKeys={submittingKeys}
             requiredHashtags={campaign.requiredHashtags}
             hasConnectedAccount={activeConnections.length > 0}
             platform={activePlatform}
             onToggle={togglePost}
+            onSubmitOne={submitOne}
           />
 
           {!isLoading && activeConnections.length > 0 && currentPosts.length > 0 && (

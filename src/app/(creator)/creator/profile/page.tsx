@@ -2,7 +2,6 @@ import { getCachedAuthUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { redirect } from "next/navigation";
 import { ProfileClient } from "./_components/profile-client";
-import { ScoreCard } from "@/components/clipper-score/score-card";
 
 export default async function ProfilePage({
   searchParams,
@@ -77,9 +76,6 @@ export default async function ProfilePage({
 
   return (
     <div className="w-full">
-      <div className="px-6 pt-6">
-        <ScoreCard creatorProfileId={profile.id} />
-      </div>
       <ProfileClient
         initialTab={params.tab ?? "general"}
         profileData={{

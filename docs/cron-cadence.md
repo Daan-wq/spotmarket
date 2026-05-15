@@ -14,8 +14,6 @@ The handler code is identical either way — the route handlers (`/api/cron/*`) 
 | `poll-metrics-warm` | `10 0 * * *` (daily, fallback only) | hourly | Supabase pg_cron |
 | `poll-demographics` | `0 2 * * *` | daily | Vercel |
 | `refresh-tokens` | `0 9 * * 1` | weekly | Vercel |
-| `autopost-scheduler` | `0 0 * * *` | daily | Vercel |
-| `autopost-auto-approve` | `0 6 * * *` | daily | Vercel |
 | `recompute-benchmarks` | `15 0 * * *` (daily, fallback only) | every 6 h | Supabase pg_cron |
 | `recompute-scores` | `0 3 * * *` | daily | Vercel |
 | `notification-dispatch` | `20 0 * * *` (daily, fallback only) | every 15 min | Supabase pg_cron |

@@ -5,10 +5,13 @@ import SubmitPageClient from "./SubmitPageClient";
 
 export default async function SubmitPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ applicationId: string }>;
+  searchParams: Promise<{ prefillUrl?: string; platform?: string }>;
 }) {
   const { applicationId } = await params;
+  const sp = await searchParams;
   const { userId } = await requireAuth("creator");
 
   const user = await prisma.user.findUnique({
@@ -52,6 +55,11 @@ export default async function SubmitPage({
     }),
   ]);
 
+  const prefillPlatform =
+    sp.platform === "ig" || sp.platform === "tt" || sp.platform === "fb"
+      ? sp.platform
+      : null;
+
   return (
     <SubmitPageClient
       applicationId={applicationId}
@@ -70,6 +78,8 @@ export default async function SubmitPage({
         requirements: application.campaign.requirements ?? null,
       }}
       initialSubmittedUrls={submissions.map((s) => s.postUrl)}
+      prefillUrl={sp.prefillUrl ?? null}
+      prefillPlatform={prefillPlatform}
     />
   );
 }

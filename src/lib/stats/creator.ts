@@ -26,12 +26,12 @@ export interface CreatorTopStats {
   byPlatform: Record<PlatformSlug, PlatformAggregate>;
 }
 
-interface ProfileScope {
+export interface CreatorStatsScope {
   userId: string;
   creatorProfileId: string;
 }
 
-async function getProfileScope(supabaseUserId: string): Promise<ProfileScope | null> {
+async function getProfileScope(supabaseUserId: string): Promise<CreatorStatsScope | null> {
   const user = await prisma.user.findUnique({
     where: { supabaseId: supabaseUserId },
     select: { id: true, creatorProfile: { select: { id: true } } },
@@ -139,6 +139,22 @@ async function getTotalFollowers(
  * Strategy: a submission's platform = the platform of the latest MetricSnapshot
  * for that submission (falls back to BioPlatform.sourcePlatform for IG/TT/FB).
  */
+export async function getCreatorSubmissionIdsByPlatform(
+  supabaseUserId: string,
+  range: Range,
+): Promise<Record<PlatformSlug, string[]> | null> {
+  const scope = await getProfileScope(supabaseUserId);
+  if (!scope) return null;
+  return getCreatorSubmissionIdsByPlatformForScope(scope, range);
+}
+
+export async function getCreatorSubmissionIdsByPlatformForScope(
+  scope: CreatorStatsScope,
+  range: Range,
+): Promise<Record<PlatformSlug, string[]>> {
+  return getSubmissionIdsByPlatform(scope.userId, range);
+}
+
 async function getSubmissionIdsByPlatform(
   userId: string,
   range: Range,
@@ -180,7 +196,13 @@ export async function getCreatorTopStats(
 ): Promise<CreatorTopStats | null> {
   const scope = await getProfileScope(supabaseUserId);
   if (!scope) return null;
+  return getCreatorTopStatsForScope(scope, range);
+}
 
+export async function getCreatorTopStatsForScope(
+  scope: CreatorStatsScope,
+  range: Range,
+): Promise<CreatorTopStats> {
   const connIds = await getConnectionIds(scope.creatorProfileId);
   const subsByPlatform = await getSubmissionIdsByPlatform(scope.userId, range);
   const allSubIds = PLATFORM_ALL.flatMap((p) => subsByPlatform[p]);
@@ -315,7 +337,14 @@ export async function getCreatorPlatformStats(
 ): Promise<CreatorPlatformStats | null> {
   const scope = await getProfileScope(supabaseUserId);
   if (!scope) return null;
+  return getCreatorPlatformStatsForScope(scope, slug, range);
+}
 
+export async function getCreatorPlatformStatsForScope(
+  scope: CreatorStatsScope,
+  slug: PlatformSlug,
+  range: Range,
+): Promise<CreatorPlatformStats> {
   const connIds = await getConnectionIds(scope.creatorProfileId);
   const subsByPlatform = await getSubmissionIdsByPlatform(scope.userId, range);
   const subIds = subsByPlatform[slug];
@@ -406,7 +435,15 @@ export async function getCreatorConnectionStats(
 ): Promise<CreatorConnectionStats | null> {
   const scope = await getProfileScope(supabaseUserId);
   if (!scope) return null;
+  return getCreatorConnectionStatsForScope(scope, slug, connectionId, range);
+}
 
+export async function getCreatorConnectionStatsForScope(
+  scope: CreatorStatsScope,
+  slug: PlatformSlug,
+  connectionId: string,
+  range: Range,
+): Promise<CreatorConnectionStats | null> {
   const meta = await resolveConnectionMeta(slug, connectionId, scope.creatorProfileId);
   if (!meta) return null;
 
@@ -501,7 +538,7 @@ async function resolveConnectionMeta(
   };
 }
 
-async function findCreatorSubmissionsByHandle(
+export async function findCreatorSubmissionsByHandle(
   userId: string,
   slug: PlatformSlug,
   matchHandle: string,
@@ -544,12 +581,30 @@ export async function getCreatorDemographics(
   supabaseUserId: string,
   slug: PlatformSlug | null,
   kind?: "FOLLOWER" | "ENGAGED",
+  connectionId?: string,
 ) {
   const scope = await getProfileScope(supabaseUserId);
   if (!scope) return null;
+  return getCreatorDemographicsForScope(scope, slug, kind, connectionId);
+}
+
+export async function getCreatorDemographicsForScope(
+  scope: CreatorStatsScope,
+  slug: PlatformSlug | null,
+  kind?: "FOLLOWER" | "ENGAGED",
+  connectionId?: string,
+) {
   const connIds = await getConnectionIds(scope.creatorProfileId);
 
-  const filterIds = slug ? connIds[slug] : [...connIds.ig, ...connIds.tt, ...connIds.yt, ...connIds.fb];
+  let filterIds: string[];
+  if (connectionId) {
+    if (!slug) return null;
+    if (!connIds[slug].includes(connectionId)) return null;
+    filterIds = [connectionId];
+  } else {
+    filterIds = slug ? connIds[slug] : [...connIds.ig, ...connIds.tt, ...connIds.yt, ...connIds.fb];
+  }
+
   if (filterIds.length === 0) {
     return aggregateAudience([]);
   }
@@ -567,6 +622,30 @@ export async function getCreatorDemographics(
   });
   const latest = latestPerConnection(snaps);
   return aggregateAudience(latest, kind);
+}
+
+/**
+ * Convenience: resolve a connection's match-handle and return its submission ids.
+ * Used by the Accounts Workspace's account-scoped sub-tab loaders.
+ */
+export async function getConnectionSubmissionIds(
+  supabaseUserId: string,
+  slug: PlatformSlug,
+  connectionId: string,
+): Promise<string[]> {
+  const scope = await getProfileScope(supabaseUserId);
+  if (!scope) return [];
+  return getConnectionSubmissionIdsForScope(scope, slug, connectionId);
+}
+
+export async function getConnectionSubmissionIdsForScope(
+  scope: CreatorStatsScope,
+  slug: PlatformSlug,
+  connectionId: string,
+): Promise<string[]> {
+  const meta = await resolveConnectionMeta(slug, connectionId, scope.creatorProfileId);
+  if (!meta) return [];
+  return findCreatorSubmissionsByHandle(scope.userId, slug, meta.matchHandle);
 }
 
 // ──────────────────────────────────────────────
@@ -589,7 +668,15 @@ export async function getAccountGrowth(
 ): Promise<AccountGrowthPoint[]> {
   const scope = await getProfileScope(supabaseUserId);
   if (!scope) return [];
+  return getAccountGrowthForScope(scope, slug, range, connectionId);
+}
 
+export async function getAccountGrowthForScope(
+  scope: CreatorStatsScope,
+  slug: PlatformSlug,
+  range: Range,
+  connectionId?: string,
+): Promise<AccountGrowthPoint[]> {
   const connIds = await getConnectionIds(scope.creatorProfileId);
   const ids = connectionId ? [connectionId] : connIds[slug];
   if (ids.length === 0) return [];

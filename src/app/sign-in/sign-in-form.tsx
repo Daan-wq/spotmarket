@@ -5,6 +5,7 @@ import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { OAuthButtons, OAuthDivider } from "@/components/auth/oauth-buttons";
+import { safeRedirectPath } from "@/lib/safe-redirect";
 
 function EyeIcon({ open }: { open: boolean }) {
   return open ? (
@@ -21,7 +22,7 @@ function EyeIcon({ open }: { open: boolean }) {
 export function SignInForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const redirectUrl = searchParams.get("redirect_url") ?? "/";
+  const redirectUrl = safeRedirectPath(searchParams.get("redirect_url"), "/");
 
   const passwordReset = searchParams.get("reset") === "1";
   const authError = searchParams.get("auth_error");
@@ -71,13 +72,13 @@ export function SignInForm() {
     setSuccess("Check your email — we sent a password reset link.");
   }
 
-  const inp = "w-full px-3 py-2.5 rounded-lg text-sm outline-none transition-all text-white";
-  const inpStyle = { border: "1px solid rgba(255,255,255,0.1)", background: "rgba(255,255,255,0.05)" };
+  const inp = "w-full px-3 py-2.5 rounded-lg text-sm outline-none transition-all text-zinc-950";
+  const inpStyle = { border: "1px solid var(--border)", background: "#ffffff" };
 
   if (mode === "forgot") {
     return (
       <>
-        <h1 className="text-xl font-semibold mb-1 text-white">Reset password</h1>
+        <h1 className="text-xl font-semibold mb-1 text-zinc-950">Reset password</h1>
         <p className="text-sm mb-6" style={{ color: "var(--text-secondary)" }}>
           Enter your email and we&apos;ll send you a reset link.
         </p>
@@ -109,7 +110,7 @@ export function SignInForm() {
                 className={inp}
                 style={inpStyle}
                 onFocus={(e) => { e.currentTarget.style.borderColor = "var(--accent)"; e.currentTarget.style.boxShadow = "0 0 0 3px var(--accent-bg)"; }}
-                onBlur={(e) => { e.currentTarget.style.borderColor = "rgba(255,255,255,0.1)"; e.currentTarget.style.boxShadow = "none"; }}
+                onBlur={(e) => { e.currentTarget.style.borderColor = "var(--border)"; e.currentTarget.style.boxShadow = "none"; }}
               />
             </div>
 
@@ -146,7 +147,7 @@ export function SignInForm() {
 
   return (
     <>
-      <h1 className="text-xl font-semibold mb-1 text-white">Welcome back</h1>
+      <h1 className="text-xl font-semibold mb-1 text-zinc-950">Welcome back</h1>
       <p className="text-sm mb-6" style={{ color: "var(--text-secondary)" }}>
         No account?{" "}
         <Link href="/sign-up" className="hover:underline" style={{ color: "var(--accent)" }}>
@@ -174,7 +175,7 @@ export function SignInForm() {
             className={inp}
             style={inpStyle}
             onFocus={(e) => { e.currentTarget.style.borderColor = "var(--accent)"; e.currentTarget.style.boxShadow = "0 0 0 3px var(--accent-bg)"; }}
-            onBlur={(e) => { e.currentTarget.style.borderColor = "rgba(255,255,255,0.1)"; e.currentTarget.style.boxShadow = "none"; }}
+            onBlur={(e) => { e.currentTarget.style.borderColor = "var(--border)"; e.currentTarget.style.boxShadow = "none"; }}
           />
         </div>
         <div>
@@ -198,7 +199,7 @@ export function SignInForm() {
               className={inp}
               style={{ ...inpStyle, paddingRight: "2.5rem" }}
               onFocus={(e) => { e.currentTarget.style.borderColor = "var(--accent)"; e.currentTarget.style.boxShadow = "0 0 0 3px var(--accent-bg)"; }}
-              onBlur={(e) => { e.currentTarget.style.borderColor = "rgba(255,255,255,0.1)"; e.currentTarget.style.boxShadow = "none"; }}
+              onBlur={(e) => { e.currentTarget.style.borderColor = "var(--border)"; e.currentTarget.style.boxShadow = "none"; }}
             />
             <button
               type="button"

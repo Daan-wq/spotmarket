@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { CampaignImageUploadField } from "@/components/campaigns/campaign-image-upload-field";
 
 const PLATFORM_OPTIONS = [
   { value: "INSTAGRAM", label: "Instagram" },
@@ -91,6 +92,7 @@ export function CampaignCreateForm() {
 
   // — Announcement fields (shown in Discord post) —
   const [name, setName] = useState("");
+  const [bannerUrl, setBannerUrl] = useState<string | null>(null);
   const [totalBudget, setTotalBudget] = useState("");
   const [countries, setCountries] = useState<CountryEntry[]>([]);
   const [countrySearch, setCountrySearch] = useState("");
@@ -186,6 +188,7 @@ export function CampaignCreateForm() {
         minAge: enabledStats.minAge && statValues.minAge ? statValues.minAge : undefined,
         contentGuidelines: contentGuidelines || undefined,
         referralLink: referralLink || undefined,
+        bannerUrl: bannerUrl || undefined,
         totalBudget: budget,
         goalViews: goalViews ?? undefined,
         adminMarginPerM: margin,
@@ -247,6 +250,14 @@ export function CampaignCreateForm() {
             placeholder="e.g. LOGO CLIPPING DEAL"
           />
         </div>
+
+        <CampaignImageUploadField
+          value={bannerUrl}
+          onChange={setBannerUrl}
+          label="Campaign image"
+          campaignName={name || "Campaign"}
+          disabled={loading}
+        />
 
         <div>
           <label style={labelStyle}>Budget (€) *</label>

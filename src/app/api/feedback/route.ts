@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getCachedAuthUser } from "@/lib/auth";
+import { postInternalAlert } from "@/lib/discord-internal";
 
 interface FeedbackBody {
   type: "bug" | "feature";
@@ -39,32 +40,21 @@ export async function POST(req: Request) {
 
   const user = await getCachedAuthUser();
 
-  const webhookUrl = process.env.DISCORD_FEEDBACK_WEBHOOK_URL ?? process.env.DISCORD_DEALS_WEBHOOK_URL;
-
-  if (webhookUrl) {
-    const payload = buildDiscordPayload({
-      type: body.type,
-      title,
-      description,
-      severity: body.severity,
-      category: body.category,
-      pageUrl: body.pageUrl,
-      userAgent: body.userAgent,
-      viewport: body.viewport,
-      userEmail: user?.email ?? null,
-      userId: user?.id ?? null,
-    });
-    try {
-      await fetch(webhookUrl, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
-    } catch (err) {
-      console.error("[feedback] Discord webhook failed", err);
-    }
-  } else {
-    // No webhook configured — at least log so it's visible in dev/server logs.
+  const payload = buildDiscordPayload({
+    type: body.type,
+    title,
+    description,
+    severity: body.severity,
+    category: body.category,
+    pageUrl: body.pageUrl,
+    userAgent: body.userAgent,
+    viewport: body.viewport,
+    userEmail: user?.email ?? null,
+    userId: user?.id ?? null,
+  });
+  const result = await postInternalAlert(payload);
+  if (!result.ok) {
+    console.error("[feedback] Discord post failed", result.error);
     console.info("[feedback] received", {
       type: body.type,
       title,

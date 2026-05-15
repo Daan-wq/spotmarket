@@ -66,11 +66,11 @@ export async function PATCH(
     });
 
     return NextResponse.json({ withdrawal: updated });
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error("[admin withdrawal PATCH]", err);
     if (err instanceof z.ZodError) {
       return NextResponse.json({ error: "Invalid input", details: err.issues }, { status: 400 });
     }
-    return NextResponse.json({ error: err.message || "Internal error" }, { status: 500 });
+    return NextResponse.json({ error: err instanceof Error ? err.message : "Internal error" }, { status: 500 });
   }
 }

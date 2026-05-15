@@ -1,4 +1,61 @@
 import { prisma } from "@/lib/prisma";
+import type { Prisma } from "@prisma/client";
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Projected per-submission earnings (forecast, regardless of status)
+// ─────────────────────────────────────────────────────────────────────────────
+//
+// Single source of truth for the simple `views × creatorCpv` calculation that
+// the submission detail card and the My Clips list use. This is a FORECAST —
+// it does not subtract baselineViews and does not gate on APPROVED status.
+// For realized/payable earnings see getCreatorTotalEarnings below.
+
+type CpvLike = Prisma.Decimal | string | number | null | undefined;
+
+function toNumber(value: CpvLike): number {
+  if (value == null) return 0;
+  if (typeof value === "number") return value;
+  return Number(value);
+}
+
+export function projectedEarnings(views: number, creatorCpv: CpvLike): number {
+  if (!views || views <= 0) return 0;
+  const cpv = toNumber(creatorCpv);
+  if (!cpv) return 0;
+  return views * cpv;
+}
+
+interface ViewableSubmission {
+  viewCount?: number | null;
+  claimedViews?: number | null;
+}
+
+export function submissionViews(s: ViewableSubmission): number {
+  return s.viewCount ?? s.claimedViews ?? 0;
+}
+
+export interface ProjectedEarningsSubmission extends ViewableSubmission {
+  campaign: { creatorCpv: CpvLike };
+}
+
+export function submissionProjectedEarnings(
+  s: ProjectedEarningsSubmission,
+): number {
+  return projectedEarnings(submissionViews(s), s.campaign.creatorCpv);
+}
+
+export function totalProjectedEarnings(
+  submissions: ReadonlyArray<ProjectedEarningsSubmission>,
+): number {
+  return submissions.reduce(
+    (sum, s) => sum + submissionProjectedEarnings(s),
+    0,
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Realized creator earnings (settled + estimated for unsettled approvals)
+// ─────────────────────────────────────────────────────────────────────────────
 
 export interface CreatorTotalEarnings {
   total: number;

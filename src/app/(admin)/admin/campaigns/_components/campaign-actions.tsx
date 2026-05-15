@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useOptimistic, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 
@@ -12,82 +12,91 @@ interface CampaignActionsProps {
 export function CampaignActions({ campaignId, status }: CampaignActionsProps) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
+  const [optimisticStatus, setOptimisticStatus] = useOptimistic(status);
   const [deleteState, setDeleteState] = useState<"idle" | "confirming" | "loading" | "error">("idle");
   const [settleState, setSettleState] = useState<"idle" | "loading" | "done" | "error">("idle");
 
-  async function handleStatusChange() {
+  function handleStatusChange() {
     if (isPending) return;
-    try {
-      const newStatus = status === "active" ? "paused" : "active";
-      const res = await fetch(`/api/campaigns/${campaignId}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ status: newStatus }),
-      });
+    const newStatus = optimisticStatus === "active" ? "paused" : "active";
 
-      if (!res.ok) {
-        toast.error("Failed to update campaign");
-        return;
+    startTransition(async () => {
+      setOptimisticStatus(newStatus);
+
+      try {
+        const res = await fetch(`/api/campaigns/${campaignId}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ status: newStatus }),
+        });
+        if (!res.ok) {
+          toast.error("Failed to update campaign — reverting");
+          return;
+        }
+        toast.success(newStatus === "active" ? "Campaign activated" : "Campaign paused");
+        router.refresh();
+      } catch (err) {
+        console.error("[CampaignActions]", err);
+        toast.error("Network error — reverting");
       }
-      toast.success(newStatus === "active" ? "Campaign activated" : "Campaign paused");
-      startTransition(() => router.refresh());
-    } catch (err) {
-      console.error("[CampaignActions]", err);
-      toast.error("Network error");
-    }
+    });
   }
 
-  async function handleConfirmDelete() {
+  function handleConfirmDelete() {
     setDeleteState("loading");
-    try {
-      const res = await fetch(`/api/campaigns/${campaignId}`, { method: "DELETE" });
+    startTransition(async () => {
+      try {
+        const res = await fetch(`/api/campaigns/${campaignId}`, { method: "DELETE" });
 
-      if (res.status === 409) {
-        setDeleteState("error");
-        toast.error("Cannot delete: active applications");
-        setTimeout(() => setDeleteState("idle"), 3000);
-        return;
+        if (res.status === 409) {
+          setDeleteState("error");
+          toast.error("Cannot delete: active applications");
+          setTimeout(() => setDeleteState("idle"), 3000);
+          return;
+        }
+
+        if (!res.ok) {
+          throw new Error("Failed to delete campaign");
+        }
+
+        setDeleteState("idle");
+        toast.success("Campaign deleted");
+        router.refresh();
+      } catch (err) {
+        console.error("[CampaignActions]", err);
+        toast.error("Failed to delete campaign");
+        setDeleteState("idle");
       }
-
-      if (!res.ok) {
-        throw new Error("Failed to delete campaign");
-      }
-
-      setDeleteState("idle");
-      toast.success("Campaign deleted");
-      startTransition(() => router.refresh());
-    } catch (err) {
-      console.error("[CampaignActions]", err);
-      toast.error("Failed to delete campaign");
-      setDeleteState("idle");
-    }
+    });
   }
 
   const statusButtonLabel =
-    status === "draft" ? "Activate" :
-    status === "active" ? "Pause" :
+    optimisticStatus === "draft" ? "Activate" :
+    optimisticStatus === "active" ? "Pause" :
     "Resume";
 
-  async function handleSettle() {
+  function handleSettle() {
     setSettleState("loading");
-    try {
-      const res = await fetch(`/api/campaigns/${campaignId}/settle`, { method: "POST" });
-      if (!res.ok) {
+    startTransition(async () => {
+      try {
+        const res = await fetch(`/api/campaigns/${campaignId}/settle`, { method: "POST" });
+        if (!res.ok) {
+          setSettleState("error");
+          toast.error("Settle failed");
+          setTimeout(() => setSettleState("idle"), 3000);
+          return;
+        }
+        setSettleState("done");
+        toast.success("Campaign settled");
+        router.refresh();
+        setTimeout(() => setSettleState("idle"), 2000);
+      } catch (err) {
+        console.error("[settle]", err);
         setSettleState("error");
-        toast.error("Settle failed");
+        toast.error("Network error");
         setTimeout(() => setSettleState("idle"), 3000);
-        return;
       }
-      setSettleState("done");
-      toast.success("Campaign settled");
-      startTransition(() => router.refresh());
-      setTimeout(() => setSettleState("idle"), 2000);
-    } catch (err) {
-      console.error("[settle]", err);
-      setSettleState("error");
-      toast.error("Network error");
-      setTimeout(() => setSettleState("idle"), 3000);
-    }
+    });
   }
 
   const deleteButtonLabel =

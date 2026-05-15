@@ -14,13 +14,13 @@ export default async function CampaignLeaderboardPage({ params }: PageProps) {
 
   const campaign = await prisma.campaign.findUnique({
     where: { id: campaignId },
-    select: { id: true, name: true, platform: true, creatorCpv: true },
+    select: { id: true, name: true, creatorCpv: true },
   });
 
   if (!campaign) notFound();
 
   return (
-    <div className="p-6 w-full space-y-6">
+    <div className="w-full space-y-6 md:p-6">
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
           <Link
@@ -31,7 +31,7 @@ export default async function CampaignLeaderboardPage({ params }: PageProps) {
             &larr; Back to campaign
           </Link>
           <h1
-            className="text-2xl font-bold mt-1"
+            className="mt-1 break-words text-2xl font-bold"
             style={{ color: "var(--text-primary)" }}
           >
             {campaign.name} — Leaderboard

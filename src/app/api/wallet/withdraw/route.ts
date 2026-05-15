@@ -79,11 +79,11 @@ export async function POST(req: NextRequest) {
         currency: withdrawal.currency,
       },
     }, { status: 201 });
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error("[wallet withdraw]", err);
     if (err instanceof z.ZodError) {
       return NextResponse.json({ error: "Invalid input", details: err.issues }, { status: 400 });
     }
-    return NextResponse.json({ error: err.message || "Internal error" }, { status: 500 });
+    return NextResponse.json({ error: err instanceof Error ? err.message : "Internal error" }, { status: 500 });
   }
 }

@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
 
 interface Submission {
   id: string;
@@ -38,14 +37,12 @@ export function ContactClient({
   campaignId,
   brandName,
   brandUserId,
-  currentUserId,
   submissions,
   messages: initialMessages,
 }: ContactClientProps) {
   const [messages, setMessages] = useState(initialMessages);
   const [newMessage, setNewMessage] = useState("");
   const [sending, setSending] = useState(false);
-  const router = useRouter();
 
   const handleSend = async () => {
     if (!newMessage.trim() || sending) return;
@@ -82,13 +79,13 @@ export function ContactClient({
   return (
     <div className="flex flex-col h-full max-w-3xl mx-auto">
       {/* Header */}
-      <div className="p-6 pb-0">
+      <div className="p-4 pb-0 md:p-6 md:pb-0">
         <h2 className="text-lg font-bold" style={{ color: "var(--text-primary)" }}>{brandName}</h2>
         <p className="text-sm" style={{ color: "var(--text-secondary)" }}>You can send a message</p>
       </div>
 
       {/* Rules Banner */}
-      <div className="mx-6 mt-4 p-3 rounded-lg flex items-start gap-2" style={{ background: "#FFFBEB", border: "1px solid #FDE68A" }}>
+      <div className="mx-4 mt-4 flex items-start gap-2 rounded-lg p-3 md:mx-6" style={{ background: "#FFFBEB", border: "1px solid #FDE68A" }}>
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#B45309" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="shrink-0 mt-0.5">
           <circle cx="12" cy="12" r="10" /><path d="M12 16v-4" /><path d="M12 8h.01" />
         </svg>
@@ -101,13 +98,13 @@ export function ContactClient({
       </div>
 
       {/* Message Area */}
-      <div className="flex-1 overflow-y-auto p-6 space-y-4">
+      <div className="flex-1 space-y-4 overflow-y-auto p-4 md:p-6">
         {/* Submission Cards */}
         {submissions.map((sub) => {
           const statusStyle = STATUS_STYLES[sub.status] ?? STATUS_STYLES.PENDING;
           return (
             <div key={sub.id} className="flex justify-end">
-              <div className="max-w-sm rounded-xl p-4" style={{ background: "var(--bg-card)", border: "1px solid var(--border-default)" }}>
+              <div className="w-full max-w-sm rounded-xl p-4" style={{ background: "var(--bg-card)", border: "1px solid var(--border-default)" }}>
                 <div className="flex items-center justify-between mb-2">
                   <span className="text-sm font-semibold" style={{ color: "var(--text-primary)" }}>Video Submission</span>
                   <span className="text-xs font-medium px-2 py-0.5 rounded-full" style={{ background: statusStyle.bg, color: statusStyle.color }}>
@@ -135,7 +132,7 @@ export function ContactClient({
         {messages.map((msg) => (
           <div key={msg.id} className={`flex ${msg.isMe ? "justify-end" : "justify-start"}`}>
             <div
-              className="max-w-sm rounded-xl px-4 py-2.5"
+              className="w-fit max-w-[85%] break-words rounded-xl px-4 py-2.5"
               style={{
                 background: msg.isMe ? "var(--primary)" : "var(--bg-card)",
                 color: msg.isMe ? "#FFFFFF" : "var(--text-primary)",

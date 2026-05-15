@@ -9,7 +9,7 @@ export default function SignInPage() {
       <div className="w-full max-w-sm">
         <div className="text-center mb-8">
           <Link href="/" className="inline-block mb-8">
-            <Logo variant="dark" size="sm" />
+            <Logo variant="light" size="sm" />
           </Link>
         </div>
         <div className="rounded-xl p-8" style={{ background: "var(--dark-card)", border: "1px solid rgba(255,255,255,0.07)" }}>

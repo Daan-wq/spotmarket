@@ -236,6 +236,58 @@ export async function getFbReactionsOverTime(
 // Daily views series (used for Overview chart on every platform)
 // ──────────────────────────────────────────────
 
+interface DailySnapshotLike {
+  capturedAt: Date;
+  viewCount: bigint | number;
+  likeCount: number | null;
+  commentCount: number | null;
+  shareCount: number | null;
+}
+
+/**
+ * For one submission's snapshots (ordered any way), compute day-by-day view/like/comment/share
+ * deltas. Day = `YYYY-MM-DD` slice of `capturedAt`. Each day's value = latest snapshot of that
+ * day minus the previous day's latest snapshot (or 0 if first day in range).
+ *
+ * Pure helper. Shared with `getPostLifts7d` in lib/stats/timeline.ts so the lift sparkline
+ * uses the exact same delta math as the headline daily-views chart.
+ */
+export function computeDayDeltas<T extends DailySnapshotLike>(
+  snaps: T[],
+): Array<{ date: string; views: number; likes: number; comments: number; shares: number }> {
+  if (snaps.length === 0) return [];
+  const perDay = new Map<string, T>();
+  for (const s of snaps) {
+    const key = s.capturedAt.toISOString().slice(0, 10);
+    const existing = perDay.get(key);
+    if (!existing || s.capturedAt > existing.capturedAt) perDay.set(key, s);
+  }
+  const days = Array.from(perDay.entries()).sort((a, b) => a[0].localeCompare(b[0]));
+  let prevView = 0;
+  let prevLike = 0;
+  let prevComment = 0;
+  let prevShare = 0;
+  const out: Array<{ date: string; views: number; likes: number; comments: number; shares: number }> = [];
+  for (const [date, snap] of days) {
+    const v = Number(snap.viewCount);
+    const l = snap.likeCount ?? 0;
+    const c = snap.commentCount ?? 0;
+    const sh = snap.shareCount ?? 0;
+    out.push({
+      date,
+      views: Math.max(0, v - prevView),
+      likes: Math.max(0, l - prevLike),
+      comments: Math.max(0, c - prevComment),
+      shares: Math.max(0, sh - prevShare),
+    });
+    prevView = v;
+    prevLike = l;
+    prevComment = c;
+    prevShare = sh;
+  }
+  return out;
+}
+
 export async function getDailyViewsSeries(
   submissionIds: string[],
   range: Range,
@@ -258,7 +310,7 @@ export async function getDailyViewsSeries(
     },
   });
 
-  // For each submission, compute per-day deltas (latest snapshot of day - previous-day-latest).
+  // Group by submission, compute per-submission day deltas, then sum across submissions per day.
   const bySub = new Map<string, typeof snaps>();
   for (const s of snaps) {
     const arr = bySub.get(s.submissionId) ?? [];
@@ -267,39 +319,19 @@ export async function getDailyViewsSeries(
   }
   const byDate = new Map<string, { date: string; views: number; likes: number; comments: number; shares: number }>();
   for (const arr of bySub.values()) {
-    let prevView = 0;
-    let prevLike = 0;
-    let prevComment = 0;
-    let prevShare = 0;
-    // last snapshot per day
-    const perDay = new Map<string, typeof snaps[number]>();
-    for (const s of arr) {
-      const key = s.capturedAt.toISOString().slice(0, 10);
-      const existing = perDay.get(key);
-      if (!existing || s.capturedAt > existing.capturedAt) perDay.set(key, s);
-    }
-    const days = Array.from(perDay.entries()).sort((a, b) => a[0].localeCompare(b[0]));
-    for (const [date, snap] of days) {
-      const v = Number(snap.viewCount);
-      const l = snap.likeCount ?? 0;
-      const c = snap.commentCount ?? 0;
-      const sh = snap.shareCount ?? 0;
-      const dayDelta = {
-        views: Math.max(0, v - prevView),
-        likes: Math.max(0, l - prevLike),
-        comments: Math.max(0, c - prevComment),
-        shares: Math.max(0, sh - prevShare),
+    for (const dayRow of computeDayDeltas(arr)) {
+      const acc = byDate.get(dayRow.date) ?? {
+        date: dayRow.date,
+        views: 0,
+        likes: 0,
+        comments: 0,
+        shares: 0,
       };
-      prevView = v;
-      prevLike = l;
-      prevComment = c;
-      prevShare = sh;
-      const acc = byDate.get(date) ?? { date, views: 0, likes: 0, comments: 0, shares: 0 };
-      acc.views += dayDelta.views;
-      acc.likes += dayDelta.likes;
-      acc.comments += dayDelta.comments;
-      acc.shares += dayDelta.shares;
-      byDate.set(date, acc);
+      acc.views += dayRow.views;
+      acc.likes += dayRow.likes;
+      acc.comments += dayRow.comments;
+      acc.shares += dayRow.shares;
+      byDate.set(dayRow.date, acc);
     }
   }
   return Array.from(byDate.values()).sort((a, b) => a.date.localeCompare(b.date));

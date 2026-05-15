@@ -174,14 +174,14 @@ export default async function ReferralPage() {
   const isEmpty = totalInvited === 0;
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="space-y-6 md:p-6">
       {/* Header */}
       <div>
         <h1 className="text-3xl font-bold" style={{ color: "var(--text-primary)" }}>
           Referral Program
         </h1>
         <p className="text-sm mt-1" style={{ color: "var(--text-secondary)" }}>
-          Earn 10% from invited creators&apos; earnings — up to $100 per creator. We pay 110%: creators keep 100%, your 10% is on top.
+          Earn up to $100 for every creator you invite — paid as 10% of their earnings until you hit the $100 cap. We pay 110%: creators keep 100%, your share is on top.
         </p>
       </div>
 
@@ -208,12 +208,12 @@ export default async function ReferralPage() {
               </svg>
             </div>
             <h2 className="text-xl font-bold" style={{ color: "var(--text-primary)" }}>
-              Invite a creator, earn 10% of what they make
+              Invite a creator, earn up to $100 per signup
             </h2>
             <p className="mx-auto mt-1.5 max-w-xl text-sm" style={{ color: "var(--text-secondary)" }}>
               Share your link below. Every clipper who signs up under it earns
-              you 10% of their payouts — up to $100 per creator. They still keep
-              100%, our platform covers your share.
+              you up to $100 — paid as 10% of their payouts until that cap.
+              They still keep 100%; our platform covers your share.
             </p>
           </div>
 

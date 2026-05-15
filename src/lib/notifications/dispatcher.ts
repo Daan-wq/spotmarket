@@ -24,6 +24,7 @@ import {
   DEFAULT_CHANNELS,
   type NotificationChannel,
 } from "@/lib/contracts/notifications";
+import { postInternalAlert } from "@/lib/discord-internal";
 import { renderTemplate, getEmailSubject } from "./templates";
 
 export { NotificationType };
@@ -101,13 +102,7 @@ async function sendEmail(
 async function sendDiscord(
   type: NotificationType,
   data: Record<string, unknown>,
-  isAdmin: boolean,
 ): Promise<{ ok: true } | { ok: false; error: string }> {
-  const webhookUrl = isAdmin
-    ? process.env.DISCORD_WEBHOOK_URL ?? process.env.DISCORD_DEALS_WEBHOOK_URL
-    : process.env.DISCORD_WEBHOOK_URL;
-  if (!webhookUrl) return { ok: false, error: "DISCORD_WEBHOOK_URL not configured" };
-
   const titleMap: Record<string, string> = {
     PERFORMANCE_VIRAL: "🚀 Submission going viral",
     PERFORMANCE_UNDERPERFORM: "📉 Submission underperforming",
@@ -130,19 +125,7 @@ async function sendDiscord(
     ],
   };
 
-  try {
-    const res = await fetch(webhookUrl, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
-    });
-    if (!res.ok) {
-      return { ok: false, error: `Discord HTTP ${res.status}` };
-    }
-    return { ok: true };
-  } catch (err) {
-    return { ok: false, error: err instanceof Error ? err.message : String(err) };
-  }
+  return postInternalAlert(payload);
 }
 
 function summarizeForDiscord(type: NotificationType, data: Record<string, unknown>): string {
@@ -170,7 +153,7 @@ export async function dispatchNotification(
 
   const user = await prisma.user.findUnique({
     where: { id: userId },
-    select: { id: true, email: true, discordId: true, role: true },
+    select: { id: true, email: true, discordId: true },
   });
   if (!user) return null;
 
@@ -216,7 +199,7 @@ export async function dispatchNotification(
         })
       : Promise.resolve(),
     wantDiscord
-      ? sendDiscord(type, data, user.role === "admin").then((r) => {
+      ? sendDiscord(type, data).then((r) => {
           delivery.discord = {
             status: r.ok ? "sent" : "failed",
             attempts: 1,
@@ -280,7 +263,7 @@ export async function retryFailedDeliveries(limit = 50): Promise<{
       userId: true,
       type: true,
       data: true,
-      user: { select: { email: true, discordId: true, role: true } },
+      user: { select: { email: true, discordId: true } },
     },
   });
 
@@ -317,7 +300,7 @@ export async function retryFailedDeliveries(limit = 50): Promise<{
       if (r.ok) succeeded++;
     }
     if (discordFailed) {
-      const r = await sendDiscord(n.type, baseData, n.user?.role === "admin");
+      const r = await sendDiscord(n.type, baseData);
       delivery.discord = {
         status: r.ok ? "sent" : "failed",
         attempts: (delivery.discord?.attempts ?? 0) + 1,

@@ -27,8 +27,8 @@ export default async function CampaignsPage() {
         description: true,
         creatorCpv: true,
         totalBudget: true,
-        platform: true,
         platforms: true,
+        status: true,
         contentType: true,
         niche: true,
         bannerUrl: true,
@@ -54,8 +54,8 @@ export default async function CampaignsPage() {
                 description: true,
                 creatorCpv: true,
                 totalBudget: true,
-                platform: true,
                 platforms: true,
+                status: true,
                 contentType: true,
                 niche: true,
                 bannerUrl: true,
@@ -118,8 +118,8 @@ export default async function CampaignsPage() {
       description: string | null;
       creatorCpv: { toString(): string } | number;
       totalBudget: { toString(): string } | number;
-      platform: Platform;
       platforms: Platform[];
+      status: string;
       contentType: string | null;
       niche: string | null;
       bannerUrl: string | null;
@@ -133,8 +133,7 @@ export default async function CampaignsPage() {
       (sum, s) => sum + Number(s.earnedAmount),
       0,
     );
-    const requiredPlatforms =
-      c.platforms.length > 0 ? c.platforms : [c.platform];
+    const requiredPlatforms = c.platforms;
     const hasPlatform = requiredPlatforms.some((p) =>
       verifiedPlatforms.has(p),
     );
@@ -163,8 +162,8 @@ export default async function CampaignsPage() {
       rewardRate: Number(c.creatorCpv) * 1000,
       totalBudget: Number(c.totalBudget),
       totalPaid,
-      platform: c.platform,
       platforms: requiredPlatforms,
+      status: c.status,
       contentType: c.contentType ?? "UGC",
       niche: c.niche ?? null,
       brandName: c.name,

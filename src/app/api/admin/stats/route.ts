@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireAuth } from "@/lib/auth";
 
-export async function GET(req: NextRequest) {
+export async function GET(_req: NextRequest) {
   try {
     await requireAuth("admin");
 
@@ -23,8 +23,8 @@ export async function GET(req: NextRequest) {
       creatorEarnings: earn._sum.earnedAmount || 0,
       brandSpend: spend._sum.totalBudget || 0,
     });
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error("[admin stats]", err);
-    return NextResponse.json({ error: err.message }, { status: 500 });
+    return NextResponse.json({ error: err instanceof Error ? err.message : "Internal error" }, { status: 500 });
   }
 }

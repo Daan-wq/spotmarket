@@ -5,6 +5,11 @@ const withBundleAnalyzer = bundleAnalyzer({
   enabled: process.env.ANALYZE === "true",
 });
 
+const scriptSrc = ["'self'", "'unsafe-inline'"];
+if (process.env.NODE_ENV === "development") {
+  scriptSrc.push("'unsafe-eval'");
+}
+
 const securityHeaders = [
   { key: "X-Content-Type-Options", value: "nosniff" },
   { key: "X-Frame-Options", value: "SAMEORIGIN" },
@@ -16,11 +21,11 @@ const securityHeaders = [
     key: "Content-Security-Policy",
     value: [
       "default-src 'self'",
-      "script-src 'self' 'unsafe-inline'",
+      `script-src ${scriptSrc.join(" ")}`,
       "style-src 'self' 'unsafe-inline'",
       "img-src 'self' data: https: blob:",
       "font-src 'self' data:",
-      "connect-src 'self' *.supabase.co api.instagram.com graph.instagram.com graph.facebook.com *.stripe.com",
+      "connect-src 'self' *.supabase.co api.instagram.com graph.instagram.com graph.facebook.com *.stripe.com eu.i.posthog.com",
       "frame-src 'self' js.stripe.com www.instagram.com www.facebook.com discord.com",
     ].join("; "),
   },

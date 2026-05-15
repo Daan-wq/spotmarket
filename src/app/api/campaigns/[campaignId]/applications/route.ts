@@ -27,9 +27,9 @@ export async function GET(
     });
 
     return NextResponse.json({ applications });
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error("[campaigns applications GET]", err);
-    return NextResponse.json({ error: err.message }, { status: 500 });
+    return NextResponse.json({ error: err instanceof Error ? err.message : "Internal error" }, { status: 500 });
   }
 }
 
@@ -96,8 +96,8 @@ export async function POST(
     });
 
     return NextResponse.json({ application }, { status: 201 });
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error("[campaigns applications POST]", err);
-    return NextResponse.json({ error: err.message }, { status: 500 });
+    return NextResponse.json({ error: err instanceof Error ? err.message : "Internal error" }, { status: 500 });
   }
 }

@@ -70,9 +70,9 @@ export function NotificationsClient({ notifications, unreadCount }: Notification
   };
 
   return (
-    <div className="p-6 w-full">
+    <div className="w-full md:p-6">
       {/* Tabs + Mark All Read */}
-      <div className="flex items-center justify-between mb-6">
+      <div className="mb-6 flex items-center justify-between gap-3">
         <div className="flex items-center gap-1">
           <button
             onClick={() => setActiveTab("all")}
@@ -130,7 +130,7 @@ export function NotificationsClient({ notifications, unreadCount }: Notification
             return (
               <div
                 key={notification.id}
-                className="flex items-start gap-3 p-4 rounded-xl transition-colors"
+                className="flex min-w-0 items-start gap-3 rounded-xl p-4 transition-colors"
                 style={{
                   background: isUnread ? "var(--accent-bg)" : "var(--bg-card)",
                   border: "1px solid var(--border-default)",

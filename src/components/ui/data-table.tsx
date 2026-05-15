@@ -1,10 +1,11 @@
-import * as React from "react";
+import Link from "next/link";
+import type { ReactNode } from "react";
 import { cn } from "@/lib/cn";
 
 export interface DataTableColumn<T> {
   key: string;
-  header: React.ReactNode;
-  cell: (row: T, index: number) => React.ReactNode;
+  header: ReactNode;
+  cell: (row: T, index: number) => ReactNode;
   className?: string;
   align?: "left" | "right" | "center";
 }
@@ -13,17 +14,16 @@ export interface DataTableProps<T> {
   columns: DataTableColumn<T>[];
   rows: T[];
   rowKey: (row: T, index: number) => string;
-  onRowClick?: (row: T) => void;
-  emptyState?: React.ReactNode;
+  rowHref?: (row: T, index: number) => string | undefined;
+  emptyState?: ReactNode;
   className?: string;
-  rowHref?: (row: T) => string | undefined;
 }
 
 export function DataTable<T>({
   columns,
   rows,
   rowKey,
-  onRowClick,
+  rowHref,
   emptyState,
   className,
 }: DataTableProps<T>) {
@@ -34,26 +34,21 @@ export function DataTable<T>({
   return (
     <div
       className={cn(
-        "overflow-hidden rounded-lg border",
+        "overflow-hidden rounded-2xl border border-neutral-200 bg-white",
         className,
       )}
-      style={{ borderColor: "var(--border)", background: "var(--bg-card)" }}
     >
       <div className="overflow-x-auto">
         <table className="w-full text-sm">
           <thead>
             <tr
-              className="text-left text-[11px] uppercase tracking-wide"
-              style={{
-                color: "var(--text-muted)",
-                background: "var(--bg-secondary)",
-              }}
+              className="bg-neutral-50 text-left text-[11px] uppercase tracking-[0.14em] text-neutral-500"
             >
               {columns.map((col) => (
                 <th
                   key={col.key}
                   className={cn(
-                    "px-4 py-2.5 font-medium",
+                    "px-4 py-3 font-semibold",
                     col.align === "right" && "text-right",
                     col.align === "center" && "text-center",
                     col.className,
@@ -65,32 +60,41 @@ export function DataTable<T>({
             </tr>
           </thead>
           <tbody>
-            {rows.map((row, i) => (
-              <tr
-                key={rowKey(row, i)}
-                onClick={onRowClick ? () => onRowClick(row) : undefined}
-                className={cn(
-                  "border-t transition-colors",
-                  onRowClick && "cursor-pointer hover:opacity-90",
-                )}
-                style={{ borderColor: "var(--border)" }}
-              >
-                {columns.map((col) => (
-                  <td
-                    key={col.key}
-                    className={cn(
-                      "px-4 py-3",
-                      col.align === "right" && "text-right",
-                      col.align === "center" && "text-center",
-                      col.className,
-                    )}
-                    style={{ color: "var(--text-primary)" }}
-                  >
-                    {col.cell(row, i)}
-                  </td>
-                ))}
-              </tr>
-            ))}
+            {rows.map((row, i) => {
+              const href = rowHref?.(row, i);
+              return (
+                <tr
+                  key={rowKey(row, i)}
+                  className={cn(
+                    "border-t border-neutral-100 transition-colors",
+                    href && "cursor-pointer hover:bg-neutral-50",
+                  )}
+                >
+                  {columns.map((col) => {
+                    const cell = col.cell(row, i);
+                    return (
+                      <td
+                        key={col.key}
+                        className={cn(
+                          "px-4 py-3",
+                          col.align === "right" && "text-right",
+                          col.align === "center" && "text-center",
+                          col.className,
+                        )}
+                      >
+                        {href ? (
+                          <Link href={href} className="block text-inherit no-underline">
+                            {cell}
+                          </Link>
+                        ) : (
+                          cell
+                        )}
+                      </td>
+                    );
+                  })}
+                </tr>
+              );
+            })}
           </tbody>
         </table>
       </div>

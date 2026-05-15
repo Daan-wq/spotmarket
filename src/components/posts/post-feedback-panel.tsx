@@ -38,6 +38,7 @@ export function PostFeedbackPanel({
   }, [campaignId, postId]);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     fetchComments();
 
     const supabase = createSupabaseBrowserClient();

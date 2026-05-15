@@ -1,27 +1,13 @@
 "use client";
 
-import { useEffect, useState } from "react";
-
 interface WelcomeHeaderProps {
   displayName: string;
   /** Optional one-line status sentence shown under the greeting. */
   status?: string;
 }
 
-function greeting(hour: number) {
-  if (hour < 5) return "Still up";
-  if (hour < 12) return "Good morning";
-  if (hour < 18) return "Good afternoon";
-  return "Good evening";
-}
-
 export function WelcomeHeader({ displayName, status }: WelcomeHeaderProps) {
-  // Default to "Welcome" until we know the client's local hour to avoid SSR mismatch.
-  const [prefix, setPrefix] = useState("Welcome");
-  useEffect(() => {
-    setPrefix(greeting(new Date().getHours()));
-  }, []);
-
+  const prefix = "Welcome";
   const firstName = displayName.split(/\s+/)[0] || displayName;
 
   return (

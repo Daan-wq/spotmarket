@@ -1,6 +1,7 @@
 interface LogoProps {
   variant?: "dark" | "light";
-  size?: "sm" | "md" | "lg";
+  size?: "sm" | "md" | "lg" | "fill";
+  className?: string;
 }
 
 const SIZES = {
@@ -9,23 +10,53 @@ const SIZES = {
   lg: "64px",
 };
 
-export function Logo({ variant = "dark", size = "sm" }: LogoProps) {
-  const color = variant === "dark" ? "#FFFFFF" : "#010405";
+export function Logo({ variant = "light", size = "sm", className }: LogoProps) {
+  const color = variant === "dark" ? "#ffffff" : "#010405";
+
+  if (size === "fill") {
+    return (
+      <svg
+        viewBox="0 0 220 40"
+        preserveAspectRatio="xMinYMid meet"
+        className={className}
+        style={{ display: "block", width: "100%", height: "auto", maxWidth: "100%" }}
+        aria-label="ClipProfit"
+        role="img"
+      >
+        <text
+          x="0"
+          y="20"
+          dominantBaseline="central"
+          textAnchor="start"
+          fill={color}
+          fontWeight={900}
+          fontStyle="italic"
+          fontSize={30}
+          textLength="210"
+          lengthAdjust="spacingAndGlyphs"
+          style={{ textTransform: "uppercase" }}
+        >
+          CLIPPROFIT
+        </text>
+      </svg>
+    );
+  }
 
   return (
     <span
+      className={className}
       style={{
+        color,
         fontSize: SIZES[size],
         fontWeight: 900,
         fontStyle: "italic",
-        color,
+        letterSpacing: 0,
         lineHeight: 1,
-        whiteSpace: "nowrap",
-        letterSpacing: "-0.02em",
         textTransform: "uppercase",
+        whiteSpace: "nowrap",
       }}
     >
-      €lipprofit
+      ClipProfit
     </span>
   );
 }

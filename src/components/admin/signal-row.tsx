@@ -158,3 +158,86 @@ export function SignalRow({ signal }: { signal: SignalRowData }) {
     </tr>
   );
 }
+
+export function SignalActions({ signal }: { signal: SignalRowData }) {
+  const router = useRouter();
+  const [pending, start] = useTransition();
+  const [resolved, setResolved] = useState(!!signal.resolvedAt);
+  const [nudging, setNudging] = useState(false);
+
+  async function resolve() {
+    if (pending || resolved) return;
+    try {
+      const res = await fetch(`/api/admin/signals/${signal.id}/resolve`, { method: "POST" });
+      if (!res.ok) {
+        toast.error("Failed to resolve");
+        return;
+      }
+      setResolved(true);
+      toast.success("Signal resolved");
+      start(() => router.refresh());
+    } catch {
+      toast.error("Network error");
+    }
+  }
+
+  async function nudge() {
+    if (nudging) return;
+    setNudging(true);
+    try {
+      const res = await fetch(`/api/admin/signals/${signal.id}/nudge`, { method: "POST" });
+      if (!res.ok) {
+        toast.error("Failed to nudge creator");
+      } else {
+        toast.success("Reconnect nudge queued");
+      }
+    } catch {
+      toast.error("Network error");
+    } finally {
+      setNudging(false);
+    }
+  }
+
+  return (
+    <div className="flex flex-wrap items-center gap-2">
+      {signal.postUrl ? (
+        <a
+          href={signal.postUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="rounded-xl border border-neutral-200 bg-white px-3 py-2 text-xs font-semibold text-neutral-950 hover:bg-neutral-50"
+        >
+          Post
+        </a>
+      ) : null}
+      <Link
+        href={`/admin/submissions?focus=${signal.submissionId}`}
+        className="rounded-xl border border-neutral-200 bg-white px-3 py-2 text-xs font-semibold text-neutral-950 hover:bg-neutral-50"
+      >
+        View
+      </Link>
+      {signal.type === "TOKEN_BROKEN" && !resolved ? (
+        <button
+          onClick={nudge}
+          disabled={nudging}
+          className="rounded-xl border border-orange-200 bg-orange-50 px-3 py-2 text-xs font-semibold text-orange-700 disabled:opacity-60"
+        >
+          {nudging ? "..." : "Nudge"}
+        </button>
+      ) : null}
+      {!resolved ? (
+        <button
+          onClick={resolve}
+          disabled={pending}
+          className="rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs font-semibold text-emerald-700 disabled:opacity-60"
+        >
+          {pending ? "..." : "Resolve"}
+        </button>
+      ) : (
+        <span className="rounded-full bg-emerald-50 px-2.5 py-1 text-[11px] font-medium text-emerald-700">
+          Resolved
+        </span>
+      )}
+    </div>
+  );
+}

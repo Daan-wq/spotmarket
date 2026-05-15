@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireAuth } from "@/lib/auth";
+import type { Niche } from "@prisma/client";
 import { z } from "zod";
 
 const launchCampaignSchema = z.object({
@@ -52,7 +53,7 @@ export async function POST(req: NextRequest) {
         contentGuidelines: data.contentGuidelines,
         targetGeo: data.targetGeo || [],
         minFollowers: data.minFollowers,
-        niche: (data.niche || "FINANCE") as any,
+        niche: (data.niche || "FINANCE") as Niche,
         contentAssetUrls: data.contentAssetUrls || [],
         referralLink: data.referralLink,
         linkInBioRequired: data.linkInBioRequired,
@@ -65,11 +66,11 @@ export async function POST(req: NextRequest) {
     });
 
     return NextResponse.json({ campaign }, { status: 201 });
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error("[campaigns launch]", err);
     if (err instanceof z.ZodError) {
       return NextResponse.json({ error: "Invalid input", details: err.issues }, { status: 400 });
     }
-    return NextResponse.json({ error: err.message || "Internal error" }, { status: 500 });
+    return NextResponse.json({ error: err instanceof Error ? err.message : "Internal error" }, { status: 500 });
   }
 }

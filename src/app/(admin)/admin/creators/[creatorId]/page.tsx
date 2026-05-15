@@ -1,54 +1,27 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import type { ReactNode } from "react";
+import { Badge } from "@/components/ui/badge";
+import { PageHeader, SectionHeader, StatCard } from "@/components/ui/page";
+import { AccountsAnalyticsWorkspace, type AccountsAnalyticsSearchParams } from "@/components/creator-analytics/accounts-analytics-workspace";
+import { ScoreCard } from "@/components/clipper-score/score-card";
 import { prisma } from "@/lib/prisma";
-import { KpiCard } from "@/components/admin/kpi-card";
-import { CreatorScoreCell } from "@/components/admin/creator-score-cell";
+import { parseRange } from "@/lib/stats/range";
+import { getCreatorTopStatsForScope, type CreatorStatsScope } from "@/lib/stats/creator";
+import { formatCurrencyPrecise, formatDate, formatNumber, formatShortDate, titleCaseEnum } from "@/lib/admin/agency-format";
+import { getCreatorPayoutTotals, getCreatorPendingCount, getCreatorPlatformVerification } from "@/app/(creator)/creator/dashboard/_data";
 
 export const dynamic = "force-dynamic";
 
 interface PageProps {
   params: Promise<{ creatorId: string }>;
+  searchParams: Promise<AccountsAnalyticsSearchParams>;
 }
 
-function ScoreSparkline({ points }: { points: number[] }) {
-  if (points.length < 2) {
-    return (
-      <p className="text-xs" style={{ color: "var(--text-secondary)" }}>
-        Need at least 2 score points for a sparkline.
-      </p>
-    );
-  }
-  const w = 240;
-  const h = 48;
-  const min = Math.min(...points);
-  const max = Math.max(...points);
-  const range = Math.max(1, max - min);
-  const step = w / (points.length - 1);
-  const path = points
-    .map((p, i) => {
-      const x = i * step;
-      const y = h - ((p - min) / range) * h;
-      return `${i === 0 ? "M" : "L"}${x.toFixed(1)},${y.toFixed(1)}`;
-    })
-    .join(" ");
-  return (
-    <svg width={w} height={h} viewBox={`0 0 ${w} ${h}`} role="img" aria-label="Score history">
-      <path d={path} fill="none" stroke="var(--accent)" strokeWidth={2} />
-    </svg>
-  );
-}
-
-function tokenHealth(expiresAt: Date | null): { label: string; color: string; bg: string } {
-  if (!expiresAt) return { label: "Unknown", color: "var(--text-secondary)", bg: "var(--bg-primary)" };
-  if (expiresAt.getTime() < Date.now())
-    return { label: "Expired", color: "var(--error-text)", bg: "var(--error-bg)" };
-  const days = (expiresAt.getTime() - Date.now()) / (1000 * 60 * 60 * 24);
-  if (days < 7) return { label: `${Math.round(days)}d left`, color: "var(--warning-text)", bg: "var(--warning-bg)" };
-  return { label: "Healthy", color: "var(--success-text)", bg: "var(--success-bg)" };
-}
-
-export default async function CreatorProfilePage({ params }: PageProps) {
+export default async function CreatorProfilePage({ params, searchParams }: PageProps) {
   const { creatorId } = await params;
+  const sp = await searchParams;
+  const range = parseRange(sp);
 
   const profile = await prisma.creatorProfile.findUnique({
     where: { id: creatorId },
@@ -58,285 +31,325 @@ export default async function CreatorProfilePage({ params }: PageProps) {
       ttConnections: true,
       ytConnections: true,
       fbConnections: true,
+      operationalProfile: true,
     },
   });
   if (!profile) return notFound();
 
-  const userId = profile.user.id;
+  const profileScope: CreatorStatsScope = {
+    userId: profile.user.id,
+    creatorProfileId: profile.id,
+  };
 
-  const [scores, submissions] = await Promise.all([
-    prisma.clipperPerformanceScore.findMany({
-      where: { creatorProfileId: profile.id },
-      orderBy: { computedAt: "asc" },
-      take: 30,
-    }),
-    prisma.campaignSubmission.findMany({
-      where: { creatorId: userId },
-      orderBy: { createdAt: "desc" },
-      take: 50,
-      include: {
-        campaign: { select: { id: true, name: true } },
-        submissionSignals: {
-          select: { id: true, type: true, severity: true, createdAt: true, resolvedAt: true },
+  const [stats, payouts, pendingSubmissions, platformVerification, activeCampaigns, recentSubmissions] =
+    await Promise.all([
+      getCreatorTopStatsForScope(profileScope, range),
+      getCreatorPayoutTotals(profile.user.id),
+      getCreatorPendingCount(profile.user.id),
+      getCreatorPlatformVerification(profile.id),
+      prisma.campaignApplication.findMany({
+        where: {
+          creatorProfileId: profile.id,
+          status: { in: ["pending", "approved", "active"] },
         },
-      },
-    }),
-  ]);
+        orderBy: { appliedAt: "desc" },
+        take: 8,
+        select: {
+          id: true,
+          status: true,
+          campaign: {
+            select: {
+              id: true,
+              name: true,
+              deadline: true,
+              creatorCpv: true,
+              platforms: true,
+            },
+          },
+        },
+      }),
+      prisma.campaignSubmission.findMany({
+        where: { creatorId: profile.user.id },
+        orderBy: { createdAt: "desc" },
+        take: 50,
+        include: {
+          campaign: { select: { id: true, name: true } },
+          submissionSignals: {
+            select: { id: true, type: true, severity: true, createdAt: true, resolvedAt: true },
+          },
+        },
+      }),
+    ]);
 
-  const latestScore = scores.length ? scores[scores.length - 1] : null;
-
-  const totalEarned = submissions.reduce((s, x) => s + Number(x.earnedAmount ?? 0), 0);
-  const approved = submissions.filter((s) => s.status === "APPROVED").length;
-  const approvalRate = submissions.length > 0 ? (approved / submissions.length) * 100 : 0;
-
-  const allSignals = submissions.flatMap((s) =>
-    s.submissionSignals.map((sig) => ({
-      ...sig,
-      campaignName: s.campaign.name,
-      submissionId: s.id,
-    }))
+  const allSignals = recentSubmissions.flatMap((submission) =>
+    submission.submissionSignals.map((signal) => ({
+      ...signal,
+      campaignName: submission.campaign.name,
+      submissionId: submission.id,
+    })),
   );
   allSignals.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
 
-  const connections: Array<{
-    type: "IG" | "TT" | "YT" | "FB";
-    handle: string;
-    followers: number | null;
-    expiresAt: Date | null;
-    isVerified: boolean;
-  }> = [
-    ...profile.igConnections.map((c) => ({
-      type: "IG" as const,
-      handle: `@${c.igUsername}`,
-      followers: c.followerCount,
-      expiresAt: c.tokenExpiresAt,
-      isVerified: c.isVerified,
-    })),
-    ...profile.ttConnections.map((c) => ({
-      type: "TT" as const,
-      handle: `@${c.username}`,
-      followers: c.followerCount,
-      expiresAt: c.tokenExpiresAt,
-      isVerified: c.isVerified,
-    })),
-    ...profile.ytConnections.map((c) => ({
-      type: "YT" as const,
-      handle: c.channelName,
-      followers: c.subscriberCount,
-      expiresAt: c.tokenExpiresAt,
-      isVerified: c.isVerified,
-    })),
-    ...profile.fbConnections.map((c) => ({
-      type: "FB" as const,
-      handle: c.pageName,
-      followers: c.followerCount,
-      expiresAt: c.tokenExpiresAt,
-      isVerified: c.isVerified,
-    })),
-  ];
+  const accounts = buildAccounts(profile);
+  const accountCount = accounts.length;
+  const verifiedAccounts = accounts.filter((account) => account.isVerified).length;
 
   return (
-    <div className="w-full p-8">
-      <div className="mb-6">
-        <Link href="/admin/creators" className="text-xs underline" style={{ color: "var(--text-secondary)" }}>
-          ← All creators
-        </Link>
-        <h1 className="text-3xl font-bold mt-2 mb-1" style={{ color: "var(--text-primary)" }}>
-          {profile.displayName}
-        </h1>
-        <p style={{ color: "var(--text-secondary)" }}>
-          {profile.user.email} · joined {profile.user.createdAt.toLocaleDateString()}
-          {profile.isVerified ? " · ✓ verified" : ""}
-        </p>
+    <div className="space-y-9">
+      <PageHeader
+        eyebrow="Clipper analytics"
+        title={profile.displayName}
+        description={`${profile.user.email} - joined ${formatDate(profile.user.createdAt)}${profile.isVerified ? " - verified profile" : ""}`}
+        actions={[{ label: "All clippers", href: "/admin/clippers" }]}
+      />
+
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
+        <StatCard label="Views" value={formatNumber(stats.totalViews.value)} detail={range.label} />
+        <StatCard label="Engagement" value={formatNumber(stats.totalEngagement.value)} detail="Likes + comments + shares" />
+        <StatCard label="Earnings" value={formatCurrencyPrecise(stats.totalEarnings.value)} detail={range.label} />
+        <StatCard label="Accounts" value={`${verifiedAccounts}/${accountCount || 0}`} detail={`${platformVerification.verifiedCount}/${platformVerification.connectedCount || 0} platforms verified`} tone={verifiedAccounts > 0 ? "success" : "warning"} />
       </div>
 
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
-        <div
-          className="rounded-xl px-4 py-4"
-          style={{ background: "var(--bg-card)", border: "1px solid var(--border)" }}
-        >
-          <p className="text-[12px] uppercase tracking-wide" style={{ color: "var(--text-secondary)" }}>
-            Performance score
-          </p>
-          <div className="mt-2">
-            <CreatorScoreCell score={latestScore?.score ?? null} sampleSize={latestScore?.sampleSize ?? null} />
-          </div>
-          <div className="mt-3">
-            <ScoreSparkline points={scores.map((s) => s.score)} />
-          </div>
+      <section>
+        <SectionHeader
+          title="Account Analytics"
+          description="The same analytics workspace the creator sees, scoped to this clipper and shown read-only for admins."
+        />
+        <AccountsAnalyticsWorkspace
+          mode="admin"
+          basePath={`/admin/creators/${profile.id}`}
+          profileScope={profileScope}
+          searchParams={sp}
+          showHeader={false}
+        />
+      </section>
+
+      <section>
+        <SectionHeader
+          title="Campaign Operations"
+          description="Campaign, payout, review, account-health, and signal context for running active campaigns."
+        />
+        <div className="grid grid-cols-1 gap-4 xl:grid-cols-3">
+          <AdminPanel title="Payout summary">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-3 xl:grid-cols-1">
+              <MiniStat label="Estimated" value={formatCurrencyPrecise(payouts.totalEarnings)} />
+              <MiniStat label="Pending/final" value={formatCurrencyPrecise(payouts.availableBalance)} tone={payouts.hasUnpaidBalance ? "warning" : "neutral"} />
+              <MiniStat label="Paid" value={formatCurrencyPrecise(payouts.totalPaid)} />
+            </div>
+          </AdminPanel>
+
+          <AdminPanel title="Operational snapshot">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-1">
+              <MiniStat label="Active campaigns" value={String(activeCampaigns.length)} />
+              <MiniStat label="Pending submissions" value={String(pendingSubmissions)} tone={pendingSubmissions > 0 ? "warning" : "neutral"} />
+              <MiniStat label="Ops status" value={profile.operationalProfile ? titleCaseEnum(profile.operationalProfile.status) : "No ops"} tone={profile.operationalProfile ? "neutral" : "warning"} />
+              <MiniStat label="Weekly capacity" value={String(profile.operationalProfile?.maxClipsPerWeek ?? "-")} />
+            </div>
+          </AdminPanel>
+
+          <ScoreCard creatorProfileId={profile.id} variant="compact" />
         </div>
-        <KpiCard label="Approval rate" value={`${approvalRate.toFixed(0)}%`} hint={`${approved} / ${submissions.length}`} />
-        <KpiCard label="Total earned" value={`$${totalEarned.toFixed(2)}`} hint={`${submissions.length} submissions`} />
-        <KpiCard label="Followers" value={profile.totalFollowers.toLocaleString()} hint={profile.primaryGeo} />
-      </div>
+      </section>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-6">
-        <section
-          className="rounded-xl overflow-hidden lg:col-span-2"
-          style={{ background: "var(--bg-card)", border: "1px solid var(--border)" }}
-        >
-          <div className="px-5 py-4" style={{ borderBottom: "1px solid var(--border)" }}>
-            <h2 className="text-base font-semibold" style={{ color: "var(--text-primary)" }}>
-              Submission feed
-            </h2>
-          </div>
-          {submissions.length === 0 ? (
-            <p className="px-5 py-8 text-sm" style={{ color: "var(--text-secondary)" }}>
-              No submissions yet.
-            </p>
+      <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
+        <AdminPanel title="Active campaigns">
+          {activeCampaigns.length === 0 ? (
+            <EmptyLine>No active campaigns.</EmptyLine>
           ) : (
-            <ul>
-              {submissions.slice(0, 20).map((s) => (
-                <li
-                  key={s.id}
-                  className="px-5 py-3 flex items-center justify-between gap-3"
-                  style={{ borderBottom: "1px solid var(--border)" }}
-                >
+            <ul className="divide-y divide-neutral-100">
+              {activeCampaigns.map((application) => (
+                <li key={application.id} className="flex items-center justify-between gap-3 py-3">
                   <div className="min-w-0">
-                    <Link
-                      href={`/admin/campaigns/${s.campaign.id}`}
-                      className="text-sm font-medium block truncate"
-                      style={{ color: "var(--text-primary)" }}
-                    >
-                      {s.campaign.name}
+                    <Link href={`/admin/campaigns/${application.campaign.id}`} className="block truncate text-sm font-semibold text-neutral-950 underline-offset-2 hover:underline">
+                      {application.campaign.name}
                     </Link>
-                    <p className="text-[11px]" style={{ color: "var(--text-secondary)" }}>
-                      {s.createdAt.toLocaleString()}
-                      {s.submissionSignals.length > 0 ? ` · ${s.submissionSignals.length} signals` : ""}
+                    <p className="mt-1 text-xs text-neutral-500">
+                      {formatCurrencyPrecise(Number(application.campaign.creatorCpv) * 1000)} CPM - due {formatShortDate(application.campaign.deadline)}
                     </p>
                   </div>
-                  <div className="flex items-center gap-3 shrink-0">
-                    <span className="text-xs tabular-nums" style={{ color: "var(--text-secondary)" }}>
-                      {(s.eligibleViews ?? 0).toLocaleString()} v · ${Number(s.earnedAmount ?? 0).toFixed(2)}
-                    </span>
-                    <span
-                      className="px-2 py-0.5 rounded text-[10px] font-semibold"
-                      style={{
-                        background:
-                          s.status === "APPROVED"
-                            ? "var(--success-bg)"
-                            : s.status === "REJECTED"
-                            ? "var(--error-bg)"
-                            : "var(--warning-bg)",
-                        color:
-                          s.status === "APPROVED"
-                            ? "var(--success-text)"
-                            : s.status === "REJECTED"
-                            ? "var(--error-text)"
-                            : "var(--warning-text)",
-                      }}
-                    >
-                      {s.status}
-                    </span>
-                  </div>
+                  <Badge variant={application.status === "active" ? "verified" : "neutral"}>{application.status}</Badge>
                 </li>
               ))}
             </ul>
           )}
-        </section>
+        </AdminPanel>
 
-        <section
-          className="rounded-xl overflow-hidden"
-          style={{ background: "var(--bg-card)", border: "1px solid var(--border)" }}
-        >
-          <div className="px-5 py-4" style={{ borderBottom: "1px solid var(--border)" }}>
-            <h2 className="text-base font-semibold" style={{ color: "var(--text-primary)" }}>
-              OAuth connections
-            </h2>
-            <p className="text-[11px] mt-0.5" style={{ color: "var(--text-secondary)" }}>
-              Verifications & token health (folded from /admin/verifications)
-            </p>
-          </div>
-          {connections.length === 0 ? (
-            <p className="px-5 py-6 text-sm" style={{ color: "var(--text-secondary)" }}>
-              No platform connections yet.
-            </p>
+        <AdminPanel title="Account health">
+          {accounts.length === 0 ? (
+            <EmptyLine>No platform accounts connected.</EmptyLine>
           ) : (
-            <ul>
-              {connections.map((c, i) => {
-                const health = tokenHealth(c.expiresAt);
+            <ul className="divide-y divide-neutral-100">
+              {accounts.map((account) => {
+                const health = tokenHealth(account.expiresAt);
                 return (
-                  <li
-                    key={`${c.type}-${i}`}
-                    className="px-5 py-3 flex items-center justify-between gap-3"
-                    style={{ borderBottom: "1px solid var(--border)" }}
-                  >
+                  <li key={`${account.type}:${account.handle}`} className="flex items-center justify-between gap-3 py-3">
                     <div className="min-w-0">
-                      <p className="text-sm font-medium" style={{ color: "var(--text-primary)" }}>
-                        <span
-                          className="text-[10px] mr-2 px-1.5 py-0.5 rounded font-semibold"
-                          style={{ background: "var(--bg-primary)", color: "var(--text-secondary)" }}
-                        >
-                          {c.type}
+                      <p className="truncate text-sm font-semibold text-neutral-950">
+                        <span className="mr-2 rounded bg-neutral-100 px-1.5 py-0.5 text-[10px] font-semibold text-neutral-500">
+                          {account.type}
                         </span>
-                        {c.handle}
+                        {account.handle}
                       </p>
-                      <p className="text-[11px]" style={{ color: "var(--text-secondary)" }}>
-                        {c.followers != null ? `${c.followers.toLocaleString()} followers` : "—"}
-                        {c.isVerified ? " · ✓ verified" : ""}
+                      <p className="mt-1 text-xs text-neutral-500">
+                        {account.followers != null ? `${formatNumber(account.followers)} followers` : "No follower snapshot"}
+                        {account.lastSyncedAt ? ` - last synced ${formatShortDate(account.lastSyncedAt)}` : ""}
                       </p>
                     </div>
-                    <span
-                      className="px-2 py-0.5 rounded text-[10px] font-semibold"
-                      style={{ background: health.bg, color: health.color }}
-                    >
-                      {health.label}
-                    </span>
+                    <Badge variant={health.variant}>{health.label}</Badge>
                   </li>
                 );
               })}
             </ul>
           )}
-        </section>
+        </AdminPanel>
       </div>
 
-      <section
-        className="rounded-xl overflow-hidden"
-        style={{ background: "var(--bg-card)", border: "1px solid var(--border)" }}
-      >
-        <div className="px-5 py-4" style={{ borderBottom: "1px solid var(--border)" }}>
-          <h2 className="text-base font-semibold" style={{ color: "var(--text-primary)" }}>
-            Signal history
-          </h2>
-        </div>
-        {allSignals.length === 0 ? (
-          <p className="px-5 py-8 text-sm" style={{ color: "var(--text-secondary)" }}>
-            No signals fired against this creator's submissions.
-          </p>
-        ) : (
-          <ul>
-            {allSignals.slice(0, 30).map((sig) => (
-              <li
-                key={sig.id}
-                className="px-5 py-3 flex items-center justify-between gap-3"
-                style={{ borderBottom: "1px solid var(--border)" }}
-              >
-                <div>
-                  <p className="text-sm" style={{ color: "var(--text-primary)" }}>
-                    {sig.type.replaceAll("_", " ").toLowerCase()}{" "}
-                    <span className="text-[11px]" style={{ color: "var(--text-secondary)" }}>
-                      · {sig.campaignName}
-                    </span>
-                  </p>
-                  <p className="text-[11px]" style={{ color: "var(--text-secondary)" }}>
-                    {sig.createdAt.toLocaleString()}
-                    {sig.resolvedAt ? ` · resolved ${sig.resolvedAt.toLocaleDateString()}` : ""}
-                  </p>
-                </div>
-                <span
-                  className="px-2 py-0.5 rounded text-[10px] font-semibold uppercase"
-                  style={{
-                    background: sig.severity === "CRITICAL" ? "var(--error-bg)" : sig.severity === "WARN" ? "var(--warning-bg)" : "var(--bg-primary)",
-                    color: sig.severity === "CRITICAL" ? "var(--error-text)" : sig.severity === "WARN" ? "var(--warning-text)" : "var(--text-secondary)",
-                  }}
-                >
-                  {sig.severity}
-                </span>
-              </li>
-            ))}
-          </ul>
-        )}
-      </section>
+      <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
+        <AdminPanel title="Recent submissions">
+          {recentSubmissions.length === 0 ? (
+            <EmptyLine>No submissions yet.</EmptyLine>
+          ) : (
+            <ul className="divide-y divide-neutral-100">
+              {recentSubmissions.slice(0, 20).map((submission) => (
+                <li key={submission.id} className="flex items-center justify-between gap-3 py-3">
+                  <div className="min-w-0">
+                    <Link href={`/admin/campaigns/${submission.campaign.id}`} className="block truncate text-sm font-semibold text-neutral-950 underline-offset-2 hover:underline">
+                      {submission.campaign.name}
+                    </Link>
+                    <p className="mt-1 text-xs text-neutral-500">
+                      {formatShortDate(submission.createdAt)}
+                      {submission.submissionSignals.length > 0 ? ` - ${submission.submissionSignals.length} signals` : ""}
+                    </p>
+                  </div>
+                  <div className="shrink-0 text-right">
+                    <p className="text-sm font-semibold text-neutral-950">
+                      {formatNumber(submission.eligibleViews ?? submission.viewCount ?? submission.claimedViews)} views
+                    </p>
+                    <p className="mt-1 text-xs text-neutral-500">{formatCurrencyPrecise(submission.earnedAmount)}</p>
+                  </div>
+                  <Badge variant={submissionStatusVariant(submission.status)}>
+                    {titleCaseEnum(submission.status)}
+                  </Badge>
+                </li>
+              ))}
+            </ul>
+          )}
+        </AdminPanel>
+
+        <AdminPanel title="Signal history">
+          {allSignals.length === 0 ? (
+            <EmptyLine>No submission signals fired.</EmptyLine>
+          ) : (
+            <ul className="divide-y divide-neutral-100">
+              {allSignals.slice(0, 30).map((signal) => (
+                <li key={signal.id} className="flex items-center justify-between gap-3 py-3">
+                  <div className="min-w-0">
+                    <p className="truncate text-sm font-semibold text-neutral-950">
+                      {titleCaseEnum(signal.type)}
+                    </p>
+                    <p className="mt-1 text-xs text-neutral-500">
+                      {signal.campaignName} - {formatShortDate(signal.createdAt)}
+                      {signal.resolvedAt ? ` - resolved ${formatShortDate(signal.resolvedAt)}` : ""}
+                    </p>
+                  </div>
+                  <Badge variant={signal.severity === "CRITICAL" ? "failed" : signal.severity === "WARN" ? "pending" : "neutral"}>
+                    {signal.severity}
+                  </Badge>
+                </li>
+              ))}
+            </ul>
+          )}
+        </AdminPanel>
+      </div>
     </div>
   );
+}
+
+function AdminPanel({ title, children }: { title: string; children: ReactNode }) {
+  return (
+    <section className="overflow-hidden rounded-2xl border border-neutral-200 bg-white">
+      <div className="border-b border-neutral-100 px-5 py-4">
+        <h2 className="text-sm font-semibold text-neutral-950">{title}</h2>
+      </div>
+      <div className="p-5">{children}</div>
+    </section>
+  );
+}
+
+function MiniStat({
+  label,
+  value,
+  tone = "neutral",
+}: {
+  label: string;
+  value: string;
+  tone?: "neutral" | "warning";
+}) {
+  return (
+    <div className={`rounded-xl border p-3 ${tone === "warning" ? "border-orange-200 bg-orange-50" : "border-neutral-200 bg-neutral-50"}`}>
+      <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-neutral-400">{label}</p>
+      <p className="mt-1 text-lg font-semibold text-neutral-950">{value}</p>
+    </div>
+  );
+}
+
+function EmptyLine({ children }: { children: ReactNode }) {
+  return <p className="py-5 text-sm text-neutral-500">{children}</p>;
+}
+
+function buildAccounts(profile: {
+  igConnections: Array<{ igUsername: string; followerCount: number | null; tokenExpiresAt: Date | null; isVerified: boolean; lastCheckedAt: Date | null; verifiedAt: Date | null }>;
+  ttConnections: Array<{ username: string; followerCount: number | null; tokenExpiresAt: Date | null; isVerified: boolean; lastCheckedAt: Date | null; verifiedAt: Date | null }>;
+  ytConnections: Array<{ channelName: string; subscriberCount: number | null; tokenExpiresAt: Date | null; isVerified: boolean; updatedAt: Date | null }>;
+  fbConnections: Array<{ pageName: string; followerCount: number | null; tokenExpiresAt: Date | null; isVerified: boolean; lastCheckedAt: Date | null; verifiedAt: Date | null }>;
+}) {
+  return [
+    ...profile.igConnections.map((connection) => ({
+      type: "IG" as const,
+      handle: `@${connection.igUsername}`,
+      followers: connection.followerCount,
+      expiresAt: connection.tokenExpiresAt,
+      isVerified: connection.isVerified,
+      lastSyncedAt: connection.lastCheckedAt ?? connection.verifiedAt,
+    })),
+    ...profile.ttConnections.map((connection) => ({
+      type: "TT" as const,
+      handle: `@${connection.username}`,
+      followers: connection.followerCount,
+      expiresAt: connection.tokenExpiresAt,
+      isVerified: connection.isVerified,
+      lastSyncedAt: connection.lastCheckedAt ?? connection.verifiedAt,
+    })),
+    ...profile.ytConnections.map((connection) => ({
+      type: "YT" as const,
+      handle: connection.channelName,
+      followers: connection.subscriberCount,
+      expiresAt: connection.tokenExpiresAt,
+      isVerified: connection.isVerified,
+      lastSyncedAt: connection.updatedAt,
+    })),
+    ...profile.fbConnections.map((connection) => ({
+      type: "FB" as const,
+      handle: connection.pageName,
+      followers: connection.followerCount,
+      expiresAt: connection.tokenExpiresAt,
+      isVerified: connection.isVerified,
+      lastSyncedAt: connection.lastCheckedAt ?? connection.verifiedAt,
+    })),
+  ];
+}
+
+function tokenHealth(expiresAt: Date | null): { label: string; variant: "verified" | "pending" | "failed" | "neutral" } {
+  if (!expiresAt) return { label: "Unknown", variant: "neutral" };
+  if (expiresAt.getTime() < Date.now()) return { label: "Expired", variant: "failed" };
+  const days = (expiresAt.getTime() - Date.now()) / (1000 * 60 * 60 * 24);
+  if (days < 7) return { label: `${Math.max(0, Math.round(days))}d left`, variant: "pending" };
+  return { label: "Healthy", variant: "verified" };
+}
+
+function submissionStatusVariant(status: string) {
+  if (status === "APPROVED") return "verified";
+  if (status === "PENDING" || status === "NEEDS_REVISION") return "pending";
+  if (status === "REJECTED" || status === "FLAGGED") return "failed";
+  return "neutral";
 }

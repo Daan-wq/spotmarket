@@ -244,9 +244,9 @@ export async function fetchPageDailyInsights(
   }
 
   // ── Call 3: engagement totals (reactions, comments, shares) via page_actions_post_reactions_total ──
-  let totalReactions = 0;
-  let totalComments = 0;
-  let totalShares = 0;
+  const totalReactions = 0;
+  const totalComments = 0;
+  const totalShares = 0;
   let totalEngagedUsers = 0;
   try {
     const engParams = new URLSearchParams({
