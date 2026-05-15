@@ -20,10 +20,11 @@ const GRAPH_BASE = "https://graph.facebook.com/v25.0";
 // ─────────────────────────────────────────
 
 export const REQUIRED_FB_SCOPES = [
+  "public_profile",
   "pages_show_list",
   "pages_read_engagement",
-  "read_insights",
   "pages_read_user_content",
+  "read_insights",
 ] as const;
 
 export function getFacebookAuthUrl(state: string): string {
@@ -141,7 +142,7 @@ export async function fetchFacebookPageProfile(
   pageId: string,
   accessToken: string
 ): Promise<FbPageProfile> {
-  const fields = "id,name,about,followers_count,picture.type(large)";
+  const fields = "id,name,username,about,followers_count,picture.type(large)";
   const res = await fetch(
     `${GRAPH_BASE}/${pageId}?fields=${fields}&access_token=${accessToken}`
   );
@@ -150,6 +151,7 @@ export async function fetchFacebookPageProfile(
   return {
     id: d.id,
     name: d.name ?? "",
+    username: d.username ?? null,
     about: d.about ?? "",
     followerCount: d.followers_count ?? 0,
     profilePictureUrl: d.picture?.data?.url ?? "",

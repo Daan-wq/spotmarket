@@ -1,14 +1,21 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { requireAuth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { decrypt } from "@/lib/crypto";
 
 const GRAPH_BASE = "https://graph.facebook.com/v25.0";
 
 export async function GET(req: NextRequest) {
-  const supabase = await createSupabaseServerClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return NextResponse.json({ error: "unauthenticated" }, { status: 401 });
+  try {
+    await requireAuth("admin");
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "Forbidden";
+    const status = message === "Unauthorized" ? 401 : 403;
+    return NextResponse.json(
+      { error: status === 401 ? "unauthenticated" : "forbidden" },
+      { status },
+    );
+  }
 
   const connectionId = req.nextUrl.searchParams.get("connectionId");
   if (!connectionId) return NextResponse.json({ error: "missing connectionId" }, { status: 400 });
@@ -62,7 +69,6 @@ export async function GET(req: NextRequest) {
   return NextResponse.json({
     pageId,
     pageName: conn.pageName,
-    tokenPreview: accessToken.slice(0, 20) + "...",
     hint,
     pageCheck,
     publishedPosts,

@@ -54,15 +54,6 @@ export async function GET(req: NextRequest) {
       return NextResponse.redirect(new URL(`${returnTo}?error=fb_no_pages`, req.url));
     }
 
-    // Use the first page (1:1 mapping)
-    const page = pages[0];
-
-    // Fetch page profile for follower count + pic
-    const pageProfile = await fetchFacebookPageProfile(page.id, page.accessToken);
-
-    // Encrypt the page access token
-    const { ciphertext, iv } = encrypt(page.accessToken);
-
     // Find creator profile
     const user = await prisma.user.findUnique({
       where: { supabaseId: authUser.id },
@@ -74,41 +65,56 @@ export async function GET(req: NextRequest) {
     }
 
     const creatorProfileId = user.creatorProfile.id;
+    const authorizedPageIds: string[] = [];
 
-    // Upsert: if this page is already connected, update the token
-    const existing = await prisma.creatorFbConnection.findUnique({
-      where: { fbPageId: page.id },
-      select: { id: true },
-    });
+    for (const page of pages) {
+      authorizedPageIds.push(page.id);
 
-    if (existing) {
-      await prisma.creatorFbConnection.update({
-        where: { id: existing.id },
-        data: {
-          creatorProfileId,
-          fbUserId: fbUserId ?? undefined,
-          pageName: pageProfile.name,
-          profilePicUrl: pageProfile.profilePictureUrl || null,
-          followerCount: pageProfile.followerCount,
-          accessToken: ciphertext,
-          accessTokenIv: iv,
-          tokenExpiresAt: null, // Page tokens don't expire
-          isVerified: true,
-        },
+      // Fetch page profile for follower count, handle, and profile image.
+      const pageProfile = await fetchFacebookPageProfile(page.id, page.accessToken);
+      const { ciphertext, iv } = encrypt(page.accessToken);
+      const verifiedAt = new Date();
+      const connectionData = {
+        creatorProfileId,
+        fbUserId: fbUserId ?? undefined,
+        pageName: pageProfile.name || page.name,
+        pageHandle: pageProfile.username,
+        profilePicUrl: pageProfile.profilePictureUrl || null,
+        followerCount: pageProfile.followerCount,
+        accessToken: ciphertext,
+        accessTokenIv: iv,
+        tokenExpiresAt: null, // Page tokens don't expire
+        isVerified: true,
+        verifiedAt,
+      };
+
+      // Upsert: if this page is already connected, update and transfer ownership.
+      const existing = await prisma.creatorFbConnection.findUnique({
+        where: { fbPageId: page.id },
+        select: { id: true },
       });
-    } else {
-      await prisma.creatorFbConnection.create({
-        data: {
+
+      if (existing) {
+        await prisma.creatorFbConnection.update({
+          where: { id: existing.id },
+          data: connectionData,
+        });
+      } else {
+        await prisma.creatorFbConnection.create({
+          data: {
+            ...connectionData,
+            fbPageId: page.id,
+          },
+        });
+      }
+    }
+
+    if (fbUserId) {
+      await prisma.creatorFbConnection.deleteMany({
+        where: {
           creatorProfileId,
-          fbPageId: page.id,
-          fbUserId: fbUserId ?? undefined,
-          pageName: pageProfile.name,
-          profilePicUrl: pageProfile.profilePictureUrl || null,
-          followerCount: pageProfile.followerCount,
-          accessToken: ciphertext,
-          accessTokenIv: iv,
-          tokenExpiresAt: null, // Page tokens don't expire
-          isVerified: true,
+          fbUserId,
+          fbPageId: { notIn: authorizedPageIds },
         },
       });
     }

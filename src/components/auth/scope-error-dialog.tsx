@@ -72,7 +72,7 @@ export function ScopeErrorDialog() {
         </div>
 
         <p className="text-sm mb-5" style={{ color: "var(--text-secondary)" }}>
-          Please select both boxes so ClipProfit can track your views automatically.
+          Please approve all requested permissions so ClipProfit can track your views automatically.
         </p>
 
         <div className="flex gap-3 mb-4">

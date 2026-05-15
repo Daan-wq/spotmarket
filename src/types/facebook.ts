@@ -1,6 +1,7 @@
 export interface FbPageProfile {
   id: string;
   name: string;
+  username: string | null;
   about: string;
   followerCount: number;
   profilePictureUrl: string;
