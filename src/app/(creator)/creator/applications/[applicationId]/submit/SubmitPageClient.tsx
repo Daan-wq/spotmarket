@@ -11,7 +11,7 @@ import SearchBar from "./_components/SearchBar";
 import DateFilterControl, { type DateFilter } from "./_components/DateFilterControl";
 import SubmitHeader from "./_components/SubmitHeader";
 
-type Platform = "ig" | "tt" | "fb";
+type Platform = "ig" | "tt" | "yt" | "fb";
 
 interface Connection {
   id: string;
@@ -41,6 +41,20 @@ interface Props {
 // to stay safe across platform tabs.
 const keyOf = (p: { platform: Platform; id: string }) => `${p.platform}:${p.id}`;
 
+const PLATFORM_NAMES: Record<Platform, string> = {
+  ig: "Instagram",
+  tt: "TikTok",
+  yt: "YouTube",
+  fb: "Facebook",
+};
+
+const PLATFORM_CONNECT_HREFS: Record<Platform, string> = {
+  ig: "/api/auth/instagram",
+  tt: "/api/auth/tiktok",
+  yt: "/api/auth/youtube",
+  fb: "/api/auth/facebook",
+};
+
 export default function SubmitPageClient({
   applicationId,
   connections,
@@ -55,6 +69,7 @@ export default function SubmitPageClient({
     const p: Platform[] = [];
     if (connections.ig.length > 0) p.push("ig");
     if (connections.tt.length > 0) p.push("tt");
+    if (connections.yt.length > 0) p.push("yt");
     if (connections.fb.length > 0) p.push("fb");
     return p;
   }, [connections]);
@@ -105,6 +120,7 @@ export default function SubmitPageClient({
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+  const [connectPromptPlatform, setConnectPromptPlatform] = useState<Platform | null>(null);
 
   // Synchronous single-flight lock across submitOne + submitSelected. Two
   // rapid clicks on different per-card Submit buttons (or per-card + bulk)
@@ -130,6 +146,13 @@ export default function SubmitPageClient({
       pageIndex: number,
       refresh = false
     ) => {
+      if (!connectionId) {
+        setCurrentPosts([]);
+        setError(null);
+        setIsLoading(false);
+        return;
+      }
+
       if (refresh) {
         pageCache.current.delete(connectionId);
         cursorCache.current.delete(connectionId);
@@ -154,6 +177,7 @@ export default function SubmitPageClient({
           limit: "10",
         });
         if (cursor) params.set("cursor", cursor);
+        if (refresh) params.set("refresh", "1");
 
         const res = await fetch(`/api/creator/media?${params}`);
 
@@ -187,7 +211,7 @@ export default function SubmitPageClient({
         setCurrentPosts(posts);
       } catch (err) {
         setCurrentPosts([]);
-        const fallback = "Failed to load posts. Please try again.";
+        const fallback = `Could not load your ${PLATFORM_NAMES[platform]} posts. Please try again.`;
         setError(err instanceof Error && err.message ? err.message : fallback);
       } finally {
         setIsLoading(false);
@@ -229,12 +253,21 @@ export default function SubmitPageClient({
 
   const handlePlatformChange = (platform: Platform) => {
     const firstConn = connections[platform][0];
-    if (!firstConn) return;
     setActivePlatform(platform);
-    setActiveConnectionId(firstConn.id);
+    setActiveConnectionId(firstConn?.id ?? "");
     setCurrentPageIndex(0);
+    setCurrentPosts([]);
     setSelectedKeys(new Set());
     setSearchQuery("");
+    setError(null);
+    setSuccess(null);
+
+    if (!firstConn) {
+      setConnectPromptPlatform(platform);
+      return;
+    }
+
+    setConnectPromptPlatform(null);
     fetchPage(platform, firstConn.id, 0);
   };
 
@@ -242,16 +275,24 @@ export default function SubmitPageClient({
     setActiveConnectionId(connectionId);
     setCurrentPageIndex(0);
     setSelectedKeys(new Set());
+    setConnectPromptPlatform(null);
     fetchPage(activePlatform, connectionId, 0);
   };
 
   const handleRefresh = () => {
     setCurrentPageIndex(0);
     setSelectedKeys(new Set());
+    if (!activeConnectionId) {
+      setCurrentPosts([]);
+      setError(null);
+      setConnectPromptPlatform(activePlatform);
+      return;
+    }
     fetchPage(activePlatform, activeConnectionId, 0, true);
   };
 
   const handleNext = () => {
+    if (!activeConnectionId) return;
     const nextIndex = currentPageIndex + 1;
     setCurrentPageIndex(nextIndex);
     setSelectedKeys(new Set());
@@ -259,6 +300,7 @@ export default function SubmitPageClient({
   };
 
   const handlePrev = () => {
+    if (!activeConnectionId) return;
     const prevIndex = currentPageIndex - 1;
     if (prevIndex < 0) return;
     setCurrentPageIndex(prevIndex);
@@ -393,7 +435,10 @@ export default function SubmitPageClient({
   };
 
   const activeConnections = connections[activePlatform] ?? [];
-  const allPlatforms: Platform[] = ["ig", "tt", "fb"];
+  const allPlatforms: Platform[] = ["ig", "tt", "yt", "fb"];
+  const connectPromptName = connectPromptPlatform
+    ? PLATFORM_NAMES[connectPromptPlatform]
+    : null;
 
   return (
     <div className="w-full md:p-6">
@@ -436,6 +481,56 @@ export default function SubmitPageClient({
           style={{ background: "rgba(234,179,8,0.1)", color: "#ca8a04" }}
         >
           We couldn&apos;t auto-select that post on this page. Try switching the platform tab or paging back to find it.
+        </div>
+      )}
+
+      {connectPromptPlatform && connectPromptName && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/35 px-4"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="submit-connect-title"
+        >
+          <button
+            type="button"
+            className="absolute inset-0 cursor-default"
+            aria-label="Close connect prompt"
+            onClick={() => setConnectPromptPlatform(null)}
+          />
+          <div
+            className="relative w-full max-w-sm rounded-lg border p-5 shadow-xl"
+            style={{ background: "var(--bg-card)", borderColor: "var(--border)" }}
+          >
+            <div className="mb-5">
+              <h2
+                id="submit-connect-title"
+                className="text-lg font-semibold"
+                style={{ color: "var(--text-primary)" }}
+              >
+                You do not have a {connectPromptName} account yet
+              </h2>
+              <p className="mt-2 text-sm" style={{ color: "var(--text-muted)" }}>
+                Connect it now to load posts and submit clips.
+              </p>
+            </div>
+            <div className="flex justify-end gap-2">
+              <button
+                type="button"
+                className="rounded-lg border px-3 py-2 text-sm font-medium"
+                style={{ borderColor: "var(--border)", color: "var(--text-secondary)" }}
+                onClick={() => setConnectPromptPlatform(null)}
+              >
+                Close
+              </button>
+              <a
+                href={PLATFORM_CONNECT_HREFS[connectPromptPlatform]}
+                className="rounded-lg px-3 py-2 text-sm font-semibold"
+                style={{ background: "var(--primary)", color: "#fff" }}
+              >
+                Connect it now
+              </a>
+            </div>
+          </div>
         </div>
       )}
 

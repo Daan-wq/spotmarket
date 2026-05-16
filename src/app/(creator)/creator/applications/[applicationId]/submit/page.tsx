@@ -36,7 +36,7 @@ export default async function SubmitPage({
   });
   if (!application) notFound();
 
-  const [igConns, ttConns, fbConns, submissions] = await Promise.all([
+  const [igConns, ttConns, ytConns, fbConns, submissions] = await Promise.all([
     prisma.creatorIgConnection.findMany({
       where: { creatorProfileId, isVerified: true, accessToken: { not: null } },
       select: { id: true, igUsername: true },
@@ -44,6 +44,10 @@ export default async function SubmitPage({
     prisma.creatorTikTokConnection.findMany({
       where: { creatorProfileId, isVerified: true, accessToken: { not: null } },
       select: { id: true, username: true },
+    }),
+    prisma.creatorYtConnection.findMany({
+      where: { creatorProfileId, isVerified: true, accessToken: { not: null } },
+      select: { id: true, channelName: true },
     }),
     prisma.creatorFbConnection.findMany({
       where: { creatorProfileId, isVerified: true, accessToken: { not: null } },
@@ -56,7 +60,7 @@ export default async function SubmitPage({
   ]);
 
   const prefillPlatform =
-    sp.platform === "ig" || sp.platform === "tt" || sp.platform === "fb"
+    sp.platform === "ig" || sp.platform === "tt" || sp.platform === "yt" || sp.platform === "fb"
       ? sp.platform
       : null;
 
@@ -66,6 +70,7 @@ export default async function SubmitPage({
       connections={{
         ig: igConns.map((c) => ({ id: c.id, username: c.igUsername })),
         tt: ttConns.map((c) => ({ id: c.id, username: c.username })),
+        yt: ytConns.map((c) => ({ id: c.id, username: c.channelName })),
         fb: fbConns.map((c) => ({
           id: c.id,
           username: c.pageHandle ?? c.pageName ?? "Facebook Page",
