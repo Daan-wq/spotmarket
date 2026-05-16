@@ -13,6 +13,7 @@ export function RemoveTikTokPageButton({
   return (
     <DisconnectButton
       label={label}
+      platform="TikTok"
       onConfirm={async () => {
         await removeTikTokPage(connectionId);
       }}
