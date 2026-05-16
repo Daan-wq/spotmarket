@@ -12,12 +12,12 @@ interface Props {
   submittingKeys: Set<string>;
   requiredHashtags: string[];
   hasConnectedAccount: boolean;
-  platform: "ig" | "tt" | "fb";
+  platform: "ig" | "tt" | "yt" | "fb";
   onToggle: (post: NormalizedPost) => void;
   onSubmitOne: (post: NormalizedPost) => void;
 }
 
-const PLATFORM_NAMES = { ig: "Instagram", tt: "TikTok", fb: "Facebook" };
+const PLATFORM_NAMES = { ig: "Instagram", tt: "TikTok", yt: "YouTube", fb: "Facebook" };
 
 // Must mirror keyOf() in SubmitPageClient.
 const keyOf = (p: { platform: NormalizedPost["platform"]; id: string }) =>
