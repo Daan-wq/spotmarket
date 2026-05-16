@@ -35,9 +35,6 @@ export function BioVerifyCard({
           <p className="text-sm font-semibold" style={{ color: "var(--text-primary)" }}>
             {brand.name}
           </p>
-          <p className="text-xs" style={{ color: "var(--text-muted)" }}>
-            Connect your account to start submitting clips
-          </p>
         </div>
       </div>
 

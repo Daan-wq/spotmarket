@@ -17,6 +17,13 @@ const CLIP_TO_PLATFORM_ICON: Record<ClipPlatform, string | null> = {
   UNKNOWN: null,
 };
 
+function platformIconFromSourcePlatform(sourcePlatform: string | null | undefined): string | null {
+  if (sourcePlatform === "INSTAGRAM") return "INSTAGRAM";
+  if (sourcePlatform === "TIKTOK") return "TIKTOK";
+  if (sourcePlatform === "FACEBOOK") return "FACEBOOK";
+  return null;
+}
+
 export default async function MyVideosPage() {
   const { userId } = await requireAuth("creator");
 
@@ -34,6 +41,7 @@ export default async function MyVideosPage() {
       postUrl: true,
       thumbnailUrl: true,
       mediaType: true,
+      sourcePlatform: true,
       status: true,
       earnedAmount: true,
       claimedViews: true,
@@ -55,7 +63,9 @@ export default async function MyVideosPage() {
   const videos = await Promise.all(
     submissions.map(async (s) => {
       const parsed = s.postUrl ? parseClipUrl(s.postUrl) : null;
-      const derivedPlatform = parsed ? CLIP_TO_PLATFORM_ICON[parsed.platform] : null;
+      const derivedPlatform =
+        (parsed ? CLIP_TO_PLATFORM_ICON[parsed.platform] : null) ??
+        platformIconFromSourcePlatform(s.sourcePlatform);
       const { thumbnailUrl, mediaType } = await resolveThumbnail(
         s.postUrl,
         s.thumbnailUrl,

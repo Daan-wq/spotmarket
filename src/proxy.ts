@@ -48,7 +48,7 @@ function createLocalizedNextResponse(headers: Headers, locale: Locale) {
   return applyLocaleHeaders(NextResponse.next({ request: { headers } }), locale);
 }
 
-export async function middleware(request: NextRequest) {
+export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
   const cookieLocale = request.cookies.get(LOCALE_COOKIE_NAME)?.value;
   const host = request.headers.get("host") ?? request.nextUrl.host;

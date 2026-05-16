@@ -18,9 +18,6 @@ export function YoutubeConnectButton() {
           <p className="text-sm font-semibold" style={{ color: "var(--text-primary)" }}>
             YouTube
           </p>
-          <p className="text-[11px]" style={{ color: "var(--text-muted)" }}>
-            Sign in with Google &mdash; available now
-          </p>
         </div>
       </div>
 

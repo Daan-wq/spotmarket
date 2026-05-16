@@ -2,32 +2,62 @@ import { type NextRequest, NextResponse } from "next/server";
 import { requireAuth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { decrypt } from "@/lib/crypto";
-import { getFreshTikTokAccessToken, forceRefreshTikTokAccessToken } from "@/lib/token-refresh";
+import {
+  getFreshTikTokAccessToken,
+  forceRefreshTikTokAccessToken,
+  getFreshYoutubeAccessToken,
+} from "@/lib/token-refresh";
 import { fetchRecentMedia } from "@/lib/instagram";
 import { fetchTikTokVideos } from "@/lib/tiktok";
 import { fetchFacebookPagePostsPaginated } from "@/lib/facebook";
-import { normalizeIgMediaType } from "@/lib/instagram-media-type";
+import { fetchRecentYoutubeVideos } from "@/lib/youtube";
+import {
+  cacheInstagramMedia,
+  readCachedCreatorMedia,
+} from "@/lib/creator-media-cache";
 import type { NormalizedPost, MediaResponse } from "@/types/media";
 
 const DEFAULT_LIMIT = 10;
+const MEDIA_PLATFORMS = ["ig", "tt", "yt", "fb"] as const;
+
+type MediaPlatform = (typeof MEDIA_PLATFORMS)[number];
+
+const PLATFORM_LABELS: Record<MediaPlatform, string> = {
+  ig: "Instagram",
+  tt: "TikTok",
+  yt: "YouTube",
+  fb: "Facebook",
+};
+
+function isMediaPlatform(value: string | null): value is MediaPlatform {
+  return MEDIA_PLATFORMS.some((platform) => platform === value);
+}
+
+function connectionRequiredResponse(platform: MediaPlatform, status = 400): NextResponse {
+  return NextResponse.json(
+    { error: `Connect your ${PLATFORM_LABELS[platform]} account to load posts.` },
+    { status }
+  );
+}
 
 export async function GET(req: NextRequest) {
   try {
     const { userId } = await requireAuth("creator");
     const { searchParams } = req.nextUrl;
-    const platform = searchParams.get("platform") as "ig" | "tt" | "fb" | null;
+    const platform = searchParams.get("platform");
     const connectionId = searchParams.get("connectionId");
     const cursor = searchParams.get("cursor") ?? undefined;
+    const refresh = searchParams.get("refresh") === "1" || searchParams.get("refresh") === "true";
     const limit = Math.min(
       parseInt(searchParams.get("limit") ?? String(DEFAULT_LIMIT), 10),
       50
     );
 
-    if (!platform || !["ig", "tt", "fb"].includes(platform)) {
+    if (!isMediaPlatform(platform)) {
       return NextResponse.json({ error: "Invalid platform" }, { status: 400 });
     }
     if (!connectionId) {
-      return NextResponse.json({ error: "Missing connectionId" }, { status: 400 });
+      return connectionRequiredResponse(platform);
     }
 
     const user = await prisma.user.findUnique({
@@ -41,10 +71,13 @@ export async function GET(req: NextRequest) {
     const creatorProfileId = user.creatorProfile.id;
 
     if (platform === "ig") {
-      return await handleIg(creatorProfileId, connectionId, limit, cursor);
+      return await handleIg(creatorProfileId, connectionId, limit, cursor, refresh);
     }
     if (platform === "tt") {
       return await handleTt(creatorProfileId, connectionId, limit, cursor);
+    }
+    if (platform === "yt") {
+      return await handleYt(creatorProfileId, connectionId, limit);
     }
     return await handleFb(creatorProfileId, connectionId, limit, cursor);
   } catch (err: unknown) {
@@ -58,31 +91,39 @@ async function handleIg(
   creatorProfileId: string,
   connectionId: string,
   limit: number,
-  cursor: string | undefined
+  cursor: string | undefined,
+  refresh: boolean
 ): Promise<NextResponse> {
   const conn = await prisma.creatorIgConnection.findFirst({
     where: { id: connectionId, creatorProfileId, isVerified: true },
     select: { igUserId: true, accessToken: true, accessTokenIv: true },
   });
   if (!conn?.accessToken || !conn.accessTokenIv || !conn.igUserId) {
-    return NextResponse.json({ error: "Connection not found" }, { status: 404 });
+    return connectionRequiredResponse("ig", 404);
   }
+
+  if (!refresh) {
+    const cached = await readCachedCreatorMedia({
+      platform: "ig",
+      connectionId,
+      limit,
+      cursor,
+    });
+    if (cached) return NextResponse.json<MediaResponse>(cached);
+  }
+
   const token = decrypt(conn.accessToken, conn.accessTokenIv);
-  const { media, nextCursor } = await fetchRecentMedia(token, conn.igUserId, limit, cursor);
+  const liveCursor = cursor?.startsWith("cache:") ? undefined : cursor;
+  const { media, nextCursor } = await fetchRecentMedia(token, conn.igUserId, limit, liveCursor);
 
   // Detect Meta rate-limit response (empty + returned with error in a prior logged warn)
   // The lib logs and returns [] on non-2xx; surface as rate_limited if we suspect throttle
-  const posts: NormalizedPost[] = media.map((m) => ({
-    id: m.id,
-    platform: "ig",
-    url: m.permalink,
-    thumbnail: m.thumbnail_url ?? m.media_url ?? null,
-    caption: m.caption,
-    publishedAt: m.timestamp,
-    likeCount: m.like_count,
-    commentCount: m.comments_count ?? null,
-    mediaType: normalizeIgMediaType(m.media_type, m.media_product_type),
-  }));
+  const posts = await cacheInstagramMedia({
+    connectionId,
+    media,
+    nextCursor,
+    hasMore: nextCursor !== null,
+  });
 
   return NextResponse.json<MediaResponse>({
     posts: dedupePosts(posts),
@@ -116,11 +157,11 @@ async function handleTt(
     },
   });
   if (!conn) {
-    return NextResponse.json({ error: "Connection not found" }, { status: 404 });
+    return connectionRequiredResponse("tt", 404);
   }
   let token = await getFreshTikTokAccessToken(conn);
   if (!token) {
-    return NextResponse.json({ error: "Connection not found" }, { status: 404 });
+    return connectionRequiredResponse("tt", 404);
   }
   const cursorNum = cursor !== undefined ? parseInt(cursor, 10) : undefined;
 
@@ -173,6 +214,52 @@ async function handleTt(
   });
 }
 
+async function handleYt(
+  creatorProfileId: string,
+  connectionId: string,
+  limit: number
+): Promise<NextResponse> {
+  const conn = await prisma.creatorYtConnection.findFirst({
+    where: { id: connectionId, creatorProfileId, isVerified: true },
+    select: {
+      id: true,
+      channelId: true,
+      accessToken: true,
+      accessTokenIv: true,
+      refreshToken: true,
+      refreshTokenIv: true,
+      tokenExpiresAt: true,
+    },
+  });
+  if (!conn?.accessToken || !conn.accessTokenIv || !conn.channelId) {
+    return connectionRequiredResponse("yt", 404);
+  }
+
+  const token = await getFreshYoutubeAccessToken(conn);
+  if (!token) {
+    return connectionRequiredResponse("yt", 404);
+  }
+
+  const videos = await fetchRecentYoutubeVideos(token, conn.channelId, limit);
+  const posts: NormalizedPost[] = videos.map((v) => ({
+    id: v.id,
+    platform: "yt",
+    url: youtubeVideoUrl(v.id, v.duration),
+    thumbnail: v.thumbnailUrl,
+    caption: v.title || v.description,
+    publishedAt: v.publishedAt,
+    likeCount: v.likeCount,
+    commentCount: v.commentCount ?? null,
+    mediaType: "video",
+  }));
+
+  return NextResponse.json<MediaResponse>({
+    posts: dedupePosts(posts),
+    nextCursor: null,
+    hasMore: false,
+  });
+}
+
 async function handleFb(
   creatorProfileId: string,
   connectionId: string,
@@ -184,7 +271,7 @@ async function handleFb(
     select: { fbPageId: true, accessToken: true, accessTokenIv: true },
   });
   if (!conn?.accessToken || !conn.accessTokenIv || !conn.fbPageId) {
-    return NextResponse.json({ error: "Connection not found" }, { status: 404 });
+    return connectionRequiredResponse("fb", 404);
   }
   const token = decrypt(conn.accessToken, conn.accessTokenIv);
   const { posts: fbPosts, nextCursor } = await fetchFacebookPagePostsPaginated(
@@ -231,4 +318,19 @@ function dedupePosts(posts: NormalizedPost[]): NormalizedPost[] {
 function normalizeFbMediaType(type: string): "video" | "image" | "carousel" {
   if (type === "video" || type === "reel") return "video";
   return "image";
+}
+
+function youtubeVideoUrl(videoId: string, duration: string): string {
+  return parseYoutubeDuration(duration) <= 60
+    ? `https://www.youtube.com/shorts/${videoId}`
+    : `https://www.youtube.com/watch?v=${videoId}`;
+}
+
+function parseYoutubeDuration(iso: string): number {
+  const match = iso.match(/PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?/);
+  if (!match) return Number.POSITIVE_INFINITY;
+  const hours = parseInt(match[1] ?? "0", 10);
+  const minutes = parseInt(match[2] ?? "0", 10);
+  const seconds = parseInt(match[3] ?? "0", 10);
+  return hours * 3600 + minutes * 60 + seconds;
 }

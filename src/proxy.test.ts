@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { NextRequest } from "next/server";
-import { middleware } from "./middleware";
+import { proxy } from "./proxy";
 
 vi.mock("@supabase/ssr", () => ({
   createServerClient: vi.fn(() => ({
@@ -10,9 +10,9 @@ vi.mock("@supabase/ssr", () => ({
   })),
 }));
 
-describe("middleware canonical app domain", () => {
+describe("proxy canonical app domain", () => {
   it("permanently redirects app.clipprofit.nl to app.clipprofit.com preserving path and query", async () => {
-    const response = await middleware(
+    const response = await proxy(
       new NextRequest("https://app.clipprofit.nl/creator/connections?x=1")
     );
 

@@ -2,7 +2,6 @@
 
 import type { ComponentType } from "react";
 import { CreditCard } from "@/components/animate-ui/icons/credit-card";
-import { GraduationCap } from "@/components/animate-ui/icons/graduation-cap";
 import { Megaphone } from "@/components/animate-ui/icons/megaphone";
 import { Video } from "@/components/animate-ui/icons/video";
 import { ChartSpline } from "@/components/animate-ui/icons/chart-spline";
@@ -16,14 +15,13 @@ export type CreatorNavIcon = ComponentType<{
 export const CREATOR_NAV_ITEMS: Array<{
   href: string;
   label: string;
-  labelKey: "campaigns" | "connections" | "videos" | "payouts" | "course" | "referral";
+  labelKey: "campaigns" | "connections" | "videos" | "payouts" | "referral";
   icon: CreatorNavIcon;
 }> = [
   { href: "/creator/campaigns", label: "Campaigns", labelKey: "campaigns", icon: Megaphone },
   { href: "/creator/connections", label: "Accounts", labelKey: "connections", icon: ChartSpline },
   { href: "/creator/videos", label: "My Clips", labelKey: "videos", icon: Video },
   { href: "/creator/payouts", label: "Payments", labelKey: "payouts", icon: CreditCard },
-  { href: "/creator/course", label: "Course", labelKey: "course", icon: GraduationCap },
   { href: "/creator/referral", label: "Referral", labelKey: "referral", icon: Users },
 ];
 

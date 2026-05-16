@@ -29,7 +29,7 @@ export function ConnectPlatformDialog({ children }: { children: ReactNode }) {
             <div className="mb-5 flex items-start justify-between gap-4">
               <div>
                 <h2 id="connect-platform-title" className="text-lg font-semibold tracking-normal text-neutral-950">Choose a platform</h2>
-                <p className="mt-1 text-sm leading-6 text-neutral-500">Select the platform first, then complete the matching connection step.</p>
+                <p className="mt-1 text-sm leading-6 text-neutral-500">You must be currently logged in the account you want to connect.</p>
               </div>
               <button
                 type="button"

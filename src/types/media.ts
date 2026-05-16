@@ -1,6 +1,6 @@
 export interface NormalizedPost {
   id: string;
-  platform: "ig" | "tt" | "fb";
+  platform: "ig" | "tt" | "yt" | "fb";
   url: string;
   thumbnail: string | null;
   caption: string | null;

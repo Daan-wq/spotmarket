@@ -1328,6 +1328,46 @@ model RawApiResponse {
   @@index([capturedAt])
 }
 
+/// Durable cache for creator-owned media metadata used by submit pickers and
+/// thumbnails. Analytics stays in MetricSnapshot/RawApiResponse.
+model CreatorMediaCache {
+  id                 String   @id @default(cuid())
+  platform           String
+  connectionId       String
+  platformMediaId    String
+  permalink          String?  @db.Text
+  thumbnailUrl       String?  @db.Text
+  sourceThumbnailUrl String?  @db.Text
+  caption            String?  @db.Text
+  mediaType          String
+  mediaProductType   String?
+  publishedAt        DateTime?
+  likeCount          Int?
+  commentCount       Int?
+  fetchedAt          DateTime @default(now())
+  raw                Json?
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  @@unique([platform, connectionId, platformMediaId])
+  @@index([platform, connectionId, fetchedAt])
+  @@index([connectionId, publishedAt])
+}
+
+model CreatorMediaCacheState {
+  id           String   @id @default(cuid())
+  platform     String
+  connectionId String
+  nextCursor   String?
+  hasMore      Boolean  @default(false)
+  refreshedAt  DateTime @default(now())
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@unique([platform, connectionId])
+  @@index([platform, connectionId, refreshedAt])
+}
+
 /// Instagram Stories — captured by `/api/cron/poll-stories` (hourly) and the
 /// webhook handler (when active). Stories expire 24h after posting via API,
 /// so we poll within the live window and snapshot lifetime metrics.

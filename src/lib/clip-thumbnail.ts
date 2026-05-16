@@ -3,6 +3,11 @@ import { prisma } from "./prisma";
 import { decrypt } from "./crypto";
 import { fetchRecentMedia, type IgMediaItem } from "./instagram";
 import { normalizeIgMediaType, type ClipMediaType } from "./instagram-media-type";
+import {
+  cacheInstagramMedia,
+  findCachedInstagramMediaForUrl,
+  isExpiringInstagramThumbnailUrl,
+} from "./creator-media-cache";
 
 /**
  * Synchronous URL-only derivation. YouTube has predictable thumbnail URLs by
@@ -49,15 +54,18 @@ export async function resolveThumbnail(
   options: ResolveOptions = {},
 ): Promise<ResolvedClipThumbnail> {
   const fallbackMediaType: ClipMediaType = options.storedMediaType ?? deriveMediaTypeFromUrl(postUrl);
+  const parsed = postUrl ? parseClipUrl(postUrl) : null;
 
-  if (storedThumbnailUrl) {
+  if (
+    storedThumbnailUrl &&
+    !(parsed?.platform === "INSTAGRAM" && isExpiringInstagramThumbnailUrl(storedThumbnailUrl))
+  ) {
     return { thumbnailUrl: storedThumbnailUrl, mediaType: fallbackMediaType };
   }
   const sync = deriveThumbnail(postUrl);
   if (sync) return { thumbnailUrl: sync, mediaType: fallbackMediaType };
   if (!postUrl) return { thumbnailUrl: null, mediaType: fallbackMediaType };
-
-  const parsed = parseClipUrl(postUrl);
+  if (!parsed) return { thumbnailUrl: null, mediaType: fallbackMediaType };
 
   if (parsed.platform === "TIKTOK") {
     try {
@@ -140,6 +148,7 @@ export async function resolveInstagramThumbnail(
             igConnections: {
               where: { isVerified: true, accessToken: { not: null } },
               select: {
+                id: true,
                 igUserId: true,
                 accessToken: true,
                 accessTokenIv: true,
@@ -154,6 +163,18 @@ export async function resolveInstagramThumbnail(
     const conn = creator?.creatorProfile?.igConnections?.[0];
     if (!conn?.accessToken || !conn.accessTokenIv || !conn.igUserId) {
       return null;
+    }
+
+    const cached = await findCachedInstagramMediaForUrl({
+      connectionId: conn.id,
+      postUrl,
+      postId: parsed.postId,
+    });
+    if (cached) {
+      return {
+        thumbnailUrl: cached.thumbnail,
+        mediaType: cached.mediaType,
+      };
     }
 
     const token = decrypt(conn.accessToken, conn.accessTokenIv);
@@ -174,9 +195,14 @@ export async function resolveInstagramThumbnail(
       });
 
       if (match) {
+        const [cachedMatch] = await cacheInstagramMedia({
+          connectionId: conn.id,
+          media: [match],
+          updateState: false,
+        });
         return {
-          thumbnailUrl: match.thumbnail_url ?? match.media_url ?? null,
-          mediaType: normalizeIgMediaType(match.media_type, match.media_product_type),
+          thumbnailUrl: cachedMatch?.thumbnail ?? null,
+          mediaType: cachedMatch?.mediaType ?? normalizeIgMediaType(match.media_type, match.media_product_type),
         };
       }
 

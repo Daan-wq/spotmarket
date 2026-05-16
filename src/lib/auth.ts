@@ -18,7 +18,7 @@ export const getCachedAuthUser = cache(async () => {
 
 // Fast per-request auth — local JWT decode, no network call (~1ms vs 300ms+).
 // Sufficient for layouts: provides sub (= Supabase user ID) and app_metadata.
-// Security: middleware already validates the JWT at the edge on every request.
+// Security: proxy already validates the JWT at the request boundary.
 export const getCachedAuthClaims = cache(async () => {
   const supabase = await createSupabaseServerClient();
   const { data } = await supabase.auth.getClaims();

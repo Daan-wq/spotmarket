@@ -5,21 +5,26 @@ interface PlatformIconProps {
 
 function InstagramIcon({ size }: { size: number }) {
   return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none">
-      <defs>
-        <radialGradient id="ig-grad" cx="30%" cy="107%" r="150%">
-          <stop offset="0%" stopColor="#fdf497" />
-          <stop offset="5%" stopColor="#fdf497" />
-          <stop offset="45%" stopColor="#fd5949" />
-          <stop offset="60%" stopColor="#d6249f" />
-          <stop offset="90%" stopColor="#285AEB" />
-        </radialGradient>
-      </defs>
-      <rect width="24" height="24" rx="6" fill="url(#ig-grad)" />
-      <rect x="3" y="3" width="18" height="18" rx="5" stroke="white" strokeWidth="1.5" fill="none" />
-      <circle cx="12" cy="12" r="4.5" stroke="white" strokeWidth="1.5" fill="none" />
-      <circle cx="17.5" cy="6.5" r="1.2" fill="white" />
-    </svg>
+    <span
+      aria-hidden="true"
+      style={{
+        display: "inline-flex",
+        width: size,
+        height: size,
+        borderRadius: size / 4,
+        alignItems: "center",
+        justifyContent: "center",
+        background:
+          "radial-gradient(circle at 30% 107%, #fdf497 0%, #fdf497 5%, #fd5949 45%, #d6249f 60%, #285aeb 90%)",
+        lineHeight: 0,
+      }}
+    >
+      <svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+        <rect x="3" y="3" width="18" height="18" rx="5" stroke="white" strokeWidth="1.5" />
+        <circle cx="12" cy="12" r="4.5" stroke="white" strokeWidth="1.5" />
+        <circle cx="17.5" cy="6.5" r="1.2" fill="white" />
+      </svg>
+    </span>
   );
 }
 
