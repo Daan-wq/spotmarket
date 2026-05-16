@@ -139,6 +139,51 @@ export async function fetchRecentShorts(
   channelId: string,
   limit: number = 50
 ): Promise<YtVideoItem[]> {
+  return fetchRecentUploads(accessToken, channelId, limit, (video) => {
+    const duration = parseDuration(video.contentDetails.duration);
+    return duration <= 60;
+  });
+}
+
+/**
+ * Fetch recent channel uploads, including both Shorts and regular videos.
+ */
+export async function fetchRecentYoutubeVideos(
+  accessToken: string,
+  channelId: string,
+  limit: number = 50
+): Promise<YtVideoItem[]> {
+  return fetchRecentUploads(accessToken, channelId, limit, () => true);
+}
+
+interface YoutubeVideoApiItem {
+  id: string;
+  snippet: {
+    title: string;
+    description?: string;
+    publishedAt: string;
+    thumbnails?: {
+      default?: { url?: string };
+      medium?: { url?: string };
+      high?: { url?: string };
+    };
+  };
+  statistics?: {
+    viewCount?: string;
+    likeCount?: string;
+    commentCount?: string;
+  };
+  contentDetails: {
+    duration: string;
+  };
+}
+
+async function fetchRecentUploads(
+  accessToken: string,
+  channelId: string,
+  limit: number,
+  includeVideo: (video: YoutubeVideoApiItem) => boolean
+): Promise<YtVideoItem[]> {
   // Step 1: Get uploads playlist ID
   const channelRes = await fetch(
     `${YT_DATA_BASE}/channels?${new URLSearchParams({
@@ -154,7 +199,7 @@ export async function fetchRecentShorts(
     channelData.items?.[0]?.contentDetails?.relatedPlaylists?.uploads;
   if (!uploadsPlaylistId) return [];
 
-  // Step 2: Get recent uploads (fetch more than limit to account for non-Shorts)
+  // Step 2: Get recent uploads (fetch more than limit when filtering to Shorts)
   const fetchCount = Math.min(limit * 3, 150);
   let videoIds: string[] = [];
   let pageToken: string | undefined;
@@ -184,9 +229,9 @@ export async function fetchRecentShorts(
   if (videoIds.length === 0) return [];
 
   // Step 3: Get video details in batches of 50
-  const shorts: YtVideoItem[] = [];
+  const videos: YtVideoItem[] = [];
 
-  for (let i = 0; i < videoIds.length && shorts.length < limit; i += 50) {
+  for (let i = 0; i < videoIds.length && videos.length < limit; i += 50) {
     const batch = videoIds.slice(i, i + 50);
     const vidRes = await fetch(
       `${YT_DATA_BASE}/videos?${new URLSearchParams({
@@ -198,31 +243,30 @@ export async function fetchRecentShorts(
     if (!vidRes.ok) continue;
 
     const vidData = await vidRes.json();
-    for (const video of vidData.items ?? []) {
-      // Filter Shorts: duration <= 60 seconds
-      const duration = parseDuration(video.contentDetails.duration);
-      if (duration > 60) continue;
+    for (const video of (vidData.items ?? []) as YoutubeVideoApiItem[]) {
+      if (!includeVideo(video)) continue;
 
-      shorts.push({
+      videos.push({
         id: video.id,
         title: video.snippet.title,
         description: video.snippet.description ?? null,
         publishedAt: video.snippet.publishedAt,
         thumbnailUrl:
+          video.snippet.thumbnails?.high?.url ??
           video.snippet.thumbnails?.medium?.url ??
           video.snippet.thumbnails?.default?.url ??
           null,
-        viewCount: parseInt(video.statistics.viewCount ?? "0"),
-        likeCount: parseInt(video.statistics.likeCount ?? "0"),
-        commentCount: parseInt(video.statistics.commentCount ?? "0"),
+        viewCount: parseInt(video.statistics?.viewCount ?? "0"),
+        likeCount: parseInt(video.statistics?.likeCount ?? "0"),
+        commentCount: parseInt(video.statistics?.commentCount ?? "0"),
         duration: video.contentDetails.duration,
       });
 
-      if (shorts.length >= limit) break;
+      if (videos.length >= limit) break;
     }
   }
 
-  return shorts;
+  return videos;
 }
 
 /** Parse ISO 8601 duration (PT1M30S) to seconds */
