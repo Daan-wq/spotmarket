@@ -4,18 +4,11 @@ import { useState } from "react";
 import { QRCodeSVG } from "qrcode.react";
 import { Check, Copy, QrCode } from "lucide-react";
 import { Send } from "@/components/animate-ui/icons/send";
+import { PlatformLogo } from "@clipprofit/platform-icons";
 
 interface ReferralLinkProps {
   referralCode: string;
   referralUrl: string;
-}
-
-function XIcon({ className }: { className?: string }) {
-  return (
-    <svg className={className} viewBox="0 0 24 24" aria-hidden="true" fill="currentColor">
-      <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817-5.965 6.817H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231 5.45-6.231Zm-1.161 17.52h1.833L7.084 4.126H5.117L17.083 19.77Z" />
-    </svg>
-  );
 }
 
 function WhatsAppIcon({ className }: { className?: string }) {
@@ -110,7 +103,12 @@ export function ReferralLink({ referralCode, referralUrl }: ReferralLinkProps) {
           rel="noopener noreferrer"
           className="group inline-flex items-center gap-2 rounded-lg border border-neutral-200 bg-white px-4 py-2 text-sm font-medium text-neutral-950 transition-colors hover:bg-neutral-50"
         >
-          <XIcon className="h-4 w-4 transition-transform group-hover:scale-110" />
+          <PlatformLogo
+            platform="X"
+            size={16}
+            decorative
+            className="transition-transform group-hover:scale-110"
+          />
           Twitter
         </a>
         <a

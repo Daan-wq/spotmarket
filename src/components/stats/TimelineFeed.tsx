@@ -2,7 +2,7 @@
 
 import type { TimelineEvent, TimelineContentType } from "@/lib/stats/timeline";
 import { PLATFORM_COLOR, PLATFORM_LABEL } from "@/lib/stats/types";
-import { PlatformIconMono } from "@/lib/stats/platform-icons";
+import { DashboardPlatformGlyph } from "@/lib/stats/platform-icons";
 import { LiftSparkline } from "./LiftSparkline";
 
 interface TimelineFeedProps {
@@ -79,7 +79,7 @@ export function TimelineFeed({ events, lifts }: TimelineFeedProps) {
                     className="inline-flex"
                     style={{ color: "var(--text-primary)" }}
                   >
-                    <PlatformIconMono platform={e.platform} size={28} />
+                    <DashboardPlatformGlyph platform={e.platform} size={28} />
                   </span>
                 </Td>
                 <Td>{CONTENT_TYPE_LABEL[e.contentType]}</Td>
