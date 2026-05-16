@@ -14,9 +14,9 @@ import {
 } from "@react-email/components";
 
 const APP_URL =
-  process.env.NEXT_PUBLIC_APP_URL_NL ??
   process.env.NEXT_PUBLIC_APP_URL ??
-  "https://app.clipprofit.nl";
+  process.env.NEXT_PUBLIC_APP_URL_EN ??
+  "https://app.clipprofit.com";
 
 export function EmailShell({
   preview,

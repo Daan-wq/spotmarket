@@ -1,6 +1,5 @@
 import {
   APP_URL_EN,
-  APP_URL_NL,
   DEFAULT_LOCALE,
   getLocaleFromHost,
   isLocale,
@@ -14,11 +13,10 @@ function normalizeBaseUrl(url: string): string {
 }
 
 export function getAppUrlForLocale(locale: Locale = DEFAULT_LOCALE): string {
-  if (locale === "nl") {
-    return normalizeBaseUrl(process.env.NEXT_PUBLIC_APP_URL_NL ?? APP_URL_NL);
-  }
-
-  return normalizeBaseUrl(process.env.NEXT_PUBLIC_APP_URL_EN ?? APP_URL_EN);
+  void locale;
+  return normalizeBaseUrl(
+    process.env.NEXT_PUBLIC_APP_URL ?? process.env.NEXT_PUBLIC_APP_URL_EN ?? APP_URL_EN
+  );
 }
 
 export function getAppUrlFromHost(host: string | null | undefined): string {

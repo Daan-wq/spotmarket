@@ -20,6 +20,9 @@ const PUBLIC_ROUTES = [
   "/privacy",
 ];
 
+const CANONICAL_APP_HOST = "app.clipprofit.com";
+const LEGACY_APP_HOST = "app.clipprofit.nl";
+
 function isPublicRoute(pathname: string) {
   return PUBLIC_ROUTES.some((route) => pathname.startsWith(route));
 }
@@ -48,7 +51,17 @@ function createLocalizedNextResponse(headers: Headers, locale: Locale) {
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
   const cookieLocale = request.cookies.get(LOCALE_COOKIE_NAME)?.value;
-  const host = request.headers.get("host") ?? "";
+  const host = request.headers.get("host") ?? request.nextUrl.host;
+  const hostname = host.toLowerCase().split(":")[0] ?? "";
+
+  if (hostname === LEGACY_APP_HOST) {
+    const canonicalUrl = request.nextUrl.clone();
+    canonicalUrl.protocol = "https:";
+    canonicalUrl.hostname = CANONICAL_APP_HOST;
+    canonicalUrl.port = "";
+    return NextResponse.redirect(canonicalUrl, 308);
+  }
+
   const locale = isLocale(cookieLocale) ? cookieLocale : getLocaleFromHost(host);
 
   const requestHeaders = new Headers(request.headers);

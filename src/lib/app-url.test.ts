@@ -3,17 +3,24 @@ import { buildAppUrl, getAppUrlFromHost, getAppUrlFromRequest, getAppUrlForLocal
 import { getLocaleFromHost } from "@/i18n/routing";
 
 const savedEnv = {
+  NEXT_PUBLIC_APP_URL: process.env.NEXT_PUBLIC_APP_URL,
   NEXT_PUBLIC_APP_URL_NL: process.env.NEXT_PUBLIC_APP_URL_NL,
   NEXT_PUBLIC_APP_URL_EN: process.env.NEXT_PUBLIC_APP_URL_EN,
 };
 
 describe("app URL and locale routing", () => {
   beforeEach(() => {
+    delete process.env.NEXT_PUBLIC_APP_URL;
     delete process.env.NEXT_PUBLIC_APP_URL_NL;
     delete process.env.NEXT_PUBLIC_APP_URL_EN;
   });
 
   afterEach(() => {
+    if (savedEnv.NEXT_PUBLIC_APP_URL === undefined) {
+      delete process.env.NEXT_PUBLIC_APP_URL;
+    } else {
+      process.env.NEXT_PUBLIC_APP_URL = savedEnv.NEXT_PUBLIC_APP_URL;
+    }
     if (savedEnv.NEXT_PUBLIC_APP_URL_NL === undefined) {
       delete process.env.NEXT_PUBLIC_APP_URL_NL;
     } else {
@@ -37,12 +44,12 @@ describe("app URL and locale routing", () => {
   });
 
   it("returns the locale-specific app URL", () => {
-    expect(getAppUrlForLocale("nl")).toBe("https://app.clipprofit.nl");
+    expect(getAppUrlForLocale("nl")).toBe("https://app.clipprofit.com");
     expect(getAppUrlForLocale("en")).toBe("https://app.clipprofit.com");
   });
 
-  it("uses host-derived URLs", () => {
-    expect(getAppUrlFromHost("app.clipprofit.nl")).toBe("https://app.clipprofit.nl");
+  it("uses the canonical app URL for host-derived URLs", () => {
+    expect(getAppUrlFromHost("app.clipprofit.nl")).toBe("https://app.clipprofit.com");
     expect(getAppUrlFromHost("app.clipprofit.com")).toBe("https://app.clipprofit.com");
   });
 
@@ -55,8 +62,8 @@ describe("app URL and locale routing", () => {
   });
 
   it("builds absolute app URLs without double slashes", () => {
-    expect(buildAppUrl("/auth/confirm", "https://app.clipprofit.nl/")).toBe(
-      "https://app.clipprofit.nl/auth/confirm"
+    expect(buildAppUrl("/auth/confirm", "https://app.clipprofit.com/")).toBe(
+      "https://app.clipprofit.com/auth/confirm"
     );
   });
 });
