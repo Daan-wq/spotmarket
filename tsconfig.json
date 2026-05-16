@@ -19,7 +19,8 @@
       }
     ],
     "paths": {
-      "@/*": ["./src/*"]
+      "@/*": ["./src/*"],
+      "@clipprofit/platform-icons": ["./src/platform-icons/index.tsx"]
     }
   },
   "include": [
