@@ -14,6 +14,7 @@ summary {
   --bg-secondary: #fafafa;
   --bg-card: #ffffff;
   --bg-card-hover: #f7f7f8;
+  --button-hover-highlight: #f4f4f5;
   --bg-elevated: #ffffff;
   --surface-soft: #f7f7f8;
   --surface-muted: #f4f4f5;
@@ -172,6 +173,18 @@ summary {
 
   .btn-primary:hover {
     background: var(--primary-hover);
+  }
+
+  .button-hover-highlight {
+    transition:
+      background-color var(--transition-fast),
+      border-color var(--transition-fast),
+      color var(--transition-fast);
+  }
+
+  .button-hover-highlight:hover,
+  .button-hover-highlight:focus-visible {
+    background: var(--button-hover-highlight);
   }
 }
 

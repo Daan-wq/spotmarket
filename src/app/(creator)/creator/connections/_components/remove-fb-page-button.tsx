@@ -13,7 +13,6 @@ export function RemoveFbPageButton({
   return (
     <DisconnectButton
       label={label}
-      platform="Facebook"
       onConfirm={async () => {
         await removeFbPage(connectionId);
       }}
