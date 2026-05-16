@@ -8,7 +8,7 @@ import type { Prisma } from "@prisma/client";
 // Single source of truth for the simple `views × creatorCpv` calculation that
 // the submission detail card and the My Clips list use. This is a FORECAST —
 // it does not subtract baselineViews and does not gate on APPROVED status.
-// For realized/payable earnings see getCreatorTotalEarnings below.
+// For creator-facing payable totals, use `creator-payment-summary`.
 
 type CpvLike = Prisma.Decimal | string | number | null | undefined;
 
@@ -54,7 +54,7 @@ export function totalProjectedEarnings(
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Realized creator earnings (settled + estimated for unsettled approvals)
+// Live creator earnings (settled + estimated for unsettled approvals)
 // ─────────────────────────────────────────────────────────────────────────────
 
 export interface CreatorTotalEarnings {
@@ -65,7 +65,12 @@ export interface CreatorTotalEarnings {
 }
 
 /**
- * Single source of truth for a creator's total earnings.
+ * Live/estimated earnings helper for the dashboard ticker.
+ *
+ * Do not use this for creator-facing payable totals: it recalculates approved,
+ * unsettled submissions from current campaign CPV, so campaign rate edits can
+ * change historical-looking totals. Payable surfaces should use
+ * `getCreatorPaymentSummary` from `creator-payment-summary`.
  *
  * - settled: SUM(CampaignSubmission.earnedAmount) where settledAt IS NOT NULL.
  * - estimated: for APPROVED + unsettled submissions, eligibleViews × campaign.creatorCpv

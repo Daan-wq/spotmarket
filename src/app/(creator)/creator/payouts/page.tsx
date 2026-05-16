@@ -1,5 +1,6 @@
 import { requireAuth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { getCreatorPaymentSummary } from "@/lib/creator-payment-summary";
 import { Badge } from "@/components/ui/badge";
 import { EmptyState } from "@/components/ui/empty-state";
 import { PaymentsTabs } from "./_components/payments-tabs";
@@ -33,50 +34,23 @@ export default async function PaymentsPage() {
   });
   if (!profile) throw new Error("Creator profile not found");
 
-  const [payouts, submissions] = await Promise.all([
+  const [payouts, paymentSummary] = await Promise.all([
     prisma.payout.findMany({
       where: { creatorProfileId: profile.id },
       orderBy: { createdAt: "desc" },
     }),
-    prisma.campaignSubmission.findMany({
-      where: { creatorId: user.id, status: "APPROVED" },
-      include: { campaign: { select: { name: true } } },
-      orderBy: { createdAt: "desc" },
-    }),
+    getCreatorPaymentSummary(user.id, profile.id),
   ]);
 
-  const totalEarned = submissions.reduce((sum, sub) => sum + Number(sub.earnedAmount), 0);
-  const totalPaid = payouts
-    .filter((p) => p.status === "confirmed" || p.status === "sent")
-    .reduce((sum, p) => sum + Number(p.amount), 0);
-  const pendingPayout = payouts
-    .filter((p) => p.status === "pending" || p.status === "processing")
-    .reduce((sum, p) => sum + Number(p.amount), 0);
-  const balance = totalEarned - totalPaid;
+  const {
+    totalEarned,
+    totalPaid,
+    pendingPayout,
+    availableBalance: balance,
+    earningsByCampaign,
+  } = paymentSummary;
   const hasPaymentMethod = Boolean(
     profile.walletAddress || profile.tronsAddress || profile.stripeAccountId,
-  );
-
-  const byCampaign: Record<
-    string,
-    { campaignId: string; campaignName: string; totalViews: number; totalEarned: number; count: number }
-  > = {};
-  submissions.forEach((sub) => {
-    if (!byCampaign[sub.campaignId]) {
-      byCampaign[sub.campaignId] = {
-        campaignId: sub.campaignId,
-        campaignName: sub.campaign.name,
-        totalViews: 0,
-        totalEarned: 0,
-        count: 0,
-      };
-    }
-    byCampaign[sub.campaignId].totalViews += sub.claimedViews;
-    byCampaign[sub.campaignId].totalEarned += Number(sub.earnedAmount);
-    byCampaign[sub.campaignId].count += 1;
-  });
-  const earningsByCampaign = Object.values(byCampaign).sort(
-    (a, b) => b.totalEarned - a.totalEarned,
   );
 
   return (
