@@ -9,15 +9,14 @@ import {
   DropdownMenuTrigger,
 } from "@/components/animate-ui/components/radix/dropdown-menu";
 import { EllipsisIcon } from "@/components/animate-ui/icons/ellipsis";
-import { Trash2Icon } from "@/components/animate-ui/icons/trash-2";
+import { LinkIcon } from "@/components/animate-ui/icons/link";
 
 interface Props {
   label: string;
-  platform: string;
   onConfirm: () => Promise<void>;
 }
 
-export function DisconnectButton({ label, platform, onConfirm }: Props) {
+export function DisconnectButton({ label, onConfirm }: Props) {
   const [open, setOpen] = useState(false);
   const [pending, setPending] = useState(false);
 
@@ -37,11 +36,10 @@ export function DisconnectButton({ label, platform, onConfirm }: Props) {
         <DropdownMenuTrigger asChild>
           <button
             type="button"
-            aria-label={`Open options for ${label} on ${platform}`}
+            aria-label={`Open options for ${label}`}
             title={`Options for ${label}`}
-            className="inline-flex h-9 w-9 items-center justify-center rounded-lg border transition-colors disabled:opacity-50"
+            className="button-hover-highlight inline-flex h-9 w-9 items-center justify-center rounded-lg border bg-white disabled:opacity-50"
             style={{
-              background: "var(--bg-card)",
               borderColor: "var(--border)",
               color: "var(--text-secondary)",
             }}
@@ -52,21 +50,17 @@ export function DisconnectButton({ label, platform, onConfirm }: Props) {
         <DropdownMenuContent
           align="end"
           sideOffset={6}
-          className="w-72 rounded-xl border border-neutral-200 bg-white p-1 text-neutral-950 shadow-lg"
+          className="w-60 rounded-xl border border-neutral-200 bg-white p-1 text-neutral-950 shadow-lg [&_[data-slot=dropdown-menu-highlight]]:!bg-neutral-100"
         >
           <DropdownMenuItem
-            variant="destructive"
-            className="cursor-pointer gap-2 rounded-lg px-3 py-2 text-sm font-medium"
-            style={{ color: "var(--error-text)" }}
+            className="button-hover-highlight cursor-pointer gap-2 rounded-lg px-3 py-2 text-sm font-medium hover:bg-neutral-100 focus:bg-neutral-100 data-[highlighted]:bg-neutral-100"
             onSelect={(event) => {
               event.preventDefault();
               setOpen(true);
             }}
           >
-            <Trash2Icon size={16} aria-hidden />
-            <span className="min-w-0 flex-1 text-left">
-              Disconnect {label} on {platform} from Clipprofit
-            </span>
+            <LinkIcon size={16} animateOnHover className="text-red-500" aria-hidden />
+            <span className="min-w-0 flex-1 text-left">Disconnect {label}</span>
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>

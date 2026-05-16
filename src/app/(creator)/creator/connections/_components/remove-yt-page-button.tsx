@@ -13,7 +13,6 @@ export function RemoveYtPageButton({
   return (
     <DisconnectButton
       label={label}
-      platform="YouTube"
       onConfirm={async () => {
         await removeYtPage(connectionId);
       }}

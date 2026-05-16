@@ -13,7 +13,6 @@ export function RemovePageButton({
   return (
     <DisconnectButton
       label={label}
-      platform="Instagram"
       onConfirm={async () => {
         await removePage(connectionId);
       }}
