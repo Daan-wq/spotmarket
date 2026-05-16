@@ -2,6 +2,12 @@ import { chromium } from "playwright";
 
 const APP_URL = "https://spotmarket-gamma.vercel.app";
 
+function requiredEnv(name) {
+  const value = process.env[name];
+  if (!value) throw new Error(`Missing required env var: ${name}`);
+  return value;
+}
+
 const browser = await chromium.launch({ headless: true });
 const ctx = await browser.newContext();
 const page = await ctx.newPage();
@@ -9,8 +15,8 @@ const page = await ctx.newPage();
 // Login
 await page.goto(`${APP_URL}/sign-in`);
 await page.waitForLoadState("networkidle");
-await page.fill('input[type="email"]', "daan0529@icloud.com");
-await page.fill('input[type="password"]', "Test123");
+await page.fill('input[type="email"]', requiredEnv("TEST_OAUTH_EMAIL"));
+await page.fill('input[type="password"]', requiredEnv("TEST_OAUTH_PASSWORD"));
 await page.click('button[type="submit"]');
 await page.waitForLoadState("networkidle");
 await page.waitForTimeout(2000);

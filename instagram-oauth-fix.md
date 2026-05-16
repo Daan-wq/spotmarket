@@ -15,7 +15,7 @@ Automatically test the Instagram connect flow end-to-end using Playwright, debug
 - [ ] User sees "Log in with Instagram" or permission grant screen
 
 ## Notes
-- Credentials: daan0529@icloud.com / Test123
+- Credentials: use the configured test account credentials from your local environment.
 - Target: https://spotmarket-gamma.vercel.app
 - "Connect Instagram" button is on the profile page (likely `/profile` or `/onboarding`)
 - Playwright script intercepts the redirect to `www.instagram.com/oauth/authorize` to extract exact params

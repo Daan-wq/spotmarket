@@ -3,8 +3,13 @@ import https from "https";
 
 const APP_URL = "https://spotmarket-gamma.vercel.app";
 const IG_APP_ID = "2199789334158131";
-const IG_SECRET = "5a1b55705d4f4e1ecb72fc662662cc5c";
 const REDIRECT_URI = "https://spotmarket-gamma.vercel.app/api/auth/instagram/callback";
+
+function requiredEnv(name) {
+  const value = process.env[name];
+  if (!value) throw new Error(`Missing required env var: ${name}`);
+  return value;
+}
 
 function exchange(code, secret, label) {
   return new Promise((resolve) => {
@@ -28,8 +33,8 @@ const ctx = await browser.newContext();
 const lp = await ctx.newPage();
 await lp.goto(`${APP_URL}/sign-in`);
 await lp.waitForLoadState("networkidle");
-await lp.fill('input[type="email"]', "daan0529@icloud.com");
-await lp.fill('input[type="password"]', "Test123");
+await lp.fill('input[type="email"]', requiredEnv("TEST_OAUTH_EMAIL"));
+await lp.fill('input[type="password"]', requiredEnv("TEST_OAUTH_PASSWORD"));
 await lp.click('button[type="submit"]');
 await lp.waitForLoadState("networkidle");
 await lp.waitForTimeout(2000);
@@ -42,8 +47,8 @@ await dismissCookies(page);
 
 const u = page.locator('input[name="username"], input[autocomplete="username"]').first();
 if (await u.isVisible({ timeout: 5000 }).catch(() => false)) {
-  await u.fill("emperorsagency");
-  await page.locator('input[type="password"]').first().fill("Danuel69!");
+  await u.fill(requiredEnv("TEST_INSTAGRAM_USERNAME"));
+  await page.locator('input[type="password"]').first().fill(requiredEnv("TEST_INSTAGRAM_PASSWORD"));
   await page.locator('button[type="submit"]').first().dispatchEvent("click");
   await page.waitForTimeout(5000);
 }
@@ -73,5 +78,6 @@ const code = decodeURIComponent(debugCode);
 console.log("Fresh code captured, length:", code.length);
 await browser.close();
 
+const IG_SECRET = requiredEnv("TEST_INSTAGRAM_APP_SECRET");
 const result = await exchange(code, IG_SECRET, "IG_ID + IG_secret");
 console.log(result);

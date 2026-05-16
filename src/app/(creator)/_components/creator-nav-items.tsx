@@ -2,7 +2,6 @@
 
 import type { ComponentType } from "react";
 import { CreditCard } from "@/components/animate-ui/icons/credit-card";
-import { GraduationCap } from "@/components/animate-ui/icons/graduation-cap";
 import { Megaphone } from "@/components/animate-ui/icons/megaphone";
 import { Video } from "@/components/animate-ui/icons/video";
 import { ChartSpline } from "@/components/animate-ui/icons/chart-spline";
@@ -22,7 +21,6 @@ export const CREATOR_NAV_ITEMS: Array<{
   { href: "/creator/connections", label: "Accounts", icon: ChartSpline },
   { href: "/creator/videos", label: "My Clips", icon: Video },
   { href: "/creator/payouts", label: "Payments", icon: CreditCard },
-  { href: "/creator/course", label: "Course", icon: GraduationCap },
   { href: "/creator/referral", label: "Referral", icon: Users },
 ];
 

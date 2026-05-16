@@ -4,6 +4,12 @@ import https from "https";
 const APP_URL = "https://spotmarket-gamma.vercel.app";
 const REDIRECT_URI = "https://spotmarket-gamma.vercel.app/api/auth/instagram/callback";
 
+function requiredEnv(name) {
+  const value = process.env[name];
+  if (!value) throw new Error(`Missing required env var: ${name}`);
+  return value;
+}
+
 function exchange(code, clientId, secret, label) {
   return new Promise((resolve) => {
     const body = new URLSearchParams({ client_id: clientId, client_secret: secret, grant_type: "authorization_code", redirect_uri: REDIRECT_URI, code }).toString();
@@ -27,8 +33,8 @@ const ctx = await browser.newContext();
 const lp = await ctx.newPage();
 await lp.goto(`${APP_URL}/sign-in`);
 await lp.waitForLoadState("networkidle");
-await lp.fill('input[type="email"]', "daan0529@icloud.com");
-await lp.fill('input[type="password"]', "Test123");
+await lp.fill('input[type="email"]', requiredEnv("FULL_OAUTH_EMAIL"));
+await lp.fill('input[type="password"]', requiredEnv("FULL_OAUTH_PASSWORD"));
 await lp.click('button[type="submit"]');
 await lp.waitForLoadState("networkidle");
 await lp.waitForTimeout(2000);
@@ -43,8 +49,8 @@ await dismissCookies(page);
 // Instagram login
 const u = page.locator('input[name="username"], input[autocomplete="username"]').first();
 if (await u.isVisible({ timeout: 5000 }).catch(() => false)) {
-  await u.fill("emperorsagency");
-  await page.locator('input[type="password"]').first().fill("Danuel69!");
+  await u.fill(requiredEnv("FULL_OAUTH_INSTAGRAM_USERNAME"));
+  await page.locator('input[type="password"]').first().fill(requiredEnv("FULL_OAUTH_INSTAGRAM_PASSWORD"));
   await page.locator('button[type="submit"]').first().dispatchEvent("click");
   await page.waitForTimeout(5000);
 }
@@ -96,7 +102,7 @@ await browser.close();
 // Test the new parent-app secret with Instagram app ID
 const IG_APP_ID = "2199789334158131";
 const FB_APP_ID = "1474992817586889";
-const NEW_SECRET = "296eba18af386d35e7bce6b294b9e634";
+const NEW_SECRET = requiredEnv("FULL_OAUTH_PARENT_APP_SECRET");
 
 const r1 = await exchange(code, IG_APP_ID, NEW_SECRET, `IG_ID + parent_secret`);
 console.log(r1);
