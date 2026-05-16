@@ -6,7 +6,7 @@ import ClipThumbnail from "@/components/shared/ClipThumbnail";
 import { relativeTime } from "@/lib/relative-time";
 import type { ContentRow } from "@/lib/stats/content";
 import { type PlatformSlug, PLATFORM_LABEL } from "@/lib/stats/types";
-import { PlatformIconMono } from "@/lib/stats/platform-icons";
+import { DashboardPlatformGlyph } from "@/lib/stats/platform-icons";
 import {
   PickApplicationModal,
   type ApplicationOption,
@@ -262,12 +262,12 @@ export function ContentTable({
                   <td className="px-2 py-3">
                     {!canLinkDetail ? (
                       <span style={{ color: "var(--text-primary)" }} className="inline-flex" aria-label={PLATFORM_LABEL[row.platform]}>
-                        <PlatformIconMono platform={row.platform} size={28} />
+                        <DashboardPlatformGlyph platform={row.platform} size={28} />
                       </span>
                     ) : (
                       <Link href={rowDetailHref ?? "#"} className="block" aria-label={PLATFORM_LABEL[row.platform]}>
                         <span style={{ color: "var(--text-primary)" }} className="inline-flex">
-                          <PlatformIconMono platform={row.platform} size={28} />
+                          <DashboardPlatformGlyph platform={row.platform} size={28} />
                         </span>
                       </Link>
                     )}

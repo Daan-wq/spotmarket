@@ -5,7 +5,7 @@ interface Props {
   size?: number;
 }
 
-export function PlatformIconMono({ platform, size = 14 }: Props) {
+export function DashboardPlatformGlyph({ platform, size = 14 }: Props) {
   const common = { width: size, height: size, viewBox: "0 0 24 24", fill: "currentColor" as const };
   switch (platform) {
     case "ig":

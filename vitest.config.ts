@@ -9,6 +9,7 @@ export default defineConfig({
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "src"),
+      "@clipprofit/platform-icons": path.resolve(__dirname, "src/platform-icons"),
     },
   },
 });

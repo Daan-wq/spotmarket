@@ -1,7 +1,7 @@
 "use client";
 
 import { type PlatformSlug, PLATFORM_ALL, PLATFORM_LABEL } from "@/lib/stats/types";
-import { PlatformIconMono } from "@/lib/stats/platform-icons";
+import { DashboardPlatformGlyph } from "@/lib/stats/platform-icons";
 
 export type Scope = "all" | PlatformSlug;
 
@@ -22,7 +22,7 @@ export function ScopeTabs({ active, onChange, countsByPlatform }: Props) {
     ...PLATFORM_ALL.map((p) => ({
       id: p,
       label: PLATFORM_LABEL[p],
-      icon: <PlatformIconMono platform={p} size={14} />,
+      icon: <DashboardPlatformGlyph platform={p} size={14} />,
       count: countsByPlatform?.[p],
     })),
   ];
