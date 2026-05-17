@@ -18,6 +18,9 @@ type ConnectionRow = {
   followerCount: number | null;
   lastSyncedAt: string | null;
   platform: PlatformSlug;
+  accountRefreshStatus?: string;
+  lastRefreshErrorMessage?: string | null;
+  countLabel?: "followers" | "subscribers";
 };
 
 interface AllScopeProps {
@@ -106,6 +109,9 @@ function PlatformScopeView({ platform, stats, daily, range, basePath }: Platform
           followerCount: c.followerCount,
           lastSyncedAt: c.lastSyncedAt ? c.lastSyncedAt.toISOString() : null,
           platform,
+          accountRefreshStatus: c.accountRefreshStatus,
+          lastRefreshErrorMessage: c.lastRefreshErrorMessage,
+          countLabel: c.countLabel,
         }))}
         rangeKey={range.key}
         basePath={basePath}
@@ -197,7 +203,12 @@ function ConnectionsList({
               </div>
               {c.lastSyncedAt && (
                 <p className="text-xs mt-0.5" style={{ color: "var(--text-muted)" }}>
-                  Last synced {new Date(c.lastSyncedAt).toLocaleDateString()}
+                  Last refreshed {new Date(c.lastSyncedAt).toLocaleDateString()}
+                </p>
+              )}
+              {c.accountRefreshStatus === "FAILED" && (
+                <p className="text-xs mt-0.5 text-red-600">
+                  Refresh failed{c.lastRefreshErrorMessage ? `: ${c.lastRefreshErrorMessage}` : ""}
                 </p>
               )}
             </div>
@@ -206,7 +217,7 @@ function ConnectionsList({
                 {c.followerCount?.toLocaleString() ?? "—"}
               </p>
               <p className="text-[10px] uppercase tracking-wide" style={{ color: "var(--text-muted)" }}>
-                {c.platform === "yt" ? "subscribers" : "followers"}
+                {c.countLabel ?? (c.platform === "yt" ? "subscribers" : "followers")}
               </p>
             </div>
           </li>

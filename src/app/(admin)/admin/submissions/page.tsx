@@ -23,7 +23,7 @@ export default async function SubmissionsPage() {
       <PageHeader
         eyebrow="Submissions"
         title="Submissions"
-        description="Review submitted clips, scrape status, eligible views, and earnings."
+        description="Review submitted clips, metrics refresh status, eligible views, and earnings."
       />
 
       <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
@@ -59,12 +59,12 @@ export default async function SubmissionsPage() {
             },
             { key: "submitted", header: "Submitted", cell: (submission) => formatDate(submission.createdAt) },
             {
-              key: "scrape",
-              header: "Last scrape",
+              key: "metrics-refresh",
+              header: "Last metrics refresh",
               cell: (submission) => (
                 <div className="text-xs text-neutral-500">
-                  <p>{submission.lastScrapedAt ? formatDate(submission.lastScrapedAt) : "-"}</p>
-                  {submission.scrapeFailures > 0 ? <p className="text-red-600">{submission.scrapeFailures} failure{submission.scrapeFailures === 1 ? "" : "s"}</p> : null}
+                  <p>{submission.lastMetricsRefreshAt ? formatDate(submission.lastMetricsRefreshAt) : "-"}</p>
+                  {submission.metricsRefreshFailures > 0 ? <p className="text-red-600">{submission.metricsRefreshFailures} failure{submission.metricsRefreshFailures === 1 ? "" : "s"}</p> : null}
                 </div>
               ),
             },

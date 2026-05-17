@@ -3,6 +3,7 @@ import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { prisma } from "@/lib/prisma";
 import { exchangeCodeForTokens, fetchTikTokProfile, REQUIRED_TT_SCOPES } from "@/lib/tiktok";
 import { encrypt } from "@/lib/crypto";
+import { recordAccountRefreshSuccess } from "@/lib/social-account-refresh";
 
 export async function GET(req: NextRequest) {
   const code = req.nextUrl.searchParams.get("code");
@@ -72,8 +73,9 @@ export async function GET(req: NextRequest) {
       select: { id: true },
     });
 
-    if (existing) {
-      await prisma.creatorTikTokConnection.update({
+    const refreshedAt = new Date();
+    const connection = existing
+      ? await prisma.creatorTikTokConnection.update({
         where: { id: existing.id },
         data: {
           creatorProfileId,
@@ -87,10 +89,11 @@ export async function GET(req: NextRequest) {
           refreshTokenIv: encRefresh.iv,
           tokenExpiresAt,
           isVerified: true,
+          verifiedAt: refreshedAt,
         },
-      });
-    } else {
-      await prisma.creatorTikTokConnection.create({
+        select: { id: true },
+      })
+      : await prisma.creatorTikTokConnection.create({
         data: {
           creatorProfileId,
           tikTokOpenId: openId,
@@ -104,9 +107,22 @@ export async function GET(req: NextRequest) {
           refreshTokenIv: encRefresh.iv,
           tokenExpiresAt,
           isVerified: true,
+          verifiedAt: refreshedAt,
         },
+        select: { id: true },
       });
-    }
+
+    await recordAccountRefreshSuccess({
+      connectionType: "TT",
+      connectionId: connection.id,
+      audienceCount: ttProfile.followerCount,
+      followingCount: ttProfile.followingCount,
+      videoCount: ttProfile.videoCount,
+      totalLikes: ttProfile.likesCount != null ? BigInt(ttProfile.likesCount) : null,
+      isVerified: ttProfile.isVerified ?? null,
+      raw: ttProfile,
+      capturedAt: refreshedAt,
+    });
 
     return NextResponse.redirect(new URL(`${returnTo}?tiktok=linked`, req.url));
   } catch (err) {

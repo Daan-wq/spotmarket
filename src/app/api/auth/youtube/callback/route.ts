@@ -3,6 +3,7 @@ import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { prisma } from "@/lib/prisma";
 import { exchangeCodeForTokens, fetchChannelProfile, REQUIRED_YT_SCOPES } from "@/lib/youtube";
 import { encrypt } from "@/lib/crypto";
+import { recordAccountRefreshSuccess } from "@/lib/social-account-refresh";
 
 export async function GET(req: NextRequest) {
   const code = req.nextUrl.searchParams.get("code");
@@ -72,8 +73,9 @@ export async function GET(req: NextRequest) {
       select: { id: true },
     });
 
-    if (existing) {
-      await prisma.creatorYtConnection.update({
+    const refreshedAt = new Date();
+    const connection = existing
+      ? await prisma.creatorYtConnection.update({
         where: { id: existing.id },
         data: {
           creatorProfileId,
@@ -88,9 +90,9 @@ export async function GET(req: NextRequest) {
           tokenExpiresAt,
           isVerified: true,
         },
-      });
-    } else {
-      await prisma.creatorYtConnection.create({
+        select: { id: true },
+      })
+      : await prisma.creatorYtConnection.create({
         data: {
           creatorProfileId,
           channelId: channel.channelId,
@@ -105,8 +107,17 @@ export async function GET(req: NextRequest) {
           tokenExpiresAt,
           isVerified: true,
         },
+        select: { id: true },
       });
-    }
+
+    await recordAccountRefreshSuccess({
+      connectionType: "YT",
+      connectionId: connection.id,
+      audienceCount: channel.subscriberCount,
+      videoCount: channel.videoCount,
+      raw: channel,
+      capturedAt: refreshedAt,
+    });
 
     return NextResponse.redirect(new URL(`${returnTo}?youtube=linked`, req.url));
   } catch (err) {

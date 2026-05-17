@@ -3,6 +3,7 @@ import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { prisma } from "@/lib/prisma";
 import { exchangeCodeForToken, getInstagramProfile, REQUIRED_IG_SCOPES } from "@/lib/instagram";
 import { encrypt } from "@/lib/crypto";
+import { recordAccountRefreshSuccess } from "@/lib/social-account-refresh";
 
 export async function GET(req: NextRequest) {
   const code = req.nextUrl.searchParams.get("code");
@@ -78,8 +79,9 @@ export async function GET(req: NextRequest) {
       select: { id: true },
     });
 
-    if (existing) {
-      await prisma.creatorIgConnection.update({
+    const refreshedAt = new Date();
+    const connection = existing
+      ? await prisma.creatorIgConnection.update({
         where: { id: existing.id },
         data: {
           creatorProfileId,
@@ -89,11 +91,11 @@ export async function GET(req: NextRequest) {
           tokenExpiresAt,
           followerCount: profile.followerCount,
           isVerified: true,
-          verifiedAt: new Date(),
+          verifiedAt: refreshedAt,
         },
-      });
-    } else {
-      await prisma.creatorIgConnection.create({
+        select: { id: true },
+      })
+      : await prisma.creatorIgConnection.create({
         data: {
           creatorProfileId,
           igUsername: profile.username,
@@ -104,10 +106,18 @@ export async function GET(req: NextRequest) {
           tokenExpiresAt,
           followerCount: profile.followerCount,
           isVerified: true,
-          verifiedAt: new Date(),
+          verifiedAt: refreshedAt,
         },
+        select: { id: true },
       });
-    }
+
+    await recordAccountRefreshSuccess({
+      connectionType: "IG",
+      connectionId: connection.id,
+      audienceCount: profile.followerCount,
+      raw: profile,
+      capturedAt: refreshedAt,
+    });
 
     // Mark creator profile as verified
     await prisma.creatorProfile.update({

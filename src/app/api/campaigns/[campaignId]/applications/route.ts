@@ -9,6 +9,7 @@ import {
   CAMPAIGN_CLOSED_FOR_SUBMISSIONS_MESSAGE,
   isCampaignClosedForSubmissions,
 } from "@/lib/campaign-submission-state";
+import { getSocialAccountSummariesForProfile } from "@/lib/social-account-summary";
 
 export async function GET(
   req: NextRequest,
@@ -87,12 +88,20 @@ export async function POST(
       return NextResponse.json({ error: "Creator profile not found" }, { status: 404 });
     }
 
+    const socialAccounts = await getSocialAccountSummariesForProfile(user.creatorProfile.id);
     const eligibility = evaluateCampaignJoinEligibility(campaign.platforms, {
-      instagram: user.creatorProfile.igConnections.some((c) => c.isVerified),
-      tiktok: user.creatorProfile.ttConnections.some((c) => c.isVerified),
-      youtube: user.creatorProfile.ytConnections.some((c) => c.isVerified),
-      facebook: user.creatorProfile.fbConnections.some((c) => c.isVerified),
+      instagram: socialAccounts.ig.some((c) => c.isVerified),
+      tiktok: socialAccounts.tt.some((c) => c.isVerified),
+      youtube: socialAccounts.yt.some((c) => c.isVerified),
+      facebook: socialAccounts.fb.some((c) => c.isVerified),
     });
+    const followerSnapshot = Math.max(
+      0,
+      ...socialAccounts.ig.map((c) => c.audienceCount ?? 0),
+      ...socialAccounts.fb.map((c) => c.audienceCount ?? 0),
+      ...socialAccounts.yt.map((c) => c.audienceCount ?? 0),
+      ...socialAccounts.tt.map((c) => c.audienceCount ?? 0),
+    );
 
     if (!eligibility.eligible) {
       return NextResponse.json(
@@ -121,7 +130,7 @@ export async function POST(
       data: {
         campaignId,
         creatorProfileId: user.creatorProfile.id,
-        followerSnapshot: user.creatorProfile.totalFollowers,
+        followerSnapshot,
         engagementSnapshot: user.creatorProfile.engagementRate,
         status: "pending",
       },

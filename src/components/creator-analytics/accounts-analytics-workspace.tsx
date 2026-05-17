@@ -55,6 +55,7 @@ import { ContentSubTab } from "@/app/(creator)/creator/connections/_components/s
 import { TimelineSubTab } from "@/app/(creator)/creator/connections/_components/sub-tabs/Timeline";
 import { AudienceSubTab } from "@/app/(creator)/creator/connections/_components/sub-tabs/Audience";
 import { InsightsSubTab } from "@/app/(creator)/creator/connections/_components/sub-tabs/Insights";
+import { getSocialAccountSummariesForProfile } from "@/lib/social-account-summary";
 
 export interface AccountsAnalyticsSearchParams {
   range?: string;
@@ -75,8 +76,11 @@ interface AccountInventory {
   id: string;
   username: string;
   label: string;
-  followerCount: number | null;
-  lastSyncedAt: string | null;
+  audienceCount: number | null;
+  countLabel: "followers" | "subscribers";
+  accountRefreshStatus: string;
+  lastSuccessfulRefreshAt: string | null;
+  lastRefreshErrorMessage: string | null;
   removeButton?: ReactNode;
 }
 
@@ -141,13 +145,13 @@ export async function AccountsAnalyticsWorkspace({
         <AccountMetaRow
           label={acc.label}
           meta={
-            acc.followerCount != null
-              ? `${acc.followerCount.toLocaleString()} ${
-                  scope === "yt" ? "subscribers" : "followers"
-                }`
-              : "No follower snapshot"
+            acc.audienceCount != null
+              ? `${acc.audienceCount.toLocaleString()} ${acc.countLabel}`
+              : "No audience snapshot"
           }
-          lastSyncedAt={acc.lastSyncedAt}
+          refreshStatus={acc.accountRefreshStatus}
+          lastSuccessfulRefreshAt={acc.lastSuccessfulRefreshAt}
+          lastRefreshErrorMessage={acc.lastRefreshErrorMessage}
           removeButton={acc.removeButton}
         />
       );
@@ -200,66 +204,60 @@ async function loadInventory(
   creatorProfileId: string,
   mode: "creator" | "admin",
 ): Promise<AccountsByPlatform> {
-  const [igConnections, fbConnections, ytConnections, ttConnections] = await Promise.all([
-    prisma.creatorIgConnection.findMany({
-      where: { creatorProfileId },
-      orderBy: { createdAt: "desc" },
-    }),
-    prisma.creatorFbConnection.findMany({
-      where: { creatorProfileId },
-      orderBy: { createdAt: "desc" },
-    }),
-    prisma.creatorYtConnection.findMany({
-      where: { creatorProfileId },
-      orderBy: { createdAt: "desc" },
-    }),
-    prisma.creatorTikTokConnection.findMany({
-      where: { creatorProfileId },
-      orderBy: { createdAt: "desc" },
-    }),
-  ]);
-
   const stripAt = (s: string) => s.replace(/^@/, "");
   const canMutate = mode === "creator";
+  const accounts = await getSocialAccountSummariesForProfile(creatorProfileId);
 
   return {
-    ig: igConnections.map((c) => {
-      const handle = stripAt(c.igUsername);
+    ig: accounts.ig.map((c) => {
+      const handle = stripAt(c.handle ?? c.label);
       return {
         id: c.id,
         username: handle,
-        label: `@${handle}`,
-        followerCount: c.followerCount,
-        lastSyncedAt: (c.lastCheckedAt ?? c.verifiedAt)?.toISOString() ?? null,
+        label: c.label,
+        audienceCount: c.audienceCount,
+        countLabel: c.countLabel,
+        accountRefreshStatus: c.accountRefreshStatus,
+        lastSuccessfulRefreshAt: c.lastSuccessfulRefreshAt?.toISOString() ?? null,
+        lastRefreshErrorMessage: c.lastRefreshErrorMessage,
         removeButton: canMutate ? <RemovePageButton connectionId={c.id} label={`@${handle}`} /> : undefined,
       };
     }),
-    tt: ttConnections.map((c) => {
-      const handle = stripAt(c.username);
+    tt: accounts.tt.map((c) => {
+      const handle = stripAt(c.handle ?? c.label);
       return {
         id: c.id,
         username: handle,
-        label: `@${handle}`,
-        followerCount: c.followerCount,
-        lastSyncedAt: (c.lastCheckedAt ?? c.verifiedAt)?.toISOString() ?? null,
+        label: c.label,
+        audienceCount: c.audienceCount,
+        countLabel: c.countLabel,
+        accountRefreshStatus: c.accountRefreshStatus,
+        lastSuccessfulRefreshAt: c.lastSuccessfulRefreshAt?.toISOString() ?? null,
+        lastRefreshErrorMessage: c.lastRefreshErrorMessage,
         removeButton: canMutate ? <RemoveTikTokPageButton connectionId={c.id} label={`@${handle}`} /> : undefined,
       };
     }),
-    fb: fbConnections.map((c) => ({
+    fb: accounts.fb.map((c) => ({
       id: c.id,
-      username: stripAt(c.pageName).replace(/\s+/g, ""),
-      label: c.pageName,
-      followerCount: c.followerCount,
-      lastSyncedAt: (c.lastCheckedAt ?? c.verifiedAt)?.toISOString() ?? null,
-      removeButton: canMutate ? <RemoveFbPageButton connectionId={c.id} label={c.pageName} /> : undefined,
+      username: stripAt(c.label).replace(/\s+/g, ""),
+      label: c.label,
+      audienceCount: c.audienceCount,
+      countLabel: c.countLabel,
+      accountRefreshStatus: c.accountRefreshStatus,
+      lastSuccessfulRefreshAt: c.lastSuccessfulRefreshAt?.toISOString() ?? null,
+      lastRefreshErrorMessage: c.lastRefreshErrorMessage,
+      removeButton: canMutate ? <RemoveFbPageButton connectionId={c.id} label={c.label} /> : undefined,
     })),
-    yt: ytConnections.map((c) => ({
+    yt: accounts.yt.map((c) => ({
       id: c.id,
-      username: stripAt(c.channelName).replace(/\s+/g, ""),
-      label: c.channelName,
-      followerCount: c.subscriberCount,
-      lastSyncedAt: c.updatedAt?.toISOString() ?? null,
-      removeButton: canMutate ? <RemoveYtPageButton connectionId={c.id} label={c.channelName} /> : undefined,
+      username: stripAt(c.label).replace(/\s+/g, ""),
+      label: c.label,
+      audienceCount: c.audienceCount,
+      countLabel: c.countLabel,
+      accountRefreshStatus: c.accountRefreshStatus,
+      lastSuccessfulRefreshAt: c.lastSuccessfulRefreshAt?.toISOString() ?? null,
+      lastRefreshErrorMessage: c.lastRefreshErrorMessage,
+      removeButton: canMutate ? <RemoveYtPageButton connectionId={c.id} label={c.label} /> : undefined,
     })),
   };
 }
@@ -357,9 +355,12 @@ async function renderOverview(args: RenderArgs): Promise<ReactNode> {
       inventory[p].map((a) => ({
         id: a.id,
         label: a.label,
-        followerCount: a.followerCount,
-        lastSyncedAt: a.lastSyncedAt,
+        followerCount: a.audienceCount,
+        lastSyncedAt: a.lastSuccessfulRefreshAt,
         platform: p,
+        accountRefreshStatus: a.accountRefreshStatus,
+        lastRefreshErrorMessage: a.lastRefreshErrorMessage,
+        countLabel: a.countLabel,
       })),
     );
     return (
