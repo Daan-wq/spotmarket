@@ -24,6 +24,8 @@ import {
   CampaignPlatformRow,
   CampaignStatusBadge,
 } from "@/components/campaigns/campaign-display";
+import { AnimateIcon } from "@/components/animate-ui/icons/icon";
+import { ChevronLeft } from "@/components/animate-ui/icons/chevron-left";
 import { evaluateCampaignJoinEligibility } from "@/lib/campaign-eligibility";
 import { isCampaignClosedForSubmissions } from "@/lib/campaign-submission-state";
 import {
@@ -199,12 +201,15 @@ export default async function CampaignDetailPage({
   return (
     <div className="w-full space-y-6 md:space-y-8 md:px-6 md:py-8">
       <div className="flex items-center justify-between gap-3">
-        <Link
-          href="/creator/campaigns"
-          className="text-sm font-medium text-neutral-500 transition hover:text-neutral-950"
-        >
-          {t("back")}
-        </Link>
+        <AnimateIcon animateOnHover asChild>
+          <Link
+            href="/creator/campaigns"
+            className="inline-flex h-10 items-center gap-1.5 rounded-xl border border-neutral-200 bg-white px-4 text-sm font-semibold text-neutral-950 transition hover:bg-neutral-50"
+          >
+            <ChevronLeft className="-ml-1 h-4 w-4" />
+            {t("back")}
+          </Link>
+        </AnimateIcon>
         <Link
           href={`/creator/campaigns/${campaignId}/contact`}
           className="inline-flex h-10 items-center rounded-xl border border-neutral-200 bg-white px-4 text-sm font-semibold text-neutral-950 transition hover:bg-neutral-50"
