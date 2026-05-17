@@ -1,3 +1,4 @@
+import { getTranslations } from "next-intl/server";
 import { AlertBanner } from "@/components/ui/alert-banner";
 import type { ActivationStatus } from "@/lib/activation";
 
@@ -14,6 +15,14 @@ export function DashboardAlerts({
   activation,
   hasUnpaidBalance,
 }: DashboardAlertsProps) {
+  return <DashboardAlertsContent activation={activation} hasUnpaidBalance={hasUnpaidBalance} />;
+}
+
+async function DashboardAlertsContent({
+  activation,
+  hasUnpaidBalance,
+}: DashboardAlertsProps) {
+  const t = await getTranslations("dashboard.creator.alerts");
   const alerts: Array<React.ReactNode> = [];
 
   if (!activation.accountConnected) {
@@ -21,9 +30,9 @@ export function DashboardAlerts({
       <AlertBanner
         key="connect"
         tone="warning"
-        title="Connect a social account to start earning"
-        description="We need a connected account to track your views and match clips to campaigns."
-        cta={{ label: "Connect now", href: "/creator/connections" }}
+        title={t("connect.title")}
+        description={t("connect.description")}
+        cta={{ label: t("connect.cta"), href: "/creator/connections" }}
       />,
     );
   } else if (hasUnpaidBalance && !activation.paymentMethodAdded) {
@@ -31,9 +40,9 @@ export function DashboardAlerts({
       <AlertBanner
         key="payment"
         tone="warning"
-        title="Add a payment method before your next payout"
-        description="You have unpaid earnings, but we don't have a way to send them to you yet."
-        cta={{ label: "Add method", href: "/creator/payouts" }}
+        title={t("payment.title")}
+        description={t("payment.description")}
+        cta={{ label: t("payment.cta"), href: "/creator/payouts" }}
       />,
     );
   }

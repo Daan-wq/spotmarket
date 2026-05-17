@@ -15,6 +15,7 @@ export interface ChecklistItem {
 export interface ActivationChecklistProps {
   title?: string;
   subtitle?: string;
+  progressLabel?: string;
   items: ChecklistItem[];
   className?: string;
 }
@@ -22,6 +23,7 @@ export interface ActivationChecklistProps {
 export function ActivationChecklist({
   title = "Get started",
   subtitle,
+  progressLabel,
   items,
   className,
 }: ActivationChecklistProps) {
@@ -59,7 +61,7 @@ export function ActivationChecklist({
             className="text-xs font-medium"
             style={{ color: "var(--text-secondary)" }}
           >
-            {completed} of {total}
+            {progressLabel ?? `${completed} of ${total}`}
           </p>
           <div
             className="mt-1 h-1.5 w-24 overflow-hidden rounded-full"

@@ -1,31 +1,36 @@
 import Link from "next/link";
+import { getLocale, getTranslations } from "next-intl/server";
+import type { Locale } from "@/i18n/routing";
 import { Badge } from "@/components/ui/badge";
 import PlatformIcon from "@/components/shared/PlatformIcon";
 import { Skeleton } from "@/components/ui/skeleton";
+import { formatCurrencyPrecise, formatShortDate } from "@/lib/admin/agency-format";
 import { CreatorSectionHeader } from "../../_components/creator-journey";
 import { getCreatorActiveCampaigns } from "../_data";
 
 export async function ActiveCampaigns({ profileId }: { profileId: string }) {
+  const locale = (await getLocale()) as Locale;
+  const t = await getTranslations("dashboard.creator.activeCampaigns");
+  const sharedT = await getTranslations("dashboard.shared");
   const rows = await getCreatorActiveCampaigns(profileId);
 
   return (
     <section className="rounded-2xl border border-neutral-200 bg-white p-5 md:p-6">
       <CreatorSectionHeader
-        title="Active campaigns"
-        description="Campaigns you have joined or started. Open one to submit the next clip."
+        title={t("title")}
+        description={t("description")}
       />
       {rows.length === 0 ? (
         <div className="rounded-2xl border border-dashed border-neutral-300 bg-neutral-50 p-8 text-center">
-          <p className="font-semibold text-neutral-950">No active campaigns yet</p>
+          <p className="font-semibold text-neutral-950">{t("emptyTitle")}</p>
           <p className="mt-2 text-sm text-neutral-500">
-            Browse the marketplace and join a campaign that matches your connected
-            accounts.
+            {t("emptyDescription")}
           </p>
           <Link
             href="/creator/campaigns"
             className="mt-4 inline-flex h-11 items-center justify-center rounded-xl bg-neutral-950 px-5 text-sm font-semibold text-white shadow-[0_8px_18px_rgba(0,0,0,0.16)] hover:bg-neutral-800"
           >
-            Browse campaigns
+            {t("browse")}
           </Link>
         </div>
       ) : (
@@ -43,12 +48,13 @@ export async function ActiveCampaigns({ profileId }: { profileId: string }) {
                 <Badge
                   variant={application.status === "active" ? "verified" : "neutral"}
                 >
-                  {application.status}
+                  {sharedT(`statuses.application.${application.status}`)}
                 </Badge>
               </div>
               <div className="mt-3 flex items-center gap-2 text-sm text-neutral-500">
                 <span>
-                  ${(Number(application.campaign.creatorCpv) * 1000).toFixed(2)} CPM
+                  {formatCurrencyPrecise(Number(application.campaign.creatorCpv) * 1000, "USD", locale)}{" "}
+                  {sharedT("units.cpm")}
                 </span>
                 {application.campaign.platforms.length > 0 && (
                   <span className="flex items-center gap-1">
@@ -59,11 +65,7 @@ export async function ActiveCampaigns({ profileId }: { profileId: string }) {
                 )}
               </div>
               <p className="mt-1 text-xs text-neutral-400">
-                Due{" "}
-                {application.campaign.deadline.toLocaleDateString("en-US", {
-                  month: "short",
-                  day: "numeric",
-                })}
+                {t("due", { date: formatShortDate(application.campaign.deadline, locale) })}
               </p>
             </Link>
           ))}

@@ -8,8 +8,11 @@
  * or for new clippers without enough sample size).
  */
 
+import { getLocale, getTranslations } from "next-intl/server";
 import { prisma } from "@/lib/prisma";
 import type { ClipperPerformanceScore } from "@/lib/contracts";
+import type { Locale } from "@/i18n/routing";
+import { formatDate } from "@/lib/admin/agency-format";
 
 interface ScoreCardProps {
   creatorProfileId: string;
@@ -18,19 +21,24 @@ interface ScoreCardProps {
   className?: string;
 }
 
-const COMPONENT_LABELS: Array<{ key: keyof ClipperPerformanceScore; label: string }> = [
-  { key: "approvalRate", label: "Approval rate" },
-  { key: "benchmarkRatio", label: "Vs. campaign benchmark" },
-  { key: "trustScore", label: "Trust" },
-  { key: "deliveryScore", label: "Delivery" },
-  { key: "audienceFit", label: "Audience fit" },
+const COMPONENT_LABELS: Array<{
+  key: keyof ClipperPerformanceScore;
+  translationKey: string;
+}> = [
+  { key: "approvalRate", translationKey: "approvalRate" },
+  { key: "benchmarkRatio", translationKey: "benchmarkRatio" },
+  { key: "trustScore", translationKey: "trustScore" },
+  { key: "deliveryScore", translationKey: "deliveryScore" },
+  { key: "audienceFit", translationKey: "audienceFit" },
 ];
 
-function tierFor(score: number): { label: string; color: string } {
-  if (score >= 80) return { label: "Top performer", color: "#22c55e" };
-  if (score >= 60) return { label: "Strong", color: "#3b82f6" };
-  if (score >= 40) return { label: "Steady", color: "#f59e0b" };
-  return { label: "Building", color: "#94a3b8" };
+type TierKey = "top" | "strong" | "steady" | "building";
+
+function tierFor(score: number): { key: TierKey; color: string } {
+  if (score >= 80) return { key: "top", color: "#22c55e" };
+  if (score >= 60) return { key: "strong", color: "#3b82f6" };
+  if (score >= 40) return { key: "steady", color: "#f59e0b" };
+  return { key: "building", color: "#94a3b8" };
 }
 
 export async function ScoreCard({
@@ -38,6 +46,8 @@ export async function ScoreCard({
   variant = "full",
   className,
 }: ScoreCardProps) {
+  const locale = (await getLocale()) as Locale;
+  const t = await getTranslations("dashboard.creator.score");
   // Read latest score row for this creator. Subsystem B writes these rows.
   // Until B ships, the table will be empty — fall through to empty state.
   const row = await prisma.clipperPerformanceScore.findFirst({
@@ -59,15 +69,14 @@ export async function ScoreCard({
         <div className="flex items-center gap-2 mb-2">
           <ScoreIcon />
           <h3 className="text-sm font-semibold" style={{ color: "var(--text-primary)" }}>
-            Performance Score
+            {t("title")}
           </h3>
         </div>
         <p className="text-sm" style={{ color: "var(--text-secondary)" }}>
-          Your score will appear after a few approved submissions.
+          {t("emptyBody")}
         </p>
         <p className="text-xs mt-1" style={{ color: "var(--text-muted)" }}>
-          We grade you on approval rate, view performance vs. campaign benchmarks,
-          trust, on-time delivery, and audience fit.
+          {t("emptyDetail")}
         </p>
       </div>
     );
@@ -90,14 +99,14 @@ export async function ScoreCard({
         <div className="flex items-center gap-2">
           <ScoreIcon />
           <h3 className="text-sm font-semibold" style={{ color: "var(--text-primary)" }}>
-            Performance Score
+            {t("title")}
           </h3>
         </div>
         <span
           className="text-xs font-semibold px-2 py-0.5 rounded-full"
           style={{ background: `${tier.color}22`, color: tier.color }}
         >
-          {tier.label}
+          {t(`tiers.${tier.key}`)}
         </span>
       </div>
 
@@ -121,7 +130,7 @@ export async function ScoreCard({
                   className="text-xs flex-1"
                   style={{ color: "var(--text-secondary)" }}
                 >
-                  {c.label}
+                  {t(`components.${c.translationKey}`)}
                 </span>
                 <div
                   style={{
@@ -150,8 +159,10 @@ export async function ScoreCard({
             );
           })}
           <p className="text-xs pt-2" style={{ color: "var(--text-muted)" }}>
-            Sample size: {row.sampleSize} · Updated{" "}
-            {new Date(row.computedAt).toLocaleDateString()}
+            {t("sampleUpdated", {
+              sampleSize: row.sampleSize,
+              date: formatDate(row.computedAt, locale),
+            })}
           </p>
         </div>
       )}

@@ -242,5 +242,399 @@
       "search": "Search",
       "signOut": "Log out"
     }
+  },
+  "dashboard": {
+    "shared": {
+      "actions": {
+        "continue": "Continue",
+        "open": "Open"
+      },
+      "units": {
+        "views": "views",
+        "cpm": "CPM"
+      },
+      "statuses": {
+        "application": {
+          "pending": "Pending",
+          "approved": "Approved",
+          "rejected": "Rejected",
+          "active": "Active",
+          "completed": "Completed",
+          "disputed": "Disputed"
+        },
+        "submission": {
+          "PENDING": "Pending",
+          "APPROVED": "Approved",
+          "NEEDS_REVISION": "Needs revision",
+          "REJECTED": "Rejected",
+          "FLAGGED": "Flagged"
+        },
+        "operatingArea": {
+          "live": "Live",
+          "manual": "Manual"
+        }
+      }
+    },
+    "creator": {
+      "page": {
+        "eyebrow": "Creator home",
+        "title": "Good to see you, {name}",
+        "description": "Start with the one thing that needs your attention now."
+      },
+      "welcome": {
+        "prefix": "Welcome"
+      },
+      "drawerSection": {
+        "title": "Open only when needed",
+        "description": "Payouts, campaigns, stats, and recent submissions are still here, but no longer stacked on the dashboard."
+      },
+      "drawers": {
+        "payouts": {
+          "trigger": "Payouts",
+          "title": "Payout summary",
+          "description": "Estimated, pending, and paid earnings."
+        },
+        "campaigns": {
+          "trigger": "Campaigns",
+          "title": "Active campaigns",
+          "description": "Joined or started campaigns."
+        },
+        "snapshot": {
+          "trigger": "Snapshot",
+          "title": "Operating snapshot",
+          "description": "Compact account, campaign, and submission numbers."
+        },
+        "performance": {
+          "trigger": "Performance",
+          "title": "Performance",
+          "description": "Live earnings and creator score."
+        },
+        "submissions": {
+          "trigger": "Recent submissions",
+          "title": "Recent submissions",
+          "description": "Latest clips moving through review, approval, and payout."
+        }
+      },
+      "alerts": {
+        "connect": {
+          "title": "Connect a social account to start earning",
+          "description": "We need a connected account to track your views and match clips to campaigns.",
+          "cta": "Connect now"
+        },
+        "payment": {
+          "title": "Add a payment method before your next payout",
+          "description": "You have unpaid earnings, but we don't have a way to send them to you yet.",
+          "cta": "Add method"
+        }
+      },
+      "nextAction": {
+        "eyebrow": "Next best action",
+        "cta": "Continue",
+        "finishProfile": {
+          "title": "Finish your profile",
+          "detail": "Campaign eligibility starts with a complete profile."
+        },
+        "connectAccount": {
+          "title": "Connect a posting account",
+          "detail": "Connect TikTok, Instagram, YouTube, or Facebook so tracking can work."
+        },
+        "joinCampaign": {
+          "title": "Join a campaign",
+          "detail": "Pick a campaign that matches your platform and payout target."
+        },
+        "checkPendingClips": {
+          "title": "Check pending clips",
+          "detail": "Review status, fixes, and earnings from your submitted clips."
+        },
+        "reviewPayoutStatus": {
+          "title": "Review payout status",
+          "detail": "Approved earnings are ready to track in Payments."
+        },
+        "submitAnotherClip": {
+          "title": "Submit another clip",
+          "detail": "Open a joined campaign and send the next post URL."
+        }
+      },
+      "payoutSummary": {
+        "title": "Payout summary",
+        "description": "Estimated earnings become final after review and payout processing.",
+        "estimated": "Estimated",
+        "pendingFinal": "Pending/final",
+        "paid": "Paid",
+        "openPayments": "Open payments"
+      },
+      "activeCampaigns": {
+        "title": "Active campaigns",
+        "description": "Campaigns you have joined or started. Open one to submit the next clip.",
+        "emptyTitle": "No active campaigns yet",
+        "emptyDescription": "Browse the marketplace and join a campaign that matches your connected accounts.",
+        "browse": "Browse campaigns",
+        "due": "Due {date}"
+      },
+      "operatingSnapshot": {
+        "title": "Operating snapshot",
+        "description": "The numbers stay compact so the next action remains obvious.",
+        "totalEarnings": "Total earnings",
+        "totalEarningsDetail": "Approved creator earnings",
+        "activeCampaigns": "Active campaigns",
+        "activeCampaignsDetail": "Pending, approved, or active",
+        "pendingSubmissions": "Pending submissions",
+        "pendingSubmissionsDetail": "Clips awaiting review",
+        "verifiedPlatforms": "Verified platforms",
+        "allVerified": "All connected pages verified",
+        "readyForTracking": "Pages ready for tracking"
+      },
+      "recentSubmissions": {
+        "title": "Recent submissions",
+        "description": "Latest clips moving through review, approval, and payout.",
+        "campaign": "Campaign",
+        "claimedViews": "Claimed views",
+        "status": "Status",
+        "earned": "Earned",
+        "empty": "No submissions yet"
+      },
+      "liveEarnings": {
+        "title": "Live Earnings",
+        "offline": "Offline",
+        "loading": "Loading...",
+        "updated": "Updated {time}",
+        "estimated": "Estimated",
+        "settled": "Settled",
+        "activeClips": "{count, plural, one {# active clip} other {# active clips}}",
+        "noActiveClips": "No active clips",
+        "settledCount": "{count} settled",
+        "awaitingSettlement": "Awaiting first settlement",
+        "estimatedHelp": "Views x CPV across approved, unsettled clips. Updates as views come in.",
+        "settledHelp": "Locked earnings from settled submissions.",
+        "error": "Could not refresh live earnings - retrying in 60s.",
+        "relative": {
+          "justNow": "just now",
+          "secondsAgo": "{count}s ago",
+          "minutesAgo": "{count}m ago",
+          "hoursAgo": "{count}h ago"
+        }
+      },
+      "score": {
+        "title": "Performance Score",
+        "emptyBody": "Your score will appear after a few approved submissions.",
+        "emptyDetail": "We grade you on approval rate, view performance vs. campaign benchmarks, trust, on-time delivery, and audience fit.",
+        "sampleUpdated": "Sample size: {sampleSize} - Updated {date}",
+        "components": {
+          "approvalRate": "Approval rate",
+          "benchmarkRatio": "Vs. campaign benchmark",
+          "trustScore": "Trust",
+          "deliveryScore": "Delivery",
+          "audienceFit": "Audience fit"
+        },
+        "tiers": {
+          "top": "Top performer",
+          "strong": "Strong",
+          "steady": "Steady",
+          "building": "Building"
+        }
+      },
+      "activation": {
+        "title": "Get started",
+        "subtitle": "Finish these steps to unlock your first payout.",
+        "progress": "{completed} of {total}",
+        "profile": {
+          "label": "Complete your profile",
+          "description": "Add a display name so we can address you.",
+          "cta": "Edit"
+        },
+        "account": {
+          "label": "Connect a social account",
+          "description": "Connected accounts unlock campaigns and let us track your views.",
+          "cta": "Connect"
+        },
+        "clip": {
+          "label": "Submit your first clip",
+          "description": "Pick a campaign you've joined and submit a clip URL.",
+          "cta": "Browse campaigns"
+        },
+        "payment": {
+          "label": "Add a payment method",
+          "description": "Required before your first payout - you can do this later.",
+          "cta": "Add"
+        },
+        "approval": {
+          "label": "Get your first approved clip",
+          "description": "Once a clip is reviewed and approved, you start earning per verified view."
+        }
+      }
+    },
+    "admin": {
+      "header": {
+        "eyebrow": "Agency OS",
+        "title": "Command Center",
+        "description": "Start here for the next operator move, then open details only when you need them.",
+        "newLead": "New lead"
+      },
+      "sections": {
+        "actionQueue": {
+          "title": "Daily Action Queue",
+          "description": "Sorted by operational urgency, not by menu order."
+        },
+        "coreNumbers": {
+          "title": "Core numbers",
+          "description": "The first strip stays small; deeper reporting opens from Reports.",
+          "action": "View weekly numbers"
+        },
+        "drillIns": {
+          "title": "Drill-ins",
+          "description": "Open the specific area when the daily queue points there."
+        }
+      },
+      "queue": {
+        "labels": {
+          "leads": "Leads",
+          "onboarding": "Onboarding",
+          "production": "Production",
+          "review": "Review",
+          "money": "Money",
+          "guide": "Guide",
+          "risk": "Risk",
+          "clear": "Clear"
+        },
+        "followUps": {
+          "title": "{count, plural, one {Follow up with # brand lead} other {Follow up with # brand leads}}",
+          "detail": "Lead follow-ups are due now. Move the lead, book the call, or keep it warm."
+        },
+        "onboarding": {
+          "title": "{count, plural, one {# onboarding checklist blocked} other {# onboarding checklists blocked}}",
+          "detail": "Contract, payment, brief, assets, audience, and assigned clippers must be complete before production."
+        },
+        "overdue": {
+          "title": "{count, plural, one {# overdue production assignment} other {# overdue production assignments}}",
+          "detail": "Production starts at assigned clip, not after the creator submits. Clear overdue work first."
+        },
+        "review": {
+          "title": "{count, plural, one {Review # clip} other {Review # clips}}",
+          "detail": "{missingLogo, plural, one {# missing-logo item} other {# missing-logo items}}, {revisionAssignments, plural, one {# revision assignment} other {# revision assignments}}."
+        },
+        "payout": {
+          "title": "Close the payout loop",
+          "detail": "{payoutRuns, plural, one {# payout run} other {# payout runs}} in progress, {amount} owed from legacy payouts."
+        },
+        "guide": {
+          "title": "{count, plural, one {# guide needs review} other {# guides need review}}",
+          "detail": "Keep sales, onboarding, recruitment, production, clip review, payouts, and reporting guides current."
+        },
+        "risk": {
+          "title": "{count, plural, one {Resolve # open risk signal} other {Resolve # open risk signals}}",
+          "detail": "{critical} critical, {tokenBroken} token-related. These feed delivery risk."
+        },
+        "empty": {
+          "title": "No urgent blockers",
+          "detail": "Use the pipeline strip and weekly numbers to decide the next sales, production, or payout move."
+        }
+      },
+      "metrics": {
+        "revenue": {
+          "label": "Revenue",
+          "detail": "Booked this month"
+        },
+        "expectedRevenue": {
+          "label": "Expected revenue",
+          "detail": "Campaign deadlines next month"
+        },
+        "activeBrands": {
+          "label": "Active brands",
+          "detail": "{amount} open pipeline"
+        },
+        "activeClippers": {
+          "label": "Active clippers",
+          "detail": "{count, plural, one {# clip due or in progress} other {# clips due or in progress}}"
+        },
+        "clipApprovals": {
+          "label": "Clip approvals",
+          "detail": "Approved / revised this week"
+        },
+        "payoutsOwed": {
+          "label": "Payouts owed",
+          "detail": "Legacy payout obligations"
+        },
+        "estimatedProfit": {
+          "label": "Estimated profit",
+          "detail": "Booked minus creator cost and open payouts"
+        },
+        "risk": {
+          "label": "Risk",
+          "value": "{count} open",
+          "detail": "{count, plural, one {# broken token signal} other {# broken token signals}}"
+        }
+      },
+      "pipeline": {
+        "lead": "Lead",
+        "onboarding": "Onboarding",
+        "campaign": "Campaign",
+        "production": "Production",
+        "review": "Clip review",
+        "payouts": "Payouts",
+        "reports": "Reports"
+      },
+      "drillIns": {
+        "pipelineTitle": "Pipeline",
+        "usefulAreasTitle": "Useful areas",
+        "deliveryRiskTitle": "Delivery risk",
+        "noRisk": "No campaign pace risks in the next 7 days.",
+        "capturedViews": "{captured} / {goal} views captured.",
+        "weeklyClose": {
+          "title": "Weekly close",
+          "detail": "Confirm approved clips, finalize payout runs, then log guide updates before the next reporting cycle."
+        },
+        "openClipReview": "Open clip review"
+      },
+      "operatingAreas": {
+        "commandCenter": {
+          "name": "Command Center",
+          "detail": "Today first view of work, money, and risk"
+        },
+        "leads": {
+          "name": "Leads",
+          "detail": "Lead pipeline, follow-ups, owner, and value"
+        },
+        "brandOnboarding": {
+          "name": "Brand Onboarding",
+          "detail": "Contract, payment, brief, assets, and assigned clippers"
+        },
+        "clipperDatabase": {
+          "name": "Clipper Database",
+          "detail": "Creator profiles, operations, capacity, and assigned brands"
+        },
+        "recruitmentPipeline": {
+          "name": "Recruitment Pipeline",
+          "detail": "Candidates, trials, scores, and approvals"
+        },
+        "contentProduction": {
+          "name": "Content Production",
+          "detail": "Assignments, due dates, revisions, and submissions"
+        },
+        "clipReview": {
+          "name": "Clip Review",
+          "detail": "Scorecards, logo review, approvals, and signals"
+        },
+        "payouts": {
+          "name": "Payouts",
+          "detail": "Creator payout obligations and history"
+        },
+        "pricing": {
+          "name": "Pricing",
+          "detail": "Reusable package templates for brand and campaign planning"
+        },
+        "documents": {
+          "name": "Documents",
+          "detail": "Contracts, briefs, owners, links, and renewal dates"
+        },
+        "guides": {
+          "name": "Guides",
+          "detail": "Searchable operating guides with review owners"
+        },
+        "weeklyNumbers": {
+          "name": "Weekly Numbers",
+          "detail": "Saved weekly review snapshots from live data"
+        }
+      }
+    }
   }
 }
