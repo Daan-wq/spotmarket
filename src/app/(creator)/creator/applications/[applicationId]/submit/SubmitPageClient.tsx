@@ -30,6 +30,7 @@ interface Props {
   connections: Record<Platform, Connection[]>;
   campaign: Campaign;
   initialSubmittedUrls: string[];
+  isClosedForSubmissions: boolean;
   /** When set, the client tries to find this post in the grid and pre-select it. */
   prefillUrl?: string | null;
   prefillPlatform?: Platform | null;
@@ -60,6 +61,7 @@ export default function SubmitPageClient({
   connections,
   campaign,
   initialSubmittedUrls,
+  isClosedForSubmissions,
   prefillUrl,
   prefillPlatform,
 }: Props) {
@@ -329,6 +331,7 @@ export default function SubmitPageClient({
   }, [currentPosts, searchQuery, dateFilter]);
 
   const togglePost = (post: NormalizedPost) => {
+    if (isClosedForSubmissions) return;
     const k = keyOf(post);
     if (submittedKeys.has(k)) return;
     setSelectedKeys((prev) => {
@@ -340,6 +343,7 @@ export default function SubmitPageClient({
   };
 
   const submitOne = async (post: NormalizedPost) => {
+    if (isClosedForSubmissions) return;
     const k = keyOf(post);
     if (submittedKeys.has(k)) return;
     if (submitInFlightRef.current) return;
@@ -384,6 +388,7 @@ export default function SubmitPageClient({
   };
 
   const submitSelected = async () => {
+    if (isClosedForSubmissions) return;
     if (selectedKeys.size === 0) return;
     if (submitInFlightRef.current) return;
     submitInFlightRef.current = true;
@@ -439,6 +444,8 @@ export default function SubmitPageClient({
   const connectPromptName = connectPromptPlatform
     ? PLATFORM_NAMES[connectPromptPlatform]
     : null;
+  const submitSelectedDisabled =
+    isClosedForSubmissions || selectedKeys.size === 0 || submitting;
 
   return (
     <div className="w-full md:p-6">
@@ -463,6 +470,12 @@ export default function SubmitPageClient({
           style={{ background: "rgba(34,197,94,0.1)", color: "#22c55e" }}
         >
           {success}
+        </div>
+      )}
+
+      {isClosedForSubmissions && (
+        <div className="mb-4 rounded-lg border border-neutral-200 bg-neutral-50 p-3 text-sm text-neutral-600">
+          This campaign has ended and no longer accepts submissions.
         </div>
       )}
 
@@ -550,9 +563,12 @@ export default function SubmitPageClient({
           />
           <button
             onClick={submitSelected}
-            disabled={selectedKeys.size === 0 || submitting}
-            className="flex items-center justify-center gap-1.5 rounded-lg px-4 py-2 text-sm font-medium transition-all disabled:opacity-30 cursor-pointer"
-            style={{ background: "var(--primary)", color: "#fff" }}
+            disabled={submitSelectedDisabled}
+            className="flex items-center justify-center gap-1.5 rounded-lg px-4 py-2 text-sm font-medium transition-all disabled:cursor-not-allowed disabled:opacity-100"
+            style={{
+              background: isClosedForSubmissions ? "#e5e5e5" : "var(--primary)",
+              color: isClosedForSubmissions ? "var(--text-muted)" : "#fff",
+            }}
           >
             {submitting
               ? "Submitting…"
@@ -598,6 +614,7 @@ export default function SubmitPageClient({
             requiredHashtags={campaign.requiredHashtags}
             hasConnectedAccount={activeConnections.length > 0}
             platform={activePlatform}
+            isSubmissionDisabled={isClosedForSubmissions}
             onToggle={togglePost}
             onSubmitOne={submitOne}
           />

@@ -6,6 +6,7 @@ import {
   evaluateCampaignJoinEligibility,
   formatPlatformList,
 } from "@/lib/campaign-eligibility";
+import { isCampaignClosedForSubmissions } from "@/lib/campaign-submission-state";
 
 export default async function CampaignsPage() {
   const { userId: supabaseId } = await requireAuth("creator");
@@ -178,6 +179,10 @@ export default async function CampaignsPage() {
       createdAtIso: c.createdAt.toISOString(),
       eligibility,
       applicationId,
+      closedForSubmissions: isCampaignClosedForSubmissions({
+        status: c.status,
+        deadline: c.deadline,
+      }),
     };
   }
 

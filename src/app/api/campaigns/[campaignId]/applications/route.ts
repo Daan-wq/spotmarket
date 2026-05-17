@@ -5,6 +5,10 @@ import {
   buildConnectRequiredMessage,
   evaluateCampaignJoinEligibility,
 } from "@/lib/campaign-eligibility";
+import {
+  CAMPAIGN_CLOSED_FOR_SUBMISSIONS_MESSAGE,
+  isCampaignClosedForSubmissions,
+} from "@/lib/campaign-submission-state";
 
 export async function GET(
   req: NextRequest,
@@ -51,6 +55,18 @@ export async function POST(
 
     if (!campaign) {
       return NextResponse.json({ error: "Campaign not found" }, { status: 404 });
+    }
+
+    if (
+      isCampaignClosedForSubmissions({
+        status: campaign.status,
+        deadline: campaign.deadline,
+      })
+    ) {
+      return NextResponse.json(
+        { error: CAMPAIGN_CLOSED_FOR_SUBMISSIONS_MESSAGE },
+        { status: 400 },
+      );
     }
 
     const user = await prisma.user.findUnique({

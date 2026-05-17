@@ -410,6 +410,7 @@ async function renderContent(args: RenderArgs): Promise<ReactNode> {
         applicationId: a.applicationId,
         campaignName: a.campaignName,
         status: a.status,
+        closedForSubmissions: a.closedForSubmissions,
       }));
 
   function connsFor(p: "ig" | "tt" | "fb"): OauthConnectionInput[] {

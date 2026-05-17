@@ -9,6 +9,7 @@ interface Props {
   isSubmitted: boolean;
   isEligible: boolean;
   isSubmittingOne: boolean;
+  isSubmissionDisabled: boolean;
   onToggle: () => void;
   onSubmitOne: () => void;
 }
@@ -19,22 +20,25 @@ export default function PostCard({
   isSubmitted,
   isEligible,
   isSubmittingOne,
+  isSubmissionDisabled,
   onToggle,
   onSubmitOne,
 }: Props) {
   const showHover = !isSubmitted && !isSelected;
+  const disabled = isSubmitted || isSubmissionDisabled;
 
   return (
     <div
       role="button"
-      tabIndex={isSubmitted ? -1 : 0}
+      tabIndex={disabled ? -1 : 0}
       aria-pressed={isSelected}
+      aria-disabled={disabled}
       onClick={() => {
-        if (isSubmitted) return;
+        if (disabled) return;
         onToggle();
       }}
       onKeyDown={(e) => {
-        if (isSubmitted) return;
+        if (disabled) return;
         if (e.key === "Enter" || e.key === " ") {
           e.preventDefault();
           onToggle();
@@ -44,8 +48,8 @@ export default function PostCard({
       style={{
         aspectRatio: "1",
         border: isSelected ? "3px solid var(--primary)" : "2px solid var(--border)",
-        opacity: isSubmitted ? 0.5 : isSelected ? 1 : 0.95,
-        cursor: isSubmitted ? "default" : "pointer",
+        opacity: disabled ? 0.5 : isSelected ? 1 : 0.95,
+        cursor: disabled ? "default" : "pointer",
       }}
     >
       <ClipThumbnail
@@ -130,15 +134,18 @@ export default function PostCard({
             </a>
             <button
               type="button"
-              disabled={isSubmittingOne}
+              disabled={isSubmittingOne || isSubmissionDisabled}
               onClick={(e) => {
                 e.stopPropagation();
-                if (isSubmittingOne) return;
+                if (isSubmittingOne || isSubmissionDisabled) return;
                 onSubmitOne();
               }}
               onKeyDown={(e) => e.stopPropagation()}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors disabled:opacity-60"
-              style={{ background: "var(--primary)", color: "#fff" }}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-100"
+              style={{
+                background: isSubmissionDisabled ? "#e5e5e5" : "var(--primary)",
+                color: isSubmissionDisabled ? "var(--text-muted)" : "#fff",
+              }}
             >
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
                 <line x1="22" y1="2" x2="11" y2="13" />

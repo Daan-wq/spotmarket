@@ -112,6 +112,11 @@ export function ContentTable({
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
   const [pageIndex, setPageIndex] = useState(0);
   const [pickerRow, setPickerRow] = useState<ContentRow | null>(null);
+  const hasSubmittableApplications = applications.some(
+    (app) => !app.closedForSubmissions,
+  );
+  const canOpenApplicationPicker =
+    applications.length === 0 || hasSubmittableApplications;
 
   const sorted = useMemo(() => {
     const col = statCols.find((c) => c.key === sortKey);
@@ -234,11 +239,18 @@ export function ContentTable({
                   ) : (
                     <button
                       type="button"
+                      disabled={!canOpenApplicationPicker}
                       onClick={(e) => {
                         e.stopPropagation();
+                        if (!canOpenApplicationPicker) return;
                         setPickerRow(row);
                       }}
-                      className="inline-flex items-center gap-1 rounded-full border border-neutral-300 bg-white px-2.5 py-1 text-xs font-semibold text-neutral-700 transition-colors hover:border-neutral-950 hover:text-neutral-950"
+                      className="inline-flex items-center gap-1 rounded-full border border-neutral-300 bg-white px-2.5 py-1 text-xs font-semibold text-neutral-700 transition-colors hover:border-neutral-950 hover:text-neutral-950 disabled:cursor-not-allowed disabled:border-neutral-200 disabled:bg-neutral-100 disabled:text-neutral-400 disabled:hover:border-neutral-200 disabled:hover:text-neutral-400"
+                      title={
+                        canOpenApplicationPicker
+                          ? "Submit for Campaign"
+                          : "No campaigns are accepting submissions"
+                      }
                     >
                       <span aria-hidden>+</span>
                       Submit for Campaign

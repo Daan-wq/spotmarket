@@ -2,6 +2,7 @@ import Link from "next/link";
 import { requireAuth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { notFound } from "next/navigation";
+import { isCampaignClosedForSubmissions } from "@/lib/campaign-submission-state";
 
 export default async function ApplicationDetailPage({
   params,
@@ -34,6 +35,10 @@ export default async function ApplicationDetailPage({
     if (status === "REJECTED" || status === "rejected") return "#ef4444";
     return "#64748b";
   };
+  const isClosedForSubmissions = isCampaignClosedForSubmissions({
+    status: application.campaign.status,
+    deadline: application.campaign.deadline,
+  });
 
   return (
     <div className="w-full space-y-6 md:p-6">
@@ -108,17 +113,30 @@ export default async function ApplicationDetailPage({
       </div>
 
       {/* New Submission Button */}
-      <Link href={`/creator/applications/${applicationId}/submit`}>
+      {isClosedForSubmissions ? (
         <button
-          className="w-full rounded-xl px-6 py-3 font-medium md:w-auto"
+          type="button"
+          disabled
+          className="w-full cursor-not-allowed rounded-xl px-6 py-3 font-medium text-neutral-500 md:w-auto"
           style={{
-            background: "var(--primary)",
-            color: "#fff",
+            background: "#e5e5e5",
           }}
         >
           Submit Views
         </button>
-      </Link>
+      ) : (
+        <Link href={`/creator/applications/${applicationId}/submit`}>
+          <button
+            className="w-full rounded-xl px-6 py-3 font-medium md:w-auto"
+            style={{
+              background: "var(--primary)",
+              color: "#fff",
+            }}
+          >
+            Submit Views
+          </button>
+        </Link>
+      )}
 
       {/* Submissions List */}
       <div

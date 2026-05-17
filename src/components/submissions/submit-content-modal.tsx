@@ -8,6 +8,7 @@ interface SubmitContentModalProps {
   applicationId: string;
   campaignName: string;
   onClose: () => void;
+  isClosedForSubmissions?: boolean;
 }
 
 const VALID_URL_PATTERNS = [
@@ -25,6 +26,7 @@ export function SubmitContentModal({
   applicationId,
   campaignName,
   onClose,
+  isClosedForSubmissions = false,
 }: SubmitContentModalProps) {
   const router = useRouter();
   const [, startTransition] = useTransition();
@@ -55,18 +57,25 @@ export function SubmitContentModal({
     e.preventDefault();
     e.stopPropagation();
     setDragActive(false);
+    if (isClosedForSubmissions) return;
     const file = e.dataTransfer.files?.[0];
     if (file && file.type.startsWith("video/")) {
       setVideoFile(file);
     }
-  }, []);
+  }, [isClosedForSubmissions]);
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (isClosedForSubmissions) return;
     const file = e.target.files?.[0];
     if (file) setVideoFile(file);
   };
 
   const handleSubmit = async () => {
+    if (isClosedForSubmissions) {
+      setError("This campaign has ended and no longer accepts submissions.");
+      return;
+    }
+
     if (!postUrl.trim() && !videoFile) {
       setError("Please provide a social media post URL or upload a video.");
       return;
@@ -174,8 +183,9 @@ export function SubmitContentModal({
               </button>
               <button
                 onClick={handleSubmit}
-                className="px-4 py-2 rounded-lg text-sm font-medium text-white cursor-pointer"
-                style={{ background: "#F59E0B" }}
+                disabled={isClosedForSubmissions}
+                className="px-4 py-2 rounded-lg text-sm font-medium text-white cursor-pointer disabled:cursor-not-allowed disabled:opacity-50"
+                style={{ background: isClosedForSubmissions ? "#e5e5e5" : "#F59E0B" }}
               >
                 Yes, Resubmit
               </button>
@@ -206,6 +216,7 @@ export function SubmitContentModal({
           </label>
           <input
             type="url"
+            disabled={isClosedForSubmissions}
             placeholder="https://www.instagram.com/reel/234567890"
             value={postUrl}
             onChange={(e) => { setPostUrl(e.target.value); setDuplicateWarning(false); }}
@@ -224,7 +235,7 @@ export function SubmitContentModal({
             Video Upload
           </label>
           <div
-            className="relative rounded-lg p-8 text-center cursor-pointer transition-colors"
+            className="relative rounded-lg p-8 text-center transition-colors"
             style={{
               border: `2px dashed ${dragActive ? "var(--primary)" : "var(--border-default)"}`,
               background: dragActive ? "var(--accent-bg)" : "var(--bg-primary)",
@@ -233,12 +244,15 @@ export function SubmitContentModal({
             onDragLeave={handleDrag}
             onDragOver={handleDrag}
             onDrop={handleDrop}
-            onClick={() => fileInputRef.current?.click()}
+            onClick={() => {
+              if (!isClosedForSubmissions) fileInputRef.current?.click();
+            }}
           >
             <input
               ref={fileInputRef}
               type="file"
               accept="video/*"
+              disabled={isClosedForSubmissions}
               onChange={handleFileSelect}
               className="hidden"
             />
@@ -307,10 +321,13 @@ export function SubmitContentModal({
         {/* Submit button */}
         <button
           onClick={handleSubmit}
-          disabled={loading}
-          className="w-full py-3 rounded-xl text-sm font-semibold text-white transition-all cursor-pointer disabled:opacity-50"
+          disabled={loading || isClosedForSubmissions}
+          className="w-full py-3 rounded-xl text-sm font-semibold transition-all cursor-pointer disabled:cursor-not-allowed disabled:opacity-100"
           style={{
-            background: "linear-gradient(135deg, var(--primary), var(--primary-hover))",
+            background: isClosedForSubmissions
+              ? "#e5e5e5"
+              : "linear-gradient(135deg, var(--primary), var(--primary-hover))",
+            color: isClosedForSubmissions ? "var(--text-muted)" : "#fff",
           }}
         >
           {loading ? "Submitting..." : "Submit"}

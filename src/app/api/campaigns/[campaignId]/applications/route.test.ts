@@ -36,6 +36,8 @@ describe("POST /api/campaigns/[campaignId]/applications", () => {
       id: "campaign-1",
       createdByUserId: "admin-user-1",
       platforms: ["TIKTOK"],
+      status: "active",
+      deadline: new Date("2026-06-17T00:00:00.000Z"),
     });
     routeMocks.userFindUnique.mockResolvedValue({
       id: "creator-user-1",
@@ -133,6 +135,8 @@ describe("POST /api/campaigns/[campaignId]/applications", () => {
         id: "campaign-1",
         createdByUserId: "admin-user-1",
         platforms: [platform],
+        status: "active",
+        deadline: new Date("2026-06-17T00:00:00.000Z"),
       });
       routeMocks.userFindUnique.mockResolvedValueOnce({
         id: "creator-user-1",
@@ -177,6 +181,8 @@ describe("POST /api/campaigns/[campaignId]/applications", () => {
       id: "campaign-1",
       createdByUserId: "admin-user-1",
       platforms: ["YOUTUBE_SHORTS"],
+      status: "active",
+      deadline: new Date("2026-06-17T00:00:00.000Z"),
     });
 
     const response = await POST(
@@ -196,6 +202,30 @@ describe("POST /api/campaigns/[campaignId]/applications", () => {
     expect(body.error).not.toMatch(/bio/i);
     expect(body.error).not.toBe("Creator bio must be verified first");
     expect(response.status).toBe(400);
+    expect(routeMocks.applicationCreate).not.toHaveBeenCalled();
+  });
+
+  it("rejects applying after a campaign deadline has passed", async () => {
+    routeMocks.campaignFindUnique.mockResolvedValueOnce({
+      id: "campaign-1",
+      createdByUserId: "admin-user-1",
+      platforms: ["TIKTOK"],
+      status: "active",
+      deadline: new Date("2020-01-01T00:00:00.000Z"),
+    });
+
+    const response = await POST(
+      new Request("https://app.test/api/campaigns/campaign-1/applications", {
+        method: "POST",
+      }) as never,
+      params,
+    );
+
+    expect(response.status).toBe(400);
+    await expect(response.json()).resolves.toEqual({
+      error: "This campaign has ended and no longer accepts submissions.",
+    });
+    expect(routeMocks.userFindUnique).not.toHaveBeenCalled();
     expect(routeMocks.applicationCreate).not.toHaveBeenCalled();
   });
 });

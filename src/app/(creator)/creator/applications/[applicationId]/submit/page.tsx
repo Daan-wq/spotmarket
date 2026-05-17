@@ -2,6 +2,7 @@ import { requireAuth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { notFound } from "next/navigation";
 import SubmitPageClient from "./SubmitPageClient";
+import { isCampaignClosedForSubmissions } from "@/lib/campaign-submission-state";
 
 export default async function SubmitPage({
   params,
@@ -27,6 +28,8 @@ export default async function SubmitPage({
       campaign: {
         select: {
           name: true,
+          status: true,
+          deadline: true,
           startsAt: true,
           requiredHashtags: true,
           requirements: true,
@@ -82,6 +85,10 @@ export default async function SubmitPage({
         requiredHashtags: application.campaign.requiredHashtags,
         requirements: application.campaign.requirements ?? null,
       }}
+      isClosedForSubmissions={isCampaignClosedForSubmissions({
+        status: application.campaign.status,
+        deadline: application.campaign.deadline,
+      })}
       initialSubmittedUrls={submissions.map((s) => s.postUrl)}
       prefillUrl={sp.prefillUrl ?? null}
       prefillPlatform={prefillPlatform}
