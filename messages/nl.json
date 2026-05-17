@@ -130,6 +130,78 @@
     "description": "Je hebt geen toestemming om deze pagina te bekijken.",
     "home": "Naar start"
   },
+  "creatorSettings": {
+    "metadata": {
+      "title": "Instellingen"
+    },
+    "fallbackCreator": "Creator",
+    "header": {
+      "eyebrow": "Voorkeuren",
+      "title": "Instellingen",
+      "description": "Beheer je profiel en accountvoorkeuren"
+    },
+    "stats": {
+      "accounts": {
+        "label": "Accounts",
+        "noneValue": "Geen geverifieerde accounts",
+        "noneDetail": "Koppel een social account om campagnes te joinen.",
+        "connectedValue": "{count, plural, one {# geverifieerd account} other {# geverifieerde accounts}}",
+        "connectedDetail": "{platforms} klaar voor campagnes."
+      },
+      "joined": {
+        "label": "Aangemeld"
+      },
+      "login": {
+        "label": "Login",
+        "connected": "Verbonden",
+        "connectedAccount": "Verbonden account"
+      }
+    },
+    "language": {
+      "title": "Taal",
+      "description": "Kies de dashboardtaal voor deze browser. De instelling wordt direct opgeslagen.",
+      "ariaLabel": "Dashboardtaal",
+      "saved": "Taal bijgewerkt.",
+      "error": "Taal kon niet worden bijgewerkt."
+    },
+    "profile": {
+      "title": "Profiel",
+      "about": "Over",
+      "emptyBio": "Nog geen bio. Voeg er een toe om anderen iets over jezelf te vertellen."
+    },
+    "profileForm": {
+      "saved": "Opgeslagen",
+      "saveFailed": "Wijzigingen konden niet worden opgeslagen.",
+      "displayName": {
+        "label": "Weergavenaam",
+        "helper": "De naam die op je dashboard, profiel en leaderboards staat."
+      },
+      "bio": {
+        "label": "Bio",
+        "helper": "Een korte zin over het soort clips dat je maakt. Maximaal 280 tekens.",
+        "count": "{count} / 280"
+      },
+      "wallet": {
+        "label": "USDT-wallet (TRC-20)",
+        "helper": "Waar je uitbetalingen standaard naartoe worden gestuurd. Begint met T.",
+        "placeholder": "T..."
+      },
+      "saveChanges": "Wijzigingen opslaan"
+    },
+    "account": {
+      "title": "Accountgegevens",
+      "email": "E-mail",
+      "joined": "Aangemeld",
+      "loginMethod": "Loginmethode",
+      "userId": "Gebruikers-ID"
+    },
+    "danger": {
+      "title": "Gevarenzone",
+      "description": "Deze acties kunnen niet ongedaan worden gemaakt.",
+      "deleteTitle": "Account verwijderen",
+      "deleteDescription": "Verwijder je account en alle gekoppelde data permanent."
+    }
+  },
   "navigation": {
     "creatorNav": {
       "campaigns": "Campagnes",

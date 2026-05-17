@@ -130,6 +130,78 @@
     "description": "You don't have permission to view this page.",
     "home": "Go home"
   },
+  "creatorSettings": {
+    "metadata": {
+      "title": "Settings"
+    },
+    "fallbackCreator": "Creator",
+    "header": {
+      "eyebrow": "Preferences",
+      "title": "Settings",
+      "description": "Manage your profile and account preferences"
+    },
+    "stats": {
+      "accounts": {
+        "label": "Accounts",
+        "noneValue": "No verified accounts",
+        "noneDetail": "Connect a social account to join campaigns.",
+        "connectedValue": "{count, plural, one {# verified account} other {# verified accounts}}",
+        "connectedDetail": "{platforms} ready for campaigns."
+      },
+      "joined": {
+        "label": "Joined"
+      },
+      "login": {
+        "label": "Login",
+        "connected": "Connected",
+        "connectedAccount": "Connected account"
+      }
+    },
+    "language": {
+      "title": "Language",
+      "description": "Choose the dashboard language for this browser. The setting is saved immediately.",
+      "ariaLabel": "Dashboard language",
+      "saved": "Language updated.",
+      "error": "Could not update language."
+    },
+    "profile": {
+      "title": "Profile",
+      "about": "About",
+      "emptyBio": "No bio yet. Add one to tell others about yourself."
+    },
+    "profileForm": {
+      "saved": "Saved",
+      "saveFailed": "Could not save changes.",
+      "displayName": {
+        "label": "Display name",
+        "helper": "The name that shows on your dashboard, profile, and leaderboards."
+      },
+      "bio": {
+        "label": "Bio",
+        "helper": "A short line about the kind of clips you make. Up to 280 characters.",
+        "count": "{count} / 280"
+      },
+      "wallet": {
+        "label": "USDT wallet (TRC-20)",
+        "helper": "Where your withdrawals will be sent by default. Starts with T.",
+        "placeholder": "T..."
+      },
+      "saveChanges": "Save changes"
+    },
+    "account": {
+      "title": "Account info",
+      "email": "Email",
+      "joined": "Joined",
+      "loginMethod": "Login method",
+      "userId": "User ID"
+    },
+    "danger": {
+      "title": "Danger zone",
+      "description": "These actions are irreversible.",
+      "deleteTitle": "Delete account",
+      "deleteDescription": "Permanently delete your account and all associated data."
+    }
+  },
   "navigation": {
     "creatorNav": {
       "campaigns": "Campaigns",

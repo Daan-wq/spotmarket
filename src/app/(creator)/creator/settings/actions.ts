@@ -1,13 +1,44 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { cookies } from "next/headers";
 import { requireAuth } from "@/lib/auth";
+import {
+  isLocale,
+  LOCALE_COOKIE_MAX_AGE,
+  LOCALE_COOKIE_NAME,
+  type Locale,
+} from "@/i18n/routing";
 import { prisma } from "@/lib/prisma";
 import { isValidTronAddress } from "@/lib/validation/tron";
 
 export interface UpdateProfileResult {
   ok: boolean;
   error?: string;
+}
+
+export interface UpdateLocaleResult {
+  ok: boolean;
+  error?: string;
+}
+
+export async function updateCreatorLocale(locale: Locale): Promise<UpdateLocaleResult> {
+  await requireAuth("creator");
+
+  if (!isLocale(locale)) {
+    return { ok: false, error: "Unsupported language." };
+  }
+
+  const cookieStore = await cookies();
+  cookieStore.set(LOCALE_COOKIE_NAME, locale, {
+    maxAge: LOCALE_COOKIE_MAX_AGE,
+    sameSite: "lax",
+    path: "/",
+  });
+
+  revalidatePath("/creator/settings");
+
+  return { ok: true };
 }
 
 export async function updateCreatorProfile(formData: FormData): Promise<UpdateProfileResult> {
