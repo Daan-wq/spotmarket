@@ -9,14 +9,17 @@ import { updateCreatorProfile } from "../actions";
 interface ProfileEditFormProps {
   initialDisplayName: string;
   initialBio: string;
+  initialTronsAddress: string;
 }
 
 export function ProfileEditForm({
   initialDisplayName,
   initialBio,
+  initialTronsAddress,
 }: ProfileEditFormProps) {
   const [displayName, setDisplayName] = useState(initialDisplayName);
   const [bio, setBio] = useState(initialBio);
+  const [tronsAddress, setTronsAddress] = useState(initialTronsAddress);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
   const [pending, startTransition] = useTransition();
@@ -76,6 +79,20 @@ export function ProfileEditForm({
         >
           {t("bio.count", { count: bio.length })}
         </p>
+      </Field>
+
+      <Field
+        label={t("wallet.label")}
+        helper={t("wallet.helper")}
+      >
+        <input
+          name="tronsAddress"
+          value={tronsAddress}
+          onChange={(e) => setTronsAddress(e.target.value)}
+          placeholder={t("wallet.placeholder")}
+          className="form-input"
+          style={inputStyle}
+        />
       </Field>
 
       <div>
