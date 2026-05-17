@@ -261,6 +261,11 @@ summary {
   display: none;
 }
 
+.daily-views-chart .recharts-wrapper,
+.daily-views-chart .recharts-surface {
+  outline: none;
+}
+
 ::-webkit-scrollbar {
   width: 6px;
 }
