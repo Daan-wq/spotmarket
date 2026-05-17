@@ -160,7 +160,7 @@ export function AccountsWorkspace({
         className="flex flex-col gap-3 border-b px-4 py-3 md:flex-row md:items-center md:justify-between md:px-5 md:py-0"
         style={{ borderColor: "var(--border)" }}
       >
-        <div className="flex w-full gap-0.5 overflow-x-auto md:w-auto" role="tablist">
+        <div className="scrollbar-none flex w-full gap-0.5 overflow-x-auto overflow-y-hidden md:w-auto" role="tablist">
           {visibleSubTabs.map((tab) => {
             const isActive = tab === subTab;
             return (
