@@ -10,7 +10,6 @@ import {
   type Locale,
 } from "@/i18n/routing";
 import { prisma } from "@/lib/prisma";
-import { isValidTronAddress } from "@/lib/validation/tron";
 
 export interface UpdateProfileResult {
   ok: boolean;
@@ -46,7 +45,6 @@ export async function updateCreatorProfile(formData: FormData): Promise<UpdatePr
 
   const displayName = String(formData.get("displayName") ?? "").trim();
   const bio = String(formData.get("bio") ?? "").trim();
-  const tronsAddress = String(formData.get("tronsAddress") ?? "").trim();
 
   if (displayName.length === 0) {
     return { ok: false, error: "Display name is required." };
@@ -56,12 +54,6 @@ export async function updateCreatorProfile(formData: FormData): Promise<UpdatePr
   }
   if (bio.length > 280) {
     return { ok: false, error: "Bio must be 280 characters or fewer." };
-  }
-  if (tronsAddress && !isValidTronAddress(tronsAddress)) {
-    return {
-      ok: false,
-      error: "TRON wallet address looks invalid. It should start with T and be 34 characters.",
-    };
   }
 
   const user = await prisma.user.findUnique({
@@ -75,7 +67,6 @@ export async function updateCreatorProfile(formData: FormData): Promise<UpdatePr
     data: {
       displayName,
       bio: bio.length > 0 ? bio : null,
-      tronsAddress: tronsAddress.length > 0 ? tronsAddress : null,
     },
   });
 
