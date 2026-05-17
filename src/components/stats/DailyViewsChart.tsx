@@ -33,12 +33,19 @@ export function DailyViewsChart({ data, height = 240 }: { data: DailyPoint[]; he
   }
 
   return (
-    <div className="rounded-xl p-5" style={{ background: "var(--bg-card)", border: "1px solid var(--border)" }}>
+    <div
+      className="daily-views-chart rounded-xl p-5"
+      style={{ background: "var(--bg-card)", border: "1px solid var(--border)" }}
+    >
       <p className="text-xs uppercase tracking-wide mb-3 font-semibold" style={{ color: "var(--text-muted)" }}>
         Daily views
       </p>
       <ResponsiveContainer width="100%" height={height}>
-        <AreaChart data={data} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
+        <AreaChart
+          accessibilityLayer={false}
+          data={data}
+          margin={{ top: 5, right: 10, left: 0, bottom: 5 }}
+        >
           <defs>
             <linearGradient id="dailyViewsFill" x1="0" y1="0" x2="0" y2="1">
               <stop offset="0%" stopColor="#6366F1" stopOpacity={0.6} />
