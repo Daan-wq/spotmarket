@@ -312,6 +312,8 @@ function CampaignGuideDialog({
 
 function CampaignHowItWorksContent() {
   const t = useTranslations("creator.campaigns.guide");
+  const payoutPot = t("payoutPot");
+
   return (
     <>
       <p>
@@ -323,7 +325,7 @@ function CampaignHowItWorksContent() {
       </GuideSection>
       <GuideSection title={t("payoutTitle")}>
         <p>{t("payoutRate")}</p>
-        <p>{t("payoutPot")}</p>
+        {payoutPot ? <p>{payoutPot}</p> : null}
       </GuideSection>
     </>
   );
@@ -428,6 +430,7 @@ function CampaignCard({ campaign }: { campaign: CampaignData }) {
   const primaryLabel = campaign.applicationId ? sharedT("actions.submitClip") : sharedT("actions.campaignInfo");
   const submitDisabled = Boolean(campaign.applicationId && campaign.closedForSubmissions);
   const cardLabel = `${sharedT("actions.campaignInfo")}: ${campaign.name}`;
+  const campaignActionClass = "inline-flex min-h-11 items-center justify-center rounded-xl px-4 py-3 text-sm font-semibold leading-none";
 
   function openCampaign() {
     router.push(campaignHref);
@@ -499,7 +502,7 @@ function CampaignCard({ campaign }: { campaign: CampaignData }) {
           <button
             type="button"
             disabled
-            className="inline-flex h-12 flex-1 cursor-not-allowed items-center justify-center rounded-xl bg-neutral-200 px-4 text-sm font-semibold text-neutral-500 sm:h-10"
+            className={`${campaignActionClass} w-full flex-1 cursor-not-allowed bg-neutral-200 text-neutral-500`}
           >
             {primaryLabel}
           </button>
@@ -507,7 +510,7 @@ function CampaignCard({ campaign }: { campaign: CampaignData }) {
           <Link
             href={primaryHref}
             onClick={keepCardClick}
-            className="inline-flex h-12 flex-1 items-center justify-center rounded-xl bg-neutral-950 px-4 text-sm font-semibold text-white shadow-[0_8px_18px_rgba(0,0,0,0.14)] transition hover:bg-neutral-800 sm:h-10"
+            className={`${campaignActionClass} w-full flex-1 bg-neutral-950 text-white shadow-[0_8px_18px_rgba(0,0,0,0.14)] transition hover:bg-neutral-800`}
           >
             {primaryLabel}
           </Link>
@@ -516,7 +519,7 @@ function CampaignCard({ campaign }: { campaign: CampaignData }) {
           <Link
             href={campaignHref}
             onClick={keepCardClick}
-            className="inline-flex h-12 items-center justify-center rounded-xl border border-neutral-200 bg-white px-4 text-sm font-semibold text-neutral-950 transition hover:bg-neutral-100 sm:h-10"
+            className={`${campaignActionClass} w-full border border-neutral-200 bg-white text-neutral-950 transition hover:bg-neutral-100 sm:w-auto`}
           >
             {sharedT("actions.campaignInfo")}
           </Link>
