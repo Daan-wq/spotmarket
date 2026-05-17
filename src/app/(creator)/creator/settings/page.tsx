@@ -1,20 +1,26 @@
+import type { Metadata } from "next";
+import { getLocale, getTranslations } from "next-intl/server";
 import { requireAuth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { DeleteAccountButton } from "./_components/delete-account-button";
+import { LanguageSettings } from "./_components/language-settings";
 import { ProfileEditForm } from "./_components/profile-edit-form";
 import {
   CreatorPageHeader,
   CreatorSectionHeader,
   SoftStat,
 } from "../_components/creator-journey";
-import { getCreatorAccountStatusCopy } from "@/lib/creator-account-status";
+import type { Locale } from "@/i18n/routing";
 
-export const metadata = {
-  title: "Settings",
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getTranslations("creatorSettings.metadata");
+  return { title: t("title") };
+}
 
 export default async function SettingsPage() {
   const { userId } = await requireAuth("creator");
+  const locale = (await getLocale()) as Locale;
+  const t = await getTranslations("creatorSettings");
 
   const user = await prisma.user.findUnique({
     where: { supabaseId: userId },
@@ -57,29 +63,46 @@ export default async function SettingsPage() {
   });
 
   const profile = user?.creatorProfile;
-  const displayName = profile?.displayName || "Creator";
+  const displayName = profile?.displayName || t("fallbackCreator");
   const joinedAt = profile?.createdAt ?? user?.createdAt;
-  const accountStatus = getCreatorAccountStatusCopy({
+  const verifiedPlatforms = getVerifiedPlatformLabels({
     instagram: Boolean(profile?.igConnections.length),
     tiktok: Boolean(profile?.ttConnections.length),
     youtube: Boolean(profile?.ytConnections.length),
     facebook: Boolean(profile?.fbConnections.length),
   });
+  const accountStatus =
+    verifiedPlatforms.length === 0
+      ? {
+          value: t("stats.accounts.noneValue"),
+          detail: t("stats.accounts.noneDetail"),
+        }
+      : {
+          value: t("stats.accounts.connectedValue", {
+            count: verifiedPlatforms.length,
+          }),
+          detail: t("stats.accounts.connectedDetail", {
+            platforms: new Intl.ListFormat(locale, {
+              style: "long",
+              type: "conjunction",
+            }).format(verifiedPlatforms),
+          }),
+        };
   const joinedLabel = joinedAt
-    ? new Intl.DateTimeFormat("en", {
+    ? new Intl.DateTimeFormat(locale, {
         month: "short",
         day: "numeric",
         year: "numeric",
       }).format(joinedAt)
     : "-";
-  const authProvider = user?.discordId ? "Discord" : "Connected account";
+  const authProvider = user?.discordId ? "Discord" : t("stats.login.connectedAccount");
 
   return (
     <div className="w-full space-y-6 md:px-6 md:py-8">
       <CreatorPageHeader
-        eyebrow="Preferences"
-        title="Settings"
-        description="Manage your profile and account preferences"
+        eyebrow={t("header.eyebrow")}
+        title={t("header.title")}
+        description={t("header.description")}
       />
 
       <section className="grid grid-cols-2 gap-3 md:grid-cols-4 md:gap-4">
@@ -89,26 +112,35 @@ export default async function SettingsPage() {
           imageUrl={profile?.avatarUrl ?? null}
         />
         <SoftStat
-          label="Accounts"
+          label={t("stats.accounts.label")}
           value={accountStatus.value}
           detail={accountStatus.detail}
         />
-        <SoftStat label="Joined" value={joinedLabel} detail="ClipProfit" />
+        <SoftStat label={t("stats.joined.label")} value={joinedLabel} detail="ClipProfit" />
         <SoftStat
-          label="Login"
+          label={t("stats.login.label")}
           value={authProvider}
-          detail={user?.discordUsername ?? "Connected"}
+          detail={user?.discordUsername ?? t("stats.login.connected")}
         />
       </section>
 
+      <LanguageSettings
+        currentLocale={locale}
+        title={t("language.title")}
+        description={t("language.description")}
+        ariaLabel={t("language.ariaLabel")}
+        savedLabel={t("language.saved")}
+        errorLabel={t("language.error")}
+      />
+
       <section className="rounded-2xl border border-neutral-200 bg-white p-4 md:p-5">
-        <CreatorSectionHeader title="Profile" />
+        <CreatorSectionHeader title={t("profile.title")} />
         <div className="mb-5 rounded-2xl border border-neutral-200 bg-neutral-50 p-4">
           <p className="text-xs font-semibold uppercase text-neutral-500 md:tracking-[0.14em]">
-            About
+            {t("profile.about")}
           </p>
           <p className="mt-3 text-sm italic leading-6 text-neutral-600">
-            {profile?.bio || "No bio yet. Add one to tell others about yourself."}
+            {profile?.bio || t("profile.emptyBio")}
           </p>
         </div>
         <ProfileEditForm
@@ -120,27 +152,27 @@ export default async function SettingsPage() {
 
       <section className="overflow-hidden rounded-2xl border border-neutral-200 bg-white">
         <div className="px-4 py-4 md:px-5">
-          <CreatorSectionHeader title="Account info" />
+          <CreatorSectionHeader title={t("account.title")} />
         </div>
         <div className="text-sm">
-          <Row label="Email" value={user?.email ?? "-"} />
-          <Row label="Joined" value={joinedLabel} />
-          <Row label="Login method" value={authProvider} />
-          <Row label="User ID" value={user?.supabaseId ?? "-"} />
+          <Row label={t("account.email")} value={user?.email ?? "-"} />
+          <Row label={t("account.joined")} value={joinedLabel} />
+          <Row label={t("account.loginMethod")} value={authProvider} />
+          <Row label={t("account.userId")} value={user?.supabaseId ?? "-"} />
         </div>
       </section>
 
       <section className="rounded-2xl border border-neutral-200 bg-white p-4 md:p-5">
-        <h2 className="text-base font-semibold text-neutral-950">Danger zone</h2>
+        <h2 className="text-base font-semibold text-neutral-950">{t("danger.title")}</h2>
         <p className="mb-4 mt-1 text-xs text-neutral-500">
-          These actions are irreversible.
+          {t("danger.description")}
         </p>
 
         <div className="flex flex-col gap-4 rounded-2xl border border-red-100 bg-red-50 p-4 md:flex-row md:items-center md:justify-between">
           <div>
-            <p className="text-sm font-medium text-neutral-950">Delete account</p>
+            <p className="text-sm font-medium text-neutral-950">{t("danger.deleteTitle")}</p>
             <p className="mt-0.5 text-xs text-neutral-500">
-              Permanently delete your account and all associated data.
+              {t("danger.deleteDescription")}
             </p>
           </div>
           <DeleteAccountButton />
@@ -148,6 +180,20 @@ export default async function SettingsPage() {
       </section>
     </div>
   );
+}
+
+function getVerifiedPlatformLabels(state: {
+  instagram: boolean;
+  tiktok: boolean;
+  youtube: boolean;
+  facebook: boolean;
+}) {
+  return [
+    state.instagram ? "Instagram" : null,
+    state.tiktok ? "TikTok" : null,
+    state.youtube ? "YouTube" : null,
+    state.facebook ? "Facebook" : null,
+  ].filter((label): label is string => Boolean(label));
 }
 
 function Row({ label, value }: { label: string; value: string }) {

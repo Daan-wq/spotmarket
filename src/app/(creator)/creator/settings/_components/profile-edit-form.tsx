@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { AlertBanner } from "@/components/ui/alert-banner";
 import { updateCreatorProfile } from "../actions";
@@ -22,6 +23,7 @@ export function ProfileEditForm({
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
   const [pending, startTransition] = useTransition();
+  const t = useTranslations("creatorSettings.profileForm");
 
   function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -33,7 +35,7 @@ export function ProfileEditForm({
       if (res.ok) {
         setSuccess(true);
       } else {
-        setError(res.error ?? "Could not save changes.");
+        setError(res.error ?? t("saveFailed"));
       }
     });
   }
@@ -41,11 +43,11 @@ export function ProfileEditForm({
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
       {error && <AlertBanner tone="error" title={error} />}
-      {success && <AlertBanner tone="success" title="Saved" />}
+      {success && <AlertBanner tone="success" title={t("saved")} />}
 
       <Field
-        label="Display name"
-        helper="The name that shows on your dashboard, profile, and leaderboards."
+        label={t("displayName.label")}
+        helper={t("displayName.helper")}
       >
         <input
           name="displayName"
@@ -59,8 +61,8 @@ export function ProfileEditForm({
       </Field>
 
       <Field
-        label="Bio"
-        helper="A short line about the kind of clips you make. Up to 280 characters."
+        label={t("bio.label")}
+        helper={t("bio.helper")}
       >
         <textarea
           name="bio"
@@ -75,19 +77,19 @@ export function ProfileEditForm({
           className="mt-1 text-xs text-right"
           style={{ color: "var(--text-muted)" }}
         >
-          {bio.length} / 280
+          {t("bio.count", { count: bio.length })}
         </p>
       </Field>
 
       <Field
-        label="USDT wallet (TRC-20)"
-        helper="Where your withdrawals will be sent by default. Starts with T."
+        label={t("wallet.label")}
+        helper={t("wallet.helper")}
       >
         <input
           name="tronsAddress"
           value={tronsAddress}
           onChange={(e) => setTronsAddress(e.target.value)}
-          placeholder="T..."
+          placeholder={t("wallet.placeholder")}
           className="form-input"
           style={inputStyle}
         />
@@ -95,7 +97,7 @@ export function ProfileEditForm({
 
       <div>
         <Button type="submit" isPending={pending}>
-          Save changes
+          {t("saveChanges")}
         </Button>
       </div>
     </form>

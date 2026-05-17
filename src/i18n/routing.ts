@@ -5,6 +5,11 @@ export const DEFAULT_LOCALE: Locale = "en";
 export const LOCALE_COOKIE_NAME = "NEXT_LOCALE";
 export const LOCALE_COOKIE_MAX_AGE = 60 * 60 * 24 * 365;
 
+export const LOCALE_OPTIONS = [
+  { locale: "en", label: "English", flag: "🇺🇸" },
+  { locale: "nl", label: "Nederlands", flag: "🇳🇱" },
+] as const satisfies readonly { locale: Locale; label: string; flag: string }[];
+
 export const APP_URL_EN = "https://app.clipprofit.com";
 export const APP_URL_NL = "https://app.clipprofit.com";
 
