@@ -1,8 +1,9 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import type { ReactNode } from "react";
+import type { KeyboardEvent, MouseEvent, ReactNode } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
 import { Dialog } from "@/components/ui/dialog";
 import { EmptyState } from "@/components/ui/empty-state";
@@ -416,17 +417,41 @@ function sortCampaigns(list: CampaignData[], sort: SortKey): CampaignData[] {
 }
 
 function CampaignCard({ campaign }: { campaign: CampaignData }) {
+  const router = useRouter();
   const locale = useLocale();
   const t = useTranslations("creator.campaigns.card");
   const sharedT = useTranslations("creator.shared");
+  const campaignHref = `/creator/campaigns/${campaign.id}`;
   const primaryHref = campaign.applicationId && !campaign.closedForSubmissions
     ? `/creator/applications/${campaign.applicationId}/submit`
-    : `/creator/campaigns/${campaign.id}`;
+    : campaignHref;
   const primaryLabel = campaign.applicationId ? sharedT("actions.submitClip") : sharedT("actions.campaignInfo");
   const submitDisabled = Boolean(campaign.applicationId && campaign.closedForSubmissions);
+  const cardLabel = `${sharedT("actions.campaignInfo")}: ${campaign.name}`;
+
+  function openCampaign() {
+    router.push(campaignHref);
+  }
+
+  function openCampaignFromKeyboard(event: KeyboardEvent<HTMLElement>) {
+    if (event.key !== "Enter" && event.key !== " ") return;
+    event.preventDefault();
+    openCampaign();
+  }
+
+  function keepCardClick(event: MouseEvent<HTMLElement>) {
+    event.stopPropagation();
+  }
 
   return (
-    <article className="flex h-full flex-col rounded-2xl border border-neutral-200 bg-neutral-50 p-4 transition hover:border-neutral-300 hover:bg-white md:p-5">
+    <article
+      role="link"
+      tabIndex={0}
+      aria-label={cardLabel}
+      onClick={openCampaign}
+      onKeyDown={openCampaignFromKeyboard}
+      className="flex h-full cursor-pointer flex-col rounded-2xl border border-neutral-200 bg-neutral-50 p-4 transition hover:border-neutral-300 hover:bg-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-neutral-950 md:p-5"
+    >
       <div className="flex items-start gap-3">
         <CampaignAvatar name={campaign.brandName || campaign.name} imageUrl={campaign.bannerUrl} size="md" />
         <div className="min-w-0 flex-1">
@@ -474,22 +499,24 @@ function CampaignCard({ campaign }: { campaign: CampaignData }) {
           <button
             type="button"
             disabled
-            className="inline-flex h-10 flex-1 cursor-not-allowed items-center justify-center rounded-xl bg-neutral-200 px-4 text-sm font-semibold text-neutral-500"
+            className="inline-flex h-12 flex-1 cursor-not-allowed items-center justify-center rounded-xl bg-neutral-200 px-4 text-sm font-semibold text-neutral-500 sm:h-10"
           >
             {primaryLabel}
           </button>
         ) : (
           <Link
             href={primaryHref}
-            className="inline-flex h-10 flex-1 items-center justify-center rounded-xl bg-neutral-950 px-4 text-sm font-semibold text-white shadow-[0_8px_18px_rgba(0,0,0,0.14)] transition hover:bg-neutral-800"
+            onClick={keepCardClick}
+            className="inline-flex h-12 flex-1 items-center justify-center rounded-xl bg-neutral-950 px-4 text-sm font-semibold text-white shadow-[0_8px_18px_rgba(0,0,0,0.14)] transition hover:bg-neutral-800 sm:h-10"
           >
             {primaryLabel}
           </Link>
         )}
         {campaign.applicationId ? (
           <Link
-            href={`/creator/campaigns/${campaign.id}`}
-            className="inline-flex h-10 items-center justify-center rounded-xl border border-neutral-200 bg-white px-4 text-sm font-semibold text-neutral-950 transition hover:bg-neutral-100"
+            href={campaignHref}
+            onClick={keepCardClick}
+            className="inline-flex h-12 items-center justify-center rounded-xl border border-neutral-200 bg-white px-4 text-sm font-semibold text-neutral-950 transition hover:bg-neutral-100 sm:h-10"
           >
             {sharedT("actions.campaignInfo")}
           </Link>

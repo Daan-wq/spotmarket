@@ -413,7 +413,7 @@
         "title": "Actieve campagnes",
         "description": "Campagnes waaraan je meedoet of bent gestart. Open er een om de volgende clip in te sturen.",
         "emptyTitle": "Nog geen actieve campagnes",
-        "emptyDescription": "Bekijk de marketplace en doe mee aan een campagne die past bij je gekoppelde accounts.",
+        "emptyDescription": "Bekijk alle campagnes en doe mee aan een campagne die past bij je gekoppelde accounts.",
         "browse": "Campagnes bekijken",
         "due": "Deadline {date}"
       },
@@ -825,7 +825,7 @@
         "eyebrow": "Campagnes",
         "title": "Campagnes",
         "description": "{count, plural, one {# campagne beschikbaar} other {# campagnes beschikbaar}}",
-        "marketplace": "Marketplace",
+        "marketplace": "Alle Campagnes",
         "joined": "Gejoinde campagnes",
         "searchLabel": "Campagnes zoeken",
         "searchPlaceholder": "Campagnes zoeken",
@@ -867,7 +867,7 @@
       },
       "empty": {
         "noJoinedTitle": "Nog geen campagnes gejoind",
-        "noJoinedDescription": "Bekijk de marketplace om campagnes te vinden die passen bij je platforms en niche.",
+        "noJoinedDescription": "Bekijk alle campagnes om campagnes te vinden die passen bij je platforms en niche.",
         "noMatchesTitle": "Geen campagnes passen bij je filters",
         "noMatchesDescription": "Wis de filters of pas je zoekopdracht aan."
       },
