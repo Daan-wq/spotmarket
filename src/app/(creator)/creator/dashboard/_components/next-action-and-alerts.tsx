@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { getTranslations } from "next-intl/server";
 import { getActivationStatus } from "@/lib/activation";
 import { Skeleton } from "@/components/ui/skeleton";
 import { DashboardAlerts } from "./dashboard-alerts";
@@ -17,6 +18,7 @@ export async function NextActionAndAlerts({
   userId,
   profileId,
 }: NextActionAndAlertsProps) {
+  const t = await getTranslations("dashboard.creator.nextAction");
   const [activation, payouts, pendingSubmissions, activeCampaignRows] =
     await Promise.all([
       getActivationStatus(userId),
@@ -44,15 +46,19 @@ export async function NextActionAndAlerts({
       <section className="border-y border-neutral-200 py-7">
         <div className="max-w-2xl">
           <p className="text-xs font-semibold uppercase tracking-[0.14em] text-neutral-400">
-            Next best action
+            {t("eyebrow")}
           </p>
-          <p className="text-2xl font-semibold text-neutral-950">{action.title}</p>
-          <p className="mt-2 text-sm leading-6 text-neutral-500">{action.detail}</p>
+          <p className="text-2xl font-semibold text-neutral-950">
+            {t(`${action.key}.title`)}
+          </p>
+          <p className="mt-2 text-sm leading-6 text-neutral-500">
+            {t(`${action.key}.detail`)}
+          </p>
           <Link
             href={action.href}
             className="mt-5 inline-flex h-11 items-center justify-center rounded-xl bg-neutral-950 px-5 text-sm font-semibold text-white shadow-[0_8px_18px_rgba(0,0,0,0.16)] hover:bg-neutral-800"
           >
-            Continue
+            {t("cta")}
           </Link>
         </div>
       </section>
@@ -72,6 +78,14 @@ export function NextActionAndAlertsSkeleton() {
   );
 }
 
+type NextActionKey =
+  | "finishProfile"
+  | "connectAccount"
+  | "joinCampaign"
+  | "checkPendingClips"
+  | "reviewPayoutStatus"
+  | "submitAnotherClip";
+
 function pickNextAction({
   profileComplete,
   accountConnected,
@@ -87,38 +101,31 @@ function pickNextAction({
 }) {
   if (!profileComplete)
     return {
-      title: "Finish your profile",
-      detail: "Campaign eligibility starts with a complete profile.",
+      key: "finishProfile" satisfies NextActionKey,
       href: "/creator/profile",
     };
   if (!accountConnected)
     return {
-      title: "Connect a posting account",
-      detail:
-        "Connect TikTok, Instagram, YouTube, or Facebook so tracking can work.",
+      key: "connectAccount" satisfies NextActionKey,
       href: "/creator/connections",
     };
   if (activeCampaigns === 0)
     return {
-      title: "Join a campaign",
-      detail: "Pick a campaign that matches your platform and payout target.",
+      key: "joinCampaign" satisfies NextActionKey,
       href: "/creator/campaigns",
     };
   if (pendingSubmissions > 0)
     return {
-      title: "Check pending clips",
-      detail: "Review status, fixes, and earnings from your submitted clips.",
+      key: "checkPendingClips" satisfies NextActionKey,
       href: "/creator/videos",
     };
   if (hasUnpaidBalance)
     return {
-      title: "Review payout status",
-      detail: "Approved earnings are ready to track in Payments.",
+      key: "reviewPayoutStatus" satisfies NextActionKey,
       href: "/creator/payouts",
     };
   return {
-    title: "Submit another clip",
-    detail: "Open a joined campaign and send the next post URL.",
+    key: "submitAnotherClip" satisfies NextActionKey,
     href: "/creator/campaigns",
   };
 }

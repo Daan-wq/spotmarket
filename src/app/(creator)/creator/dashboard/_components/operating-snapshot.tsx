@@ -1,5 +1,8 @@
+import { getLocale, getTranslations } from "next-intl/server";
 import { getActivationStatus } from "@/lib/activation";
+import type { Locale } from "@/i18n/routing";
 import { Skeleton } from "@/components/ui/skeleton";
+import { formatCurrencyPrecise, formatNumber } from "@/lib/admin/agency-format";
 import {
   CreatorSectionHeader,
   SoftStat,
@@ -20,6 +23,8 @@ export async function OperatingSnapshot({
   userId,
   profileId,
 }: OperatingSnapshotProps) {
+  const locale = (await getLocale()) as Locale;
+  const t = await getTranslations("dashboard.creator.operatingSnapshot");
   const [payouts, activeCampaignRows, pendingSubmissions, platforms] =
     await Promise.all([
       getCreatorPayoutTotals(userId),
@@ -37,32 +42,36 @@ export async function OperatingSnapshot({
   return (
     <section>
       <CreatorSectionHeader
-        title="Operating snapshot"
-        description="The numbers stay compact so the next action remains obvious."
+        title={t("title")}
+        description={t("description")}
       />
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
         <SoftStat
-          label="Total earnings"
-          value={`$${payouts.totalEarnings.toFixed(2)}`}
-          detail="Approved creator earnings"
+          label={t("totalEarnings")}
+          value={formatCurrencyPrecise(payouts.totalEarnings, "USD", locale)}
+          detail={t("totalEarningsDetail")}
         />
         <SoftStat
-          label="Active campaigns"
-          value={activeCampaignRows.length.toString()}
-          detail="Pending, approved, or active"
+          label={t("activeCampaigns")}
+          value={formatNumber(activeCampaignRows.length, locale)}
+          detail={t("activeCampaignsDetail")}
         />
         <SoftStat
-          label="Pending submissions"
-          value={pendingSubmissions.toString()}
-          detail="Clips awaiting review"
+          label={t("pendingSubmissions")}
+          value={formatNumber(pendingSubmissions, locale)}
+          detail={t("pendingSubmissionsDetail")}
         />
         <SoftStat
-          label="Verified platforms"
-          value={connectedCount === 0 ? "-" : `${verifiedCount}/${connectedCount}`}
+          label={t("verifiedPlatforms")}
+          value={
+            connectedCount === 0
+              ? "-"
+              : `${formatNumber(verifiedCount, locale)}/${formatNumber(connectedCount, locale)}`
+          }
           detail={
             allVerified
-              ? "All connected pages verified"
-              : "Pages ready for tracking"
+              ? t("allVerified")
+              : t("readyForTracking")
           }
         />
       </div>

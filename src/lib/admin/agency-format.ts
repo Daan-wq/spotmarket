@@ -1,13 +1,27 @@
-export function formatCurrency(value: number | string | { toString(): string } | null | undefined, currency = "EUR") {
-  return new Intl.NumberFormat("en-US", {
+export type FormatLocale = "en" | "nl" | string;
+
+export function toIntlLocale(locale: FormatLocale = "en") {
+  return locale === "nl" ? "nl-NL" : "en-US";
+}
+
+export function formatCurrency(
+  value: number | string | { toString(): string } | null | undefined,
+  currency = "EUR",
+  locale: FormatLocale = "en",
+) {
+  return new Intl.NumberFormat(toIntlLocale(locale), {
     style: "currency",
     currency,
     maximumFractionDigits: 0,
   }).format(toNumber(value));
 }
 
-export function formatCurrencyPrecise(value: number | string | { toString(): string } | null | undefined, currency = "EUR") {
-  return new Intl.NumberFormat("en-US", {
+export function formatCurrencyPrecise(
+  value: number | string | { toString(): string } | null | undefined,
+  currency = "EUR",
+  locale: FormatLocale = "en",
+) {
+  return new Intl.NumberFormat(toIntlLocale(locale), {
     style: "currency",
     currency,
     minimumFractionDigits: 2,
@@ -15,18 +29,18 @@ export function formatCurrencyPrecise(value: number | string | { toString(): str
   }).format(toNumber(value));
 }
 
-export function formatNumber(value: number | bigint | null | undefined) {
-  return new Intl.NumberFormat("en-US").format(Number(value ?? 0));
+export function formatNumber(value: number | bigint | null | undefined, locale: FormatLocale = "en") {
+  return new Intl.NumberFormat(toIntlLocale(locale)).format(Number(value ?? 0));
 }
 
-export function formatDate(value: Date | string | null | undefined) {
+export function formatDate(value: Date | string | null | undefined, locale: FormatLocale = "en") {
   if (!value) return "-";
-  return new Date(value).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+  return new Date(value).toLocaleDateString(toIntlLocale(locale), { month: "short", day: "numeric", year: "numeric" });
 }
 
-export function formatShortDate(value: Date | string | null | undefined) {
+export function formatShortDate(value: Date | string | null | undefined, locale: FormatLocale = "en") {
   if (!value) return "-";
-  return new Date(value).toLocaleDateString("en-US", { month: "short", day: "numeric" });
+  return new Date(value).toLocaleDateString(toIntlLocale(locale), { month: "short", day: "numeric" });
 }
 
 export function titleCaseEnum(value: string | null | undefined) {

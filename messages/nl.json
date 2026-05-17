@@ -242,5 +242,399 @@
       "search": "Zoeken",
       "signOut": "Uitloggen"
     }
+  },
+  "dashboard": {
+    "shared": {
+      "actions": {
+        "continue": "Doorgaan",
+        "open": "Openen"
+      },
+      "units": {
+        "views": "views",
+        "cpm": "CPM"
+      },
+      "statuses": {
+        "application": {
+          "pending": "In behandeling",
+          "approved": "Goedgekeurd",
+          "rejected": "Afgewezen",
+          "active": "Actief",
+          "completed": "Afgerond",
+          "disputed": "Betwist"
+        },
+        "submission": {
+          "PENDING": "In behandeling",
+          "APPROVED": "Goedgekeurd",
+          "NEEDS_REVISION": "Aanpassing nodig",
+          "REJECTED": "Afgewezen",
+          "FLAGGED": "Gemarkeerd"
+        },
+        "operatingArea": {
+          "live": "Live",
+          "manual": "Handmatig"
+        }
+      }
+    },
+    "creator": {
+      "page": {
+        "eyebrow": "Creator home",
+        "title": "Goed je te zien, {name}",
+        "description": "Begin met het ene punt dat nu je aandacht nodig heeft."
+      },
+      "welcome": {
+        "prefix": "Welkom"
+      },
+      "drawerSection": {
+        "title": "Open alleen wanneer nodig",
+        "description": "Uitbetalingen, campagnes, statistieken en recente inzendingen staan hier nog steeds, maar niet meer allemaal op het dashboard gestapeld."
+      },
+      "drawers": {
+        "payouts": {
+          "trigger": "Uitbetalingen",
+          "title": "Uitbetalingsoverzicht",
+          "description": "Geschatte, openstaande en betaalde inkomsten."
+        },
+        "campaigns": {
+          "trigger": "Campagnes",
+          "title": "Actieve campagnes",
+          "description": "Campagnes waaraan je meedoet of bent gestart."
+        },
+        "snapshot": {
+          "trigger": "Snapshot",
+          "title": "Operationele snapshot",
+          "description": "Compacte cijfers voor account, campagne en inzendingen."
+        },
+        "performance": {
+          "trigger": "Prestaties",
+          "title": "Prestaties",
+          "description": "Live inkomsten en creatorscore."
+        },
+        "submissions": {
+          "trigger": "Recente inzendingen",
+          "title": "Recente inzendingen",
+          "description": "Laatste clips in review, goedkeuring en uitbetaling."
+        }
+      },
+      "alerts": {
+        "connect": {
+          "title": "Koppel een social account om te starten met verdienen",
+          "description": "We hebben een gekoppeld account nodig om je views te meten en clips aan campagnes te koppelen.",
+          "cta": "Nu koppelen"
+        },
+        "payment": {
+          "title": "Voeg een betaalmethode toe voor je volgende uitbetaling",
+          "description": "Je hebt openstaande inkomsten, maar we hebben nog geen manier om ze naar je te sturen.",
+          "cta": "Methode toevoegen"
+        }
+      },
+      "nextAction": {
+        "eyebrow": "Beste volgende actie",
+        "cta": "Doorgaan",
+        "finishProfile": {
+          "title": "Maak je profiel af",
+          "detail": "Campagnegeschiktheid begint met een compleet profiel."
+        },
+        "connectAccount": {
+          "title": "Koppel een postaccount",
+          "detail": "Koppel TikTok, Instagram, YouTube of Facebook zodat tracking werkt."
+        },
+        "joinCampaign": {
+          "title": "Doe mee aan een campagne",
+          "detail": "Kies een campagne die past bij je platform en uitbetalingsdoel."
+        },
+        "checkPendingClips": {
+          "title": "Check clips in behandeling",
+          "detail": "Bekijk status, aanpassingen en inkomsten van je ingezonden clips."
+        },
+        "reviewPayoutStatus": {
+          "title": "Bekijk uitbetalingsstatus",
+          "detail": "Goedgekeurde inkomsten kun je volgen bij Betalingen."
+        },
+        "submitAnotherClip": {
+          "title": "Stuur nog een clip in",
+          "detail": "Open een campagne waaraan je meedoet en stuur de volgende post-URL."
+        }
+      },
+      "payoutSummary": {
+        "title": "Uitbetalingsoverzicht",
+        "description": "Geschatte inkomsten worden definitief na review en verwerking van de uitbetaling.",
+        "estimated": "Geschat",
+        "pendingFinal": "Openstaand/definitief",
+        "paid": "Betaald",
+        "openPayments": "Betalingen openen"
+      },
+      "activeCampaigns": {
+        "title": "Actieve campagnes",
+        "description": "Campagnes waaraan je meedoet of bent gestart. Open er een om de volgende clip in te sturen.",
+        "emptyTitle": "Nog geen actieve campagnes",
+        "emptyDescription": "Bekijk de marketplace en doe mee aan een campagne die past bij je gekoppelde accounts.",
+        "browse": "Campagnes bekijken",
+        "due": "Deadline {date}"
+      },
+      "operatingSnapshot": {
+        "title": "Operationele snapshot",
+        "description": "De cijfers blijven compact zodat de volgende actie duidelijk blijft.",
+        "totalEarnings": "Totale inkomsten",
+        "totalEarningsDetail": "Goedgekeurde creatorinkomsten",
+        "activeCampaigns": "Actieve campagnes",
+        "activeCampaignsDetail": "In behandeling, goedgekeurd of actief",
+        "pendingSubmissions": "Inzendingen in behandeling",
+        "pendingSubmissionsDetail": "Clips die wachten op review",
+        "verifiedPlatforms": "Geverifieerde platforms",
+        "allVerified": "Alle gekoppelde pagina's zijn geverifieerd",
+        "readyForTracking": "Pagina's klaar voor tracking"
+      },
+      "recentSubmissions": {
+        "title": "Recente inzendingen",
+        "description": "Laatste clips in review, goedkeuring en uitbetaling.",
+        "campaign": "Campagne",
+        "claimedViews": "Geclaimde views",
+        "status": "Status",
+        "earned": "Verdiend",
+        "empty": "Nog geen inzendingen"
+      },
+      "liveEarnings": {
+        "title": "Live inkomsten",
+        "offline": "Offline",
+        "loading": "Laden...",
+        "updated": "Bijgewerkt {time}",
+        "estimated": "Geschat",
+        "settled": "Vastgezet",
+        "activeClips": "{count, plural, one {# actieve clip} other {# actieve clips}}",
+        "noActiveClips": "Geen actieve clips",
+        "settledCount": "{count} vastgezet",
+        "awaitingSettlement": "Wacht op eerste vastzetting",
+        "estimatedHelp": "Views x CPV over goedgekeurde, nog niet vastgezette clips. Wordt bijgewerkt zodra views binnenkomen.",
+        "settledHelp": "Vastgezette inkomsten uit afgeronde inzendingen.",
+        "error": "Live inkomsten konden niet worden vernieuwd - nieuwe poging over 60s.",
+        "relative": {
+          "justNow": "zojuist",
+          "secondsAgo": "{count}s geleden",
+          "minutesAgo": "{count}m geleden",
+          "hoursAgo": "{count}u geleden"
+        }
+      },
+      "score": {
+        "title": "Prestatiescore",
+        "emptyBody": "Je score verschijnt na een paar goedgekeurde inzendingen.",
+        "emptyDetail": "We beoordelen je op goedkeuringspercentage, viewprestaties t.o.v. campagnebenchmarks, vertrouwen, op tijd leveren en audience fit.",
+        "sampleUpdated": "Steekproef: {sampleSize} - Bijgewerkt {date}",
+        "components": {
+          "approvalRate": "Goedkeuringspercentage",
+          "benchmarkRatio": "T.o.v. campagnebenchmark",
+          "trustScore": "Vertrouwen",
+          "deliveryScore": "Levering",
+          "audienceFit": "Audience fit"
+        },
+        "tiers": {
+          "top": "Toppresteerder",
+          "strong": "Sterk",
+          "steady": "Stabiel",
+          "building": "In opbouw"
+        }
+      },
+      "activation": {
+        "title": "Starten",
+        "subtitle": "Rond deze stappen af om je eerste uitbetaling te ontgrendelen.",
+        "progress": "{completed} van {total}",
+        "profile": {
+          "label": "Maak je profiel compleet",
+          "description": "Voeg een weergavenaam toe zodat we je kunnen aanspreken.",
+          "cta": "Bewerken"
+        },
+        "account": {
+          "label": "Koppel een social account",
+          "description": "Gekoppelde accounts ontgrendelen campagnes en laten ons je views meten.",
+          "cta": "Koppelen"
+        },
+        "clip": {
+          "label": "Stuur je eerste clip in",
+          "description": "Kies een campagne waaraan je meedoet en stuur een clip-URL in.",
+          "cta": "Campagnes bekijken"
+        },
+        "payment": {
+          "label": "Voeg een betaalmethode toe",
+          "description": "Nodig voor je eerste uitbetaling - je kunt dit ook later doen.",
+          "cta": "Toevoegen"
+        },
+        "approval": {
+          "label": "Krijg je eerste goedgekeurde clip",
+          "description": "Zodra een clip is beoordeeld en goedgekeurd, verdien je per geverifieerde view."
+        }
+      }
+    },
+    "admin": {
+      "header": {
+        "eyebrow": "Agency OS",
+        "title": "Command center",
+        "description": "Begin hier voor de volgende operationele stap en open details alleen wanneer je ze nodig hebt.",
+        "newLead": "Nieuwe lead"
+      },
+      "sections": {
+        "actionQueue": {
+          "title": "Dagelijkse actielijst",
+          "description": "Gesorteerd op operationele urgentie, niet op menuvolgorde."
+        },
+        "coreNumbers": {
+          "title": "Kerncijfers",
+          "description": "De eerste rij blijft compact; diepere rapportage open je via Rapportages.",
+          "action": "Weekcijfers bekijken"
+        },
+        "drillIns": {
+          "title": "Details",
+          "description": "Open het specifieke gebied wanneer de actielijst daarheen wijst."
+        }
+      },
+      "queue": {
+        "labels": {
+          "leads": "Leads",
+          "onboarding": "Onboarding",
+          "production": "Productie",
+          "review": "Review",
+          "money": "Geld",
+          "guide": "Handleiding",
+          "risk": "Risico",
+          "clear": "Schoon"
+        },
+        "followUps": {
+          "title": "{count, plural, one {Volg # brand lead op} other {Volg # brand leads op}}",
+          "detail": "Lead follow-ups zijn nu nodig. Verplaats de lead, plan de call of houd hem warm."
+        },
+        "onboarding": {
+          "title": "{count, plural, one {# onboardingchecklist geblokkeerd} other {# onboardingchecklists geblokkeerd}}",
+          "detail": "Contract, betaling, brief, assets, doelgroep en toegewezen clippers moeten compleet zijn voor productie."
+        },
+        "overdue": {
+          "title": "{count, plural, one {# productieopdracht te laat} other {# productieopdrachten te laat}}",
+          "detail": "Productie start bij de toegewezen clip, niet pas nadat de creator inzendt. Werk te late taken eerst weg."
+        },
+        "review": {
+          "title": "{count, plural, one {Review # clip} other {Review # clips}}",
+          "detail": "{missingLogo, plural, one {# item zonder logo} other {# items zonder logo}}, {revisionAssignments, plural, one {# revisieopdracht} other {# revisieopdrachten}}."
+        },
+        "payout": {
+          "title": "Sluit de uitbetalingslus",
+          "detail": "{payoutRuns, plural, one {# uitbetalingsrun} other {# uitbetalingsruns}} actief, {amount} verschuldigd uit legacy uitbetalingen."
+        },
+        "guide": {
+          "title": "{count, plural, one {# handleiding moet gereviewd worden} other {# handleidingen moeten gereviewd worden}}",
+          "detail": "Houd sales, onboarding, recruitment, productie, clipreview, uitbetalingen en rapportagehandleidingen actueel."
+        },
+        "risk": {
+          "title": "{count, plural, one {Los # open risicosignaal op} other {Los # open risicosignalen op}}",
+          "detail": "{critical} kritiek, {tokenBroken} token-gerelateerd. Deze voeden leveringsrisico."
+        },
+        "empty": {
+          "title": "Geen urgente blokkades",
+          "detail": "Gebruik de pipeline en weekcijfers om de volgende sales-, productie- of uitbetalingsstap te kiezen."
+        }
+      },
+      "metrics": {
+        "revenue": {
+          "label": "Omzet",
+          "detail": "Deze maand geboekt"
+        },
+        "expectedRevenue": {
+          "label": "Verwachte omzet",
+          "detail": "Campagnedeadlines volgende maand"
+        },
+        "activeBrands": {
+          "label": "Actieve merken",
+          "detail": "{amount} open pipeline"
+        },
+        "activeClippers": {
+          "label": "Actieve clippers",
+          "detail": "{count, plural, one {# clip klaar of in uitvoering} other {# clips klaar of in uitvoering}}"
+        },
+        "clipApprovals": {
+          "label": "Clipgoedkeuringen",
+          "detail": "Goedgekeurd / aangepast deze week"
+        },
+        "payoutsOwed": {
+          "label": "Verschuldigde uitbetalingen",
+          "detail": "Legacy uitbetalingsverplichtingen"
+        },
+        "estimatedProfit": {
+          "label": "Geschatte winst",
+          "detail": "Geboekt min creatorkosten en open uitbetalingen"
+        },
+        "risk": {
+          "label": "Risico",
+          "value": "{count} open",
+          "detail": "{count, plural, one {# kapot tokensignaal} other {# kapotte tokensignalen}}"
+        }
+      },
+      "pipeline": {
+        "lead": "Lead",
+        "onboarding": "Onboarding",
+        "campaign": "Campagne",
+        "production": "Productie",
+        "review": "Clipreview",
+        "payouts": "Uitbetalingen",
+        "reports": "Rapportages"
+      },
+      "drillIns": {
+        "pipelineTitle": "Pipeline",
+        "usefulAreasTitle": "Nuttige gebieden",
+        "deliveryRiskTitle": "Leveringsrisico",
+        "noRisk": "Geen campagnerisico's voor tempo in de komende 7 dagen.",
+        "capturedViews": "{captured} / {goal} views vastgelegd.",
+        "weeklyClose": {
+          "title": "Weekafsluiting",
+          "detail": "Bevestig goedgekeurde clips, rond uitbetalingsruns af en log handleidingupdates voor de volgende rapportagecyclus."
+        },
+        "openClipReview": "Clipreview openen"
+      },
+      "operatingAreas": {
+        "commandCenter": {
+          "name": "Command center",
+          "detail": "Eerste dagbeeld van werk, geld en risico"
+        },
+        "leads": {
+          "name": "Leads",
+          "detail": "Leadpipeline, follow-ups, eigenaar en waarde"
+        },
+        "brandOnboarding": {
+          "name": "Merkonboarding",
+          "detail": "Contract, betaling, brief, assets en toegewezen clippers"
+        },
+        "clipperDatabase": {
+          "name": "Clipperdatabase",
+          "detail": "Creatorprofielen, operatie, capaciteit en toegewezen merken"
+        },
+        "recruitmentPipeline": {
+          "name": "Recruitmentpipeline",
+          "detail": "Kandidaten, trials, scores en goedkeuringen"
+        },
+        "contentProduction": {
+          "name": "Contentproductie",
+          "detail": "Opdrachten, deadlines, revisies en inzendingen"
+        },
+        "clipReview": {
+          "name": "Clipreview",
+          "detail": "Scorecards, logoreview, goedkeuringen en signalen"
+        },
+        "payouts": {
+          "name": "Uitbetalingen",
+          "detail": "Creatoruitbetalingen en historie"
+        },
+        "pricing": {
+          "name": "Prijzen",
+          "detail": "Herbruikbare pakketten voor merk- en campagneplanning"
+        },
+        "documents": {
+          "name": "Documenten",
+          "detail": "Contracten, briefs, eigenaren, links en verlengdata"
+        },
+        "guides": {
+          "name": "Handleidingen",
+          "detail": "Doorzoekbare operationele handleidingen met review-eigenaren"
+        },
+        "weeklyNumbers": {
+          "name": "Weekcijfers",
+          "detail": "Opgeslagen wekelijkse reviewsnapshots uit live data"
+        }
+      }
+    }
   }
 }

@@ -1,6 +1,9 @@
 import { Suspense } from "react";
+import { getLocale, getTranslations } from "next-intl/server";
 import { requireAuth, getCreatorHeader } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import type { Locale } from "@/i18n/routing";
+import { formatCurrencyPrecise, formatNumber } from "@/lib/admin/agency-format";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ProgressiveActionDrawer } from "@/components/ui/progressive-action-drawer";
 import { LiveEarnings } from "./_components/live-earnings";
@@ -25,6 +28,7 @@ import {
 
 export default async function DashboardPage() {
   const { userId: supabaseId } = await requireAuth("creator");
+  const t = await getTranslations("dashboard.creator");
 
   // Single indexed lookup, React.cache-deduped against layout's identity slot
   // and against any nested Suspense child that calls getCreatorHeader.
@@ -41,9 +45,9 @@ export default async function DashboardPage() {
   return (
     <div className="w-full space-y-6 md:space-y-8 md:px-6 md:py-8">
       <CreatorPageHeader
-        eyebrow="Creator home"
-        title={`Good to see you, ${firstName}`}
-        description="Start with the one thing that needs your attention now."
+        eyebrow={t("page.eyebrow")}
+        title={t("page.title", { name: firstName })}
+        description={t("page.description")}
       />
 
       <Suspense fallback={<NextActionAndAlertsSkeleton />}>
@@ -52,14 +56,14 @@ export default async function DashboardPage() {
 
       <section className="border-t border-neutral-200 pt-6">
         <CreatorSectionHeader
-          title="Open only when needed"
-          description="Payouts, campaigns, stats, and recent submissions are still here, but no longer stacked on the dashboard."
+          title={t("drawerSection.title")}
+          description={t("drawerSection.description")}
         />
         <div className="flex flex-col gap-3 md:flex-row md:flex-wrap">
           <ProgressiveActionDrawer
-            triggerLabel="Payouts"
-            title="Payout summary"
-            description="Estimated, pending, and paid earnings."
+            triggerLabel={t("drawers.payouts.trigger")}
+            title={t("drawers.payouts.title")}
+            description={t("drawers.payouts.description")}
             variant="outline"
             width="lg"
           >
@@ -69,9 +73,9 @@ export default async function DashboardPage() {
           </ProgressiveActionDrawer>
 
           <ProgressiveActionDrawer
-            triggerLabel="Campaigns"
-            title="Active campaigns"
-            description="Joined or started campaigns."
+            triggerLabel={t("drawers.campaigns.trigger")}
+            title={t("drawers.campaigns.title")}
+            description={t("drawers.campaigns.description")}
             variant="outline"
             width="lg"
           >
@@ -81,9 +85,9 @@ export default async function DashboardPage() {
           </ProgressiveActionDrawer>
 
           <ProgressiveActionDrawer
-            triggerLabel="Snapshot"
-            title="Operating snapshot"
-            description="Compact account, campaign, and submission numbers."
+            triggerLabel={t("drawers.snapshot.trigger")}
+            title={t("drawers.snapshot.title")}
+            description={t("drawers.snapshot.description")}
             variant="outline"
             width="lg"
           >
@@ -93,9 +97,9 @@ export default async function DashboardPage() {
           </ProgressiveActionDrawer>
 
           <ProgressiveActionDrawer
-            triggerLabel="Performance"
-            title="Performance"
-            description="Live earnings and creator score."
+            triggerLabel={t("drawers.performance.trigger")}
+            title={t("drawers.performance.title")}
+            description={t("drawers.performance.description")}
             variant="outline"
             width="lg"
           >
@@ -108,9 +112,9 @@ export default async function DashboardPage() {
           </ProgressiveActionDrawer>
 
           <ProgressiveActionDrawer
-            triggerLabel="Recent submissions"
-            title="Recent submissions"
-            description="Latest clips moving through review, approval, and payout."
+            triggerLabel={t("drawers.submissions.trigger")}
+            title={t("drawers.submissions.title")}
+            description={t("drawers.submissions.description")}
             variant="outline"
             width="lg"
           >
@@ -125,6 +129,9 @@ export default async function DashboardPage() {
 }
 
 async function RecentSubmissions({ creatorId }: { creatorId: string }) {
+  const locale = (await getLocale()) as Locale;
+  const t = await getTranslations("dashboard.creator.recentSubmissions");
+  const statusT = await getTranslations("dashboard.shared.statuses.submission");
   const recentSubmissions = await prisma.campaignSubmission.findMany({
     where: { creatorId },
     include: { campaign: { select: { name: true } } },
@@ -135,24 +142,24 @@ async function RecentSubmissions({ creatorId }: { creatorId: string }) {
   return (
     <section className="rounded-2xl border border-neutral-200 bg-white p-5 md:p-6">
       <CreatorSectionHeader
-        title="Recent submissions"
-        description="Latest clips moving through review, approval, and payout."
+        title={t("title")}
+        description={t("description")}
       />
       <div className="overflow-x-auto">
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-neutral-200 text-neutral-500">
-              <th className="px-4 py-3 text-left font-medium">Campaign</th>
-              <th className="px-4 py-3 text-left font-medium">Claimed views</th>
-              <th className="px-4 py-3 text-left font-medium">Status</th>
-              <th className="px-4 py-3 text-left font-medium">Earned</th>
+              <th className="px-4 py-3 text-left font-medium">{t("campaign")}</th>
+              <th className="px-4 py-3 text-left font-medium">{t("claimedViews")}</th>
+              <th className="px-4 py-3 text-left font-medium">{t("status")}</th>
+              <th className="px-4 py-3 text-left font-medium">{t("earned")}</th>
             </tr>
           </thead>
           <tbody>
             {recentSubmissions.length === 0 ? (
               <tr>
                 <td colSpan={4} className="px-4 py-6 text-center text-sm text-neutral-500">
-                  No submissions yet
+                  {t("empty")}
                 </td>
               </tr>
             ) : (
@@ -162,18 +169,18 @@ async function RecentSubmissions({ creatorId }: { creatorId: string }) {
                     {sub.campaign.name}
                   </td>
                   <td className="px-4 py-3 text-neutral-600">
-                    {sub.claimedViews.toLocaleString()}
+                    {formatNumber(sub.claimedViews, locale)}
                   </td>
                   <td className="px-4 py-3">
                     <span
                       className="rounded-full px-2.5 py-1 text-xs font-medium"
                       style={{ color: getStatusColor(sub.status), backgroundColor: `${getStatusColor(sub.status)}18` }}
                     >
-                      {sub.status}
+                      {statusT(sub.status)}
                     </span>
                   </td>
                   <td className="px-4 py-3 text-neutral-600">
-                    ${Number(sub.earnedAmount).toFixed(2)}
+                    {formatCurrencyPrecise(sub.earnedAmount, "USD", locale)}
                   </td>
                 </tr>
               ))

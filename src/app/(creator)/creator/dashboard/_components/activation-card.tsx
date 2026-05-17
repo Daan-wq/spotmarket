@@ -1,3 +1,4 @@
+import { getTranslations } from "next-intl/server";
 import {
   ActivationChecklist,
   type ChecklistItem,
@@ -12,33 +13,33 @@ interface ActivationCardProps {
  * Renders the dashboard activation checklist. Returns null once every step
  * is complete, so the dashboard collapses back to a pure data view.
  */
-export function ActivationCard({ activation }: ActivationCardProps) {
+export async function ActivationCard({ activation }: ActivationCardProps) {
   if (activation.fullyActivated) return null;
 
+  const t = await getTranslations("dashboard.creator.activation");
   const items: ChecklistItem[] = [
     {
       key: "profileComplete",
-      label: "Complete your profile",
-      description: "Add a display name so we can address you.",
+      label: t("profile.label"),
+      description: t("profile.description"),
       status: activation.profileComplete ? "complete" : "incomplete",
       cta: activation.profileComplete
         ? undefined
-        : { label: "Edit", href: "/creator/profile" },
+        : { label: t("profile.cta"), href: "/creator/profile" },
     },
     {
       key: "accountConnected",
-      label: "Connect a social account",
-      description:
-        "Connected accounts unlock campaigns and let us track your views.",
+      label: t("account.label"),
+      description: t("account.description"),
       status: activation.accountConnected ? "complete" : "incomplete",
       cta: activation.accountConnected
         ? undefined
-        : { label: "Connect", href: "/creator/connections" },
+        : { label: t("account.cta"), href: "/creator/connections" },
     },
     {
       key: "firstClipSubmitted",
-      label: "Submit your first clip",
-      description: "Pick a campaign you've joined and submit a clip URL.",
+      label: t("clip.label"),
+      description: t("clip.description"),
       status: activation.firstClipSubmitted
         ? "complete"
         : activation.accountConnected
@@ -47,22 +48,21 @@ export function ActivationCard({ activation }: ActivationCardProps) {
       cta:
         activation.firstClipSubmitted || !activation.accountConnected
           ? undefined
-          : { label: "Browse campaigns", href: "/creator/campaigns" },
+          : { label: t("clip.cta"), href: "/creator/campaigns" },
     },
     {
       key: "paymentMethodAdded",
-      label: "Add a payment method",
-      description: "Required before your first payout — you can do this later.",
+      label: t("payment.label"),
+      description: t("payment.description"),
       status: activation.paymentMethodAdded ? "complete" : "incomplete",
       cta: activation.paymentMethodAdded
         ? undefined
-        : { label: "Add", href: "/creator/payouts" },
+        : { label: t("payment.cta"), href: "/creator/payouts" },
     },
     {
       key: "firstApproval",
-      label: "Get your first approved clip",
-      description:
-        "Once a clip is reviewed and approved, you start earning per verified view.",
+      label: t("approval.label"),
+      description: t("approval.description"),
       status: activation.firstApproval
         ? "complete"
         : activation.firstClipSubmitted
@@ -71,11 +71,13 @@ export function ActivationCard({ activation }: ActivationCardProps) {
       cta: undefined,
     },
   ];
+  const completed = items.filter((item) => item.status === "complete").length;
 
   return (
     <ActivationChecklist
-      title="Get started"
-      subtitle="Finish these steps to unlock your first payout."
+      title={t("title")}
+      subtitle={t("subtitle")}
+      progressLabel={t("progress", { completed, total: items.length })}
       items={items}
     />
   );

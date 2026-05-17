@@ -1,31 +1,36 @@
 import Link from "next/link";
+import { getLocale, getTranslations } from "next-intl/server";
+import type { Locale } from "@/i18n/routing";
+import { formatCurrencyPrecise } from "@/lib/admin/agency-format";
 import { Skeleton } from "@/components/ui/skeleton";
 import { CreatorSectionHeader } from "../../_components/creator-journey";
 import { getCreatorPayoutTotals } from "../_data";
 
 export async function PayoutSummary({ userId }: { userId: string }) {
+  const locale = (await getLocale()) as Locale;
+  const t = await getTranslations("dashboard.creator.payoutSummary");
   const { totalEarnings, totalPaid, availableBalance } =
     await getCreatorPayoutTotals(userId);
 
   return (
     <div className="rounded-2xl border border-neutral-200 bg-white p-5 md:p-6">
       <CreatorSectionHeader
-        title="Payout summary"
-        description="Estimated earnings become final after review and payout processing."
+        title={t("title")}
+        description={t("description")}
       />
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-        <MiniPayout label="Estimated" value={`$${totalEarnings.toFixed(2)}`} />
+        <MiniPayout label={t("estimated")} value={formatCurrencyPrecise(totalEarnings, "USD", locale)} />
         <MiniPayout
-          label="Pending/final"
-          value={`$${availableBalance.toFixed(2)}`}
+          label={t("pendingFinal")}
+          value={formatCurrencyPrecise(availableBalance, "USD", locale)}
         />
-        <MiniPayout label="Paid" value={`$${totalPaid.toFixed(2)}`} />
+        <MiniPayout label={t("paid")} value={formatCurrencyPrecise(totalPaid, "USD", locale)} />
       </div>
       <Link
         href="/creator/payouts"
         className="mt-4 inline-flex h-11 w-full items-center justify-center rounded-xl bg-neutral-950 px-4 text-sm font-semibold text-white shadow-[0_8px_18px_rgba(0,0,0,0.16)] hover:bg-neutral-800"
       >
-        Open payments
+        {t("openPayments")}
       </Link>
     </div>
   );

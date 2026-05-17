@@ -1,5 +1,7 @@
 "use client";
 
+import { useTranslations } from "next-intl";
+
 interface WelcomeHeaderProps {
   displayName: string;
   /** Optional one-line status sentence shown under the greeting. */
@@ -7,7 +9,8 @@ interface WelcomeHeaderProps {
 }
 
 export function WelcomeHeader({ displayName, status }: WelcomeHeaderProps) {
-  const prefix = "Welcome";
+  const t = useTranslations("dashboard.creator.welcome");
+  const prefix = t("prefix");
   const firstName = displayName.split(/\s+/)[0] || displayName;
 
   return (

@@ -11,6 +11,8 @@
  */
 
 import { useQuery } from "@tanstack/react-query";
+import { useLocale, useTranslations } from "next-intl";
+import { formatCurrencyPrecise } from "@/lib/admin/agency-format";
 
 interface LiveEarningsResponse {
   settled: number;
@@ -30,6 +32,8 @@ async function fetchLiveEarnings(): Promise<LiveEarningsResponse> {
 }
 
 export function LiveEarnings() {
+  const locale = useLocale();
+  const t = useTranslations("dashboard.creator.liveEarnings");
   const { data, error, isLoading } = useQuery({
     queryKey: ["live-earnings"],
     queryFn: fetchLiveEarnings,
@@ -51,47 +55,49 @@ export function LiveEarnings() {
         <div className="flex items-center gap-2">
           <PulseDot active={!loading && !error} />
           <h3 className="text-sm font-semibold" style={{ color: "var(--text-primary)" }}>
-            Live Earnings
+            {t("title")}
           </h3>
         </div>
         <span className="text-xs" style={{ color: "var(--text-muted)" }}>
           {error
-            ? "Offline"
+            ? t("offline")
             : data
-            ? `Updated ${formatRelative(data.asOf)}`
-            : "Loading…"}
+            ? t("updated", { time: formatRelative(data.asOf, t) })
+            : t("loading")}
         </span>
       </div>
 
       <div className="grid grid-cols-2 gap-4">
         <Metric
-          label="Estimated"
+          label={t("estimated")}
           value={data?.estimated ?? 0}
           loading={loading}
+          locale={locale}
           subtitle={
             data && data.estimatedCount > 0
-              ? `${data.estimatedCount} active clip${data.estimatedCount === 1 ? "" : "s"}`
-              : "No active clips"
+              ? t("activeClips", { count: data.estimatedCount })
+              : t("noActiveClips")
           }
           color="#f59e0b"
-          help="Views × CPV across approved, unsettled clips. Updates as views come in."
+          help={t("estimatedHelp")}
         />
         <Metric
-          label="Settled"
+          label={t("settled")}
           value={data?.settled ?? 0}
           loading={loading}
+          locale={locale}
           subtitle={
             data && data.settledCount > 0
-              ? `${data.settledCount} settled`
-              : "Awaiting first settlement"
+              ? t("settledCount", { count: data.settledCount })
+              : t("awaitingSettlement")
           }
           color="#22c55e"
-          help="Locked earnings from settled submissions."
+          help={t("settledHelp")}
         />
       </div>
       {error && (
         <p className="text-xs mt-3" style={{ color: "var(--error-text)" }}>
-          Could not refresh live earnings — retrying in 60s.
+          {t("error")}
         </p>
       )}
     </div>
@@ -104,6 +110,7 @@ function Metric({
   subtitle,
   color,
   loading,
+  locale,
   help,
 }: {
   label: string;
@@ -111,6 +118,7 @@ function Metric({
   subtitle: string;
   color: string;
   loading: boolean;
+  locale: string;
   help: string;
 }) {
   return (
@@ -123,7 +131,7 @@ function Metric({
         {label}
       </div>
       <div className="text-2xl font-bold tabular-nums" style={{ color }}>
-        {loading ? "—" : `$${value.toFixed(2)}`}
+        {loading ? "-" : formatCurrencyPrecise(value, "USD", locale)}
       </div>
       <div className="text-xs mt-1" style={{ color: "var(--text-secondary)" }}>
         {subtitle}
@@ -148,13 +156,16 @@ function PulseDot({ active }: { active: boolean }) {
   );
 }
 
-function formatRelative(iso: string): string {
+function formatRelative(
+  iso: string,
+  t: (key: string, values?: Record<string, number>) => string,
+): string {
   const diff = Date.now() - new Date(iso).getTime();
   const s = Math.floor(diff / 1000);
-  if (s < 5) return "just now";
-  if (s < 60) return `${s}s ago`;
+  if (s < 5) return t("relative.justNow");
+  if (s < 60) return t("relative.secondsAgo", { count: s });
   const m = Math.floor(s / 60);
-  if (m < 60) return `${m}m ago`;
+  if (m < 60) return t("relative.minutesAgo", { count: m });
   const h = Math.floor(m / 60);
-  return `${h}h ago`;
+  return t("relative.hoursAgo", { count: h });
 }
