@@ -35,7 +35,6 @@ export default async function SettingsPage() {
           displayName: true,
           bio: true,
           avatarUrl: true,
-          tronsAddress: true,
           createdAt: true,
           igConnections: {
             where: { isVerified: true },
@@ -146,7 +145,6 @@ export default async function SettingsPage() {
         <ProfileEditForm
           initialDisplayName={profile?.displayName ?? ""}
           initialBio={profile?.bio ?? ""}
-          initialTronsAddress={profile?.tronsAddress ?? ""}
         />
       </section>
 
