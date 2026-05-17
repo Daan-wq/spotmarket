@@ -53,8 +53,19 @@ export function DailyViewsChart({ data, height = 240 }: { data: DailyPoint[]; he
             </linearGradient>
           </defs>
           <CartesianGrid stroke="var(--border)" strokeDasharray="3 3" />
-          <XAxis dataKey="date" stroke="var(--text-muted)" tick={{ fontSize: 11 }} />
-          <YAxis stroke="var(--text-muted)" tick={{ fontSize: 11 }} />
+          <XAxis
+            axisLine={false}
+            dataKey="date"
+            stroke="var(--text-muted)"
+            tick={{ fontSize: 11 }}
+            tickLine={false}
+          />
+          <YAxis
+            axisLine={false}
+            stroke="var(--text-muted)"
+            tick={{ fontSize: 11 }}
+            tickLine={false}
+          />
           <Tooltip content={() => null} cursor={false} wrapperStyle={{ display: "none" }} />
           <Area type="monotone" dataKey="views" stroke="#6366F1" fill="url(#dailyViewsFill)" strokeWidth={2} />
         </AreaChart>
