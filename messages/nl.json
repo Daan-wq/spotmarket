@@ -1246,6 +1246,48 @@
       }
     },
     "connections": {
+      "status": {
+        "linked": {
+          "title": "Facebook gekoppeld",
+          "description": "Je Facebook-pagina is gekoppeld en klaar voor tracking."
+        },
+        "denied": {
+          "title": "Facebook-koppeling geannuleerd",
+          "description": "De toestemming is niet gegeven. Probeer opnieuw te koppelen wanneer je klaar bent."
+        },
+        "failed": {
+          "title": "Facebook-koppeling mislukt",
+          "description": "We konden de koppeling niet starten. Probeer het opnieuw."
+        },
+        "stateMismatch": {
+          "title": "Facebook-koppeling verlopen",
+          "description": "Start voor je veiligheid de Facebook-koppeling opnieuw."
+        },
+        "missingScopes": {
+          "title": "Facebook heeft meer toestemmingen nodig",
+          "description": "Geef alle gevraagde toestemmingen zodat ClipProfit je pagina kan tracken."
+        },
+        "noPages": {
+          "title": "Geen Facebook-pagina's gevonden",
+          "description": "Koppel met een Facebook-account dat minimaal een pagina beheert."
+        },
+        "noProfile": {
+          "title": "Creatorprofiel ontbreekt",
+          "description": "Rond je creatorprofiel af voordat je Facebook koppelt."
+        },
+        "appInvalid": {
+          "title": "Facebook-appconfiguratie vraagt aandacht",
+          "description": "De koppeling gebruikt een ongeldige Facebook-app. Het team kan de serverlogs bekijken."
+        },
+        "redirectMismatch": {
+          "title": "Facebook-redirect komt niet overeen",
+          "description": "De callback-URL moet overeenkomen met de Meta-instellingen voordat je kunt koppelen."
+        },
+        "tokenExchangeFailed": {
+          "title": "Facebook-tokenuitwisseling mislukt",
+          "description": "Facebook heeft het koppelantwoord geweigerd. Probeer het straks opnieuw."
+        }
+      },
       "page": {
         "emptyEyebrow": "Accountgezondheid",
         "emptyTitle": "Accounts",

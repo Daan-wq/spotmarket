@@ -1,7 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { prisma } from "@/lib/prisma";
-import { exchangeFbCodeForToken, fetchUserPages, fetchFacebookPageProfile, fetchFacebookUserId, REQUIRED_FB_SCOPES } from "@/lib/facebook";
+import {
+  exchangeFbCodeForToken,
+  FacebookOAuthError,
+  fetchFacebookPageProfile,
+  fetchFacebookUserId,
+  fetchUserPages,
+  getFacebookOAuthRedirectDetail,
+  REQUIRED_FB_SCOPES,
+} from "@/lib/facebook";
 import { encrypt } from "@/lib/crypto";
 
 export async function GET(req: NextRequest) {
@@ -121,9 +129,18 @@ export async function GET(req: NextRequest) {
 
     return NextResponse.redirect(new URL(`${returnTo}?facebook=linked`, req.url));
   } catch (err) {
-    const message = err instanceof Error ? err.message : String(err);
-    console.error("[facebook oauth] error:", message);
-    const errorSlug = encodeURIComponent(message.slice(0, 80));
-    return NextResponse.redirect(new URL(`${returnTo}?error=fb_error&detail=${errorSlug}`, req.url));
+    const detail = getFacebookOAuthRedirectDetail(err);
+    console.error("[facebook oauth] error:", {
+      message: err instanceof Error ? err.message : String(err),
+      detail,
+      ...(err instanceof FacebookOAuthError
+        ? {
+            operation: err.operation,
+            status: err.status,
+            providerError: err.providerError,
+          }
+        : {}),
+    });
+    return NextResponse.redirect(new URL(`${returnTo}?error=fb_error&detail=${detail}`, req.url));
   }
 }

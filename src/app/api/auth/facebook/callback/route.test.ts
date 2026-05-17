@@ -2,19 +2,48 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { NextRequest } from "next/server";
 import { GET } from "./route";
 
-const routeMocks = vi.hoisted(() => ({
-  getUser: vi.fn(),
-  userFindUnique: vi.fn(),
-  connectionFindUnique: vi.fn(),
-  connectionUpdate: vi.fn(),
-  connectionCreate: vi.fn(),
-  connectionDeleteMany: vi.fn(),
-  exchangeFbCodeForToken: vi.fn(),
-  fetchUserPages: vi.fn(),
-  fetchFacebookPageProfile: vi.fn(),
-  fetchFacebookUserId: vi.fn(),
-  encrypt: vi.fn(),
-}));
+const routeMocks = vi.hoisted(() => {
+  class MockFacebookOAuthError extends Error {
+    readonly detail: string;
+    readonly operation: string;
+    readonly status: number;
+    readonly providerError: Record<string, unknown>;
+
+    constructor({
+      detail,
+      operation,
+      status,
+      providerError,
+    }: {
+      detail: string;
+      operation: string;
+      status: number;
+      providerError: Record<string, unknown>;
+    }) {
+      super(`Facebook OAuth ${operation} failed`);
+      this.name = "FacebookOAuthError";
+      this.detail = detail;
+      this.operation = operation;
+      this.status = status;
+      this.providerError = providerError;
+    }
+  }
+
+  return {
+    getUser: vi.fn(),
+    userFindUnique: vi.fn(),
+    connectionFindUnique: vi.fn(),
+    connectionUpdate: vi.fn(),
+    connectionCreate: vi.fn(),
+    connectionDeleteMany: vi.fn(),
+    exchangeFbCodeForToken: vi.fn(),
+    fetchUserPages: vi.fn(),
+    fetchFacebookPageProfile: vi.fn(),
+    fetchFacebookUserId: vi.fn(),
+    encrypt: vi.fn(),
+    FacebookOAuthError: MockFacebookOAuthError,
+  };
+});
 
 vi.mock("@/lib/supabase/server", () => ({
   createSupabaseServerClient: vi.fn(async () => ({
@@ -46,6 +75,10 @@ vi.mock("@/lib/facebook", () => ({
   fetchUserPages: routeMocks.fetchUserPages,
   fetchFacebookPageProfile: routeMocks.fetchFacebookPageProfile,
   fetchFacebookUserId: routeMocks.fetchFacebookUserId,
+  getFacebookOAuthRedirectDetail: vi.fn((err: unknown) =>
+    err instanceof routeMocks.FacebookOAuthError ? err.detail : "fb_token_exchange_failed"
+  ),
+  FacebookOAuthError: routeMocks.FacebookOAuthError,
 }));
 
 vi.mock("@/lib/crypto", () => ({
@@ -162,5 +195,42 @@ describe("GET /api/auth/facebook/callback", () => {
     expect(routeMocks.connectionCreate).not.toHaveBeenCalled();
     expect(routeMocks.connectionUpdate).not.toHaveBeenCalled();
     expect(routeMocks.connectionDeleteMany).not.toHaveBeenCalled();
+  });
+
+  it("redirects deleted-app provider failures with a stable slug and no raw provider JSON", async () => {
+    const consoleError = vi.spyOn(console, "error").mockImplementation(() => {});
+    routeMocks.exchangeFbCodeForToken.mockRejectedValue(
+      new routeMocks.FacebookOAuthError({
+        detail: "fb_app_invalid",
+        operation: "token_exchange",
+        status: 400,
+        providerError: {
+          message: "Error validating application. Application has been deleted.",
+          type: "OAuthException",
+          code: 101,
+          fbtraceId: "trace-123",
+        },
+      })
+    );
+
+    const response = await GET(
+      callbackRequest(`https://app.test/api/auth/facebook/callback?code=bad&state=${state()}`),
+    );
+    const location = response.headers.get("location") ?? "";
+
+    expect(location).toBe("https://app.test/creator/connections?error=fb_error&detail=fb_app_invalid");
+    expect(location).not.toContain("Application%20has%20been%20deleted");
+    expect(location).not.toContain("OAuthException");
+    expect(routeMocks.fetchUserPages).not.toHaveBeenCalled();
+    expect(consoleError).toHaveBeenCalledWith(
+      "[facebook oauth] error:",
+      expect.objectContaining({
+        detail: "fb_app_invalid",
+        operation: "token_exchange",
+        status: 400,
+        providerError: expect.objectContaining({ code: 101 }),
+      })
+    );
+    consoleError.mockRestore();
   });
 });

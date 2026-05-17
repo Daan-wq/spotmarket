@@ -1246,6 +1246,48 @@
       }
     },
     "connections": {
+      "status": {
+        "linked": {
+          "title": "Facebook connected",
+          "description": "Your Facebook Page is connected and ready for tracking."
+        },
+        "denied": {
+          "title": "Facebook connection cancelled",
+          "description": "Permission was not granted. Try connecting again when you are ready."
+        },
+        "failed": {
+          "title": "Facebook connection failed",
+          "description": "We could not start the connection. Please try again."
+        },
+        "stateMismatch": {
+          "title": "Facebook connection expired",
+          "description": "For your security, start the Facebook connection again."
+        },
+        "missingScopes": {
+          "title": "Facebook needs more permissions",
+          "description": "Grant all requested permissions so ClipProfit can track your page."
+        },
+        "noPages": {
+          "title": "No Facebook Pages found",
+          "description": "Connect with a Facebook account that manages at least one Page."
+        },
+        "noProfile": {
+          "title": "Creator profile missing",
+          "description": "Finish your creator profile before connecting Facebook."
+        },
+        "appInvalid": {
+          "title": "Facebook app configuration needs attention",
+          "description": "The connection is using an invalid Facebook app. The team can review the server logs."
+        },
+        "redirectMismatch": {
+          "title": "Facebook redirect does not match",
+          "description": "The callback URL needs to match Meta settings before connecting."
+        },
+        "tokenExchangeFailed": {
+          "title": "Facebook token exchange failed",
+          "description": "Facebook rejected the connection response. Please try again shortly."
+        }
+      },
       "page": {
         "emptyEyebrow": "Account health",
         "emptyTitle": "Accounts",

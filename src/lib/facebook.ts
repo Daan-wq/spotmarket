@@ -15,6 +15,45 @@ export type { FbPageProfile, FbPagePost, FbDailyPageInsight, FbPageInsightsResul
 
 const GRAPH_BASE = "https://graph.facebook.com/v25.0";
 
+export type FacebookOAuthErrorDetail =
+  | "fb_app_invalid"
+  | "fb_redirect_mismatch"
+  | "fb_token_exchange_failed";
+
+export interface FacebookProviderError {
+  message: string | null;
+  type: string | null;
+  code: number | null;
+  errorSubcode: number | null;
+  fbtraceId: string | null;
+}
+
+export class FacebookOAuthError extends Error {
+  readonly detail: FacebookOAuthErrorDetail;
+  readonly operation: "token_exchange" | "long_lived_token_exchange";
+  readonly status: number;
+  readonly providerError: FacebookProviderError;
+
+  constructor({
+    detail,
+    operation,
+    status,
+    providerError,
+  }: {
+    detail: FacebookOAuthErrorDetail;
+    operation: FacebookOAuthError["operation"];
+    status: number;
+    providerError: FacebookProviderError;
+  }) {
+    super(`Facebook OAuth ${operation} failed`);
+    this.name = "FacebookOAuthError";
+    this.detail = detail;
+    this.operation = operation;
+    this.status = status;
+    this.providerError = providerError;
+  }
+}
+
 // ─────────────────────────────────────────
 // OAUTH HELPERS
 // ─────────────────────────────────────────
@@ -51,7 +90,7 @@ export async function exchangeFbCodeForToken(
   });
   const shortRes = await fetch(`${GRAPH_BASE}/oauth/access_token?${params}`);
   if (!shortRes.ok) {
-    throw new Error(`Facebook token exchange failed: ${await shortRes.text()}`);
+    throw await buildFacebookOAuthError(shortRes, "token_exchange");
   }
   const shortData = await shortRes.json();
   const shortLivedToken: string = shortData.access_token;
@@ -71,13 +110,93 @@ export async function exchangeFbCodeForToken(
     accessToken = longData.access_token;
     expiresIn = longData.expires_in ?? 5184000;
   } else {
-    console.error("[facebook] long-lived exchange failed:", await longRes.text());
+    const error = await buildFacebookOAuthError(longRes, "long_lived_token_exchange");
+    console.error("[facebook] long-lived exchange failed:", {
+      detail: error.detail,
+      operation: error.operation,
+      status: error.status,
+      providerError: error.providerError,
+    });
   }
 
   // Step 3: Fetch granted permissions (Facebook token exchange doesn't return scope field)
   const grantedScopes = await fetchFacebookGrantedScopes(accessToken);
 
   return { accessToken, expiresIn, grantedScopes };
+}
+
+export function getFacebookOAuthRedirectDetail(err: unknown): FacebookOAuthErrorDetail {
+  if (err instanceof FacebookOAuthError) {
+    return err.detail;
+  }
+
+  return "fb_token_exchange_failed";
+}
+
+async function buildFacebookOAuthError(
+  res: Response,
+  operation: FacebookOAuthError["operation"]
+): Promise<FacebookOAuthError> {
+  const body = await res.text();
+  const providerError = parseFacebookProviderError(body);
+
+  return new FacebookOAuthError({
+    detail: classifyFacebookProviderError(providerError),
+    operation,
+    status: res.status,
+    providerError,
+  });
+}
+
+function parseFacebookProviderError(body: string): FacebookProviderError {
+  try {
+    const parsed = JSON.parse(body) as {
+      error?: {
+        message?: unknown;
+        type?: unknown;
+        code?: unknown;
+        error_subcode?: unknown;
+        fbtrace_id?: unknown;
+      };
+    };
+    const error = parsed.error ?? {};
+
+    return {
+      message: typeof error.message === "string" ? error.message : null,
+      type: typeof error.type === "string" ? error.type : null,
+      code: typeof error.code === "number" ? error.code : null,
+      errorSubcode: typeof error.error_subcode === "number" ? error.error_subcode : null,
+      fbtraceId: typeof error.fbtrace_id === "string" ? error.fbtrace_id : null,
+    };
+  } catch {
+    return {
+      message: body.slice(0, 300) || null,
+      type: null,
+      code: null,
+      errorSubcode: null,
+      fbtraceId: null,
+    };
+  }
+}
+
+function classifyFacebookProviderError(
+  providerError: FacebookProviderError
+): FacebookOAuthErrorDetail {
+  const message = providerError.message?.toLowerCase() ?? "";
+
+  if (
+    providerError.code === 101 &&
+    (message.includes("application has been deleted") ||
+      message.includes("error validating application"))
+  ) {
+    return "fb_app_invalid";
+  }
+
+  if (providerError.code === 191 || message.includes("redirect_uri")) {
+    return "fb_redirect_mismatch";
+  }
+
+  return "fb_token_exchange_failed";
 }
 
 async function fetchFacebookGrantedScopes(accessToken: string): Promise<string[]> {
