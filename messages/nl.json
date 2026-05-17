@@ -731,8 +731,8 @@
         "creators": "creators",
         "lessons": "lessen",
         "businessDays": "werkdagen",
-        "perThousandViews": "per 1K views",
-        "perOneKViews": "/1K views"
+        "perThousandViews": "per 1M views",
+        "perOneKViews": "/1M views"
       },
       "statuses": {
         "application": {
@@ -875,7 +875,7 @@
         "back": "Terug naar campagnes",
         "contact": "Contact",
         "info": "Campagne-info",
-        "payoutPer1K": "Payout per 1K",
+        "payoutPer1K": "Payout per 1M",
         "baseRate": "Basis campagnerate",
         "startDate": "Startdatum",
         "campaignStart": "Campagnestart",
@@ -1006,7 +1006,7 @@
         "uploaded": "Geupload",
         "viewCampaign": "Campagne bekijken",
         "viewOriginalPost": "Originele post bekijken",
-        "rate": "{amount} per 1K views",
+        "rate": "{amount} per 1M views",
         "metrics": {
           "views": "Views",
           "likes": "Likes",
