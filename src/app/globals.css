@@ -263,7 +263,14 @@ summary {
 
 .daily-views-chart .recharts-wrapper,
 .daily-views-chart .recharts-surface {
-  outline: none;
+  border: 0;
+  box-shadow: none;
+  outline: none !important;
+}
+
+.daily-views-chart :focus,
+.daily-views-chart :focus-visible {
+  outline: none !important;
 }
 
 ::-webkit-scrollbar {
