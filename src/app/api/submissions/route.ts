@@ -6,6 +6,10 @@ import { parseClipUrl, normalizeHandle, type ClipPlatform } from "@/lib/parse-cl
 import { findDuplicate } from "@/lib/duplicate-detector";
 import { publishEvent } from "@/lib/event-bus";
 import { resolveInstagramThumbnail } from "@/lib/clip-thumbnail";
+import {
+  CAMPAIGN_CLOSED_FOR_SUBMISSIONS_MESSAGE,
+  isCampaignClosedForSubmissions,
+} from "@/lib/campaign-submission-state";
 
 const createSubmissionSchema = z.object({
   applicationId: z.string().min(1),
@@ -166,6 +170,18 @@ export async function POST(req: NextRequest) {
 
     if (!app || app.creatorProfileId !== profile.id) {
       return NextResponse.json({ error: "Application not found or unauthorized" }, { status: 404 });
+    }
+
+    if (
+      isCampaignClosedForSubmissions({
+        status: app.campaign.status,
+        deadline: app.campaign.deadline,
+      })
+    ) {
+      return NextResponse.json(
+        { error: CAMPAIGN_CLOSED_FOR_SUBMISSIONS_MESSAGE },
+        { status: 400 },
+      );
     }
 
     // Duplicate detection — URL + author handle. Same clip cannot be submitted

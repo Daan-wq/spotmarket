@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import { isCampaignClosedForSubmissions } from "@/lib/campaign-submission-state";
 
 export interface CreatorApplicationOption {
   applicationId: string;
@@ -6,6 +7,7 @@ export interface CreatorApplicationOption {
   campaignName: string;
   status: string;
   appliedAt: Date;
+  closedForSubmissions: boolean;
 }
 
 /**
@@ -18,7 +20,7 @@ export async function listCreatorApplications(
 ): Promise<CreatorApplicationOption[]> {
   const rows = await prisma.campaignApplication.findMany({
     where: { creatorProfileId },
-    include: { campaign: { select: { id: true, name: true } } },
+    include: { campaign: { select: { id: true, name: true, status: true, deadline: true } } },
     orderBy: { appliedAt: "desc" },
   });
   return rows.map((r) => ({
@@ -27,5 +29,9 @@ export async function listCreatorApplications(
     campaignName: r.campaign.name,
     status: r.status,
     appliedAt: r.appliedAt,
+    closedForSubmissions: isCampaignClosedForSubmissions({
+      status: r.campaign.status,
+      deadline: r.campaign.deadline,
+    }),
   }));
 }

@@ -15,7 +15,7 @@ interface VideoItem {
 
 interface ActiveApplication {
   id: string;
-  campaign: { id: string; name: string };
+  campaign: { id: string; name: string; closedForSubmissions?: boolean };
 }
 
 interface VideoGridProps {
@@ -28,6 +28,9 @@ interface VideoGridProps {
 export function VideoGrid({ videos, platform, username, activeApplications = [] }: VideoGridProps) {
   const [openPopover, setOpenPopover] = useState<string | null>(null);
   const [showJoinPrompt, setShowJoinPrompt] = useState<string | null>(null);
+  const hasSubmittableApplications = activeApplications.some(
+    (app) => !app.campaign.closedForSubmissions,
+  );
 
   if (videos.length === 0) {
     return (
@@ -42,6 +45,12 @@ export function VideoGrid({ videos, platform, username, activeApplications = [] 
     if (platform === "youtube") return `https://www.youtube.com/shorts/${video.id}`;
     if (platform === "facebook") return `https://www.facebook.com/${video.id}`;
     return `https://www.tiktok.com/@${username ?? ""}/video/${video.id}`;
+  }
+
+  function getSubmitPlatform(): "tt" | "yt" | "fb" {
+    if (platform === "youtube") return "yt";
+    if (platform === "facebook") return "fb";
+    return "tt";
   }
 
   function formatCount(n: number): string {
@@ -129,20 +138,45 @@ export function VideoGrid({ videos, platform, username, activeApplications = [] 
               {/* Submit */}
               <div className="relative">
                 <button
+                  type="button"
+                  disabled={activeApplications.length > 0 && !hasSubmittableApplications}
+                  title={
+                    activeApplications.length > 0 && !hasSubmittableApplications
+                      ? "No campaigns are accepting submissions"
+                      : undefined
+                  }
                   onClick={(e) => {
                     e.stopPropagation();
                     if (activeApplications.length === 0) {
                       setShowJoinPrompt(showJoinPrompt === video.id ? null : video.id);
                       setOpenPopover(null);
+                    } else if (!hasSubmittableApplications) {
+                      setOpenPopover(null);
+                      setShowJoinPrompt(null);
                     } else {
                       setOpenPopover(openPopover === video.id ? null : video.id);
                       setShowJoinPrompt(null);
                     }
                   }}
-                  className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-semibold text-white transition-colors cursor-pointer"
-                  style={{ background: "rgba(99,102,241,0.85)" }}
-                  onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = "rgba(99,102,241,1)"; }}
-                  onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = "rgba(99,102,241,0.85)"; }}
+                  className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-semibold text-white transition-colors cursor-pointer disabled:cursor-not-allowed"
+                  style={{
+                    background:
+                      activeApplications.length > 0 && !hasSubmittableApplications
+                        ? "rgba(229,229,229,0.92)"
+                        : "rgba(99,102,241,0.85)",
+                    color:
+                      activeApplications.length > 0 && !hasSubmittableApplications
+                        ? "var(--text-muted)"
+                        : "#fff",
+                  }}
+                  onMouseEnter={(e) => {
+                    if (e.currentTarget.disabled) return;
+                    (e.currentTarget as HTMLElement).style.background = "rgba(99,102,241,1)";
+                  }}
+                  onMouseLeave={(e) => {
+                    if (e.currentTarget.disabled) return;
+                    (e.currentTarget as HTMLElement).style.background = "rgba(99,102,241,0.85)";
+                  }}
                 >
                   <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                     <line x1="22" y1="2" x2="11" y2="13" />
@@ -181,18 +215,28 @@ export function VideoGrid({ videos, platform, username, activeApplications = [] 
                         Choose campaign
                       </p>
                     </div>
-                    {activeApplications.map((app) => (
-                      <a
-                        key={app.id}
-                        href={`/creator/applications/${app.id}/submit?mediaUrl=${encodeURIComponent(getUrl(video))}`}
-                        className="flex items-center px-3 py-2 text-xs transition-colors"
-                        style={{ color: "var(--text-primary)" }}
-                        onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = "var(--sidebar-hover-bg)"; }}
-                        onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = "transparent"; }}
-                      >
-                        {app.campaign.name}
-                      </a>
-                    ))}
+                    {activeApplications.map((app) =>
+                      app.campaign.closedForSubmissions ? (
+                        <span
+                          key={app.id}
+                          className="flex cursor-not-allowed items-center justify-between gap-3 px-3 py-2 text-xs text-neutral-400"
+                        >
+                          {app.campaign.name}
+                          <span className="uppercase tracking-wide">Ended</span>
+                        </span>
+                      ) : (
+                        <a
+                          key={app.id}
+                          href={`/creator/applications/${app.id}/submit?prefillUrl=${encodeURIComponent(getUrl(video))}&platform=${getSubmitPlatform()}`}
+                          className="flex items-center px-3 py-2 text-xs transition-colors"
+                          style={{ color: "var(--text-primary)" }}
+                          onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = "var(--sidebar-hover-bg)"; }}
+                          onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = "transparent"; }}
+                        >
+                          {app.campaign.name}
+                        </a>
+                      ),
+                    )}
                   </div>
                 )}
               </div>

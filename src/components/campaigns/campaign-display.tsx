@@ -1,6 +1,7 @@
 import PlatformIcon from "@/components/shared/PlatformIcon";
 import { Badge, type BadgeVariant } from "@/components/ui/badge";
 import { cn } from "@/lib/cn";
+import { getCampaignDeadlineState } from "@/lib/campaign-submission-state";
 import { Clock } from "lucide-react";
 
 type CampaignStatus =
@@ -58,7 +59,7 @@ export function CampaignAvatar({
 
 export function campaignStatusDisplay(status: CampaignStatus, deadline?: Date | string | null) {
   const normalized = status.toLowerCase();
-  const isExpired = deadline ? getDeadlineState(deadline).state === "ended" : false;
+  const isExpired = deadline ? getCampaignDeadlineState(deadline).state === "ended" : false;
 
   if (normalized === "active" && !isExpired) {
     return { label: "Active", variant: "active" as BadgeVariant };
@@ -94,27 +95,7 @@ export function CampaignStatusBadge({
 }
 
 export function getDeadlineState(deadline: Date | string | null | undefined) {
-  if (!deadline) return { state: "none" as const, label: "No deadline", days: null };
-  const target = new Date(deadline);
-  if (Number.isNaN(target.getTime())) {
-    return { state: "none" as const, label: "No deadline", days: null };
-  }
-
-  const now = new Date();
-  const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-  const startOfDeadline = new Date(
-    target.getFullYear(),
-    target.getMonth(),
-    target.getDate(),
-  );
-  const days = Math.ceil(
-    (startOfDeadline.getTime() - startOfToday.getTime()) / (1000 * 60 * 60 * 24),
-  );
-
-  if (days < 0) return { state: "ended" as const, label: "Ended", days };
-  if (days === 0) return { state: "today" as const, label: "Ends today", days };
-  if (days === 1) return { state: "soon" as const, label: "1 day left", days };
-  return { state: days <= 7 ? "soon" as const : "open" as const, label: `${days} days left`, days };
+  return getCampaignDeadlineState(deadline);
 }
 
 export function CampaignDeadlineBadge({

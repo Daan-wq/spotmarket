@@ -15,6 +15,7 @@ interface CampaignDetailClientProps {
   hasRequiredPlatform: boolean;
   missingPlatformLabels: string[];
   hasDiscord: boolean;
+  isClosedForSubmissions: boolean;
 }
 
 export function CampaignDetailClient({
@@ -24,6 +25,7 @@ export function CampaignDetailClient({
   hasRequiredPlatform,
   missingPlatformLabels,
   hasDiscord,
+  isClosedForSubmissions,
 }: CampaignDetailClientProps) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -32,6 +34,8 @@ export function CampaignDetailClient({
   const router = useRouter();
 
   const handleSubmitContent = async () => {
+    if (isClosedForSubmissions) return;
+
     if (hasApplication && resolvedAppId) {
       router.push(`/creator/applications/${resolvedAppId}/submit`);
       return;
@@ -82,6 +86,7 @@ export function CampaignDetailClient({
   }
 
   const connectMessage = buildConnectRequiredMessage(missingPlatformLabels);
+  const disabled = loading || isClosedForSubmissions;
 
   return (
     <div className="mb-6 space-y-3">
@@ -92,9 +97,12 @@ export function CampaignDetailClient({
       )}
       <button
         onClick={handleSubmitContent}
-        disabled={loading}
-        className="w-full flex items-center justify-center gap-2 py-3.5 rounded-xl font-semibold text-white transition-all cursor-pointer disabled:opacity-50"
-        style={{ background: "var(--primary)" }}
+        disabled={disabled}
+        className="w-full flex items-center justify-center gap-2 py-3.5 rounded-xl font-semibold transition-all disabled:cursor-not-allowed disabled:opacity-100"
+        style={{
+          background: isClosedForSubmissions ? "#e5e5e5" : "var(--primary)",
+          color: isClosedForSubmissions ? "var(--text-muted)" : "#fff",
+        }}
       >
         {loading ? (
           "Processing..."
@@ -115,6 +123,11 @@ export function CampaignDetailClient({
           </>
         )}
       </button>
+      {isClosedForSubmissions ? (
+        <p className="text-center text-sm text-neutral-500">
+          This campaign has ended and no longer accepts submissions.
+        </p>
+      ) : null}
       <Dialog
         open={showConnectDialog}
         onClose={() => setShowConnectDialog(false)}

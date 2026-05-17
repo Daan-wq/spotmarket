@@ -18,6 +18,7 @@ import {
   CampaignStatusBadge,
 } from "@/components/campaigns/campaign-display";
 import { evaluateCampaignJoinEligibility } from "@/lib/campaign-eligibility";
+import { isCampaignClosedForSubmissions } from "@/lib/campaign-submission-state";
 import {
   SubmittedClipsList,
   type SubmittedClipData,
@@ -120,7 +121,12 @@ export default async function CampaignDetailPage({
   const totalBudget = Number(campaign.totalBudget);
   const rewardRate = Number(campaign.creatorCpv) * 1000;
   const hasDiscord = !!user.discordId;
-  const canApply = eligibility.eligible && !existingApplication && hasDiscord;
+  const isClosedForSubmissions = isCampaignClosedForSubmissions({
+    status: campaign.status,
+    deadline: campaign.deadline,
+  });
+  const canApply =
+    eligibility.eligible && !existingApplication && hasDiscord && !isClosedForSubmissions;
   const requirementSteps = campaign.requirements
     ? campaign.requirements.split("\n").filter((r) => r.trim())
     : [];
@@ -211,6 +217,7 @@ export default async function CampaignDetailPage({
         hasRequiredPlatform={eligibility.eligible}
         missingPlatformLabels={eligibility.missingPlatformLabels}
         hasDiscord={hasDiscord}
+        isClosedForSubmissions={isClosedForSubmissions}
       />
 
       <section>
@@ -326,7 +333,7 @@ export default async function CampaignDetailPage({
             emptyState={{
               title: "No clips submitted yet",
               description: "Submit a clip from your connected social accounts and it will appear here.",
-              primaryCta: existingApplication?.id
+              primaryCta: existingApplication?.id && !isClosedForSubmissions
                 ? { label: "Submit clip", href: `/creator/applications/${existingApplication.id}/submit` }
                 : undefined,
             }}

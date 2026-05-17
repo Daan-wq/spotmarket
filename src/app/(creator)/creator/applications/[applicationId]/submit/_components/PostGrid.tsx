@@ -13,6 +13,7 @@ interface Props {
   requiredHashtags: string[];
   hasConnectedAccount: boolean;
   platform: "ig" | "tt" | "yt" | "fb";
+  isSubmissionDisabled: boolean;
   onToggle: (post: NormalizedPost) => void;
   onSubmitOne: (post: NormalizedPost) => void;
 }
@@ -32,6 +33,7 @@ export default function PostGrid({
   requiredHashtags,
   hasConnectedAccount,
   platform,
+  isSubmissionDisabled,
   onToggle,
   onSubmitOne,
 }: Props) {
@@ -117,6 +119,7 @@ export default function PostGrid({
               isSubmitted={submittedKeys.has(k)}
               isSubmittingOne={submittingKeys.has(k)}
               isEligible={eligible}
+              isSubmissionDisabled={isSubmissionDisabled}
               onToggle={() => onToggle(post)}
               onSubmitOne={() => onSubmitOne(post)}
             />

@@ -50,6 +50,7 @@ interface CampaignData {
   createdAtIso: string;
   eligibility: Eligibility;
   applicationId?: string;
+  closedForSubmissions: boolean;
 }
 
 interface CampaignsClientProps {
@@ -434,10 +435,11 @@ function sortCampaigns(list: CampaignData[], sort: SortKey): CampaignData[] {
 }
 
 function CampaignCard({ campaign }: { campaign: CampaignData }) {
-  const primaryHref = campaign.applicationId
+  const primaryHref = campaign.applicationId && !campaign.closedForSubmissions
     ? `/creator/applications/${campaign.applicationId}/submit`
     : `/creator/campaigns/${campaign.id}`;
   const primaryLabel = campaign.applicationId ? "Submit clip" : "Campaign info";
+  const submitDisabled = Boolean(campaign.applicationId && campaign.closedForSubmissions);
 
   return (
     <article className="flex h-full flex-col rounded-2xl border border-neutral-200 bg-neutral-50 p-4 transition hover:border-neutral-300 hover:bg-white md:p-5">
@@ -480,12 +482,22 @@ function CampaignCard({ campaign }: { campaign: CampaignData }) {
       </div>
 
       <div className="mt-5 flex flex-col gap-2 sm:flex-row">
-        <Link
-          href={primaryHref}
-          className="inline-flex h-10 flex-1 items-center justify-center rounded-xl bg-neutral-950 px-4 text-sm font-semibold text-white shadow-[0_8px_18px_rgba(0,0,0,0.14)] transition hover:bg-neutral-800"
-        >
-          {primaryLabel}
-        </Link>
+        {submitDisabled ? (
+          <button
+            type="button"
+            disabled
+            className="inline-flex h-10 flex-1 cursor-not-allowed items-center justify-center rounded-xl bg-neutral-200 px-4 text-sm font-semibold text-neutral-500"
+          >
+            {primaryLabel}
+          </button>
+        ) : (
+          <Link
+            href={primaryHref}
+            className="inline-flex h-10 flex-1 items-center justify-center rounded-xl bg-neutral-950 px-4 text-sm font-semibold text-white shadow-[0_8px_18px_rgba(0,0,0,0.14)] transition hover:bg-neutral-800"
+          >
+            {primaryLabel}
+          </Link>
+        )}
         {campaign.applicationId ? (
           <Link
             href={`/creator/campaigns/${campaign.id}`}
