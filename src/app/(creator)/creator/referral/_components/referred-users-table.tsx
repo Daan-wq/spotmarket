@@ -1,5 +1,8 @@
 import { Badge } from "@/components/ui/badge";
 import { EmptyState } from "@/components/ui/empty-state";
+import type { Locale } from "@/i18n/routing";
+import { formatCurrency, formatShortDate } from "@/lib/i18n-format";
+import { getLocale, getTranslations } from "next-intl/server";
 
 const PER_USER_CAP = 100;
 
@@ -14,12 +17,15 @@ interface ReferredUsersTableProps {
   rows: ReferredUserRow[];
 }
 
-export function ReferredUsersTable({ rows }: ReferredUsersTableProps) {
+export async function ReferredUsersTable({ rows }: ReferredUsersTableProps) {
+  const locale = (await getLocale()) as Locale;
+  const t = await getTranslations("creator.referral.table");
+
   if (rows.length === 0) {
     return (
       <EmptyState
-        title="No referrals yet"
-        description="Share your link — when someone signs up and starts earning, they'll appear here."
+        title={t("emptyTitle")}
+        description={t("emptyDescription")}
       />
     );
   }
@@ -33,13 +39,13 @@ export function ReferredUsersTable({ rows }: ReferredUsersTableProps) {
         <table className="w-full text-sm">
           <thead>
             <tr style={{ background: "var(--bg-secondary)", color: "var(--text-muted)" }}>
-              <th className="text-left text-[11px] uppercase tracking-wide px-5 py-2 font-medium">User</th>
-              <th className="text-left text-[11px] uppercase tracking-wide px-5 py-2 font-medium">Joined</th>
+              <th className="text-left text-[11px] uppercase tracking-wide px-5 py-2 font-medium">{t("user")}</th>
+              <th className="text-left text-[11px] uppercase tracking-wide px-5 py-2 font-medium">{t("joined")}</th>
               <th className="text-left text-[11px] uppercase tracking-wide px-5 py-2 font-medium">
-                Cap progress
+                {t("capProgress")}
               </th>
               <th className="text-right text-[11px] uppercase tracking-wide px-5 py-2 font-medium">
-                Your commission
+                {t("yourCommission")}
               </th>
             </tr>
           </thead>
@@ -52,18 +58,18 @@ export function ReferredUsersTable({ rows }: ReferredUsersTableProps) {
                     <span className="font-medium">{row.displayName}</span>
                     {maxedOut && (
                       <Badge variant="paid" className="ml-2">
-                        Maxed
+                        {t("maxed")}
                       </Badge>
                     )}
                   </td>
                   <td className="px-5 py-3" style={{ color: "var(--text-secondary)" }}>
-                    {new Date(row.joinedAt).toLocaleDateString()}
+                    {formatShortDate(row.joinedAt, locale)}
                   </td>
                   <td className="px-5 py-3 min-w-[180px]">
-                    <ProgressBar amount={row.commissionEarned} />
+                    <ProgressBar amount={row.commissionEarned} locale={locale} />
                   </td>
                   <td className="px-5 py-3 text-right font-semibold" style={{ color: "var(--success-text)" }}>
-                    ${row.commissionEarned.toFixed(2)}
+                    {formatCurrency(row.commissionEarned, locale)}
                   </td>
                 </tr>
               );
@@ -87,16 +93,16 @@ export function ReferredUsersTable({ rows }: ReferredUsersTableProps) {
                     {row.displayName}
                   </p>
                   <p className="mt-1 text-xs" style={{ color: "var(--text-muted)" }}>
-                    Joined {new Date(row.joinedAt).toLocaleDateString()}
+                    {t("joinedDate", { date: formatShortDate(row.joinedAt, locale) })}
                   </p>
                 </div>
-                {maxedOut ? <Badge variant="paid">Maxed</Badge> : null}
+                {maxedOut ? <Badge variant="paid">{t("maxed")}</Badge> : null}
               </div>
               <div className="mt-4">
-                <ProgressBar amount={row.commissionEarned} />
+                <ProgressBar amount={row.commissionEarned} locale={locale} />
               </div>
               <p className="mt-3 text-sm font-semibold" style={{ color: "var(--success-text)" }}>
-                ${row.commissionEarned.toFixed(2)} commission
+                {t("commissionAmount", { amount: formatCurrency(row.commissionEarned, locale) })}
               </p>
             </article>
           );
@@ -106,7 +112,7 @@ export function ReferredUsersTable({ rows }: ReferredUsersTableProps) {
   );
 }
 
-function ProgressBar({ amount }: { amount: number }) {
+function ProgressBar({ amount, locale }: { amount: number; locale: Locale }) {
   const pct = Math.min(100, (amount / PER_USER_CAP) * 100);
   const maxedOut = amount >= PER_USER_CAP;
 
@@ -125,7 +131,7 @@ function ProgressBar({ amount }: { amount: number }) {
         />
       </div>
       <span className="whitespace-nowrap text-xs" style={{ color: "var(--text-muted)" }}>
-        ${amount.toFixed(0)} / ${PER_USER_CAP}
+        {formatCurrency(amount, locale, { maximumFractionDigits: 0 })} / {formatCurrency(PER_USER_CAP, locale, { maximumFractionDigits: 0 })}
       </span>
     </div>
   );

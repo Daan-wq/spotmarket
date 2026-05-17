@@ -2,6 +2,8 @@
 
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { useLocale, useTranslations } from "next-intl";
+import { formatCurrency, formatNumber } from "@/lib/i18n-format";
 
 type Sort = "views" | "earnings" | "score";
 
@@ -26,14 +28,16 @@ interface LeaderboardResponse {
   totalClippers: number;
 }
 
-const SORT_OPTIONS: Array<{ key: Sort; label: string }> = [
-  { key: "views", label: "Views" },
-  { key: "earnings", label: "Earnings" },
-  { key: "score", label: "Score" },
-];
-
 export function CampaignLeaderboardClient({ campaignId }: { campaignId: string }) {
+  const locale = useLocale();
+  const t = useTranslations("creator.campaigns.leaderboard");
+  const sharedT = useTranslations("creator.shared");
   const [sort, setSort] = useState<Sort>("views");
+  const sortOptions: Array<{ key: Sort; label: string }> = [
+    { key: "views", label: sharedT("labels.views") },
+    { key: "earnings", label: sharedT("labels.earned") },
+    { key: "score", label: t("score") },
+  ];
 
   const { data, isFetching } = useQuery({
     queryKey: ["campaign-leaderboard", campaignId, sort],
@@ -64,16 +68,16 @@ export function CampaignLeaderboardClient({ campaignId }: { campaignId: string }
       >
         <div className="flex items-center gap-2">
           <span className="text-sm font-semibold" style={{ color: "var(--text-primary)" }}>
-            Top clippers
+            {t("topClippers")}
           </span>
           {data && (
             <span className="text-xs" style={{ color: "var(--text-muted)" }}>
-              {data.totalClippers} ranked
+              {t("ranked", { count: data.totalClippers })}
             </span>
           )}
         </div>
         <div className="flex items-center gap-1">
-          {SORT_OPTIONS.map((opt) => {
+          {sortOptions.map((opt) => {
             const active = sort === opt.key;
             return (
               <button
@@ -94,15 +98,15 @@ export function CampaignLeaderboardClient({ campaignId }: { campaignId: string }
 
       {loading ? (
         <div className="p-8 text-center text-sm" style={{ color: "var(--text-muted)" }}>
-          Loading leaderboard…
+          {t("loading")}
         </div>
       ) : !data || data.leaderboard.length === 0 ? (
         <div className="p-8 text-center">
           <p className="text-sm" style={{ color: "var(--text-secondary)" }}>
-            No approved clippers on this campaign yet.
+            {t("empty")}
           </p>
           <p className="text-xs mt-1" style={{ color: "var(--text-muted)" }}>
-            Be the first — submit a clip to claim the top spot.
+            {t("emptyDescription")}
           </p>
         </div>
       ) : (
@@ -116,12 +120,12 @@ export function CampaignLeaderboardClient({ campaignId }: { campaignId: string }
               }}
             >
               <th className="text-left py-3 px-4 font-medium">#</th>
-              <th className="text-left py-3 px-4 font-medium">Clipper</th>
-              <th className="text-left py-3 px-4 font-medium">Clips</th>
-              <th className="text-right py-3 px-4 font-medium">Views</th>
-              <th className="text-right py-3 px-4 font-medium">Earned</th>
-              <th className="text-right py-3 px-4 font-medium">Score</th>
-              <th className="text-left py-3 px-4 font-medium">Top post</th>
+              <th className="text-left py-3 px-4 font-medium">{t("clipper")}</th>
+              <th className="text-left py-3 px-4 font-medium">{sharedT("units.clips")}</th>
+              <th className="text-right py-3 px-4 font-medium">{sharedT("labels.views")}</th>
+              <th className="text-right py-3 px-4 font-medium">{sharedT("labels.earned")}</th>
+              <th className="text-right py-3 px-4 font-medium">{t("score")}</th>
+              <th className="text-left py-3 px-4 font-medium">{t("topPost")}</th>
             </tr>
           </thead>
           <tbody>
@@ -142,19 +146,19 @@ export function CampaignLeaderboardClient({ campaignId }: { campaignId: string }
                   </div>
                 </td>
                 <td className="py-3 px-4" style={{ color: "var(--text-secondary)" }}>
-                  {row.submissionCount}
+                  {formatNumber(row.submissionCount, locale)}
                 </td>
                 <td
                   className="py-3 px-4 text-right tabular-nums"
                   style={{ color: "var(--text-primary)" }}
                 >
-                  {row.totalViews.toLocaleString()}
+                  {formatNumber(row.totalViews, locale)}
                 </td>
                 <td
                   className="py-3 px-4 text-right tabular-nums"
                   style={{ color: "var(--success)" }}
                 >
-                  ${row.totalEarned.toFixed(2)}
+                  {formatCurrency(row.totalEarned, locale)}
                 </td>
                 <td
                   className="py-3 px-4 text-right tabular-nums"
@@ -175,7 +179,7 @@ export function CampaignLeaderboardClient({ campaignId }: { campaignId: string }
                       className="text-xs underline truncate inline-block max-w-[200px] align-middle"
                       style={{ color: "var(--primary)" }}
                     >
-                      View top clip
+                      {t("viewTopClip")}
                     </a>
                   ) : (
                     <span className="text-xs" style={{ color: "var(--text-muted)" }}>

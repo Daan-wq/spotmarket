@@ -4,7 +4,6 @@ import type { Platform } from "@prisma/client";
 import { CampaignsClient } from "./_components/campaigns-client";
 import {
   evaluateCampaignJoinEligibility,
-  formatPlatformList,
 } from "@/lib/campaign-eligibility";
 import { isCampaignClosedForSubmissions } from "@/lib/campaign-submission-state";
 
@@ -147,18 +146,21 @@ export default async function CampaignsPage() {
     const meetsFollowers = maxFollowers >= c.minFollowers;
     const eligibility: {
       status: "eligible" | "ineligible" | "unknown";
-      reason?: string;
+      reasonKind?: "platforms" | "followers";
+      reasonValue?: string | number;
     } = !creatorProfileId
       ? { status: "unknown" }
       : !platformEligibility.eligible
         ? {
             status: "ineligible",
-            reason: `Connect ${formatPlatformList(platformEligibility.missingPlatformLabels)}`,
+            reasonKind: "platforms",
+            reasonValue: platformEligibility.missingPlatformLabels.join(", "),
           }
         : !meetsFollowers
           ? {
               status: "ineligible",
-              reason: `Need ${formatFollowers(c.minFollowers)} followers`,
+              reasonKind: "followers",
+              reasonValue: c.minFollowers,
             }
           : { status: "eligible" };
 
@@ -192,10 +194,4 @@ export default async function CampaignsPage() {
   );
 
   return <CampaignsClient marketplace={marketplace} myCampaigns={myCampaigns} />;
-}
-
-function formatFollowers(n: number): string {
-  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
-  if (n >= 1_000) return `${Math.round(n / 1_000)}K`;
-  return n.toString();
 }

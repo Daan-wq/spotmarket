@@ -2,9 +2,15 @@ import { describe, expect, it } from "vitest";
 import enMessages from "../../messages/en.json";
 import nlMessages from "../../messages/nl.json";
 
-type MessageValue = string | number | boolean | null | MessageValue[] | {
-  [key: string]: MessageValue;
-};
+type MessageValue =
+  | string
+  | number
+  | boolean
+  | null
+  | MessageValue[]
+  | {
+      [key: string]: MessageValue;
+    };
 
 function flattenKeys(value: MessageValue, prefix = ""): string[] {
   if (Array.isArray(value) || value === null || typeof value !== "object") {
@@ -17,12 +23,23 @@ function flattenKeys(value: MessageValue, prefix = ""): string[] {
 }
 
 describe("localized messages", () => {
-  it("keeps Dutch dashboard keys in parity with English", () => {
-    const enDashboardKeys = flattenKeys(enMessages.dashboard).sort();
-    const nlDashboardKeys = flattenKeys(nlMessages.dashboard).sort();
+  it.each(["creator", "creatorSettings", "dashboard", "navigation"] as const)(
+    "keeps Dutch %s keys in parity with English",
+    (namespace) => {
+      const enKeys = flattenKeys(enMessages[namespace]).sort();
+      const nlKeys = flattenKeys(nlMessages[namespace]).sort();
 
-    expect(nlDashboardKeys).toEqual(enDashboardKeys);
-    expect(enDashboardKeys).toContain("creator.page.title");
-    expect(enDashboardKeys).toContain("admin.queue.followUps.title");
+      expect(nlKeys).toEqual(enKeys);
+    },
+  );
+
+  it("includes the creator and admin dashboard namespaces", () => {
+    const dashboardKeys = flattenKeys(enMessages.dashboard).sort();
+    const creatorKeys = flattenKeys(enMessages.creator).sort();
+
+    expect(dashboardKeys).toContain("creator.page.title");
+    expect(dashboardKeys).toContain("admin.queue.followUps.title");
+    expect(creatorKeys).toContain("campaigns.page.title");
+    expect(creatorKeys).toContain("connections.page.headerTitle");
   });
 });

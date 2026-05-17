@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { QRCodeSVG } from "qrcode.react";
 import { Check, Copy, QrCode } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { Send } from "@/components/animate-ui/icons/send";
 import { PlatformLogo } from "@clipprofit/platform-icons";
 
@@ -28,6 +29,7 @@ function DiscordIcon({ className }: { className?: string }) {
 }
 
 export function ReferralLink({ referralCode, referralUrl }: ReferralLinkProps) {
+  const t = useTranslations("creator.referral.link");
   const [copied, setCopied] = useState(false);
   const [showQR, setShowQR] = useState(false);
 
@@ -38,20 +40,20 @@ export function ReferralLink({ referralCode, referralUrl }: ReferralLinkProps) {
   }
 
   const twitterUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(
-    `Join me on ClipProfit and start earning from your content!\n${referralUrl}`
+    `${t("shareText")}\n${referralUrl}`
   )}`;
   const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(
-    `Join me on ClipProfit and start earning from your content! ${referralUrl}`
+    `${t("shareText")} ${referralUrl}`
   )}`;
   const mailUrl = `mailto:?subject=${encodeURIComponent(
-    "Join ClipProfit"
+    t("mailSubject")
   )}&body=${encodeURIComponent(
-    `Hey! I've been using ClipProfit to earn from my content. Sign up with my referral link and let's both earn:\n\n${referralUrl}`
+    `${t("mailBody")}\n\n${referralUrl}`
   )}`;
 
   const [discordCopied, setDiscordCopied] = useState(false);
   async function copyForDiscord() {
-    const message = `**Earn from your clips on ClipProfit** — sign up with my link and we both earn: ${referralUrl}`;
+    const message = t("discordMessage", { url: referralUrl });
     await navigator.clipboard.writeText(message);
     setDiscordCopied(true);
     setTimeout(() => setDiscordCopied(false), 2000);
@@ -63,7 +65,7 @@ export function ReferralLink({ referralCode, referralUrl }: ReferralLinkProps) {
       style={{ background: "var(--bg-card)", borderColor: "var(--border)" }}
     >
       <h2 className="text-lg font-semibold mb-4" style={{ color: "var(--text-primary)" }}>
-        Your Referral Link
+        {t("title")}
       </h2>
 
       {/* Link + Copy */}
@@ -86,13 +88,13 @@ export function ReferralLink({ referralCode, referralUrl }: ReferralLinkProps) {
           }}
         >
           {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
-          {copied ? "Copied!" : "Copy"}
+          {copied ? t("copiedWithBang") : t("copy")}
         </button>
       </div>
 
       {/* Code badge */}
       <p className="text-xs mb-4" style={{ color: "var(--text-muted)" }}>
-        Your code: <span className="font-mono font-semibold" style={{ color: "var(--accent)" }}>{referralCode}</span>
+        {t("yourCode", { code: referralCode })}
       </p>
 
       {/* Share buttons row */}
@@ -125,27 +127,27 @@ export function ReferralLink({ referralCode, referralUrl }: ReferralLinkProps) {
           className="inline-flex items-center gap-2 rounded-lg border border-neutral-200 bg-white px-4 py-2 text-sm font-medium text-neutral-950 transition-colors hover:bg-neutral-50"
         >
           <Send className="h-4 w-4" animateOnHover />
-          Email
+          {t("email")}
         </a>
         <button
           type="button"
           onClick={copyForDiscord}
           className="group inline-flex cursor-pointer items-center gap-2 rounded-lg border border-neutral-200 bg-white px-4 py-2 text-sm font-medium text-neutral-950 transition-colors hover:bg-neutral-50"
-          title="Copies a formatted message you can paste into Discord"
+          title={t("discordTooltip")}
         >
           {discordCopied ? (
             <Check className="h-4 w-4" />
           ) : (
             <DiscordIcon className="h-4 w-4 transition-transform group-hover:scale-110" />
           )}
-          {discordCopied ? "Copied!" : "Discord"}
+          {discordCopied ? t("copiedWithBang") : "Discord"}
         </button>
         <button
           onClick={() => setShowQR(!showQR)}
           className="inline-flex cursor-pointer items-center gap-2 rounded-lg border border-neutral-200 bg-white px-4 py-2 text-sm font-medium text-neutral-950 transition-colors hover:bg-neutral-50"
         >
           <QrCode className="h-4 w-4" />
-          {showQR ? "Hide QR" : "QR Code"}
+          {showQR ? t("hideQr") : t("qrCode")}
         </button>
       </div>
 

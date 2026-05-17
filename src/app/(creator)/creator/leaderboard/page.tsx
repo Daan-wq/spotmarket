@@ -1,5 +1,8 @@
 import { requireAuth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { getLocale, getTranslations } from "next-intl/server";
+import type { Locale } from "@/i18n/routing";
+import { formatCurrency, formatNumber, formatTime } from "@/lib/i18n-format";
 
 interface LeaderboardEntry {
   rank: number;
@@ -9,7 +12,10 @@ interface LeaderboardEntry {
   views: number;
 }
 
-async function getLeaderboard(periodDays: number | null): Promise<LeaderboardEntry[]> {
+async function getLeaderboard(
+  periodDays: number | null,
+  fallbackCreator: string,
+): Promise<LeaderboardEntry[]> {
   const whereClause: Record<string, unknown> = { status: "APPROVED" };
   if (periodDays !== null) {
     const since = new Date();
@@ -30,12 +36,12 @@ async function getLeaderboard(periodDays: number | null): Promise<LeaderboardEnt
     where: { id: { in: creatorIds } },
     select: { id: true, creatorProfile: { select: { displayName: true } } },
   });
-  const nameMap = new Map(users.map((u) => [u.id, u.creatorProfile?.displayName ?? "Creator"]));
+  const nameMap = new Map(users.map((u) => [u.id, u.creatorProfile?.displayName ?? fallbackCreator]));
 
   return results.map((r, i) => ({
     rank: i + 1,
     creatorId: r.creatorId,
-    displayName: nameMap.get(r.creatorId) ?? "Creator",
+    displayName: nameMap.get(r.creatorId) ?? fallbackCreator,
     earnings: Number(r._sum.earnedAmount ?? 0),
     views: Number(r._sum.claimedViews ?? 0),
   }));
@@ -43,6 +49,9 @@ async function getLeaderboard(periodDays: number | null): Promise<LeaderboardEnt
 
 export default async function LeaderboardPage() {
   const { userId } = await requireAuth("creator");
+  const locale = (await getLocale()) as Locale;
+  const t = await getTranslations("creator.leaderboard");
+  const sharedT = await getTranslations("creator.shared");
 
   const user = await prisma.user.findUnique({
     where: { supabaseId: userId },
@@ -50,26 +59,30 @@ export default async function LeaderboardPage() {
   });
 
   const [today, week, allTime] = await Promise.all([
-    getLeaderboard(1),
-    getLeaderboard(7),
-    getLeaderboard(null),
+    getLeaderboard(1, sharedT("fallbackCreator")),
+    getLeaderboard(7, sharedT("fallbackCreator")),
+    getLeaderboard(null, sharedT("fallbackCreator")),
   ]);
 
-  const userName = user?.creatorProfile?.displayName ?? "Creator";
+  const userName = user?.creatorProfile?.displayName ?? sharedT("fallbackCreator");
   const userInitial = userName.charAt(0).toUpperCase();
 
   // Get personal stats
   const personalRank = (list: LeaderboardEntry[]) => {
     const idx = list.findIndex((e) => e.creatorId === user?.id);
-    return idx >= 0 ? `#${idx + 1}` : "#—";
+    return idx >= 0 ? `#${idx + 1}` : t("noRank");
   };
   const personalEarnings = (list: LeaderboardEntry[]) => {
     const entry = list.find((e) => e.creatorId === user?.id);
-    return entry ? `$${entry.earnings.toFixed(0)}` : "$0";
+    return entry
+      ? formatCurrency(entry.earnings, locale, { maximumFractionDigits: 0 })
+      : formatCurrency(0, locale, { maximumFractionDigits: 0 });
   };
   const personalViews = (list: LeaderboardEntry[]) => {
     const entry = list.find((e) => e.creatorId === user?.id);
-    return entry ? `${entry.views.toLocaleString()} views` : "0 views";
+    return entry
+      ? `${formatNumber(entry.views, locale)} ${sharedT("units.views")}`
+      : `${formatNumber(0, locale)} ${sharedT("units.views")}`;
   };
 
   return (
@@ -92,16 +105,16 @@ export default async function LeaderboardPage() {
             <thead>
               <tr>
                 <th className="py-1 px-3 text-left font-medium" style={{ color: "var(--text-muted)" }}></th>
-                <th className="py-1 px-3 font-medium" style={{ color: "var(--text-muted)" }}>Rank</th>
-                <th className="py-1 px-3 font-medium" style={{ color: "var(--text-muted)" }}>Earnings</th>
-                <th className="py-1 px-3 font-medium" style={{ color: "var(--text-muted)" }}>Views</th>
+                <th className="py-1 px-3 font-medium" style={{ color: "var(--text-muted)" }}>{t("rank")}</th>
+                <th className="py-1 px-3 font-medium" style={{ color: "var(--text-muted)" }}>{t("earnings")}</th>
+                <th className="py-1 px-3 font-medium" style={{ color: "var(--text-muted)" }}>{t("views")}</th>
               </tr>
             </thead>
             <tbody>
               {[
-                { label: "Today", list: today },
-                { label: "Last 7d", list: week },
-                { label: "Overall", list: allTime },
+                { label: t("today"), list: today },
+                { label: t("last7d"), list: week },
+                { label: t("overall"), list: allTime },
               ].map((row) => (
                 <tr key={row.label}>
                   <td className="py-1.5 px-3 text-left font-medium" style={{ color: "var(--text-secondary)" }}>{row.label}</td>
@@ -117,27 +130,39 @@ export default async function LeaderboardPage() {
 
       {/* Three Column Leaderboard */}
       <div className="grid grid-cols-1 gap-4 md:grid-cols-3 md:gap-6">
-        <LeaderboardColumn title="Today" entries={today} currentUserId={user?.id} />
-        <LeaderboardColumn title="Last 7 Days" entries={week} currentUserId={user?.id} />
-        <LeaderboardColumn title="All-Time" entries={allTime} currentUserId={user?.id} />
+        <LeaderboardColumn title={t("today")} entries={today} currentUserId={user?.id} locale={locale} noData={t("noData")} />
+        <LeaderboardColumn title={t("last7Days")} entries={week} currentUserId={user?.id} locale={locale} noData={t("noData")} />
+        <LeaderboardColumn title={t("allTime")} entries={allTime} currentUserId={user?.id} locale={locale} noData={t("noData")} />
       </div>
 
       {/* Updated timestamp */}
       <p className="text-center text-xs mt-6" style={{ color: "var(--text-muted)" }}>
-        Updated: {new Date().toLocaleTimeString()}
+        {t("updated", { time: formatTime(new Date(), locale) })}
       </p>
     </div>
   );
 }
 
-function LeaderboardColumn({ title, entries, currentUserId }: { title: string; entries: LeaderboardEntry[]; currentUserId?: string }) {
+function LeaderboardColumn({
+  title,
+  entries,
+  currentUserId,
+  locale,
+  noData,
+}: {
+  title: string;
+  entries: LeaderboardEntry[];
+  currentUserId?: string;
+  locale: Locale;
+  noData: string;
+}) {
   const medals = ["🥇", "🥈", "🥉"];
 
   return (
     <div className="rounded-xl p-4" style={{ background: "var(--bg-card)", border: "1px solid var(--border-default)" }}>
       <h3 className="text-base font-bold mb-4" style={{ color: "var(--text-primary)" }}>{title}</h3>
       {entries.length === 0 ? (
-        <p className="text-center py-8 text-sm" style={{ color: "var(--text-muted)" }}>No data yet</p>
+        <p className="text-center py-8 text-sm" style={{ color: "var(--text-muted)" }}>{noData}</p>
       ) : (
         <div className="space-y-2">
           {entries.map((entry) => {
@@ -161,7 +186,7 @@ function LeaderboardColumn({ title, entries, currentUserId }: { title: string; e
                   {entry.displayName}
                 </span>
                 <span className="text-sm font-semibold" style={{ color: "var(--success-text)" }}>
-                  +${entry.earnings.toFixed(2)}
+                  +{formatCurrency(entry.earnings, locale)}
                 </span>
               </div>
             );

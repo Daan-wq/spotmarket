@@ -1,9 +1,12 @@
+import { getLocale, getTranslations } from "next-intl/server";
 import { DimensionalBreakdown } from "@/components/stats/DimensionalBreakdown";
 import { FbReactionsChart } from "@/components/stats/FbReactionsChart";
 import { RetentionCurveChart } from "@/components/stats/RetentionCurveChart";
 import { StoryReelCorrelationTable } from "@/components/stats/StoryReelCorrelationTable";
 import { StoriesActivityFeed } from "@/components/stats/StoriesActivityFeed";
 import type { ContentRow } from "@/lib/stats/content";
+import type { Locale } from "@/i18n/routing";
+import { formatShortDate } from "@/lib/i18n-format";
 import type { PlatformSlug } from "@/lib/stats/types";
 import type { YtBreakdownPoint, FbReactionPoint, RetentionPoint } from "@/lib/stats/trends";
 
@@ -40,15 +43,19 @@ interface Props {
   payload: Payload;
 }
 
-export function InsightsSubTab({ payload }: Props) {
+export async function InsightsSubTab({ payload }: Props) {
+  const locale = (await getLocale()) as Locale;
+  const t = await getTranslations("creator.connections.insights");
+  const sharedT = await getTranslations("creator.shared");
+
   if (payload.kind === "yt") {
     return (
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        <DimensionalBreakdown title="Traffic source" data={payload.data.trafficSourceBreakdown} />
-        <DimensionalBreakdown title="Playback location" data={payload.data.playbackLocationBreakdown} />
-        <DimensionalBreakdown title="Device type" data={payload.data.deviceTypeBreakdown} />
-        <DimensionalBreakdown title="Content type" data={payload.data.contentTypeBreakdown} />
-        <DimensionalBreakdown title="Subscribed status" data={payload.data.subscribedStatusBreakdown} />
+        <DimensionalBreakdown title={t("trafficSource")} data={payload.data.trafficSourceBreakdown} />
+        <DimensionalBreakdown title={t("playbackLocation")} data={payload.data.playbackLocationBreakdown} />
+        <DimensionalBreakdown title={t("deviceType")} data={payload.data.deviceTypeBreakdown} />
+        <DimensionalBreakdown title={t("contentType")} data={payload.data.contentTypeBreakdown} />
+        <DimensionalBreakdown title={t("subscribedStatus")} data={payload.data.subscribedStatusBreakdown} />
       </div>
     );
   }
@@ -83,20 +90,20 @@ export function InsightsSubTab({ payload }: Props) {
       style={{ background: "var(--bg-card)", border: "1px solid var(--border)" }}
     >
       <p className="text-xs uppercase tracking-wide mb-3 font-semibold" style={{ color: "var(--text-muted)" }}>
-        Posting cadence
+        {t("postingCadence")}
       </p>
       {cadence.length === 0 ? (
-        <p className="text-sm" style={{ color: "var(--text-secondary)" }}>No posts in this range.</p>
+        <p className="text-sm" style={{ color: "var(--text-secondary)" }}>{t("noPosts")}</p>
       ) : (
         <ul className="space-y-1.5">
           {cadence.map(({ date, count }) => (
             <li key={date} className="flex items-center gap-3">
-              <span className="text-xs" style={{ color: "var(--text-secondary)", width: 100 }}>{date}</span>
+              <span className="text-xs" style={{ color: "var(--text-secondary)", width: 100 }}>{formatShortDate(date, locale)}</span>
               <div className="flex-1 h-2 rounded-full overflow-hidden" style={{ background: "var(--bg-primary)" }}>
                 <div style={{ width: `${Math.min(100, count * 12)}%`, height: "100%", background: "#010101" }} />
               </div>
               <span className="text-xs" style={{ color: "var(--text-muted)", width: 50 }}>
-                {count} post{count !== 1 ? "s" : ""}
+                {sharedT("labels.postCount", { count })}
               </span>
             </li>
           ))}

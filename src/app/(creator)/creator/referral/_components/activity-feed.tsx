@@ -6,14 +6,18 @@ interface Activity {
   status?: string;
 }
 
-export function ActivityFeed({ activities }: { activities: Activity[] }) {
+export async function ActivityFeed({ activities }: { activities: Activity[] }) {
+  const locale = (await getLocale()) as Locale;
+  const t = await getTranslations("creator.referral.activity");
+  const statusT = await getTranslations("creator.shared.statuses.payout");
+
   if (activities.length === 0) {
     return (
       <div
         className="py-8 text-center text-sm"
         style={{ color: "var(--text-muted)" }}
       >
-        No activity yet. Share your referral link to get started!
+        {t("emptyStart")}
       </div>
     );
   }
@@ -49,25 +53,19 @@ export function ActivityFeed({ activities }: { activities: Activity[] }) {
             <p className="text-sm" style={{ color: "var(--text-primary)" }}>
               {activity.type === "signup" ? (
                 <>
-                  <span className="font-medium">{activity.referredUserName}</span>{" "}
-                  signed up with your link
+                  {t("signupWithLink", { name: activity.referredUserName })}
                 </>
               ) : (
                 <>
-                  Earned{" "}
-                  <span className="font-semibold" style={{ color: "var(--accent)" }}>
-                    ${activity.amount?.toFixed(2)}
-                  </span>{" "}
-                  from <span className="font-medium">{activity.referredUserName}</span>
+                  {t("earnedFrom", {
+                    amount: formatCurrency(activity.amount ?? 0, locale),
+                    name: activity.referredUserName,
+                  })}
                 </>
               )}
             </p>
             <p className="text-xs mt-0.5" style={{ color: "var(--text-muted)" }}>
-              {new Date(activity.timestamp).toLocaleDateString("en-US", {
-                month: "short",
-                day: "numeric",
-                year: "numeric",
-              })}
+              {formatShortDate(activity.timestamp, locale)}
             </p>
           </div>
 
@@ -80,7 +78,7 @@ export function ActivityFeed({ activities }: { activities: Activity[] }) {
                 background: activity.status === "pending" ? "#f59e0b20" : "#22c55e20",
               }}
             >
-              {activity.status}
+              {statusT(activity.status)}
             </span>
           )}
         </div>
@@ -88,3 +86,6 @@ export function ActivityFeed({ activities }: { activities: Activity[] }) {
     </div>
   );
 }
+import type { Locale } from "@/i18n/routing";
+import { formatCurrency, formatShortDate } from "@/lib/i18n-format";
+import { getLocale, getTranslations } from "next-intl/server";

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useTranslations } from "next-intl";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import {
   DropdownMenu,
@@ -17,6 +18,7 @@ interface Props {
 }
 
 export function DisconnectButton({ label, onConfirm }: Props) {
+  const t = useTranslations("creator.connections.connect");
   const [open, setOpen] = useState(false);
   const [pending, setPending] = useState(false);
 
@@ -36,15 +38,20 @@ export function DisconnectButton({ label, onConfirm }: Props) {
         <DropdownMenuTrigger asChild>
           <button
             type="button"
-            aria-label={`Open options for ${label}`}
-            title={`Options for ${label}`}
+            aria-label={t("optionsAria", { label })}
+            title={t("optionsTitle", { label })}
             className="button-hover-highlight inline-flex h-9 w-9 items-center justify-center rounded-lg border bg-white disabled:opacity-50"
             style={{
               borderColor: "var(--border)",
               color: "var(--text-secondary)",
             }}
           >
-            <EllipsisIcon size={17} animateOnHover animation="vertical" aria-hidden />
+            <EllipsisIcon
+              size={17}
+              animateOnHover
+              animation="vertical"
+              aria-hidden
+            />
           </button>
         </DropdownMenuTrigger>
         <DropdownMenuContent
@@ -59,8 +66,15 @@ export function DisconnectButton({ label, onConfirm }: Props) {
               setOpen(true);
             }}
           >
-            <LinkIcon size={16} animateOnHover className="text-red-500" aria-hidden />
-            <span className="min-w-0 flex-1 text-left">Disconnect {label}</span>
+            <LinkIcon
+              size={16}
+              animateOnHover
+              className="text-red-500"
+              aria-hidden
+            />
+            <span className="min-w-0 flex-1 text-left">
+              {t("disconnectAccount", { label })}
+            </span>
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
@@ -70,15 +84,10 @@ export function DisconnectButton({ label, onConfirm }: Props) {
         onClose={() => setOpen(false)}
         onConfirm={handleConfirm}
         pending={pending}
-        title="Are you sure you want to disconnect this page?"
-        description={
-          <>
-            Disconnecting <strong>{label}</strong> stops stat tracking and submissions
-            from this account. You can reconnect later from this page.
-          </>
-        }
-        confirmLabel="Disconnect"
-        cancelLabel="Cancel"
+        title={t("disconnectTitle")}
+        description={t("disconnectDescription", { label })}
+        confirmLabel={t("disconnect")}
+        cancelLabel={t("cancel")}
         variant="destructive"
       />
     </>

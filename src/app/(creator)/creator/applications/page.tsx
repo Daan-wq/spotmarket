@@ -1,9 +1,16 @@
 import Link from "next/link";
+import { getLocale, getTranslations } from "next-intl/server";
 import { requireAuth } from "@/lib/auth";
+import type { Locale } from "@/i18n/routing";
+import { formatCurrency, formatShortDate } from "@/lib/i18n-format";
 import { prisma } from "@/lib/prisma";
 
 export default async function ApplicationsPage() {
   const { userId } = await requireAuth("creator");
+  const locale = (await getLocale()) as Locale;
+  const t = await getTranslations("creator.applications.page");
+  const sharedT = await getTranslations("creator.shared");
+  const statusT = await getTranslations("creator.shared.statuses.application");
 
   const user = await prisma.user.findUnique({
     where: { supabaseId: userId },
@@ -32,7 +39,7 @@ export default async function ApplicationsPage() {
   return (
     <div className="w-full space-y-5 md:p-6">
       <h1 className="text-2xl font-bold md:text-3xl" style={{ color: "var(--text-primary)" }}>
-        My Applications
+        {t("title")}
       </h1>
 
       {applications.length === 0 ? (
@@ -44,7 +51,7 @@ export default async function ApplicationsPage() {
           }}
         >
           <p style={{ color: "var(--text-secondary)" }}>
-            You haven&apos;t applied to any campaigns yet
+            {t("empty")}
           </p>
         </div>
       ) : (
@@ -65,11 +72,11 @@ export default async function ApplicationsPage() {
               className="border-b"
             >
               <tr style={{ color: "var(--text-secondary)" }}>
-                <th className="text-left py-4 px-6">Campaign</th>
-                <th className="text-left py-4 px-6">Status</th>
-                <th className="text-left py-4 px-6">Earned</th>
-                <th className="text-left py-4 px-6">Applied</th>
-                <th className="text-left py-4 px-6">Action</th>
+                <th className="text-left py-4 px-6">{sharedT("labels.campaign")}</th>
+                <th className="text-left py-4 px-6">{sharedT("labels.status")}</th>
+                <th className="text-left py-4 px-6">{sharedT("labels.earned")}</th>
+                <th className="text-left py-4 px-6">{t("applied")}</th>
+                <th className="text-left py-4 px-6">{sharedT("labels.action")}</th>
               </tr>
             </thead>
             <tbody>
@@ -90,14 +97,14 @@ export default async function ApplicationsPage() {
                         backgroundColor: `${getStatusColor(app.status)}20`,
                       }}
                     >
-                      {app.status.charAt(0).toUpperCase() + app.status.slice(1)}
+                      {statusT(app.status)}
                     </span>
                   </td>
                   <td className="py-4 px-6" style={{ color: "var(--text-secondary)" }}>
-                    ${(app.earnedAmount / 100).toFixed(2)}
+                    {formatCurrency(app.earnedAmount / 100, locale)}
                   </td>
                   <td className="py-4 px-6" style={{ color: "var(--text-secondary)" }}>
-                    {new Date(app.appliedAt).toLocaleDateString()}
+                    {formatShortDate(app.appliedAt, locale)}
                   </td>
                   <td className="py-4 px-6">
                     <Link
@@ -105,7 +112,7 @@ export default async function ApplicationsPage() {
                       className="text-sm font-medium transition-colors"
                       style={{ color: "var(--primary)" }}
                     >
-                      View
+                      {sharedT("actions.view")}
                     </Link>
                   </td>
                 </tr>
@@ -135,24 +142,24 @@ export default async function ApplicationsPage() {
                       backgroundColor: `${getStatusColor(app.status)}20`,
                     }}
                   >
-                    {app.status.charAt(0).toUpperCase() + app.status.slice(1)}
+                    {statusT(app.status)}
                   </span>
                 </div>
                 <div className="mt-4 grid grid-cols-2 gap-3 text-sm">
                   <div>
                     <p className="text-xs" style={{ color: "var(--text-muted)" }}>
-                      Earned
+                      {sharedT("labels.earned")}
                     </p>
                     <p className="font-semibold" style={{ color: "var(--text-primary)" }}>
-                      ${(app.earnedAmount / 100).toFixed(2)}
+                      {formatCurrency(app.earnedAmount / 100, locale)}
                     </p>
                   </div>
                   <div>
                     <p className="text-xs" style={{ color: "var(--text-muted)" }}>
-                      Applied
+                      {t("applied")}
                     </p>
                     <p className="font-semibold" style={{ color: "var(--text-primary)" }}>
-                      {new Date(app.appliedAt).toLocaleDateString()}
+                      {formatShortDate(app.appliedAt, locale)}
                     </p>
                   </div>
                 </div>
@@ -161,7 +168,7 @@ export default async function ApplicationsPage() {
                   className="mt-4 inline-flex h-10 w-full items-center justify-center rounded-xl text-sm font-semibold"
                   style={{ background: "var(--primary)", color: "#fff" }}
                 >
-                  View
+                  {sharedT("actions.view")}
                 </Link>
               </article>
             ))}

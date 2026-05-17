@@ -1,5 +1,8 @@
 import Link from "next/link";
+import { getLocale, getTranslations } from "next-intl/server";
 import { requireAuth } from "@/lib/auth";
+import type { Locale } from "@/i18n/routing";
+import { formatCurrency, formatNumber, formatShortDate } from "@/lib/i18n-format";
 import { prisma } from "@/lib/prisma";
 import { notFound } from "next/navigation";
 import { isCampaignClosedForSubmissions } from "@/lib/campaign-submission-state";
@@ -11,6 +14,11 @@ export default async function ApplicationDetailPage({
 }) {
   const { applicationId } = await params;
   const { userId } = await requireAuth("creator");
+  const locale = (await getLocale()) as Locale;
+  const t = await getTranslations("creator.applications.detail");
+  const sharedT = await getTranslations("creator.shared");
+  const applicationStatusT = await getTranslations("creator.shared.statuses.application");
+  const submissionStatusT = await getTranslations("creator.shared.statuses.submission");
 
   const user = await prisma.user.findUnique({
     where: { supabaseId: userId },
@@ -53,7 +61,7 @@ export default async function ApplicationDetailPage({
             backgroundColor: `${getStatusColor(application.status)}20`,
           }}
         >
-          {application.status.charAt(0).toUpperCase() + application.status.slice(1)}
+          {applicationStatusT(application.status)}
         </span>
       </div>
 
@@ -67,13 +75,13 @@ export default async function ApplicationDetailPage({
           }}
         >
           <p style={{ color: "var(--text-secondary)" }} className="text-sm mb-2">
-            Total Earned
+            {t("totalEarned")}
           </p>
           <p
             style={{ color: "var(--primary)" }}
             className="text-2xl font-bold"
           >
-            ${Number(application.earnedAmount).toFixed(2)}
+            {formatCurrency(Number(application.earnedAmount) / 100, locale)}
           </p>
         </div>
         <div
@@ -84,13 +92,13 @@ export default async function ApplicationDetailPage({
           }}
         >
           <p style={{ color: "var(--text-secondary)" }} className="text-sm mb-2">
-            Submissions
+            {t("submissions")}
           </p>
           <p
             style={{ color: "var(--primary)" }}
             className="text-2xl font-bold"
           >
-            {submissions.length}
+            {formatNumber(submissions.length, locale)}
           </p>
         </div>
         <div
@@ -101,13 +109,16 @@ export default async function ApplicationDetailPage({
           }}
         >
           <p style={{ color: "var(--text-secondary)" }} className="text-sm mb-2">
-            CPM
+            {t("cpm")}
           </p>
           <p
             style={{ color: "var(--primary)" }}
             className="text-2xl font-bold"
           >
-            ${Number(application.campaign.creatorCpv).toFixed(4)}
+            {formatCurrency(Number(application.campaign.creatorCpv) * 1000, locale, {
+              minimumFractionDigits: 2,
+              maximumFractionDigits: 4,
+            })}
           </p>
         </div>
       </div>
@@ -122,7 +133,7 @@ export default async function ApplicationDetailPage({
             background: "#e5e5e5",
           }}
         >
-          Submit Views
+          {t("submitViews")}
         </button>
       ) : (
         <Link href={`/creator/applications/${applicationId}/submit`}>
@@ -133,7 +144,7 @@ export default async function ApplicationDetailPage({
               color: "#fff",
             }}
           >
-            Submit Views
+            {t("submitViews")}
           </button>
         </Link>
       )}
@@ -153,12 +164,12 @@ export default async function ApplicationDetailPage({
             borderColor: "var(--border)",
           }}
         >
-          Submissions
+          {t("submissions")}
         </h2>
 
         {submissions.length === 0 ? (
           <div className="px-6 py-12 text-center">
-            <p style={{ color: "var(--text-secondary)" }}>No submissions yet</p>
+            <p style={{ color: "var(--text-secondary)" }}>{t("noSubmissions")}</p>
           </div>
         ) : (
           <>
@@ -172,10 +183,10 @@ export default async function ApplicationDetailPage({
                   className="border-b"
                 >
                   <tr style={{ color: "var(--text-secondary)" }}>
-                    <th className="text-left py-4 px-6">Date</th>
-                    <th className="text-left py-4 px-6">Claimed Views</th>
-                    <th className="text-left py-4 px-6">Status</th>
-                    <th className="text-left py-4 px-6">Earned</th>
+                    <th className="text-left py-4 px-6">{sharedT("labels.date")}</th>
+                    <th className="text-left py-4 px-6">{t("claimedViews")}</th>
+                    <th className="text-left py-4 px-6">{sharedT("labels.status")}</th>
+                    <th className="text-left py-4 px-6">{sharedT("labels.earned")}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -186,10 +197,10 @@ export default async function ApplicationDetailPage({
                       className="border-b last:border-b-0"
                     >
                       <td className="py-4 px-6" style={{ color: "var(--text-secondary)" }}>
-                        {new Date(sub.createdAt).toLocaleDateString()}
+                        {formatShortDate(sub.createdAt, locale)}
                       </td>
                       <td className="py-4 px-6" style={{ color: "var(--text-primary)" }}>
-                        {sub.claimedViews.toLocaleString()}
+                        {formatNumber(sub.claimedViews, locale)}
                       </td>
                       <td className="py-4 px-6">
                         <span
@@ -199,11 +210,11 @@ export default async function ApplicationDetailPage({
                             backgroundColor: `${getStatusColor(sub.status)}20`,
                           }}
                         >
-                          {sub.status}
+                          {submissionStatusT(sub.status)}
                         </span>
                       </td>
                       <td className="py-4 px-6" style={{ color: "var(--text-secondary)" }}>
-                        ${Number(sub.earnedAmount).toFixed(2)}
+                        {formatCurrency(Number(sub.earnedAmount), locale)}
                       </td>
                     </tr>
                   ))}
@@ -221,10 +232,10 @@ export default async function ApplicationDetailPage({
                   <div className="flex items-start justify-between gap-3">
                     <div>
                       <p className="text-xs" style={{ color: "var(--text-muted)" }}>
-                        {new Date(sub.createdAt).toLocaleDateString()}
+                        {formatShortDate(sub.createdAt, locale)}
                       </p>
                       <p className="mt-1 text-lg font-semibold" style={{ color: "var(--text-primary)" }}>
-                        {sub.claimedViews.toLocaleString()} views
+                        {formatNumber(sub.claimedViews, locale)} {sharedT("units.views")}
                       </p>
                     </div>
                     <span
@@ -234,11 +245,11 @@ export default async function ApplicationDetailPage({
                         backgroundColor: `${getStatusColor(sub.status)}20`,
                       }}
                     >
-                      {sub.status}
+                      {submissionStatusT(sub.status)}
                     </span>
                   </div>
                   <p className="mt-3 text-sm" style={{ color: "var(--text-secondary)" }}>
-                    Earned: ${Number(sub.earnedAmount).toFixed(2)}
+                    {t("earnedLabel", { amount: formatCurrency(Number(sub.earnedAmount), locale) })}
                   </p>
                 </article>
               ))}

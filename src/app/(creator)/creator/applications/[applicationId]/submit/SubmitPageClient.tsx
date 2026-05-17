@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import type { NormalizedPost } from "@/types/media";
 import PlatformTabs from "@/components/shared/connections/PlatformTabs";
 import AccountSwitcher from "@/components/shared/connections/AccountSwitcher";
@@ -65,6 +66,8 @@ export default function SubmitPageClient({
   prefillUrl,
   prefillPlatform,
 }: Props) {
+  const t = useTranslations("creator.applications.submit");
+  const sharedT = useTranslations("creator.shared");
   const router = useRouter();
 
   const platforms = useMemo<Platform[]>(() => {
@@ -213,13 +216,13 @@ export default function SubmitPageClient({
         setCurrentPosts(posts);
       } catch (err) {
         setCurrentPosts([]);
-        const fallback = `Could not load your ${PLATFORM_NAMES[platform]} posts. Please try again.`;
+        const fallback = t("loadError", { platform: PLATFORM_NAMES[platform] });
         setError(err instanceof Error && err.message ? err.message : fallback);
       } finally {
         setIsLoading(false);
       }
     },
-    []
+    [t]
   );
 
   // Load first page on mount
@@ -376,7 +379,7 @@ export default function SubmitPageClient({
         setError(data.error || "Failed to submit");
       }
     } catch {
-      setError("Submission failed. Please try again.");
+      setError(t("submissionFailed"));
     } finally {
       setSubmittingKeys((prev) => {
         const next = new Set(prev);
@@ -422,7 +425,7 @@ export default function SubmitPageClient({
           setError(data.error || `Failed to submit`);
         }
       } catch {
-        setError("Submission failed. Please try again.");
+        setError(t("submissionFailed"));
       }
     }
 
@@ -434,7 +437,7 @@ export default function SubmitPageClient({
       if (submitted === keys.length) {
         router.push(`/creator/applications/${applicationId}`);
       } else {
-        setSuccess(`${submitted} of ${keys.length} posts submitted successfully.`);
+        setSuccess(t("submittedSuccess", { submitted, total: keys.length }));
       }
     }
   };
@@ -475,7 +478,7 @@ export default function SubmitPageClient({
 
       {isClosedForSubmissions && (
         <div className="mb-4 rounded-lg border border-neutral-200 bg-neutral-50 p-3 text-sm text-neutral-600">
-          This campaign has ended and no longer accepts submissions.
+          {t("campaignEnded")}
         </div>
       )}
 
@@ -484,7 +487,7 @@ export default function SubmitPageClient({
           className="p-3 rounded-lg mb-4 text-sm"
           style={{ background: "rgba(234,179,8,0.1)", color: "#ca8a04" }}
         >
-          Instagram is rate-limited — try again in ~1 minute.
+          {t("rateLimited")}
         </div>
       )}
 
@@ -493,7 +496,7 @@ export default function SubmitPageClient({
           className="p-3 rounded-lg mb-4 text-sm"
           style={{ background: "rgba(234,179,8,0.1)", color: "#ca8a04" }}
         >
-          We couldn&apos;t auto-select that post on this page. Try switching the platform tab or paging back to find it.
+          {t("prefillNotFound")}
         </div>
       )}
 
@@ -507,7 +510,7 @@ export default function SubmitPageClient({
           <button
             type="button"
             className="absolute inset-0 cursor-default"
-            aria-label="Close connect prompt"
+            aria-label={t("connectPromptClose")}
             onClick={() => setConnectPromptPlatform(null)}
           />
           <div
@@ -520,10 +523,10 @@ export default function SubmitPageClient({
                 className="text-lg font-semibold"
                 style={{ color: "var(--text-primary)" }}
               >
-                You do not have a {connectPromptName} account yet
+                {t("connectPromptTitle", { platform: connectPromptName })}
               </h2>
               <p className="mt-2 text-sm" style={{ color: "var(--text-muted)" }}>
-                Connect it now to load posts and submit clips.
+                {t("connectPromptDescription")}
               </p>
             </div>
             <div className="flex justify-end gap-2">
@@ -533,14 +536,14 @@ export default function SubmitPageClient({
                 style={{ borderColor: "var(--border)", color: "var(--text-secondary)" }}
                 onClick={() => setConnectPromptPlatform(null)}
               >
-                Close
+                {sharedT("actions.close")}
               </button>
               <a
                 href={PLATFORM_CONNECT_HREFS[connectPromptPlatform]}
                 className="rounded-lg px-3 py-2 text-sm font-semibold"
                 style={{ background: "var(--primary)", color: "#fff" }}
               >
-                Connect it now
+                {t("connectNow")}
               </a>
             </div>
           </div>
@@ -571,8 +574,8 @@ export default function SubmitPageClient({
             }}
           >
             {submitting
-              ? "Submitting…"
-              : `Submit${selectedKeys.size > 0 ? ` (${selectedKeys.size})` : ""}`}
+              ? t("submitting")
+              : t("submitSelected", { count: selectedKeys.size > 0 ? ` (${selectedKeys.size})` : "" })}
           </button>
         </div>
 
@@ -598,8 +601,8 @@ export default function SubmitPageClient({
         <div className="px-5 pt-4 pb-1">
           <p className="text-sm" style={{ color: "var(--text-secondary)" }}>
             {selectedKeys.size > 0
-              ? `${selectedKeys.size} post${selectedKeys.size !== 1 ? "s" : ""} selected`
-              : "Select the posts you want to submit"}
+              ? t("selectedCount", { count: selectedKeys.size })
+              : t("selectPosts")}
           </p>
         </div>
 

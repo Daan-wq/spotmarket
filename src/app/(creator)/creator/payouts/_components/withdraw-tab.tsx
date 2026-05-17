@@ -13,6 +13,8 @@ import {
   TooltipProvider,
 } from "@/components/animate-ui/primitives/radix/tooltip";
 import { isValidTronAddress, maskTronAddress } from "@/lib/validation/tron";
+import { formatCurrency, formatShortDate } from "@/lib/i18n-format";
+import { useLocale, useTranslations } from "next-intl";
 
 interface Withdrawal {
   id: string;
@@ -23,10 +25,12 @@ interface Withdrawal {
 }
 
 const MIN_WITHDRAW = 50;
-const TOOLTIP_TEXT =
-  "Make sure the address is a USDT TRC-20 wallet on the TRON network. Funds sent to a non-TRON address will not arrive.";
 
 export function WithdrawTab() {
+  const locale = useLocale();
+  const t = useTranslations("creator.payouts.withdraw");
+  const sharedT = useTranslations("creator.shared");
+  const statusT = useTranslations("creator.shared.statuses.payout");
   const [balance, setBalance] = useState<number>(0);
   const [withdrawals, setWithdrawals] = useState<Withdrawal[]>([]);
   const [loading, setLoading] = useState(true);
@@ -79,7 +83,7 @@ export function WithdrawTab() {
     const trimmed = addressInput.trim();
     if (!isValidTronAddress(trimmed)) {
       setAddressError(
-        "Address must start with capital T and be 34 characters (TRC-20 format).",
+        t("addressError"),
       );
       return;
     }
@@ -94,14 +98,14 @@ export function WithdrawTab() {
       });
       const data = await res.json();
       if (!res.ok) {
-        setAddressError(data.error || "Failed to save address");
+        setAddressError(data.error || t("saveFailed"));
         return;
       }
       setSavedAddress(data.tronsAddress);
       setIsEditingAddress(false);
       setAddressInput("");
     } catch {
-      setAddressError("An error occurred while saving the address");
+      setAddressError(t("saveError"));
     } finally {
       setAddressSaving(false);
     }
@@ -124,24 +128,24 @@ export function WithdrawTab() {
 
       const data = await res.json();
       if (!res.ok) {
-        setError(data.error || "Withdrawal failed");
+        setError(data.error || t("withdrawalFailed"));
         return;
       }
 
       setSuccess(
-        `Withdrawal request submitted for $${data.withdrawal.amount.toFixed(2)}`,
+        t("success", { amount: formatCurrency(data.withdrawal.amount, locale) }),
       );
       setShowWithdraw(false);
       fetchWallet();
     } catch {
-      setError("An error occurred");
+      setError(t("genericError"));
     } finally {
       setSubmitting(false);
     }
   }
 
   if (loading) {
-    return <p className="text-sm text-neutral-500">Loading...</p>;
+    return <p className="text-sm text-neutral-500">{t("loading")}</p>;
   }
 
   const canWithdraw = balance >= MIN_WITHDRAW && Boolean(savedAddress);
@@ -155,14 +159,14 @@ export function WithdrawTab() {
       <section className="rounded-2xl border border-neutral-200 bg-neutral-50 p-4 md:p-5">
         <div className="flex items-center gap-1.5">
           <h2 className="text-base font-semibold text-neutral-950">
-            Withdrawal method
+            {t("methodTitle")}
           </h2>
           <TooltipProvider>
             <Tooltip>
               <TooltipTrigger asChild>
                 <button
                   type="button"
-                  aria-label="Withdrawal method information"
+                  aria-label={t("methodInfo")}
                   className="inline-flex items-center justify-center rounded-full text-neutral-500 transition-colors hover:text-neutral-950 focus:outline-none focus-visible:ring-2 focus-visible:ring-neutral-900"
                 >
                   <svg
@@ -184,27 +188,31 @@ export function WithdrawTab() {
               </TooltipTrigger>
               <TooltipContent side="top" align="start">
                 <div className="max-w-xs rounded-lg border border-neutral-200 bg-white px-3 py-2 text-xs leading-relaxed text-neutral-900 shadow-lg">
-                  {TOOLTIP_TEXT}
+                  {t("tooltip")}
                 </div>
               </TooltipContent>
             </Tooltip>
           </TooltipProvider>
         </div>
         <p className="mt-1 max-w-2xl text-sm leading-6 text-neutral-500">
-          Payments go out as USDT on the TRON network. Save your destination
-          address below — you can update it any time.
+          {t("methodDescription")}
         </p>
         <div className="mt-4 flex flex-wrap items-center gap-3">
           <Badge variant="active">USDT TRC-20</Badge>
           <span className="text-xs text-neutral-500">
-            Minimum withdrawal ${MIN_WITHDRAW}
+            {t("minimumWithdrawal", {
+              amount: formatCurrency(MIN_WITHDRAW, locale, {
+                minimumFractionDigits: 0,
+                maximumFractionDigits: 0,
+              }),
+            })}
           </span>
         </div>
 
         {showInput ? (
           <form onSubmit={handleSaveAddress} className="mt-5 space-y-3">
             <label className="block text-sm font-semibold text-neutral-950">
-              USDT wallet address (TRC-20)
+              {t("addressLabel")}
             </label>
             <input
               type="text"
@@ -229,7 +237,7 @@ export function WithdrawTab() {
                 disabled={!addressInput}
                 className="h-10 rounded-xl px-4"
               >
-                {savedAddress ? "Save changes" : "Save address"}
+                {savedAddress ? sharedT("actions.saveChanges") : sharedT("actions.saveAddress")}
               </Button>
               {savedAddress && isEditingAddress ? (
                 <Button
@@ -239,7 +247,7 @@ export function WithdrawTab() {
                   onClick={cancelEditing}
                   disabled={addressSaving}
                 >
-                  Cancel
+                  {sharedT("actions.cancel")}
                 </Button>
               ) : null}
             </div>
@@ -248,7 +256,7 @@ export function WithdrawTab() {
           <div className="mt-5 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-neutral-200 bg-white px-4 py-3">
             <div className="min-w-0">
               <p className="text-[11px] font-medium uppercase tracking-wide text-neutral-400">
-                Saved address
+                {t("savedAddress")}
               </p>
               <p
                 className="mt-0.5 truncate font-mono text-sm text-neutral-950"
@@ -263,7 +271,7 @@ export function WithdrawTab() {
               className="h-9 rounded-xl px-3 text-sm"
               onClick={startEditing}
             >
-              Edit
+              {sharedT("actions.edit")}
             </Button>
           </div>
         )}
@@ -273,19 +281,19 @@ export function WithdrawTab() {
         <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
           <div>
             <p className="text-xs font-semibold uppercase tracking-[0.14em] text-neutral-400">
-              Available to withdraw
+              {t("availableToWithdraw")}
             </p>
             <p className="mt-1 text-4xl font-semibold tracking-normal text-neutral-950">
-              ${balance.toFixed(2)}
+              {formatCurrency(balance, locale)}
             </p>
           </div>
           {balance < MIN_WITHDRAW ? (
             <span className="text-sm text-neutral-500">
-              ${(MIN_WITHDRAW - balance).toFixed(2)} more to unlock withdrawal
+              {t("moreToUnlock", { amount: formatCurrency(MIN_WITHDRAW - balance, locale) })}
             </span>
           ) : !savedAddress ? (
             <span className="text-sm text-neutral-500">
-              Save a withdrawal address above to unlock withdrawal
+              {t("saveToUnlock")}
             </span>
           ) : (
             <Button
@@ -293,7 +301,7 @@ export function WithdrawTab() {
               onClick={() => setShowWithdraw((value) => !value)}
               disabled={!canWithdraw}
             >
-              {showWithdraw ? "Cancel" : "Request withdrawal"}
+              {showWithdraw ? sharedT("actions.cancel") : sharedT("actions.requestWithdrawal")}
             </Button>
           )}
         </div>
@@ -301,22 +309,24 @@ export function WithdrawTab() {
         {showWithdraw && savedAddress ? (
           <form onSubmit={handleWithdraw} className="mt-5 space-y-4">
             <div className="rounded-xl border border-neutral-200 bg-neutral-50 px-4 py-3 text-sm text-neutral-700">
-              We will send your full balance{" "}
-              <strong>${balance.toFixed(2)}</strong> to{" "}
-              <span
-                className="font-mono text-neutral-950"
-                title={savedAddress}
-              >
-                {maskTronAddress(savedAddress)}
-              </span>
-              .
+              {t.rich("confirmText", {
+                amount: () => <strong>{formatCurrency(balance, locale)}</strong>,
+                address: () => (
+                  <span
+                    className="font-mono text-neutral-950"
+                    title={savedAddress}
+                  >
+                    {maskTronAddress(savedAddress)}
+                  </span>
+                ),
+              })}
             </div>
             <Button
               type="submit"
               isPending={submitting}
               className="h-11 rounded-xl px-5"
             >
-              Confirm withdrawal
+              {sharedT("actions.confirmWithdrawal")}
             </Button>
           </form>
         ) : null}
@@ -325,14 +335,14 @@ export function WithdrawTab() {
       <section className="overflow-hidden rounded-2xl border border-neutral-200 bg-white">
         <div className="border-b border-neutral-200 px-5 py-4">
           <h2 className="text-base font-semibold text-neutral-950">
-            Recent withdrawals
+            {t("recentWithdrawals")}
           </h2>
         </div>
         {withdrawals.length === 0 ? (
           <div className="p-5">
             <EmptyState
-              title="No withdrawals yet"
-              description="Withdrawals you request will show up here once they are submitted."
+              title={t("noWithdrawalsTitle")}
+              description={t("noWithdrawalsDescription")}
             />
           </div>
         ) : (
@@ -346,18 +356,18 @@ export function WithdrawTab() {
                   <div className="flex items-start justify-between gap-3">
                     <div>
                       <p className="text-xs text-neutral-500">
-                        {new Date(withdrawal.createdAt).toLocaleDateString()}
+                        {formatShortDate(withdrawal.createdAt, locale)}
                       </p>
                       <p className="mt-1 text-xl font-semibold text-neutral-950">
-                        ${withdrawal.amount.toFixed(2)}
+                        {formatCurrency(withdrawal.amount, locale)}
                       </p>
                     </div>
                     <Badge variant={withdrawalBadge(withdrawal.status)}>
-                      {withdrawal.status}
+                      {statusT(withdrawal.status.toLowerCase())}
                     </Badge>
                   </div>
                   <div className="mt-3 text-sm">
-                    <p className="text-xs text-neutral-500">TX hash</p>
+                    <p className="text-xs text-neutral-500">{t("txHash")}</p>
                     <p className="mt-1 font-medium text-neutral-950">
                       {withdrawal.txHash ? (
                         <a
@@ -380,23 +390,23 @@ export function WithdrawTab() {
               <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-neutral-200 bg-neutral-50 text-neutral-500">
-                  <th className="px-5 py-2 text-left text-[11px] font-medium uppercase tracking-wide">Date</th>
-                  <th className="px-5 py-2 text-left text-[11px] font-medium uppercase tracking-wide">Amount</th>
-                  <th className="px-5 py-2 text-left text-[11px] font-medium uppercase tracking-wide">Status</th>
-                  <th className="px-5 py-2 text-left text-[11px] font-medium uppercase tracking-wide">TX hash</th>
+                  <th className="px-5 py-2 text-left text-[11px] font-medium uppercase tracking-wide">{sharedT("labels.date")}</th>
+                  <th className="px-5 py-2 text-left text-[11px] font-medium uppercase tracking-wide">{sharedT("labels.amount")}</th>
+                  <th className="px-5 py-2 text-left text-[11px] font-medium uppercase tracking-wide">{sharedT("labels.status")}</th>
+                  <th className="px-5 py-2 text-left text-[11px] font-medium uppercase tracking-wide">{t("txHash")}</th>
                 </tr>
               </thead>
               <tbody>
                 {withdrawals.map((withdrawal) => (
                   <tr key={withdrawal.id} className="border-b border-neutral-100 last:border-0">
                     <td className="px-5 py-3 text-neutral-950">
-                      {new Date(withdrawal.createdAt).toLocaleDateString()}
+                      {formatShortDate(withdrawal.createdAt, locale)}
                     </td>
                     <td className="px-5 py-3 font-medium text-neutral-950">
-                      ${withdrawal.amount.toFixed(2)}
+                      {formatCurrency(withdrawal.amount, locale)}
                     </td>
                     <td className="px-5 py-3">
-                      <Badge variant={withdrawalBadge(withdrawal.status)}>{withdrawal.status}</Badge>
+                      <Badge variant={withdrawalBadge(withdrawal.status)}>{statusT(withdrawal.status.toLowerCase())}</Badge>
                     </td>
                     <td className="px-5 py-3 text-neutral-600">
                       {withdrawal.txHash ? (

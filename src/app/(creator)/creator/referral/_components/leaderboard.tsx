@@ -11,14 +11,17 @@ interface LeaderboardProps {
   currentUserRank: number | null;
 }
 
-export function Leaderboard({ entries, currentUserRank }: LeaderboardProps) {
+export async function Leaderboard({ entries, currentUserRank }: LeaderboardProps) {
+  const locale = (await getLocale()) as Locale;
+  const t = await getTranslations("creator.referral.leaderboard");
+
   if (entries.length === 0) {
     return (
       <div
         className="h-48 flex items-center justify-center text-sm"
         style={{ color: "var(--text-muted)" }}
       >
-        No referrers yet. Be the first!
+        {t("empty")}
       </div>
     );
   }
@@ -49,26 +52,29 @@ export function Leaderboard({ entries, currentUserRank }: LeaderboardProps) {
             >
               {entry.displayName}
               {entry.isCurrentUser && (
-                <span className="ml-2 text-xs" style={{ color: "var(--accent)" }}>(You)</span>
+                <span className="ml-2 text-xs" style={{ color: "var(--accent)" }}>({t("you")})</span>
               )}
             </p>
             <p className="text-xs" style={{ color: "var(--text-muted)" }}>
-              {entry.referralCount} referral{entry.referralCount !== 1 ? "s" : ""}
+              {t("referrals")}: {formatNumber(entry.referralCount, locale)}
             </p>
           </div>
           <span
             className="text-sm font-semibold"
             style={{ color: "var(--accent)" }}
           >
-            ${entry.totalEarnings.toFixed(2)}
+            {formatCurrency(entry.totalEarnings, locale)}
           </span>
         </div>
       ))}
       {currentUserRank && !entries.some((e) => e.isCurrentUser) && (
         <p className="text-xs text-center mt-2" style={{ color: "var(--text-muted)" }}>
-          Your rank: #{currentUserRank}
+          {t("yourRank", { rank: currentUserRank })}
         </p>
       )}
     </div>
   );
 }
+import type { Locale } from "@/i18n/routing";
+import { formatCurrency, formatNumber } from "@/lib/i18n-format";
+import { getLocale, getTranslations } from "next-intl/server";

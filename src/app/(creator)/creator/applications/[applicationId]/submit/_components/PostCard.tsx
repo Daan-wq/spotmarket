@@ -2,6 +2,8 @@
 
 import type { NormalizedPost } from "@/types/media";
 import ClipThumbnail from "@/components/shared/ClipThumbnail";
+import { useLocale, useTranslations } from "next-intl";
+import { formatNumber } from "@/lib/i18n-format";
 
 interface Props {
   post: NormalizedPost;
@@ -24,6 +26,9 @@ export default function PostCard({
   onToggle,
   onSubmitOne,
 }: Props) {
+  const locale = useLocale();
+  const t = useTranslations("creator.applications.submit");
+  const sharedT = useTranslations("creator.shared");
   const showHover = !isSubmitted && !isSelected;
   const disabled = isSubmitted || isSubmissionDisabled;
 
@@ -63,7 +68,7 @@ export default function PostCard({
         <div
           className="absolute top-1.5 left-1.5 w-5 h-5 rounded-full flex items-center justify-center z-10"
           style={{ background: "#22c55e" }}
-          title="Contains required hashtags"
+          title={t("containsRequiredHashtags")}
         >
           <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
             <polyline points="20 6 9 17 4 12" />
@@ -80,7 +85,7 @@ export default function PostCard({
             className="text-xs font-semibold px-2 py-0.5 rounded"
             style={{ background: "rgba(0,0,0,0.6)", color: "#fff" }}
           >
-            Submitted
+            {t("submitted")}
           </span>
         </div>
       )}
@@ -105,13 +110,13 @@ export default function PostCard({
               <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
                 <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" />
               </svg>
-              {(post.likeCount ?? 0).toLocaleString()}
+              {formatNumber(post.likeCount ?? 0, locale)}
             </span>
             <span className="flex items-center gap-1">
               <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
                 <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
               </svg>
-              {(post.commentCount ?? 0).toLocaleString()}
+              {formatNumber(post.commentCount ?? 0, locale)}
             </span>
           </div>
 
@@ -130,7 +135,7 @@ export default function PostCard({
                 <polyline points="15 3 21 3 21 9" />
                 <line x1="10" y1="14" x2="21" y2="3" />
               </svg>
-              Open
+              {sharedT("actions.open")}
             </a>
             <button
               type="button"
@@ -151,7 +156,7 @@ export default function PostCard({
                 <line x1="22" y1="2" x2="11" y2="13" />
                 <polygon points="22 2 15 22 11 13 2 9 22 2" />
               </svg>
-              {isSubmittingOne ? "Submitting…" : "Submit"}
+              {isSubmittingOne ? t("submitting") : t("submit")}
             </button>
           </div>
         </div>

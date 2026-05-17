@@ -1,9 +1,13 @@
+"use client";
+
 import {
   Tooltip,
   TooltipTrigger,
   TooltipContent,
   TooltipProvider,
 } from "@/components/animate-ui/primitives/radix/tooltip";
+import { formatCurrency } from "@/lib/i18n-format";
+import { useLocale, useTranslations } from "next-intl";
 
 interface Props {
   amount: number;
@@ -23,9 +27,13 @@ interface Props {
  */
 export default function EarningsCard({
   amount,
-  label = "Earned",
+  label,
   disclaimer,
 }: Props) {
+  const locale = useLocale();
+  const t = useTranslations("creator.shared");
+  const displayLabel = label ?? t("labels.earned");
+
   return (
     <div
       className="p-5 rounded-xl"
@@ -38,14 +46,14 @@ export default function EarningsCard({
         className="flex items-center gap-1.5 text-xs font-medium tracking-wider uppercase mb-1"
         style={{ color: "var(--text-muted)" }}
       >
-        <span>{label}</span>
+        <span>{displayLabel}</span>
         {disclaimer ? (
           <TooltipProvider>
             <Tooltip>
               <TooltipTrigger asChild>
                 <button
                   type="button"
-                  aria-label={`${label} disclaimer`}
+                  aria-label={`${displayLabel} disclaimer`}
                   className="inline-flex items-center justify-center rounded-full transition-colors focus:outline-none focus-visible:ring-2"
                   style={{ color: "var(--text-muted)" }}
                 >
@@ -83,7 +91,7 @@ export default function EarningsCard({
         ) : null}
       </div>
       <div className="text-3xl font-bold" style={{ color: "var(--text-primary)" }}>
-        ${amount.toFixed(2)}
+        {formatCurrency(amount, locale)}
       </div>
     </div>
   );

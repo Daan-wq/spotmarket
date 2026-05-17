@@ -27,10 +27,13 @@ import {
   CreatorPageHeader,
   CreatorSectionHeader,
 } from "../../_components/creator-journey";
+import { formatCurrency, formatNumber } from "@/lib/i18n-format";
+import { useLocale, useTranslations } from "next-intl";
 
 interface Eligibility {
   status: "eligible" | "ineligible" | "unknown";
-  reason?: string;
+  reasonKind?: "platforms" | "followers";
+  reasonValue?: string | number;
 }
 
 interface CampaignData {
@@ -61,15 +64,8 @@ interface CampaignsClientProps {
 type CampaignTab = "marketplace" | "my";
 type SortKey = "recommended" | "newest" | "highest-cpv" | "ending-soon";
 
-const SORTS: Array<{ key: SortKey; label: string }> = [
-  { key: "recommended", label: "Recommended" },
-  { key: "newest", label: "Newest" },
-  { key: "highest-cpv", label: "Highest payout" },
-  { key: "ending-soon", label: "Ending soon" },
-];
-
 const PLATFORM_OPTIONS = [
-  { value: "all", label: "All platforms" },
+  { value: "all", labelKey: "allPlatforms" },
   { value: "INSTAGRAM", label: "Instagram" },
   { value: "TIKTOK", label: "TikTok" },
   { value: "YOUTUBE_SHORTS", label: "YouTube" },
@@ -77,6 +73,8 @@ const PLATFORM_OPTIONS = [
 ];
 
 export function CampaignsClient({ marketplace, myCampaigns }: CampaignsClientProps) {
+  const t = useTranslations("creator.campaigns");
+  const sharedT = useTranslations("creator.shared");
   const [activeTab, setActiveTab] = useState<CampaignTab>("marketplace");
   const [search, setSearch] = useState("");
   const [platformFilter, setPlatformFilter] = useState("all");
@@ -95,8 +93,8 @@ export function CampaignsClient({ marketplace, myCampaigns }: CampaignsClientPro
           .filter((value): value is string => Boolean(value)),
       ),
     );
-    return [{ value: "all", label: "All types" }, ...values.map((value) => ({ value, label: value }))];
-  }, [marketplace, myCampaigns]);
+    return [{ value: "all", label: sharedT("filters.allTypes") }, ...values.map((value) => ({ value, label: value }))];
+  }, [marketplace, myCampaigns, sharedT]);
 
   const filtered = useMemo(() => {
     const result = campaigns.filter((c) => {
@@ -118,10 +116,10 @@ export function CampaignsClient({ marketplace, myCampaigns }: CampaignsClientPro
 
   return (
     <div className="w-full space-y-6 md:space-y-8 md:px-6 md:py-8">
-      <CreatorPageHeader
-        eyebrow="Campaigns"
-        title="Campaigns"
-        description={`${marketplace.length} campaigns available`}
+        <CreatorPageHeader
+        eyebrow={t("page.eyebrow")}
+        title={t("page.title")}
+        description={t("page.description", { count: marketplace.length })}
       />
 
       <CampaignGuideCard onOpen={setGuideDialog} />
@@ -130,20 +128,20 @@ export function CampaignsClient({ marketplace, myCampaigns }: CampaignsClientPro
         <div className="mb-5 flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
           <div className="inline-flex w-full rounded-xl border border-neutral-200 bg-neutral-50 p-1 md:w-auto">
             <TabButton active={activeTab === "marketplace"} onClick={() => setActiveTab("marketplace")}>
-              Marketplace
+              {t("page.marketplace")}
             </TabButton>
             <TabButton active={activeTab === "my"} onClick={() => setActiveTab("my")}>
-              Joined campaigns
+              {t("page.joined")}
             </TabButton>
           </div>
 
           <div className="flex w-full flex-col gap-3 md:flex-row xl:max-w-3xl">
             <label className="relative hidden flex-1 md:block">
-              <span className="sr-only">Search campaigns</span>
+              <span className="sr-only">{t("page.searchLabel")}</span>
               <SearchIcon className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400" />
               <input
                 type="text"
-                placeholder="Search campaigns"
+                placeholder={t("page.searchPlaceholder")}
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 className="h-11 w-full rounded-xl border border-neutral-200 bg-neutral-50 pl-10 pr-4 text-sm text-neutral-950 outline-none transition focus:border-neutral-400 focus:bg-white"
@@ -155,8 +153,8 @@ export function CampaignsClient({ marketplace, myCampaigns }: CampaignsClientPro
                   type="button"
                   className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-xl border border-neutral-200 bg-white px-4 text-sm font-semibold text-neutral-700 transition hover:bg-neutral-50 hover:text-neutral-950 md:w-auto"
                 >
-                  Filters
-                  {filtersActive ? <Badge variant="eligible">On</Badge> : null}
+                  {sharedT("actions.filters")}
+                  {filtersActive ? <Badge variant="eligible">{sharedT("filters.on")}</Badge> : null}
                   <ChevronDownIcon />
                 </button>
               </DropdownMenuTrigger>
@@ -165,18 +163,18 @@ export function CampaignsClient({ marketplace, myCampaigns }: CampaignsClientPro
                 className="w-64 rounded-xl border border-neutral-200 bg-white p-1 text-neutral-900 shadow-lg"
               >
                 <DropdownMenuLabel className="text-xs font-semibold uppercase tracking-[0.14em] text-neutral-400">
-                  Platform
+                  {t("page.platform")}
                 </DropdownMenuLabel>
                 <DropdownMenuRadioGroup value={platformFilter} onValueChange={setPlatformFilter}>
                   {PLATFORM_OPTIONS.map((option) => (
                     <DropdownMenuRadioItem key={option.value} value={option.value}>
-                      {option.label}
+                      {"labelKey" in option ? sharedT(`filters.${option.labelKey}`) : option.label}
                     </DropdownMenuRadioItem>
                   ))}
                 </DropdownMenuRadioGroup>
                 <DropdownMenuSeparator />
                 <DropdownMenuLabel className="text-xs font-semibold uppercase tracking-[0.14em] text-neutral-400">
-                  Type
+                  {t("page.type")}
                 </DropdownMenuLabel>
                 <DropdownMenuRadioGroup value={typeFilter} onValueChange={setTypeFilter}>
                   {typeOptions.map((option) => (
@@ -187,10 +185,10 @@ export function CampaignsClient({ marketplace, myCampaigns }: CampaignsClientPro
                 </DropdownMenuRadioGroup>
                 <DropdownMenuSeparator />
                 <DropdownMenuLabel className="text-xs font-semibold uppercase tracking-[0.14em] text-neutral-400">
-                  Sort
+                  {t("page.sort")}
                 </DropdownMenuLabel>
                 <DropdownMenuRadioGroup value={sort} onValueChange={(v) => setSort(v as SortKey)}>
-                  {SORTS.map((option) => (
+                  {sortOptions(sharedT).map((option) => (
                     <DropdownMenuRadioItem key={option.key} value={option.key}>
                       {option.label}
                     </DropdownMenuRadioItem>
@@ -204,7 +202,7 @@ export function CampaignsClient({ marketplace, myCampaigns }: CampaignsClientPro
                     resetFilters();
                   }}
                 >
-                  Reset filters
+                  {sharedT("actions.resetFilters")}
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
@@ -212,22 +210,22 @@ export function CampaignsClient({ marketplace, myCampaigns }: CampaignsClientPro
         </div>
 
         <CreatorSectionHeader
-          title={activeTab === "my" ? "Joined campaigns" : "Marketplace"}
-          description={activeTab === "my" ? "Campaigns you can act on next." : "Campaigns sorted by eligibility and payout by default."}
+          title={activeTab === "my" ? t("page.joined") : t("page.marketplace")}
+          description={activeTab === "my" ? t("page.joinedDescription") : t("page.marketplaceDescription")}
         />
 
         {filtered.length === 0 ? (
           activeTab === "my" && !filtersActive ? (
             <EmptyState
-              title="No campaigns joined yet"
-              description="Browse the marketplace to find campaigns that match your platforms and niche."
-              primaryCta={{ label: "Browse marketplace", onClick: () => setActiveTab("marketplace") }}
+              title={t("empty.noJoinedTitle")}
+              description={t("empty.noJoinedDescription")}
+              primaryCta={{ label: sharedT("actions.browseCampaigns"), onClick: () => setActiveTab("marketplace") }}
             />
           ) : (
             <EmptyState
-              title="No campaigns match your filters"
-              description="Try clearing the filters or changing the search."
-              primaryCta={filtersActive ? { label: "Reset filters", onClick: resetFilters } : undefined}
+              title={t("empty.noMatchesTitle")}
+              description={t("empty.noMatchesDescription")}
+              primaryCta={filtersActive ? { label: sharedT("actions.resetFilters"), onClick: resetFilters } : undefined}
             />
           )
         ) : (
@@ -249,10 +247,11 @@ function CampaignGuideCard({
 }: {
   onOpen: (dialog: "rules" | "how") => void;
 }) {
+  const t = useTranslations("creator.campaigns.guide");
   return (
     <section className="rounded-2xl border border-neutral-200 bg-neutral-50 p-4">
       <p className="text-sm text-neutral-600">
-        New to campaigns? Learn how they work.
+        {t("intro")}
       </p>
       <div className="mt-3 flex flex-wrap gap-2">
         <button
@@ -260,14 +259,14 @@ function CampaignGuideCard({
           onClick={() => onOpen("rules")}
           className="inline-flex h-9 items-center justify-center rounded-xl border border-neutral-200 bg-white px-4 text-sm font-semibold text-neutral-950 shadow-sm transition hover:bg-neutral-100"
         >
-          Rules
+          {t("rules")}
         </button>
         <button
           type="button"
           onClick={() => onOpen("how")}
           className="inline-flex h-9 items-center justify-center rounded-xl border border-neutral-200 bg-white px-4 text-sm font-semibold text-neutral-950 shadow-sm transition hover:bg-neutral-100"
         >
-          How it works
+          {t("howItWorks")}
         </button>
       </div>
     </section>
@@ -281,6 +280,7 @@ function CampaignGuideDialog({
   type: "rules" | "how" | null;
   onClose: () => void;
 }) {
+  const t = useTranslations("creator.campaigns.guide");
   if (!type) return null;
 
   const isRules = type === "rules";
@@ -289,7 +289,7 @@ function CampaignGuideDialog({
     <Dialog
       open
       onClose={onClose}
-      title={isRules ? "Campaign Rules" : "How it works"}
+      title={isRules ? t("rulesTitle") : t("howTitle")}
       size="lg"
       className="max-h-[82vh] overflow-hidden rounded-3xl sm:rounded-2xl"
       footer={
@@ -298,7 +298,7 @@ function CampaignGuideDialog({
           onClick={onClose}
           className="inline-flex h-10 min-w-24 items-center justify-center rounded-xl bg-neutral-950 px-5 text-sm font-semibold text-white shadow-[0_8px_18px_rgba(0,0,0,0.18)] transition hover:bg-neutral-800"
         >
-          {isRules ? "I understand" : "Got it"}
+          {isRules ? t("understand") : t("gotIt")}
         </button>
       }
     >
@@ -310,58 +310,39 @@ function CampaignGuideDialog({
 }
 
 function CampaignHowItWorksContent() {
+  const t = useTranslations("creator.campaigns.guide");
   return (
     <>
       <p>
-        Understanding how campaigns work helps you choose the right work,
-        submit clips cleanly, and track earnings without surprises.
+        {t("howIntro")}
       </p>
-      <GuideSection title="Campaign Duration">
-        <p>
-          <strong className="text-neutral-950">Deadline-based:</strong> posts
-          can be submitted until the campaign deadline. After that, submissions
-          close.
-        </p>
-        <p>
-          <strong className="text-neutral-950">Budget-based:</strong> campaigns
-          may continue until the budget is spent or the sponsor ends the work.
-        </p>
+      <GuideSection title={t("durationTitle")}>
+        <p>{t("durationDeadline")}</p>
+        <p>{t("durationBudget")}</p>
       </GuideSection>
-      <GuideSection title="Payout Calculation">
-        <p>
-          <strong className="text-neutral-950">Payrate-based:</strong> you earn
-          a flat rate per tracked view.
-        </p>
-        <p>
-          <strong className="text-neutral-950">Pot-style:</strong> payouts are
-          proportional to your share of total campaign views.
-        </p>
+      <GuideSection title={t("payoutTitle")}>
+        <p>{t("payoutRate")}</p>
+        <p>{t("payoutPot")}</p>
       </GuideSection>
     </>
   );
 }
 
 function CampaignRulesContent() {
+  const t = useTranslations("creator.campaigns.guide");
   return (
     <>
       <p>
-        By participating in campaigns, you agree to follow these rules.
-        Violations may result in removal and forfeiture of earnings.
+        {t("rulesIntro")}
       </p>
-      <GuideSection title="No Botting or Fake Engagement">
-        <p>Botting and fake engagement are not allowed in any capacity.</p>
+      <GuideSection title={t("noBottingTitle")}>
+        <p>{t("noBotting")}</p>
       </GuideSection>
-      <GuideSection title="Audience Requirements">
-        <p>
-          Do not join campaigns with audience requirements that do not match
-          your own audience.
-        </p>
+      <GuideSection title={t("audienceTitle")}>
+        <p>{t("audience")}</p>
       </GuideSection>
-      <GuideSection title="Follow Campaign Requirements">
-        <p>
-          Submitted posts must follow the campaign-specific creative,
-          disclosure, and platform requirements.
-        </p>
+      <GuideSection title={t("requirementsTitle")}>
+        <p>{t("requirements")}</p>
       </GuideSection>
     </>
   );
@@ -435,10 +416,13 @@ function sortCampaigns(list: CampaignData[], sort: SortKey): CampaignData[] {
 }
 
 function CampaignCard({ campaign }: { campaign: CampaignData }) {
+  const locale = useLocale();
+  const t = useTranslations("creator.campaigns.card");
+  const sharedT = useTranslations("creator.shared");
   const primaryHref = campaign.applicationId && !campaign.closedForSubmissions
     ? `/creator/applications/${campaign.applicationId}/submit`
     : `/creator/campaigns/${campaign.id}`;
-  const primaryLabel = campaign.applicationId ? "Submit clip" : "Campaign info";
+  const primaryLabel = campaign.applicationId ? sharedT("actions.submitClip") : sharedT("actions.campaignInfo");
   const submitDisabled = Boolean(campaign.applicationId && campaign.closedForSubmissions);
 
   return (
@@ -451,21 +435,25 @@ function CampaignCard({ campaign }: { campaign: CampaignData }) {
           </h3>
           <div className="mt-2 flex flex-wrap items-center gap-1.5">
             <CampaignStatusBadge status={campaign.status} deadline={campaign.deadlineIso} />
-            {campaign.eligibility.status === "eligible" ? <Badge variant="eligible">You qualify</Badge> : null}
-            {campaign.eligibility.status === "ineligible" && campaign.eligibility.reason ? (
-              <Badge variant="ineligible">{campaign.eligibility.reason}</Badge>
+            {campaign.eligibility.status === "eligible" ? <Badge variant="eligible">{t("youQualify")}</Badge> : null}
+            {campaign.eligibility.status === "ineligible" && campaign.eligibility.reasonKind ? (
+              <Badge variant="ineligible">
+                {campaign.eligibility.reasonKind === "followers"
+                  ? t("needFollowers", { count: formatNumber(Number(campaign.eligibility.reasonValue ?? 0), locale) })
+                  : t("connectPlatforms", { platforms: String(campaign.eligibility.reasonValue ?? "") })}
+              </Badge>
             ) : null}
             <CampaignDeadlineBadge deadline={campaign.deadlineIso} />
           </div>
         </div>
       </div>
 
-      <p className="mt-5 text-xs font-medium text-neutral-500">Payout</p>
+      <p className="mt-5 text-xs font-medium text-neutral-500">{t("payout")}</p>
       <div className="mt-1 flex items-baseline gap-1">
         <span className="text-2xl font-semibold tracking-normal text-neutral-950 md:text-3xl">
-          ${campaign.rewardRate.toFixed(1)}
+          {formatCurrency(campaign.rewardRate, locale, { minimumFractionDigits: 1, maximumFractionDigits: 1 })}
         </span>
-        <span className="text-sm text-neutral-500">/1K views</span>
+        <span className="text-sm text-neutral-500">{sharedT("units.perOneKViews")}</span>
       </div>
 
       <div className="mt-5">
@@ -503,12 +491,21 @@ function CampaignCard({ campaign }: { campaign: CampaignData }) {
             href={`/creator/campaigns/${campaign.id}`}
             className="inline-flex h-10 items-center justify-center rounded-xl border border-neutral-200 bg-white px-4 text-sm font-semibold text-neutral-950 transition hover:bg-neutral-100"
           >
-            Campaign info
+            {sharedT("actions.campaignInfo")}
           </Link>
         ) : null}
       </div>
     </article>
   );
+}
+
+function sortOptions(t: ReturnType<typeof useTranslations>): Array<{ key: SortKey; label: string }> {
+  return [
+    { key: "recommended", label: t("filters.recommended") },
+    { key: "newest", label: t("filters.newest") },
+    { key: "highest-cpv", label: t("filters.highestPayout") },
+    { key: "ending-soon", label: t("filters.endingSoon") },
+  ];
 }
 
 function SearchIcon({ className }: { className?: string }) {

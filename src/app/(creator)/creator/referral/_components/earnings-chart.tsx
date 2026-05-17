@@ -8,6 +8,8 @@ import {
   Tooltip,
   ResponsiveContainer,
 } from "recharts";
+import { useLocale, useTranslations } from "next-intl";
+import { formatCurrency, toIntlLocale } from "@/lib/i18n-format";
 
 interface MonthlyEarning {
   month: string;
@@ -15,28 +17,34 @@ interface MonthlyEarning {
 }
 
 export function ReferralEarningsChart({ data }: { data: MonthlyEarning[] }) {
+  const locale = useLocale();
+  const t = useTranslations("creator.referral.chart");
+
   if (data.length === 0 || data.every((d) => d.earnings === 0)) {
     return (
       <div
         className="h-48 flex items-center justify-center text-sm"
         style={{ color: "var(--text-muted)" }}
       >
-        No referral earnings yet.
+        {t("empty")}
       </div>
     );
   }
 
   const formatted = data.map((d) => ({
     ...d,
-    label: new Date(d.month + "-01").toLocaleDateString("en-US", {
+    label: new Intl.DateTimeFormat(toIntlLocale(locale), {
       month: "short",
       year: "2-digit",
-    }),
+    }).format(new Date(d.month + "-01")),
   }));
 
   return (
     <ResponsiveContainer width="100%" height={220}>
-      <AreaChart data={formatted} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
+      <AreaChart
+        data={formatted}
+        margin={{ top: 8, right: 8, left: 0, bottom: 0 }}
+      >
         <defs>
           <linearGradient id="referralGrad" x1="0" y1="0" x2="0" y2="1">
             <stop offset="0%" stopColor="var(--accent)" stopOpacity={0.2} />
@@ -51,7 +59,9 @@ export function ReferralEarningsChart({ data }: { data: MonthlyEarning[] }) {
         />
         <YAxis
           tick={{ fontSize: 11, fill: "var(--text-muted)" }}
-          tickFormatter={(v) => `$${v}`}
+          tickFormatter={(v) =>
+            formatCurrency(Number(v), locale, { maximumFractionDigits: 0 })
+          }
           axisLine={false}
           tickLine={false}
           width={50}
@@ -66,7 +76,7 @@ export function ReferralEarningsChart({ data }: { data: MonthlyEarning[] }) {
           }}
           formatter={(value) => {
             const v = Number(value ?? 0);
-            return [`$${v.toFixed(2)}`, "Earnings"];
+            return [formatCurrency(v, locale), t("earnings")];
           }}
         />
         <Area

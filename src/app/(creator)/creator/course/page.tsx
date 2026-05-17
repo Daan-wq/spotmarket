@@ -1,18 +1,25 @@
 import Link from "next/link";
 import { BookOpen, CheckCircle2 } from "lucide-react";
+import { getLocale, getTranslations } from "next-intl/server";
 import { requireAuth, getCachedAuthUser } from "@/lib/auth";
+import type { Locale } from "@/i18n/routing";
+import { formatNumber } from "@/lib/i18n-format";
 import { prisma } from "@/lib/prisma";
 import { PLATFORM_META, platformToSlug } from "@/lib/course/access";
 import { getAllPlatformOverviews } from "@/lib/course/queries";
 import { CreatorPageHeader, CreatorSectionHeader, SoftStat } from "../_components/creator-journey";
 
-export const metadata = {
-  title: "Course",
-};
 export const dynamic = "force-dynamic";
+
+export async function generateMetadata() {
+  const t = await getTranslations("creator.course.metadata");
+  return { title: t("title") };
+}
 
 export default async function CourseHubPage() {
   await requireAuth("creator", "admin");
+  const locale = (await getLocale()) as Locale;
+  const t = await getTranslations("creator.course.page");
   const authUser = await getCachedAuthUser();
   if (!authUser) throw new Error("User not found");
 
@@ -34,29 +41,33 @@ export default async function CourseHubPage() {
   return (
     <div className="w-full space-y-6 md:space-y-8 md:px-6 md:py-8">
       <CreatorPageHeader
-        eyebrow="Training"
-        title="Course hub"
-        description="Pick a course, finish lessons in order, pass quizzes, and collect badges as proof of completion."
+        eyebrow={t("eyebrow")}
+        title={t("title")}
+        description={t("description")}
         action={
           <Link
             href={firstHref}
             className="inline-flex h-11 items-center justify-center rounded-xl bg-neutral-950 px-5 text-sm font-semibold text-white transition hover:bg-neutral-800"
           >
-            Continue learning
+            {t("continueLearning")}
           </Link>
         }
       />
 
       <div className="grid grid-cols-2 gap-3 md:grid-cols-3 md:gap-4">
-        <SoftStat label="Lessons completed" value={`${completedLessons}/${totalLessons}`} detail="Across all available courses" />
-        <SoftStat label="Badges earned" value={String(badgeCount)} detail="From lesson and section quizzes" />
+        <SoftStat label={t("lessonsCompleted")} value={`${formatNumber(completedLessons, locale)}/${formatNumber(totalLessons, locale)}`} detail={t("acrossCourses")} />
+        <SoftStat label={t("badgesEarned")} value={formatNumber(badgeCount, locale)} detail={t("fromQuizzes")} />
         <div className="col-span-2 md:col-span-1">
-          <SoftStat label="Courses" value={String(overviews.filter((overview) => overview.totalLessons > 0).length)} detail="Ready to work through" />
+          <SoftStat
+            label={t("courses")}
+            value={formatNumber(overviews.filter((overview) => overview.totalLessons > 0).length, locale)}
+            detail={t("readyCourses")}
+          />
         </div>
       </div>
 
       <section>
-        <CreatorSectionHeader title="Available courses" description="Each course includes lesson reading, quiz checks, progress tracking, and badges." />
+        <CreatorSectionHeader title={t("availableCourses")} description={t("availableDescription")} />
         <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
           {overviews.map((overview) => {
             const slug = platformToSlug(overview.platform);
@@ -67,7 +78,9 @@ export default async function CourseHubPage() {
                 <div className="flex items-start justify-between gap-4">
                   <div>
                     <p className="text-xs font-semibold uppercase tracking-[0.14em] text-neutral-500">{meta.label}</p>
-                    <h2 className="mt-2 text-lg font-semibold tracking-normal text-neutral-950">{overview.courseTitle ?? `${meta.label} course`}</h2>
+                    <h2 className="mt-2 text-lg font-semibold tracking-normal text-neutral-950">
+                      {overview.courseTitle ?? t("courseFallback", { platform: meta.label })}
+                    </h2>
                   </div>
                   {overview.completedLessons === overview.totalLessons && overview.totalLessons > 0 ? (
                     <CheckCircle2 className="h-5 w-5 text-neutral-950" />
@@ -79,7 +92,10 @@ export default async function CourseHubPage() {
                   <div className="h-full rounded-full bg-neutral-950" style={{ width: `${progress}%` }} />
                 </div>
                 <p className="mt-3 text-sm text-neutral-500">
-                  {overview.completedLessons}/{overview.totalLessons} lessons complete
+                  {t("lessonsComplete", {
+                    completed: formatNumber(overview.completedLessons, locale),
+                    total: formatNumber(overview.totalLessons, locale),
+                  })}
                 </p>
               </Link>
             );

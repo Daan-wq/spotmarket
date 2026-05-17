@@ -9,12 +9,20 @@ import {
   CreatorSectionHeader,
   SoftStat,
 } from "../_components/creator-journey";
+import { formatCurrency, formatNumber, formatShortDate } from "@/lib/i18n-format";
+import { getLocale, getTranslations } from "next-intl/server";
+import type { Locale } from "@/i18n/routing";
 
-export const metadata = {
-  title: "Payments",
-};
+type ServerT = Awaited<ReturnType<typeof getTranslations>>;
+
+export async function generateMetadata() {
+  const t = await getTranslations("creator.payouts.metadata");
+  return { title: t("title") };
+}
 
 export default async function PaymentsPage() {
+  const locale = (await getLocale()) as Locale;
+  const t = await getTranslations("creator.payouts");
   const { userId } = await requireAuth("creator");
 
   const user = await prisma.user.findUnique({
@@ -52,13 +60,22 @@ export default async function PaymentsPage() {
   const hasPaymentMethod = Boolean(
     profile.walletAddress || profile.tronsAddress || profile.stripeAccountId,
   );
+  const overviewSlot = await OverviewTab({
+    locale,
+    totalEarned,
+    totalPaid,
+    balance,
+    pendingPayout,
+    earningsByCampaign,
+  });
+  const historySlot = await HistoryTab({ locale, payouts });
 
   return (
     <div className="w-full space-y-6 md:space-y-8 md:px-6 md:py-8">
       <CreatorPageHeader
-        eyebrow="Payments"
-        title="Payments"
-        description="Follow earnings from approved clips into withdrawal requests and payout history."
+        eyebrow={t("page.eyebrow")}
+        title={t("page.title")}
+        description={t("page.description")}
       />
 
       <PaymentsTabs
@@ -67,22 +84,15 @@ export default async function PaymentsPage() {
         balance={balance}
         pendingPayout={pendingPayout}
         hasPaymentMethod={hasPaymentMethod}
-        overviewSlot={
-          <OverviewTab
-            totalEarned={totalEarned}
-            totalPaid={totalPaid}
-            balance={balance}
-            pendingPayout={pendingPayout}
-            earningsByCampaign={earningsByCampaign}
-          />
-        }
-        historySlot={<HistoryTab payouts={payouts} />}
+        overviewSlot={overviewSlot}
+        historySlot={historySlot}
       />
     </div>
   );
 }
 
 interface OverviewTabProps {
+  locale: Locale;
   totalEarned: number;
   totalPaid: number;
   balance: number;
@@ -96,18 +106,21 @@ interface OverviewTabProps {
   }>;
 }
 
-function OverviewTab({
+async function OverviewTab({
+  locale,
   totalEarned,
   totalPaid,
   balance,
   pendingPayout,
   earningsByCampaign,
 }: OverviewTabProps) {
+  const t = await getTranslations("creator.payouts.overview");
+  const sharedT = await getTranslations("creator.shared");
   const cards = [
-    { label: "Available balance", value: `$${balance.toFixed(2)}`, detail: "Ready when withdrawal unlocks" },
-    { label: "Pending", value: `$${pendingPayout.toFixed(2)}`, detail: "Requests in progress" },
-    { label: "Total paid", value: `$${totalPaid.toFixed(2)}`, detail: "Confirmed or sent" },
-    { label: "Total earned", value: `$${totalEarned.toFixed(2)}`, detail: "Approved submissions" },
+    { label: t("availableBalance"), value: formatCurrency(balance, locale), detail: t("readyUnlocks") },
+    { label: t("pending"), value: formatCurrency(pendingPayout, locale), detail: t("requestsProgress") },
+    { label: t("totalPaid"), value: formatCurrency(totalPaid, locale), detail: t("confirmedOrSent") },
+    { label: t("totalEarned"), value: formatCurrency(totalEarned, locale), detail: t("approvedSubmissions") },
   ];
 
   return (
@@ -120,14 +133,14 @@ function OverviewTab({
 
       <section className="rounded-2xl border border-neutral-200 bg-white p-4 md:p-5">
         <CreatorSectionHeader
-          title="Earnings by campaign"
-          description="Approved clip earnings grouped by campaign."
+          title={t("earningsByCampaign")}
+          description={t("earningsDescription")}
         />
         {earningsByCampaign.length === 0 ? (
           <EmptyState
-            title="No approved earnings yet"
-            description="Once your clips are approved, your campaign earnings will appear here."
-            primaryCta={{ label: "Browse campaigns", href: "/creator/campaigns" }}
+            title={t("noEarningsTitle")}
+            description={t("noEarningsDescription")}
+            primaryCta={{ label: sharedT("actions.browseCampaigns"), href: "/creator/campaigns" }}
           />
         ) : (
           <>
@@ -135,20 +148,20 @@ function OverviewTab({
               <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-neutral-200 text-neutral-500">
-                  <th className="px-5 py-2 text-left text-[11px] font-medium uppercase tracking-wide">Campaign</th>
-                  <th className="px-5 py-2 text-left text-[11px] font-medium uppercase tracking-wide">Submissions</th>
-                  <th className="px-5 py-2 text-left text-[11px] font-medium uppercase tracking-wide">Total views</th>
-                  <th className="px-5 py-2 text-right text-[11px] font-medium uppercase tracking-wide">Earned</th>
+                  <th className="px-5 py-2 text-left text-[11px] font-medium uppercase tracking-wide">{sharedT("labels.campaign")}</th>
+                  <th className="px-5 py-2 text-left text-[11px] font-medium uppercase tracking-wide">{sharedT("units.submissions")}</th>
+                  <th className="px-5 py-2 text-left text-[11px] font-medium uppercase tracking-wide">{sharedT("labels.views")}</th>
+                  <th className="px-5 py-2 text-right text-[11px] font-medium uppercase tracking-wide">{sharedT("labels.earned")}</th>
                 </tr>
               </thead>
               <tbody>
                 {earningsByCampaign.map((row) => (
                   <tr key={row.campaignId} className="border-b border-neutral-100 last:border-0">
                     <td className="px-5 py-3 font-medium text-neutral-950">{row.campaignName}</td>
-                    <td className="px-5 py-3 text-neutral-600">{row.count}</td>
-                    <td className="px-5 py-3 text-neutral-600">{row.totalViews.toLocaleString()}</td>
+                    <td className="px-5 py-3 text-neutral-600">{formatNumber(row.count, locale)}</td>
+                    <td className="px-5 py-3 text-neutral-600">{formatNumber(row.totalViews, locale)}</td>
                     <td className="px-5 py-3 text-right font-semibold text-neutral-950">
-                      ${row.totalEarned.toFixed(2)}
+                      {formatCurrency(row.totalEarned, locale)}
                     </td>
                   </tr>
                 ))}
@@ -166,19 +179,19 @@ function OverviewTab({
                   </p>
                   <div className="mt-3 grid grid-cols-3 gap-2 text-sm">
                     <div>
-                      <p className="text-xs text-neutral-500">Clips</p>
-                      <p className="mt-1 font-semibold text-neutral-950">{row.count}</p>
+                      <p className="text-xs text-neutral-500">{sharedT("units.clips")}</p>
+                      <p className="mt-1 font-semibold text-neutral-950">{formatNumber(row.count, locale)}</p>
                     </div>
                     <div>
-                      <p className="text-xs text-neutral-500">Views</p>
+                      <p className="text-xs text-neutral-500">{sharedT("labels.views")}</p>
                       <p className="mt-1 font-semibold text-neutral-950">
-                        {row.totalViews.toLocaleString()}
+                        {formatNumber(row.totalViews, locale)}
                       </p>
                     </div>
                     <div>
-                      <p className="text-xs text-neutral-500">Earned</p>
+                      <p className="text-xs text-neutral-500">{sharedT("labels.earned")}</p>
                       <p className="mt-1 font-semibold text-neutral-950">
-                        ${row.totalEarned.toFixed(2)}
+                        {formatCurrency(row.totalEarned, locale)}
                       </p>
                     </div>
                   </div>
@@ -192,9 +205,11 @@ function OverviewTab({
   );
 }
 
-function HistoryTab({
+async function HistoryTab({
+  locale,
   payouts,
 }: {
+  locale: Locale;
   payouts: Array<{
     id: string;
     amount: { toString(): string } | number;
@@ -204,11 +219,14 @@ function HistoryTab({
     createdAt: Date;
   }>;
 }) {
+  const t = await getTranslations("creator.payouts.history");
+  const sharedT = await getTranslations("creator.shared");
+  const statusT = await getTranslations("creator.shared.statuses.payout");
   if (payouts.length === 0) {
     return (
       <EmptyState
-        title="No payouts yet"
-        description="Your balance is paid out weekly. Once we send a payout, it will show up here."
+        title={t("noPayoutsTitle")}
+        description={t("noPayoutsDescription")}
       />
     );
   }
@@ -217,33 +235,33 @@ function HistoryTab({
     <div className="overflow-hidden rounded-2xl border border-neutral-200 bg-white">
       <div className="space-y-3 p-4 md:hidden">
         {payouts.map((p) => (
-          <PayoutHistoryCard key={p.id} payout={p} />
+          <PayoutHistoryCard key={p.id} locale={locale} payout={p} sharedT={sharedT} statusT={statusT} />
         ))}
       </div>
       <table className="hidden w-full text-sm md:table">
         <thead>
           <tr className="border-b border-neutral-200 bg-neutral-50 text-neutral-500">
-            <th className="px-5 py-2 text-left text-[11px] font-medium uppercase tracking-wide">Date</th>
-            <th className="px-5 py-2 text-left text-[11px] font-medium uppercase tracking-wide">Amount</th>
-            <th className="px-5 py-2 text-left text-[11px] font-medium uppercase tracking-wide">Type</th>
-            <th className="px-5 py-2 text-left text-[11px] font-medium uppercase tracking-wide">Status</th>
-            <th className="px-5 py-2 text-left text-[11px] font-medium uppercase tracking-wide">Method</th>
+            <th className="px-5 py-2 text-left text-[11px] font-medium uppercase tracking-wide">{sharedT("labels.date")}</th>
+            <th className="px-5 py-2 text-left text-[11px] font-medium uppercase tracking-wide">{sharedT("labels.amount")}</th>
+            <th className="px-5 py-2 text-left text-[11px] font-medium uppercase tracking-wide">{sharedT("labels.type")}</th>
+            <th className="px-5 py-2 text-left text-[11px] font-medium uppercase tracking-wide">{sharedT("labels.status")}</th>
+            <th className="px-5 py-2 text-left text-[11px] font-medium uppercase tracking-wide">{sharedT("labels.method")}</th>
           </tr>
         </thead>
         <tbody>
           {payouts.map((p) => (
             <tr key={p.id} className="border-b border-neutral-100 last:border-0">
               <td className="px-5 py-3 text-neutral-600">
-                {new Date(p.createdAt).toLocaleDateString()}
+                {formatShortDate(p.createdAt, locale)}
               </td>
               <td className="px-5 py-3 font-medium text-neutral-950">
-                ${Number(p.amount).toFixed(2)}
+                {formatCurrency(Number(p.amount), locale)}
               </td>
               <td className="px-5 py-3 text-neutral-600">
                 {p.type.charAt(0).toUpperCase() + p.type.slice(1)}
               </td>
               <td className="px-5 py-3">
-                <Badge variant={payoutBadge(p.status)}>{p.status}</Badge>
+                <Badge variant={payoutBadge(p.status)}>{statusT(p.status.toLowerCase())}</Badge>
               </td>
               <td className="px-5 py-3 text-neutral-600">
                 {p.paymentMethod || "-"}
@@ -257,8 +275,12 @@ function HistoryTab({
 }
 
 function PayoutHistoryCard({
+  locale,
   payout,
+  sharedT,
+  statusT,
 }: {
+  locale: Locale;
   payout: {
     amount: { toString(): string } | number;
     type: string;
@@ -266,29 +288,31 @@ function PayoutHistoryCard({
     paymentMethod: string | null;
     createdAt: Date;
   };
+  sharedT: ServerT;
+  statusT: ServerT;
 }) {
   return (
     <article className="rounded-2xl border border-neutral-200 bg-neutral-50 p-4">
       <div className="flex items-start justify-between gap-3">
         <div>
           <p className="text-xs text-neutral-500">
-            {new Date(payout.createdAt).toLocaleDateString()}
+            {formatShortDate(payout.createdAt, locale)}
           </p>
           <p className="mt-1 text-xl font-semibold text-neutral-950">
-            ${Number(payout.amount).toFixed(2)}
+            {formatCurrency(Number(payout.amount), locale)}
           </p>
         </div>
-        <Badge variant={payoutBadge(payout.status)}>{payout.status}</Badge>
+        <Badge variant={payoutBadge(payout.status)}>{statusT(payout.status.toLowerCase())}</Badge>
       </div>
       <div className="mt-4 grid grid-cols-2 gap-3 text-sm">
         <div>
-          <p className="text-xs text-neutral-500">Type</p>
+          <p className="text-xs text-neutral-500">{sharedT("labels.type")}</p>
           <p className="mt-1 font-medium text-neutral-950">
             {payout.type.charAt(0).toUpperCase() + payout.type.slice(1)}
           </p>
         </div>
         <div>
-          <p className="text-xs text-neutral-500">Method</p>
+          <p className="text-xs text-neutral-500">{sharedT("labels.method")}</p>
           <p className="mt-1 font-medium text-neutral-950">
             {payout.paymentMethod || "-"}
           </p>
@@ -297,6 +321,7 @@ function PayoutHistoryCard({
     </article>
   );
 }
+
 
 function payoutBadge(status: string) {
   if (status === "confirmed" || status === "sent") return "paid" as const;

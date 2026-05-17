@@ -6,8 +6,9 @@ import { Leaderboard } from "./_components/leaderboard";
 import { ActivityFeed } from "./_components/activity-feed";
 import { ReferredUsersTable, type ReferredUserRow } from "./_components/referred-users-table";
 import { MilestoneCard } from "./_components/milestone-card";
-import { getLocale } from "next-intl/server";
+import { getLocale, getTranslations } from "next-intl/server";
 import { buildAppUrl, getAppUrlForLocale } from "@/lib/app-url";
+import { formatCurrency, formatNumber } from "@/lib/i18n-format";
 import type { Locale } from "@/i18n/routing";
 
 export default async function ReferralPage() {
@@ -20,6 +21,7 @@ export default async function ReferralPage() {
   if (!user) throw new Error("User not found");
 
   const locale = (await getLocale()) as Locale;
+  const t = await getTranslations("creator.referral.page");
   const referralUrl = buildAppUrl(`/sign-up?ref=${user.referralCode}`, getAppUrlForLocale(locale));
 
   // Fetch all data in parallel
@@ -109,7 +111,7 @@ export default async function ReferralPage() {
 
   const leaderboardEntries = topReferrers.map((r, i) => ({
     rank: i + 1,
-    displayName: r.creatorProfile?.displayName ?? "Anonymous",
+    displayName: r.creatorProfile?.displayName ?? t("anonymous"),
     totalEarnings: parseFloat(r.referralEarnings.toString()),
     referralCount: countMap.get(r.id) ?? 0,
     isCurrentUser: r.id === user.id,
@@ -143,7 +145,7 @@ export default async function ReferralPage() {
     ...payouts.map((p) => ({
       type: "earning" as const,
       timestamp: p.createdAt.toISOString(),
-      referredUserName: referredUserMap.get(p.referredUserId) ?? "Unknown",
+      referredUserName: referredUserMap.get(p.referredUserId) ?? t("unknown"),
       amount: parseFloat(p.amount.toString()),
       status: p.status,
     })),
@@ -151,10 +153,10 @@ export default async function ReferralPage() {
     .slice(0, 20);
 
   const stats = [
-    { label: "People Invited", value: totalInvited.toString(), color: "#6366f1" },
-    { label: "Total Earned", value: `$${totalEarnings.toFixed(2)}`, color: "#22c55e" },
-    { label: "Pending", value: `$${pendingEarnings.toFixed(2)}`, color: "#f59e0b" },
-    { label: "This Month", value: `$${thisMonthEarnings.toFixed(2)}`, color: "#3b82f6" },
+    { label: t("peopleInvited"), value: formatNumber(totalInvited, locale), color: "#6366f1" },
+    { label: t("totalEarned"), value: formatCurrency(totalEarnings, locale), color: "#22c55e" },
+    { label: t("pending"), value: formatCurrency(pendingEarnings, locale), color: "#f59e0b" },
+    { label: t("thisMonth"), value: formatCurrency(thisMonthEarnings, locale), color: "#3b82f6" },
   ];
 
   // Per-referred-user commission breakdown.
@@ -181,10 +183,10 @@ export default async function ReferralPage() {
       {/* Header */}
       <div>
         <h1 className="text-3xl font-bold" style={{ color: "var(--text-primary)" }}>
-          Referral Program
+          {t("title")}
         </h1>
         <p className="text-sm mt-1" style={{ color: "var(--text-secondary)" }}>
-          Earn up to $100 for every creator you invite — paid as 10% of their earnings until you hit the $100 cap. We pay 110%: creators keep 100%, your share is on top.
+          {t("description")}
         </p>
       </div>
 
@@ -211,12 +213,10 @@ export default async function ReferralPage() {
               </svg>
             </div>
             <h2 className="text-xl font-bold" style={{ color: "var(--text-primary)" }}>
-              Invite a creator, earn up to $100 per signup
+              {t("emptyTitle")}
             </h2>
             <p className="mx-auto mt-1.5 max-w-xl text-sm" style={{ color: "var(--text-secondary)" }}>
-              Share your link below. Every clipper who signs up under it earns
-              you up to $100 — paid as 10% of their payouts until that cap.
-              They still keep 100%; our platform covers your share.
+              {t("emptyDescription")}
             </p>
           </div>
 
@@ -257,7 +257,7 @@ export default async function ReferralPage() {
               style={{ background: "var(--bg-card)", borderColor: "var(--border)" }}
             >
               <h2 className="text-lg font-semibold mb-4" style={{ color: "var(--text-primary)" }}>
-                Earnings Over Time
+                {t("earningsOverTime")}
               </h2>
               <ReferralEarningsChart data={chartData} />
             </div>
@@ -267,7 +267,7 @@ export default async function ReferralPage() {
               style={{ background: "var(--bg-card)", borderColor: "var(--border)" }}
             >
               <h2 className="text-lg font-semibold mb-4" style={{ color: "var(--text-primary)" }}>
-                Top Referrers
+                {t("topReferrers")}
               </h2>
               <Leaderboard entries={leaderboardEntries} currentUserRank={currentUserRank} />
             </div>
@@ -279,7 +279,7 @@ export default async function ReferralPage() {
               className="text-lg font-semibold mb-3"
               style={{ color: "var(--text-primary)" }}
             >
-              Your referrals
+              {t("yourReferrals")}
             </h2>
             <ReferredUsersTable rows={referredUserRows} />
           </section>
@@ -290,7 +290,7 @@ export default async function ReferralPage() {
             style={{ background: "var(--bg-card)", borderColor: "var(--border)" }}
           >
             <h2 className="text-lg font-semibold mb-4" style={{ color: "var(--text-primary)" }}>
-              Recent Activity
+              {t("recentActivity")}
             </h2>
             <ActivityFeed activities={activities} />
           </div>

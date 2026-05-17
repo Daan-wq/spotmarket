@@ -1,21 +1,24 @@
+import { getTranslations } from "next-intl/server";
+
 interface Milestone {
   invites: number;
-  reward: string;
+  rewardKey: string;
 }
 
 const MILESTONES: Milestone[] = [
-  { invites: 1, reward: "First commission unlocked" },
-  { invites: 5, reward: "Recruiter badge on your profile" },
-  { invites: 10, reward: "Priority feedback on your clips" },
-  { invites: 25, reward: "Early access to new campaigns" },
-  { invites: 50, reward: "Top Referrer status + Discord role" },
+  { invites: 1, rewardKey: "firstCommission" },
+  { invites: 5, rewardKey: "recruiterBadge" },
+  { invites: 10, rewardKey: "priorityFeedback" },
+  { invites: 25, rewardKey: "earlyAccess" },
+  { invites: 50, rewardKey: "topReferrer" },
 ];
 
 interface MilestoneCardProps {
   totalInvited: number;
 }
 
-export function MilestoneCard({ totalInvited }: MilestoneCardProps) {
+export async function MilestoneCard({ totalInvited }: MilestoneCardProps) {
+  const t = await getTranslations("creator.referral.milestone");
   const next =
     MILESTONES.find((m) => m.invites > totalInvited) ??
     MILESTONES[MILESTONES.length - 1];
@@ -28,6 +31,7 @@ export function MilestoneCard({ totalInvited }: MilestoneCardProps) {
     Math.max(0, ((totalInvited - previousTarget) / range) * 100),
   );
   const remaining = Math.max(0, next.invites - totalInvited);
+  const reward = t(`rewards.${next.rewardKey}`);
 
   return (
     <div
@@ -38,19 +42,19 @@ export function MilestoneCard({ totalInvited }: MilestoneCardProps) {
       }}
     >
       <p className="text-xs uppercase tracking-wide" style={{ color: "var(--text-muted)" }}>
-        {isMaxed ? "Top tier reached" : "Next milestone"}
+        {isMaxed ? t("topTierReached") : t("nextMilestone")}
       </p>
       <p className="mt-1.5 text-2xl font-bold" style={{ color: "var(--text-primary)" }}>
         {isMaxed
-          ? next.reward
+          ? reward
           : remaining === 1
-            ? "1 more invite"
-            : `${remaining} more invites`}
+            ? t("next", { count: 1 })
+            : t("next", { count: remaining })}
       </p>
       <p className="mt-1 text-sm" style={{ color: "var(--text-secondary)" }}>
         {isMaxed
-          ? `You've passed ${MILESTONES[MILESTONES.length - 1].invites} invites — thanks for spreading the word.`
-          : `Unlocks: ${next.reward}.`}
+          ? t("maxDescription", { count: MILESTONES[MILESTONES.length - 1].invites })
+          : t("unlocks", { reward })}
       </p>
 
       <div className="mt-4">
@@ -67,7 +71,7 @@ export function MilestoneCard({ totalInvited }: MilestoneCardProps) {
           />
         </div>
         <div className="mt-1 flex justify-between text-xs" style={{ color: "var(--text-muted)" }}>
-          <span>{totalInvited} invited</span>
+          <span>{t("invited", { count: totalInvited })}</span>
           <span>{next.invites}</span>
         </div>
       </div>

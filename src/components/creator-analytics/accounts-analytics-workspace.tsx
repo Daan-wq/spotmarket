@@ -1,6 +1,9 @@
 import { redirect } from "next/navigation";
 import type { ReactNode } from "react";
+import { getLocale, getTranslations } from "next-intl/server";
 import { prisma } from "@/lib/prisma";
+import type { Locale } from "@/i18n/routing";
+import { formatNumber, formatShortDate } from "@/lib/i18n-format";
 import { parseRange } from "@/lib/stats/range";
 import {
   type CreatorStatsScope,
@@ -89,6 +92,8 @@ export async function AccountsAnalyticsWorkspace({
   searchParams,
   showHeader = true,
 }: AccountsAnalyticsWorkspaceProps) {
+  const locale = (await getLocale()) as Locale;
+  const t = await getTranslations("creator.connections");
   const range = parseRange(searchParams);
   const inventory = await loadInventory(profileScope.creatorProfileId, mode);
   const { scope, accountId } = resolveScope(searchParams, inventory, range.key, basePath);
@@ -114,18 +119,18 @@ export async function AccountsAnalyticsWorkspace({
       <div className="w-full space-y-6">
         {showHeader ? (
           <CreatorPageHeader
-            eyebrow="Account health"
-            title="Accounts"
-            description="Keep the pages you post from connected, verified, and ready for tracking."
+            eyebrow={t("page.emptyEyebrow")}
+            title={t("page.emptyTitle")}
+            description={t("page.emptyDescription")}
             action={connectButtons}
           />
         ) : null}
         <EmptyState
-          title={mode === "admin" ? "No accounts connected yet" : "No pages connected yet"}
+          title={mode === "admin" ? t("page.noAdminAccountsTitle") : t("page.noPagesTitle")}
           description={
             mode === "admin"
-              ? "This clipper has not connected a verified posting account yet."
-              : "Use the connect button above to choose a platform and add the first page."
+              ? t("page.noAdminAccountsDescription")
+              : t("page.noPagesDescription")
           }
           className="min-h-[260px]"
         />
@@ -142,12 +147,16 @@ export async function AccountsAnalyticsWorkspace({
           label={acc.label}
           meta={
             acc.followerCount != null
-              ? `${acc.followerCount.toLocaleString()} ${
-                  scope === "yt" ? "subscribers" : "followers"
-                }`
-              : "No follower snapshot"
+              ? scope === "yt"
+                ? t("page.metaSubscribers", { count: formatNumber(acc.followerCount, locale) })
+                : t("page.metaFollowers", { count: formatNumber(acc.followerCount, locale) })
+              : t("page.noFollowerSnapshot")
           }
-          lastSyncedAt={acc.lastSyncedAt}
+          lastSyncedText={t("page.lastSynced", {
+            date: acc.lastSyncedAt
+              ? formatShortDate(acc.lastSyncedAt, locale)
+              : t("page.neverSynced"),
+          })}
           removeButton={acc.removeButton}
         />
       );
@@ -176,9 +185,9 @@ export async function AccountsAnalyticsWorkspace({
     <div className="w-full space-y-6">
       {showHeader ? (
         <CreatorPageHeader
-          eyebrow="Analytics"
-          title="Accounts"
-          description="Manage connected pages and explore performance, all in one place."
+          eyebrow={t("page.headerEyebrow")}
+          title={t("page.headerTitle")}
+          description={t("page.headerDescription")}
         />
       ) : null}
 

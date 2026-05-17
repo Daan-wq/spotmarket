@@ -1,4 +1,5 @@
 import { notFound } from "next/navigation";
+import { getTranslations } from "next-intl/server";
 import { prisma } from "@/lib/prisma";
 import { requireAuth, getCachedAuthUser } from "@/lib/auth";
 import {
@@ -24,8 +25,9 @@ interface CoursePlatformPageProps {
 
 export async function generateMetadata({ params }: CoursePlatformPageProps) {
   const { platform } = await params;
-  if (!isPlatformSlug(platform)) return { title: "Course" };
-  return { title: `${PLATFORM_META[platform].label} · Course` };
+  const t = await getTranslations("creator.course.metadata");
+  if (!isPlatformSlug(platform)) return { title: t("title") };
+  return { title: `${PLATFORM_META[platform].label} · ${t("title")}` };
 }
 
 export default async function CoursePlatformPage({

@@ -9,6 +9,8 @@ import {
   CreatorPageHeader,
   SoftStat,
 } from "../../_components/creator-journey";
+import { formatNumber } from "@/lib/i18n-format";
+import { useLocale, useTranslations } from "next-intl";
 
 interface VideosClientProps {
   videos: SubmittedClipData[];
@@ -21,35 +23,39 @@ export function VideosClient({
   statusCounts,
   totalEarnedProjected,
 }: VideosClientProps) {
+  const locale = useLocale();
+  const t = useTranslations("creator.videos.page");
+  const listT = useTranslations("creator.videos.list");
+  const sharedT = useTranslations("creator.shared");
   const totalViews = videos.reduce((sum, video) => sum + video.views, 0);
   const hasUnsettled = videos.some((v) => v.status !== "APPROVED");
 
   return (
     <div className="w-full space-y-6 md:space-y-8 md:px-6 md:py-8">
       <CreatorPageHeader
-        eyebrow="Submitted clips"
-        title="My Clips"
-        description="Manage your clips and track performance"
+        eyebrow={t("eyebrow")}
+        title={t("title")}
+        description={t("description")}
       />
 
       <section>
         <div className="grid grid-cols-2 gap-3 md:grid-cols-3 md:gap-4">
           <SoftStat
-            label="Total clips"
-            value={videos.length.toString()}
-            detail="All submissions"
+            label={t("totalClips")}
+            value={formatNumber(videos.length, locale)}
+            detail={t("allSubmissions")}
           />
           <SoftStat
-            label="Total views"
-            value={totalViews.toLocaleString()}
-            detail="Tracked or claimed"
+            label={t("totalViews")}
+            value={formatNumber(totalViews, locale)}
+            detail={t("trackedOrClaimed")}
           />
           <div className="col-span-2 md:col-span-1">
             <EarningsCard
               amount={totalEarnedProjected}
               disclaimer={
                 hasUnsettled
-                  ? "Posts have to be accepted for the earnings to enter the wallet."
+                  ? t("unsettledDisclaimer")
                   : null
               }
             />
@@ -63,10 +69,10 @@ export function VideosClient({
             mode="creator"
             detailBasePath="/creator/videos"
             emptyState={{
-              title: "No clips yet",
-              description: "Submit your first clip from a campaign you've joined to start earning.",
-              primaryCta: { label: "Browse campaigns", href: "/creator/campaigns" },
-              secondaryCta: { label: "Connect an account", href: "/creator/connections" },
+              title: listT("noClipsYet"),
+              description: listT("noClipsDescription"),
+              primaryCta: { label: sharedT("actions.browseCampaigns"), href: "/creator/campaigns" },
+              secondaryCta: { label: sharedT("actions.connectAccount"), href: "/creator/connections" },
             }}
           />
         </div>

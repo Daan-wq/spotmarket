@@ -2,6 +2,8 @@
 
 import { useMemo } from "react";
 import { EmptyState } from "@/components/ui/empty-state";
+import { formatNumber, formatShortDate } from "@/lib/i18n-format";
+import { useLocale, useTranslations } from "next-intl";
 
 export interface ActivityDay {
   /** YYYY-MM-DD */
@@ -15,7 +17,6 @@ interface ActivityHeatmapProps {
   weeks?: number;
 }
 
-const DAY_LABELS = ["Mon", "Wed", "Fri"];
 const SHADES = [
   "rgba(99, 102, 241, 0.08)",
   "rgba(99, 102, 241, 0.25)",
@@ -25,6 +26,9 @@ const SHADES = [
 ];
 
 export function ActivityHeatmap({ days, weeks = 12 }: ActivityHeatmapProps) {
+  const locale = useLocale();
+  const t = useTranslations("creator.profile.activity");
+  const sharedT = useTranslations("creator.shared");
   const stats = useMemo(() => computeStats(days), [days]);
   const grid = useMemo(() => buildGrid(days, weeks), [days, weeks]);
   const max = useMemo(
@@ -35,9 +39,9 @@ export function ActivityHeatmap({ days, weeks = 12 }: ActivityHeatmapProps) {
   if (days.length === 0 || stats.totalClips === 0) {
     return (
       <EmptyState
-        title="No activity yet"
-        description="Submit your first clip to start building your activity history."
-        primaryCta={{ label: "Browse campaigns", href: "/creator/campaigns" }}
+        title={t("noActivity")}
+        description={t("emptyDescription")}
+        primaryCta={{ label: sharedT("actions.browseCampaigns"), href: "/creator/campaigns" }}
       />
     );
   }
@@ -50,14 +54,14 @@ export function ActivityHeatmap({ days, weeks = 12 }: ActivityHeatmapProps) {
       <div className="flex flex-wrap items-baseline justify-between gap-3 mb-4">
         <div>
           <h3 className="text-base font-semibold" style={{ color: "var(--text-primary)" }}>
-            Activity
+            {t("title")}
           </h3>
           <p className="text-xs mt-0.5" style={{ color: "var(--text-muted)" }}>
-            Clips submitted in the last {weeks} weeks.
+            {t("description", { weeks })}
           </p>
         </div>
         <div className="flex items-center gap-2 text-xs" style={{ color: "var(--text-muted)" }}>
-          Less
+          {t("less")}
           {SHADES.map((s, i) => (
             <span
               key={i}
@@ -65,14 +69,14 @@ export function ActivityHeatmap({ days, weeks = 12 }: ActivityHeatmapProps) {
               style={{ background: s }}
             />
           ))}
-          More
+          {t("more")}
         </div>
       </div>
 
       <div className="flex gap-2 overflow-x-auto">
         {/* Day-of-week labels */}
         <div className="flex flex-col justify-between text-[10px] py-1" style={{ color: "var(--text-muted)" }}>
-          {DAY_LABELS.map((d) => (
+          {t.raw("dayLabels").map((d: string) => (
             <span key={d}>{d}</span>
           ))}
         </div>
@@ -85,7 +89,10 @@ export function ActivityHeatmap({ days, weeks = 12 }: ActivityHeatmapProps) {
                   key={di}
                   title={
                     day
-                      ? `${day.count} clip${day.count === 1 ? "" : "s"} on ${day.date}`
+                      ? t("dayCount", {
+                          count: day.count,
+                          date: formatShortDate(day.date, locale),
+                        })
                       : undefined
                   }
                   className="block h-3 w-3 rounded-sm"
@@ -102,10 +109,10 @@ export function ActivityHeatmap({ days, weeks = 12 }: ActivityHeatmapProps) {
       </div>
 
       <dl className="mt-5 grid grid-cols-2 sm:grid-cols-4 gap-3 text-sm">
-        <Stat label="Total clips" value={stats.totalClips.toString()} />
-        <Stat label="Active days" value={stats.activeDays.toString()} />
-        <Stat label="Current streak" value={`${stats.currentStreak}d`} />
-        <Stat label="Longest streak" value={`${stats.longestStreak}d`} />
+        <Stat label={t("totalClips")} value={formatNumber(stats.totalClips, locale)} />
+        <Stat label={t("activeDays")} value={formatNumber(stats.activeDays, locale)} />
+        <Stat label={t("currentStreak")} value={t("days", { count: stats.currentStreak })} />
+        <Stat label={t("longestStreak")} value={t("days", { count: stats.longestStreak })} />
       </dl>
     </div>
   );

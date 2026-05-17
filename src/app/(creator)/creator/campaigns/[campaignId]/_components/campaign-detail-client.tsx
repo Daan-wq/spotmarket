@@ -2,9 +2,10 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { useLocale, useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { Dialog } from "@/components/ui/dialog";
-import { buildConnectRequiredMessage } from "@/lib/campaign-eligibility";
+import { toIntlLocale } from "@/lib/i18n-format";
 
 interface CampaignDetailClientProps {
   campaignId: string;
@@ -27,6 +28,8 @@ export function CampaignDetailClient({
   hasDiscord,
   isClosedForSubmissions,
 }: CampaignDetailClientProps) {
+  const t = useTranslations("creator.campaigns.apply");
+  const locale = useLocale();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showConnectDialog, setShowConnectDialog] = useState(false);
@@ -55,14 +58,14 @@ export function CampaignDetailClient({
       });
       if (!res.ok) {
         const data = await res.json();
-        setError(data.error || "Failed to join campaign");
+        setError(getJoinErrorMessage(data, t, missingPlatformLabels, locale));
         return;
       }
       const data = await res.json();
       setResolvedAppId(data.id);
       router.push(`/creator/applications/${data.id}/submit`);
     } catch {
-      setError("An error occurred");
+      setError(t("unexpectedError"));
     } finally {
       setLoading(false);
     }
@@ -70,28 +73,41 @@ export function CampaignDetailClient({
 
   if (hasRequiredPlatform && !hasDiscord && !hasApplication) {
     return (
-      <div className="mb-6 p-4 rounded-xl flex items-center justify-between" style={{ background: "var(--accent-bg)", border: "1px solid var(--primary)" }}>
+      <div
+        className="mb-6 p-4 rounded-xl flex items-center justify-between"
+        style={{
+          background: "var(--accent-bg)",
+          border: "1px solid var(--primary)",
+        }}
+      >
         <p className="text-sm" style={{ color: "var(--primary)" }}>
-          Connect your Discord account to join campaigns.
+          {t("discordPrompt")}
         </p>
         <a
           href={`/api/auth/discord?return_to=${encodeURIComponent(`/creator/campaigns/${campaignId}`)}`}
           className="px-4 py-2 rounded-lg font-semibold text-sm text-white"
           style={{ background: "var(--primary)" }}
         >
-          Connect Discord
+          {t("connectDiscord")}
         </a>
       </div>
     );
   }
 
-  const connectMessage = buildConnectRequiredMessage(missingPlatformLabels);
+  const connectMessage = formatConnectRequiredMessage(
+    missingPlatformLabels,
+    locale,
+    t,
+  );
   const disabled = loading || isClosedForSubmissions;
 
   return (
     <div className="mb-6 space-y-3">
       {error && (
-        <div className="p-3 rounded-lg text-sm" style={{ background: "var(--error-bg)", color: "var(--error-text)" }}>
+        <div
+          className="p-3 rounded-lg text-sm"
+          style={{ background: "var(--error-bg)", color: "var(--error-text)" }}
+        >
           {error}
         </div>
       )}
@@ -105,33 +121,52 @@ export function CampaignDetailClient({
         }}
       >
         {loading ? (
-          "Processing..."
+          t("processing")
         ) : hasApplication ? (
           <>
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <svg
+              width="18"
+              height="18"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
               <line x1="22" y1="2" x2="11" y2="13" />
               <polygon points="22 2 15 22 11 13 2 9 22 2" />
             </svg>
-            Submit clip
+            {t("submitClip")}
           </>
         ) : (
           <>
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M5 12h14" /><path d="M12 5v14" />
+            <svg
+              width="18"
+              height="18"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <path d="M5 12h14" />
+              <path d="M12 5v14" />
             </svg>
-            Join campaign
+            {t("join")}
           </>
         )}
       </button>
       {isClosedForSubmissions ? (
         <p className="text-center text-sm text-neutral-500">
-          This campaign has ended and no longer accepts submissions.
+          {t("closedDescription")}
         </p>
       ) : null}
       <Dialog
         open={showConnectDialog}
         onClose={() => setShowConnectDialog(false)}
-        title="Connect account"
+        title={t("connectAccountTitle")}
         description={connectMessage}
         footer={
           <>
@@ -141,18 +176,66 @@ export function CampaignDetailClient({
               size="sm"
               onClick={() => setShowConnectDialog(false)}
             >
-              Cancel
+              {t("cancel")}
             </Button>
             <Button
               type="button"
               size="sm"
               onClick={() => router.push("/creator/connections")}
             >
-              Go to accounts
+              {t("goToAccounts")}
             </Button>
           </>
         }
       />
     </div>
   );
+}
+
+function formatConnectRequiredMessage(
+  labels: readonly string[],
+  locale: string,
+  t: ReturnType<typeof useTranslations>,
+) {
+  const platforms =
+    labels.length > 0
+      ? new Intl.ListFormat(toIntlLocale(locale), {
+          type: "disjunction",
+        }).format([...labels])
+      : t("social");
+
+  return t("connectRequiredDescription", {
+    platforms,
+    count: Math.max(labels.length, 1),
+  });
+}
+
+function getJoinErrorMessage(
+  data: unknown,
+  t: ReturnType<typeof useTranslations>,
+  missingPlatformLabels: readonly string[],
+  locale: string,
+) {
+  if (!data || typeof data !== "object") return t("error");
+  const payload = data as {
+    code?: string;
+    error?: string;
+    requiredPlatformLabels?: string[];
+  };
+
+  if (payload.code === "CONNECT_REQUIRED") {
+    return formatConnectRequiredMessage(
+      payload.requiredPlatformLabels?.length
+        ? payload.requiredPlatformLabels
+        : missingPlatformLabels,
+      locale,
+      t,
+    );
+  }
+
+  if (payload.error === "Already applied") return t("alreadyApplied");
+  if (payload.error === "Creator profile not found") return t("profileMissing");
+  if (payload.error === "Campaign not found") return t("notFound");
+
+  return t("error");
 }

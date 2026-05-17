@@ -1,6 +1,8 @@
 "use client";
 
 import { useState, useMemo, useRef } from "react";
+import { useLocale, useTranslations } from "next-intl";
+import { formatRelativeTime } from "@/lib/i18n-format";
 
 interface NotificationItem {
   id: string;
@@ -15,31 +17,11 @@ interface NotificationsClientProps {
   unreadCount: number;
 }
 
-const TYPE_LABELS: Record<string, string> = {
-  CAMPAIGN_LAUNCHED: "New campaign available",
-  SUBMISSION_APPROVED: "Submission approved",
-  SUBMISSION_REJECTED: "Submission rejected",
-  APPLICATION_APPROVED: "Join request approved",
-  APPLICATION_REJECTED: "Join request rejected",
-  DEMOGRAPHICS_VERIFIED: "Demographics verified",
-  DEMOGRAPHICS_REJECTED: "Demographics rejected",
-  BIO_VERIFIED: "Bio verified",
-  PAYOUT_SENT: "Payout sent",
-  REFERRAL_EARNED: "Referral earned",
-};
-
-function relativeTime(dateStr: string) {
-  const diff = Date.now() - new Date(dateStr).getTime();
-  const mins = Math.floor(diff / 60000);
-  if (mins < 1) return "just now";
-  if (mins < 60) return `${mins}m ago`;
-  const hours = Math.floor(mins / 60);
-  if (hours < 24) return `${hours}h ago`;
-  const days = Math.floor(hours / 24);
-  return `${days}d ago`;
-}
-
 export function NotificationsClient({ notifications, unreadCount }: NotificationsClientProps) {
+  const locale = useLocale();
+  const t = useTranslations("creator.notifications");
+  const sharedT = useTranslations("creator.shared");
+  const typeLabels = t.raw("types") as Record<string, string>;
   const [activeTab, setActiveTab] = useState<"all" | "unread">("all");
   const [markedRead, setMarkedRead] = useState<Set<string>>(new Set());
   const inFlight = useRef(false);
@@ -82,7 +64,7 @@ export function NotificationsClient({ notifications, unreadCount }: Notification
               color: activeTab === "all" ? "#FFFFFF" : "var(--text-secondary)",
             }}
           >
-            All
+            {sharedT("filters.all")}
           </button>
           <button
             onClick={() => setActiveTab("unread")}
@@ -92,7 +74,7 @@ export function NotificationsClient({ notifications, unreadCount }: Notification
               color: activeTab === "unread" ? "#FFFFFF" : "var(--text-secondary)",
             }}
           >
-            Unread
+            {t("unread")}
           </button>
         </div>
         {unreadCount > 0 && (
@@ -100,7 +82,8 @@ export function NotificationsClient({ notifications, unreadCount }: Notification
             onClick={handleMarkAllRead}
             className="p-2 rounded-md transition-colors cursor-pointer"
             style={{ color: "var(--text-muted)" }}
-            title="Mark all as read"
+            title={t("markAllRead")}
+            aria-label={t("markAllRead")}
           >
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" /><path d="m9 11 3 3L22 4" />
@@ -118,9 +101,9 @@ export function NotificationsClient({ notifications, unreadCount }: Notification
             </svg>
             <span className="absolute -top-1 -right-1 w-3 h-3 rounded-full" style={{ background: "#F59E0B" }} />
           </div>
-          <h3 className="text-lg font-bold" style={{ color: "var(--text-primary)" }}>You&apos;re all caught up</h3>
+          <h3 className="text-lg font-bold" style={{ color: "var(--text-primary)" }}>{t("allCaughtUpTitle")}</h3>
           <p className="text-sm max-w-sm mx-auto" style={{ color: "var(--text-secondary)" }}>
-            New campaign updates, approvals, and payouts will appear here in real time.
+            {t("allCaughtUpDescription")}
           </p>
         </div>
       ) : (
@@ -141,7 +124,7 @@ export function NotificationsClient({ notifications, unreadCount }: Notification
                 )}
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-medium" style={{ color: "var(--text-primary)" }}>
-                    {TYPE_LABELS[notification.type] ?? notification.type}
+                    {typeLabels[notification.type] ?? notification.type}
                   </p>
                   {(notification.data?.campaignName || notification.data?.tiktokHandle) && (
                     <p className="text-xs mt-0.5" style={{ color: "var(--text-secondary)" }}>
@@ -150,7 +133,7 @@ export function NotificationsClient({ notifications, unreadCount }: Notification
                   )}
                   {notification.data?.rejectionNote && (
                     <p className="text-xs mt-1 italic" style={{ color: "var(--text-muted)" }}>
-                      Reason: {notification.data.rejectionNote}
+                      {t("rejectionReason", { reason: notification.data.rejectionNote })}
                     </p>
                   )}
                   {notification.data?.message && (
@@ -159,7 +142,7 @@ export function NotificationsClient({ notifications, unreadCount }: Notification
                     </p>
                   )}
                   <p className="text-xs mt-1" style={{ color: "var(--text-muted)" }}>
-                    {relativeTime(notification.createdAt)}
+                    {formatRelativeTime(notification.createdAt, locale)}
                   </p>
                 </div>
               </div>

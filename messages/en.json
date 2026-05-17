@@ -112,13 +112,46 @@
       "connectAccount": "Connect a social account",
       "browseCampaigns": "Browse campaigns",
       "skip": "Skip for now - go to campaigns",
-      "niches": ["Memes", "Sport", "Gaming", "Lifestyle", "Finance", "Tech", "Other"],
-      "sources": ["Google Search", "A friend or colleague", "Instagram", "TikTok", "Discord", "Twitter/X", "YouTube", "Other"],
+      "niches": [
+        "Memes",
+        "Sport",
+        "Gaming",
+        "Lifestyle",
+        "Finance",
+        "Tech",
+        "Other"
+      ],
+      "sources": [
+        "Google Search",
+        "A friend or colleague",
+        "Instagram",
+        "TikTok",
+        "Discord",
+        "Twitter/X",
+        "YouTube",
+        "Other"
+      ],
       "experienceLevels": [
-        { "value": "none", "label": "No experience", "description": "I'm just getting started" },
-        { "value": "some", "label": "Some experience", "description": "I've made a few videos" },
-        { "value": "experienced", "label": "Experienced", "description": "I create content regularly" },
-        { "value": "professional", "label": "Professional", "description": "This is my full-time job" }
+        {
+          "value": "none",
+          "label": "No experience",
+          "description": "I'm just getting started"
+        },
+        {
+          "value": "some",
+          "label": "Some experience",
+          "description": "I've made a few videos"
+        },
+        {
+          "value": "experienced",
+          "label": "Experienced",
+          "description": "I create content regularly"
+        },
+        {
+          "value": "professional",
+          "label": "Professional",
+          "description": "This is my full-time job"
+        }
       ]
     }
   },
@@ -131,6 +164,19 @@
     "home": "Go home"
   },
   "creatorSettings": {
+    "deleteAccount": {
+      "trigger": "Delete Account",
+      "title": "Delete Account",
+      "subtitle": "This action is permanent and cannot be undone",
+      "warning": "This will permanently delete all your data from the servers, including your profile, connected accounts, submissions, and earnings history.",
+      "confirmLabel": "Type CONFIRM to delete your ClipProfit account and all data",
+      "confirmPlaceholder": "CONFIRM",
+      "cancel": "Cancel",
+      "deleting": "Deleting...",
+      "delete": "Delete my account",
+      "genericError": "Something went wrong.",
+      "unexpectedError": "An unexpected error occurred."
+    },
     "metadata": {
       "title": "Settings"
     },
@@ -633,6 +679,810 @@
         "weeklyNumbers": {
           "name": "Weekly Numbers",
           "detail": "Saved weekly review snapshots from live data"
+        }
+      }
+    }
+  },
+  "creator": {
+    "shared": {
+      "fallbackCreator": "Creator",
+      "emptyValue": "-",
+      "actions": {
+        "back": "Back",
+        "view": "View",
+        "open": "Open",
+        "close": "Close",
+        "edit": "Edit",
+        "save": "Save",
+        "saveChanges": "Save changes",
+        "saveAddress": "Save address",
+        "cancel": "Cancel",
+        "continue": "Continue",
+        "copy": "Copy",
+        "copied": "Copied",
+        "filters": "Filters",
+        "filterOptions": "Filter options",
+        "resetFilters": "Reset filters",
+        "search": "Search",
+        "submitClip": "Submit clip",
+        "campaignInfo": "Campaign info",
+        "browseCampaigns": "Browse campaigns",
+        "connectAccount": "Connect an account",
+        "viewDetails": "View details",
+        "viewCampaign": "View campaign",
+        "viewOriginalPost": "View original post",
+        "requestWithdrawal": "Request withdrawal",
+        "confirmWithdrawal": "Confirm withdrawal",
+        "withdrawFunds": "Withdraw funds",
+        "showAllClips": "Show all clips",
+        "openPost": "Open post in new tab",
+        "submitForCampaign": "Submit for Campaign",
+        "previousPage": "Previous page",
+        "nextPage": "Next page",
+        "signOut": "Sign out"
+      },
+      "units": {
+        "views": "views",
+        "followers": "followers",
+        "subscribers": "subscribers",
+        "clips": "clips",
+        "submissions": "submissions",
+        "posts": "posts",
+        "creators": "creators",
+        "lessons": "lessons",
+        "businessDays": "business days",
+        "perThousandViews": "per 1K views",
+        "perOneKViews": "/1K views"
+      },
+      "statuses": {
+        "application": {
+          "pending": "Pending",
+          "approved": "Approved",
+          "rejected": "Rejected",
+          "active": "Active",
+          "completed": "Completed",
+          "disputed": "Disputed"
+        },
+        "submission": {
+          "PENDING": "Pending",
+          "FLAGGED": "Flagged",
+          "REJECTED": "Rejected",
+          "APPROVED": "Approved"
+        },
+        "campaign": {
+          "active": "Active",
+          "paused": "Paused",
+          "private": "Private",
+          "ended": "Ended",
+          "draft": "Private",
+          "pending_payment": "Private",
+          "pending_review": "Private",
+          "completed": "Ended",
+          "cancelled": "Ended"
+        },
+        "payout": {
+          "pending": "Pending",
+          "processing": "Processing",
+          "sent": "Sent",
+          "confirmed": "Confirmed",
+          "failed": "Failed",
+          "rejected": "Rejected",
+          "paid": "Paid"
+        },
+        "verification": {
+          "verified": "Verified",
+          "pending": "Pending",
+          "failed": "Failed",
+          "disconnected": "Disconnected"
+        },
+        "notification": {
+          "unread": "Unread",
+          "read": "Read"
+        }
+      },
+      "labels": {
+        "campaign": "Campaign",
+        "status": "Status",
+        "earned": "Earned",
+        "views": "Views",
+        "platform": "Platform",
+        "submitted": "Submitted",
+        "date": "Date",
+        "amount": "Amount",
+        "type": "Type",
+        "method": "Method",
+        "action": "Action",
+        "preview": "Preview",
+        "queue": "Queue",
+        "sort": "Sort",
+        "page": "Page {current} of {total}",
+        "postCount": "{count, plural, one {# post} other {# posts}}",
+        "noCampaign": "No campaign",
+        "latestSnapshot": "Latest snapshot",
+        "likesCommentsShares": "Likes + comments + shares",
+        "lastSynced": "Last synced {date}",
+        "loading": "Loading..."
+      },
+      "filters": {
+        "all": "All",
+        "allPlatforms": "All platforms",
+        "allTypes": "All types",
+        "allClips": "All ({count})",
+        "pending": "Pending ({count})",
+        "issues": "Issues ({count})",
+        "approved": "Approved ({count})",
+        "recommended": "Recommended",
+        "newest": "Newest",
+        "mostViews": "Most views",
+        "highestEarned": "Highest earned",
+        "highestPayout": "Highest payout",
+        "endingSoon": "Ending soon",
+        "on": "On"
+      }
+    },
+    "campaigns": {
+      "page": {
+        "eyebrow": "Campaigns",
+        "title": "Campaigns",
+        "description": "{count, plural, one {# campaign available} other {# campaigns available}}",
+        "marketplace": "Marketplace",
+        "joined": "Joined campaigns",
+        "searchLabel": "Search campaigns",
+        "searchPlaceholder": "Search campaigns",
+        "platform": "Platform",
+        "type": "Type",
+        "sort": "Sort",
+        "marketplaceDescription": "Campaigns sorted by eligibility and payout by default.",
+        "joinedDescription": "Campaigns you can act on next."
+      },
+      "guide": {
+        "intro": "New to campaigns? Learn how they work.",
+        "rules": "Rules",
+        "howItWorks": "How it works",
+        "rulesTitle": "Campaign Rules",
+        "howTitle": "How it works",
+        "understand": "I understand",
+        "gotIt": "Got it",
+        "howIntro": "Understanding how campaigns work helps you choose the right work, submit clips cleanly, and track earnings without surprises.",
+        "durationTitle": "Campaign Duration",
+        "durationDeadline": "Deadline-based: posts can be submitted until the campaign deadline. After that, submissions close.",
+        "durationBudget": "Budget-based: campaigns may continue until the budget is spent or the sponsor ends the work.",
+        "payoutTitle": "Payout Calculation",
+        "payoutRate": "Payrate-based: you earn a flat rate per tracked view.",
+        "payoutPot": "Pot-style: payouts are proportional to your share of total campaign views.",
+        "rulesIntro": "By participating in campaigns, you agree to follow these rules. Violations may result in removal and forfeiture of earnings.",
+        "noBottingTitle": "No Botting or Fake Engagement",
+        "noBotting": "Botting and fake engagement are not allowed in any capacity.",
+        "audienceTitle": "Audience Requirements",
+        "audience": "Do not join campaigns with audience requirements that do not match your own audience.",
+        "requirementsTitle": "Follow Campaign Requirements",
+        "requirements": "Submitted posts must follow the campaign-specific creative, disclosure, and platform requirements."
+      },
+      "card": {
+        "payout": "Payout",
+        "youQualify": "You qualify",
+        "submitClosed": "Submissions closed",
+        "connectPlatforms": "Connect {platforms}",
+        "needFollowers": "Need {count} followers"
+      },
+      "empty": {
+        "noJoinedTitle": "No campaigns joined yet",
+        "noJoinedDescription": "Browse the marketplace to find campaigns that match your platforms and niche.",
+        "noMatchesTitle": "No campaigns match your filters",
+        "noMatchesDescription": "Try clearing the filters or changing the search."
+      },
+      "detail": {
+        "back": "Back to campaigns",
+        "contact": "Contact",
+        "info": "Campaign info",
+        "payoutPer1K": "Payout per 1K",
+        "baseRate": "Base campaign rate",
+        "startDate": "Start date",
+        "campaignStart": "Campaign start",
+        "campaignCreated": "Campaign created",
+        "yourClips": "Your clips",
+        "yourSubmissions": "Your campaign submissions",
+        "yourViews": "Your views",
+        "trackedCampaign": "Tracked in this campaign",
+        "details": "Campaign details",
+        "programRules": "Program rules",
+        "programRulesDescription": "Requirements and payout limits for this campaign.",
+        "accountLimit": "Account limit",
+        "unlimited": "Unlimited",
+        "category": "Category",
+        "general": "General",
+        "trackingLink": "Tracking link",
+        "openLink": "Open link",
+        "guidelines": "Guidelines",
+        "openGuidelines": "Open guidelines",
+        "requirements": "Requirements",
+        "contentNotes": "Content notes",
+        "payouts": "Payouts",
+        "estimate": "Estimate",
+        "trackedOrClaimed": "Based on tracked or claimed views",
+        "recorded": "Recorded",
+        "currentEarnings": "Current campaign earnings",
+        "yourClipsSection": "Your clips",
+        "noClipsTitle": "No clips submitted yet",
+        "noClipsDescription": "Submit a clip from your connected social accounts and it will appear here.",
+        "biggestEarners": "Biggest earners",
+        "noEarners": "No approved earners yet."
+      },
+      "apply": {
+        "join": "Join campaign",
+        "submitClip": "Submit clip",
+        "joined": "Joined",
+        "pending": "Application pending",
+        "connectRequired": "Connect the required platform first",
+        "connectRequiredDescription": "{count, plural, one {Connect your {platforms} account to join this campaign.} other {Connect your {platforms} accounts to join this campaign.}}",
+        "social": "social",
+        "connectAccountTitle": "Connect account",
+        "goToAccounts": "Go to accounts",
+        "cancel": "Cancel",
+        "discordRequired": "Connect Discord before joining",
+        "discordPrompt": "Connect your Discord account to join campaigns.",
+        "connectDiscord": "Connect Discord",
+        "closed": "Submissions are closed",
+        "closedDescription": "This campaign has ended and no longer accepts submissions.",
+        "applying": "Joining...",
+        "processing": "Processing...",
+        "error": "Could not join campaign.",
+        "unexpectedError": "An error occurred",
+        "alreadyApplied": "You have already joined this campaign.",
+        "profileMissing": "Creator profile not found.",
+        "notFound": "Campaign not found."
+      },
+      "contact": {
+        "title": "Campaign contact",
+        "canSend": "You can send a message",
+        "noSubmissionsTitle": "No submissions yet",
+        "noSubmissionsDescription": "You need to create content on this campaign first before contacting the brand.",
+        "submitVideo": "Submit a video",
+        "noOwnerTitle": "No owner",
+        "noOwnerDescription": "This campaign has no owner. Please contact support.",
+        "rulesTitle": "Messaging rules:",
+        "rulesDescription": "You can send one message per submission. Wait for the brand to reply before sending another message.",
+        "videoSubmission": "Video submission",
+        "platform": "Platform: {platform}",
+        "submittedAt": "Submitted {date}",
+        "placeholder": "Write your message...",
+        "send": "Send message",
+        "sending": "Sending...",
+        "empty": "No messages yet.",
+        "back": "Back to campaign"
+      },
+      "leaderboard": {
+        "title": "Campaign leaderboard",
+        "topClippers": "Top clippers",
+        "ranked": "{count} ranked",
+        "loading": "Loading leaderboard...",
+        "empty": "No approved submissions yet.",
+        "emptyDescription": "Be the first: submit a clip to claim the top spot.",
+        "clipper": "Clipper",
+        "score": "Score",
+        "topPost": "Top post",
+        "viewTopClip": "View top clip"
+      },
+      "deadline": {
+        "noDeadline": "No deadline",
+        "ended": "Ended",
+        "today": "Ends today",
+        "oneDay": "1 day left",
+        "days": "{days} days left",
+        "paidProgress": "{paid} of {budget} paid"
+      }
+    },
+    "videos": {
+      "page": {
+        "eyebrow": "Submitted clips",
+        "title": "My Clips",
+        "description": "Manage your clips and track performance",
+        "totalClips": "Total clips",
+        "allSubmissions": "All submissions",
+        "totalViews": "Total views",
+        "trackedOrClaimed": "Tracked or claimed",
+        "unsettledDisclaimer": "Posts have to be accepted for the earnings to enter the wallet."
+      },
+      "list": {
+        "trackingClips": "Tracking Clips",
+        "submittedClip": "Submitted clip",
+        "submittedRelative": "Submitted {time}",
+        "noClipsYet": "No clips yet",
+        "noClipsDescription": "Submit your first clip from a campaign you have joined to start earning.",
+        "noQueueTitle": "No {queue} clips",
+        "noQueueDescription": "Use another queue to view the rest of the submitted clips.",
+        "showingCampaign": "Showing clips for {campaign}",
+        "filterOptions": "Filter options",
+        "open": "Open",
+        "viewDetails": "View details"
+      },
+      "detail": {
+        "back": "Back",
+        "earningsDisclaimer": "The post has to be accepted for the earnings to enter the wallet.",
+        "engagement": "Engagement",
+        "campaign": "Campaign",
+        "platform": "Platform",
+        "dates": "Dates",
+        "uploaded": "Uploaded",
+        "viewCampaign": "View Campaign",
+        "viewOriginalPost": "View Original Post",
+        "rate": "{amount} per 1K views",
+        "metrics": {
+          "views": "Views",
+          "likes": "Likes",
+          "comments": "Comments",
+          "shares": "Shares"
+        }
+      }
+    },
+    "payouts": {
+      "metadata": {
+        "title": "Payments"
+      },
+      "page": {
+        "eyebrow": "Payments",
+        "title": "Payments",
+        "description": "Follow earnings from approved clips into withdrawal requests and payout history."
+      },
+      "tabs": {
+        "overview": "Overview",
+        "withdraw": "Withdraw",
+        "history": "History",
+        "title": "Payment workspace",
+        "paidOut": "Paid out: {amount}.",
+        "focusAvailable": "{amount} available to withdraw",
+        "focusProcessing": "{amount} already processing",
+        "focusApproved": "{amount} approved so far",
+        "focusNone": "No approved balance yet",
+        "missingDestination": "Add a withdrawal destination before requesting your next payout."
+      },
+      "overview": {
+        "availableBalance": "Available balance",
+        "readyUnlocks": "Ready when withdrawal unlocks",
+        "pending": "Pending",
+        "requestsProgress": "Requests in progress",
+        "totalPaid": "Total paid",
+        "confirmedOrSent": "Confirmed or sent",
+        "totalEarned": "Total earned",
+        "approvedSubmissions": "Approved submissions",
+        "earningsByCampaign": "Earnings by campaign",
+        "earningsDescription": "Approved clip earnings grouped by campaign.",
+        "noEarningsTitle": "No approved earnings yet",
+        "noEarningsDescription": "Once your clips are approved, your campaign earnings will appear here."
+      },
+      "history": {
+        "noPayoutsTitle": "No payouts yet",
+        "noPayoutsDescription": "Your balance is paid out weekly. Once we send a payout, it will show up here."
+      },
+      "withdraw": {
+        "loading": "Loading...",
+        "methodTitle": "Withdrawal method",
+        "methodInfo": "Withdrawal method information",
+        "tooltip": "Make sure the address is a USDT TRC-20 wallet on the TRON network. Funds sent to a non-TRON address will not arrive.",
+        "methodDescription": "Payments go out as USDT on the TRON network. Save your destination address below - you can update it any time.",
+        "minimumWithdrawal": "Minimum withdrawal {amount}",
+        "addressLabel": "USDT wallet address (TRC-20)",
+        "addressError": "Address must start with capital T and be 34 characters (TRC-20 format).",
+        "saveFailed": "Failed to save address",
+        "saveError": "An error occurred while saving the address",
+        "savedAddress": "Saved address",
+        "availableToWithdraw": "Available to withdraw",
+        "moreToUnlock": "{amount} more to unlock withdrawal",
+        "saveToUnlock": "Save a withdrawal address above to unlock withdrawal",
+        "withdrawalFailed": "Withdrawal failed",
+        "genericError": "An error occurred",
+        "success": "Withdrawal request submitted for {amount}",
+        "confirmText": "We will send your full balance {amount} to {address}.",
+        "recentWithdrawals": "Recent withdrawals",
+        "noWithdrawalsTitle": "No withdrawals yet",
+        "noWithdrawalsDescription": "Withdrawals you request will show up here once they are submitted.",
+        "txHash": "TX hash"
+      }
+    },
+    "referral": {
+      "page": {
+        "title": "Referral Program",
+        "description": "Earn up to $100 for every creator you invite - paid as 10% of their earnings until you hit the $100 cap. We pay 110%: creators keep 100%, your share is on top.",
+        "emptyTitle": "Invite a creator, earn up to $100 per signup",
+        "emptyDescription": "Share your link below. Every clipper who signs up under it earns you up to $100 - paid as 10% of their payouts until that cap. They still keep 100%; our platform covers your share.",
+        "peopleInvited": "People Invited",
+        "totalEarned": "Total Earned",
+        "pending": "Pending",
+        "thisMonth": "This Month",
+        "earningsOverTime": "Earnings Over Time",
+        "topReferrers": "Top Referrers",
+        "yourReferrals": "Your referrals",
+        "recentActivity": "Recent Activity",
+        "anonymous": "Anonymous",
+        "unknown": "Unknown"
+      },
+      "link": {
+        "title": "Your referral link",
+        "description": "Share this link with creators. You earn 10% of their payouts until the $100 cap.",
+        "code": "Referral code",
+        "yourCode": "Your code: {code}",
+        "copy": "Copy",
+        "copyLink": "Copy link",
+        "copied": "Copied",
+        "copiedWithBang": "Copied!",
+        "share": "Share",
+        "email": "Email",
+        "hideQr": "Hide QR",
+        "qrCode": "QR code",
+        "discordTooltip": "Copies a formatted message you can paste into Discord",
+        "shareText": "Join me on ClipProfit and start earning from your content!",
+        "mailSubject": "Join ClipProfit",
+        "mailBody": "Hey! I have been using ClipProfit to earn from my content. Sign up with my referral link and let's both earn:",
+        "discordMessage": "**Earn from your clips on ClipProfit** - sign up with my link and we both earn: {url}"
+      },
+      "milestone": {
+        "title": "Referral milestone",
+        "invited": "{count, plural, one {# creator invited} other {# creators invited}}",
+        "next": "{count, plural, one {# more invite} other {# more invites}}",
+        "topTierReached": "Top tier reached",
+        "nextMilestone": "Next milestone",
+        "maxDescription": "You passed {count} invites. Thanks for spreading the word.",
+        "unlocks": "Unlocks: {reward}.",
+        "rewards": {
+          "firstCommission": "First commission unlocked",
+          "recruiterBadge": "Recruiter badge on your profile",
+          "priorityFeedback": "Priority feedback on your clips",
+          "earlyAccess": "Early access to new campaigns",
+          "topReferrer": "Top Referrer status + Discord role"
+        }
+      },
+      "table": {
+        "creator": "Creator",
+        "joined": "Joined",
+        "commission": "Commission",
+        "empty": "No referred creators yet.",
+        "emptyTitle": "No referrals yet",
+        "emptyDescription": "Share your link. When someone signs up and starts earning, they will appear here.",
+        "user": "User",
+        "capProgress": "Cap progress",
+        "yourCommission": "Your commission",
+        "maxed": "Maxed",
+        "joinedDate": "Joined {date}",
+        "commissionAmount": "{amount} commission"
+      },
+      "activity": {
+        "signup": "{name} signed up",
+        "earning": "{name} generated {amount}",
+        "empty": "No referral activity yet.",
+        "emptyStart": "No activity yet. Share your referral link to get started.",
+        "signupWithLink": "{name} signed up with your link",
+        "earnedFrom": "Earned {amount} from {name}"
+      },
+      "leaderboard": {
+        "referrals": "Referrals",
+        "earned": "Earned",
+        "you": "You",
+        "empty": "No referrers yet. Be the first!",
+        "yourRank": "Your rank: #{rank}"
+      },
+      "chart": {
+        "empty": "No referral earnings yet.",
+        "earnings": "Earnings"
+      }
+    },
+    "profile": {
+      "header": {
+        "eyebrow": "Creator Profile"
+      },
+      "tabs": {
+        "general": "General",
+        "activity": "Activity",
+        "balance": "Balance",
+        "community": "Community"
+      },
+      "general": {
+        "title": "Profile Information",
+        "fullName": "Full name",
+        "email": "Email",
+        "emailNote": "Cannot be changed",
+        "country": "Country",
+        "memberSince": "Member since",
+        "industry": "Industry",
+        "notSet": "Not set",
+        "objective": "Objective",
+        "noBio": "No bio yet"
+      },
+      "form": {
+        "title": "Profile Details",
+        "displayName": "Display Name",
+        "displayNamePlaceholder": "Your name or page name",
+        "displayNameRequired": "Display name is required",
+        "bio": "Bio",
+        "bioPlaceholder": "Tell businesses about your page and audience",
+        "primaryGeo": "Primary Audience Geo",
+        "primaryGeoHelper": "The country where most of your audience is located",
+        "evmWallet": "Crypto Wallet Address",
+        "forPayouts": "for payouts",
+        "evmWalletHelper": "EVM-compatible wallet (Ethereum, Polygon, etc.). Required to receive creator payouts.",
+        "evmWalletInvalid": "EVM wallet address must be a valid Ethereum address (0x...)",
+        "usdtWallet": "USDT Wallet (TRC-20 / Tron)",
+        "forCampaignDeposits": "for campaign deposits & refunds",
+        "usdtWalletHelper": "Required to launch campaigns. Unspent campaign budget is refunded here.",
+        "tronWalletInvalid": "Tron wallet must start with T and be 34 characters",
+        "saveFailed": "Failed to save profile",
+        "unexpectedError": "Something went wrong",
+        "saved": "Profile saved successfully.",
+        "saving": "Saving...",
+        "save": "Save Profile"
+      },
+      "balance": {
+        "available": "Available",
+        "ready": "Ready",
+        "readyToWithdraw": "Ready to withdraw",
+        "pending": "Pending",
+        "businessDays": "5-10 business days",
+        "minWithdrawal": "Minimum withdrawal amount is $20. Current available: {amount}",
+        "history": "Withdrawal History",
+        "historyDescription": "Track your payment status and timing.",
+        "noWithdrawalsTitle": "No withdrawals yet",
+        "noWithdrawalsDescription": "Your payout history will appear here.",
+        "method": "Method: {method}"
+      },
+      "community": {
+        "title": "ClipProfit Community",
+        "description": "Connect with creators, campaign tips, and new opportunities.",
+        "iframeTitle": "ClipProfit Discord Community"
+      },
+      "activity": {
+        "title": "Activity",
+        "description": "Clips submitted in the last {weeks} weeks.",
+        "noActivity": "No activity yet",
+        "emptyDescription": "Submit your first clip to start building your activity history.",
+        "browseCampaigns": "Browse campaigns",
+        "less": "Less",
+        "more": "More",
+        "totalClips": "Total clips",
+        "activeDays": "Active days",
+        "currentStreak": "Current streak",
+        "longestStreak": "Longest streak",
+        "dayCount": "{count, plural, one {# clip} other {# clips}} on {date}",
+        "days": "{count}d",
+        "dayLabels": ["Mon", "Wed", "Fri"]
+      }
+    },
+    "connections": {
+      "page": {
+        "emptyEyebrow": "Account health",
+        "emptyTitle": "Accounts",
+        "emptyDescription": "Keep the pages you post from connected, verified, and ready for tracking.",
+        "headerEyebrow": "Analytics",
+        "headerTitle": "Accounts",
+        "headerDescription": "Manage connected pages and explore performance, all in one place.",
+        "noPagesTitle": "No pages connected yet",
+        "noPagesDescription": "Use the connect button above to choose a platform and add the first page.",
+        "noAdminAccountsTitle": "No accounts connected yet",
+        "noAdminAccountsDescription": "This clipper has not connected a verified posting account yet.",
+        "noPlatformAccounts": "No {platform} accounts connected.",
+        "noFollowerSnapshot": "No follower snapshot",
+        "metaFollowers": "{count} followers",
+        "metaSubscribers": "{count} subscribers",
+        "lastSynced": "Last synced {date}",
+        "neverSynced": "never"
+      },
+      "workspace": {
+        "overview": "Overview",
+        "content": "Content",
+        "timeline": "Timeline",
+        "audience": "Audience",
+        "insights": "Insights",
+        "allPlatforms": "All platforms"
+      },
+      "overview": {
+        "totalViews": "Total views",
+        "totalFollowers": "Total followers",
+        "engagement": "Engagement",
+        "earnings": "Earnings",
+        "followers": "Followers",
+        "views": "Views",
+        "topPost": "Top post",
+        "connections": "Connections",
+        "noConnections": "No connections yet."
+      },
+      "content": {
+        "noPosts": "No posts in this range.",
+        "posted": "Posted",
+        "creator": "Creator",
+        "plays": "Plays",
+        "watchMinutes": "Watch (min)",
+        "watchSeconds": "Watch (s)",
+        "reactions": "Reactions",
+        "totalInteractions": "Total Int.",
+        "profileVisits": "Profile visits",
+        "saves": "Saves",
+        "reach": "Reach",
+        "follows": "Follows",
+        "noAccepting": "No campaigns are accepting submissions"
+      },
+      "insights": {
+        "trafficSource": "Traffic source",
+        "playbackLocation": "Playback location",
+        "deviceType": "Device type",
+        "contentType": "Content type",
+        "subscribedStatus": "Subscribed status",
+        "postingCadence": "Posting cadence",
+        "noPosts": "No posts in this range."
+      },
+      "connect": {
+        "button": "Connect account",
+        "title": "Connect a platform",
+        "description": "Choose the platform you want to connect for tracking and submissions.",
+        "optionsAria": "Open options for {label}",
+        "optionsTitle": "Options for {label}",
+        "instagram": "Connect Instagram",
+        "tiktok": "Connect TikTok",
+        "youtube": "Connect YouTube",
+        "facebook": "Connect Facebook",
+        "disconnect": "Disconnect",
+        "disconnectAccount": "Disconnect {label}",
+        "disconnectTitle": "Are you sure you want to disconnect this page?",
+        "disconnectDescription": "Disconnecting {label} stops stat tracking and submissions from this account. You can reconnect later from this page.",
+        "cancel": "Cancel",
+        "remove": "Remove",
+        "removing": "Removing...",
+        "confirmRemove": "Remove {label}?"
+      },
+      "bio": {
+        "title": "Bio verification",
+        "pending": "Add the verification code to your bio, then check again.",
+        "verified": "Verified and ready for campaigns.",
+        "failed": "We could not verify the code yet."
+      }
+    },
+    "applications": {
+      "page": {
+        "title": "My Applications",
+        "empty": "You have not applied to any campaigns yet",
+        "applied": "Applied"
+      },
+      "detail": {
+        "totalEarned": "Total Earned",
+        "submissions": "Submissions",
+        "cpm": "CPM",
+        "submitViews": "Submit Views",
+        "noSubmissions": "No submissions yet",
+        "claimedViews": "Claimed Views",
+        "earnedLabel": "Earned: {amount}"
+      },
+      "submit": {
+        "title": "Submit clip",
+        "submitContentFor": "Submit content for {campaign}",
+        "requirements": "Requirements",
+        "campaignRequirements": "Campaign requirements",
+        "refreshPosts": "Refresh posts",
+        "refresh": "Refresh",
+        "search": "Search posts",
+        "searchPlaceholder": "Search by caption or URL",
+        "noPosts": "No posts found",
+        "afterDate": "After {date}",
+        "allTime": "All time",
+        "customRange": "Custom range",
+        "to": "to",
+        "reset": "Reset",
+        "containsRequiredHashtags": "Contains required hashtags",
+        "submitted": "Submitted",
+        "loadError": "Could not load your {platform} posts. Please try again.",
+        "submissionFailed": "Submission failed. Please try again.",
+        "submittedSuccess": "{submitted} of {total} posts submitted successfully.",
+        "campaignEnded": "This campaign has ended and no longer accepts submissions.",
+        "rateLimited": "Instagram is rate-limited. Try again in about 1 minute.",
+        "prefillNotFound": "We could not auto-select that post on this page. Try switching the platform tab or paging back to find it.",
+        "connectPromptClose": "Close connect prompt",
+        "connectPromptTitle": "You do not have a {platform} account yet",
+        "connectPromptDescription": "Connect it now to load posts and submit clips.",
+        "connectNow": "Connect it now",
+        "submitSelected": "Submit{count}",
+        "selectedCount": "{count, plural, one {# post selected} other {# posts selected}}",
+        "selectPosts": "Select the posts you want to submit",
+        "next": "Next",
+        "previous": "Previous",
+        "submit": "Submit",
+        "submitting": "Submitting...",
+        "dateFilter": "Date filter"
+      }
+    },
+    "course": {
+      "metadata": {
+        "title": "Course"
+      },
+      "page": {
+        "eyebrow": "Training",
+        "title": "Course hub",
+        "description": "Pick a course, finish lessons in order, pass quizzes, and collect badges as proof of completion.",
+        "continueLearning": "Continue learning",
+        "lessonsCompleted": "Lessons completed",
+        "acrossCourses": "Across all available courses",
+        "badgesEarned": "Badges earned",
+        "fromQuizzes": "From lesson and section quizzes",
+        "courses": "Courses",
+        "readyCourses": "Ready to work through",
+        "availableCourses": "Available courses",
+        "availableDescription": "Each course includes lesson reading, quiz checks, progress tracking, and badges.",
+        "courseFallback": "{platform} course",
+        "lessonsComplete": "{completed}/{total} lessons complete"
+      }
+    },
+    "leaderboard": {
+      "rank": "Rank",
+      "earnings": "Earnings",
+      "views": "Views",
+      "today": "Today",
+      "last7d": "Last 7d",
+      "overall": "Overall",
+      "last7Days": "Last 7 Days",
+      "allTime": "All-Time",
+      "noData": "No data yet",
+      "updated": "Updated: {time}",
+      "noRank": "#-"
+    },
+    "notifications": {
+      "title": "Notifications",
+      "emptyTitle": "No notifications yet",
+      "emptyDescription": "Campaign, payout, and account updates will appear here.",
+      "allCaughtUpTitle": "You're all caught up",
+      "allCaughtUpDescription": "New campaign updates, approvals, and payouts will appear here in real time.",
+      "markAllRead": "Mark all read",
+      "unread": "Unread",
+      "read": "Read",
+      "rejectionReason": "Reason: {reason}",
+      "types": {
+        "CAMPAIGN_LAUNCHED": "New campaign available",
+        "SUBMISSION_APPROVED": "Submission approved",
+        "SUBMISSION_REJECTED": "Submission rejected",
+        "APPLICATION_APPROVED": "Join request approved",
+        "APPLICATION_REJECTED": "Join request rejected",
+        "DEMOGRAPHICS_VERIFIED": "Demographics verified",
+        "DEMOGRAPHICS_REJECTED": "Demographics rejected",
+        "BIO_VERIFIED": "Bio verified",
+        "PAYOUT_SENT": "Payout sent",
+        "REFERRAL_EARNED": "Referral earned"
+      }
+    },
+    "stats": {
+      "title": "Stats",
+      "description": "Track performance across connected accounts.",
+      "comingSoon": "Stats are available from your Accounts page."
+    },
+    "wallet": {
+      "title": "Wallet",
+      "description": "Track balances and withdrawal activity.",
+      "balance": "Balance"
+    },
+    "updates": {
+      "metadata": {
+        "title": "Updates"
+      },
+      "title": "Updates",
+      "description": "What has changed in ClipProfit lately. Newest first.",
+      "categories": {
+        "New": "New",
+        "Improved": "Improved",
+        "Fixed": "Fixed"
+      },
+      "items": {
+        "activationChecklist": {
+          "title": "Cleaner dashboard with an activation checklist",
+          "description": "Your dashboard now greets you by name, alerts you when something needs attention, and shows a step-by-step checklist until you have made your first payout."
+        },
+        "paymentsPage": {
+          "title": "Wallet and Payouts are now one Payments page",
+          "description": "Overview, withdrawals, and history live in three tabs. The old /creator/wallet link still works."
+        },
+        "campaignQualification": {
+          "title": "Campaign cards show whether you qualify",
+          "description": "Each card now tells you instantly whether you meet the platform and follower requirements, plus highlights campaigns ending in the next 7 days."
+        },
+        "connectAccountPrompt": {
+          "title": "We now ask before connecting an account",
+          "description": "Connecting an account opens a short panel explaining exactly what we will access and what we will not do before sending you to the platform."
+        },
+        "feedbackDrawer": {
+          "title": "In-app feedback drawer",
+          "description": "Use the Feedback button at the top to send a bug report or feature request. Page, browser, and viewport are auto-attached."
         }
       }
     }

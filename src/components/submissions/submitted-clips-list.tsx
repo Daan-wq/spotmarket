@@ -4,7 +4,8 @@ import { useMemo, useState } from "react";
 import Link from "next/link";
 import PlatformIcon from "@/components/shared/PlatformIcon";
 import ClipThumbnail from "@/components/shared/ClipThumbnail";
-import { relativeTime } from "@/lib/relative-time";
+import { formatCurrency, formatNumber, formatRelativeTime } from "@/lib/i18n-format";
+import { useLocale, useTranslations } from "next-intl";
 import {
   DropdownMenu,
   DropdownMenuTrigger,
@@ -48,12 +49,6 @@ interface SubmittedClipsListProps {
 type QueueKey = "ALL" | "PENDING" | "ISSUES" | "APPROVED";
 type SortKey = "newest" | "most-views" | "highest-earned";
 
-const SORT_OPTIONS: Array<{ key: SortKey; label: string }> = [
-  { key: "newest", label: "Newest" },
-  { key: "most-views", label: "Most views" },
-  { key: "highest-earned", label: "Highest earned" },
-];
-
 export function SubmittedClipsList({
   videos,
   statusCounts,
@@ -63,6 +58,10 @@ export function SubmittedClipsList({
   showCampaignColumn = mode === "creator",
   emptyState,
 }: SubmittedClipsListProps) {
+  const locale = useLocale();
+  const t = useTranslations("creator.videos.list");
+  const sharedT = useTranslations("creator.shared");
+  const statusT = useTranslations("creator.shared.statuses.submission");
   const [queue, setQueue] = useState<QueueKey>("ALL");
   const [sort, setSort] = useState<SortKey>("newest");
 
@@ -84,17 +83,17 @@ export function SubmittedClipsList({
   }, [videos, queue, sort]);
 
   const queueOptions: Array<{ key: QueueKey; label: string }> = [
-    { key: "ALL", label: `All (${statusCounts.ALL ?? videos.length})` },
-    { key: "PENDING", label: `Pending (${pendingCount})` },
-    { key: "ISSUES", label: `Issues (${issueCount})` },
-    { key: "APPROVED", label: `Approved (${approvedCount})` },
+    { key: "ALL", label: sharedT("filters.allClips", { count: statusCounts.ALL ?? videos.length }) },
+    { key: "PENDING", label: sharedT("filters.pending", { count: pendingCount }) },
+    { key: "ISSUES", label: sharedT("filters.issues", { count: issueCount }) },
+    { key: "APPROVED", label: sharedT("filters.approved", { count: approvedCount }) },
   ];
 
   if (videos.length === 0) {
     return (
       <InlineEmptyState
         title={emptyState?.title ?? "No clips yet"}
-        description={emptyState?.description ?? "Submitted clips will appear here once they are recorded."}
+        description={emptyState?.description ?? t("noClipsDescription")}
         primaryCta={emptyState?.primaryCta}
         secondaryCta={emptyState?.secondaryCta}
       />
@@ -107,14 +106,14 @@ export function SubmittedClipsList({
     <div>
       {campaignFilterLabel ? (
         <p className="mb-3 text-xs font-medium text-neutral-500">
-          Showing clips for {campaignFilterLabel}
+          {t("showingCampaign", { campaign: campaignFilterLabel })}
         </p>
       ) : null}
 
       <div className="mb-4 flex items-center justify-between gap-3 md:hidden">
         <div className="flex min-w-0 flex-1 items-center gap-3">
           <h2 className="shrink-0 text-sm font-semibold text-neutral-950">
-            Tracking Clips
+            {t("trackingClips")}
           </h2>
           <div className="h-px flex-1 bg-neutral-200" />
           <span className="text-xs font-medium text-neutral-500">
@@ -133,9 +132,9 @@ export function SubmittedClipsList({
       <div className="space-y-3 md:hidden">
         {filtered.length === 0 ? (
           <InlineEmptyState
-            title={`No ${queue.toLowerCase()} clips`}
-            description="Use another queue to view the rest of the submitted clips."
-            primaryCta={{ label: "Show all clips", onClick: () => setQueue("ALL") }}
+            title={t("noQueueTitle", { queue: statusLabel(queue, statusT).toLowerCase() })}
+            description={t("noQueueDescription")}
+            primaryCta={{ label: sharedT("actions.showAllClips"), onClick: () => setQueue("ALL") }}
           />
         ) : (
           filtered.map((video) => (
@@ -144,6 +143,7 @@ export function SubmittedClipsList({
               video={video}
               href={`${detailBasePath.replace(/\/$/, "")}/${video.id}`}
               showCampaign={showCampaignColumn}
+              locale={locale}
             />
           ))
         )}
@@ -153,15 +153,15 @@ export function SubmittedClipsList({
       <table className="w-full text-sm">
         <thead>
           <tr className="border-b border-neutral-200 text-neutral-500">
-            <th className="w-14 px-2 py-3" aria-label="Preview"></th>
-            <th className="px-2 py-3 text-left font-medium">Submitted</th>
+            <th className="w-14 px-2 py-3" aria-label={sharedT("labels.preview")}></th>
+            <th className="px-2 py-3 text-left font-medium">{sharedT("labels.submitted")}</th>
             {showCampaignColumn ? (
-              <th className="px-2 py-3 text-left font-medium">Campaign</th>
+              <th className="px-2 py-3 text-left font-medium">{sharedT("labels.campaign")}</th>
             ) : null}
-            <th className="px-2 py-3 text-left font-medium">Status</th>
-            <th className="px-2 py-3 text-left font-medium">Earned</th>
-            <th className="px-2 py-3 text-left font-medium">Views</th>
-            <th className="px-2 py-3 text-left font-medium">Platform</th>
+            <th className="px-2 py-3 text-left font-medium">{sharedT("labels.status")}</th>
+            <th className="px-2 py-3 text-left font-medium">{sharedT("labels.earned")}</th>
+            <th className="px-2 py-3 text-left font-medium">{sharedT("labels.views")}</th>
+            <th className="px-2 py-3 text-left font-medium">{sharedT("labels.platform")}</th>
             <th className="px-2 py-3 text-right font-medium">
               <div className="flex justify-end">
                 <FilterMenu
@@ -180,9 +180,9 @@ export function SubmittedClipsList({
             <tr>
               <td colSpan={colSpan} className="px-2 py-10">
                 <InlineEmptyState
-                  title={`No ${queue.toLowerCase()} clips`}
-                  description="Use another queue to view the rest of the submitted clips."
-                  primaryCta={{ label: "Show all clips", onClick: () => setQueue("ALL") }}
+                  title={t("noQueueTitle", { queue: statusLabel(queue, statusT).toLowerCase() })}
+                  description={t("noQueueDescription")}
+                  primaryCta={{ label: sharedT("actions.showAllClips"), onClick: () => setQueue("ALL") }}
                 />
               </td>
             </tr>
@@ -205,7 +205,7 @@ export function SubmittedClipsList({
                 </td>
                 <td className="px-2 py-3">
                   <Link href={href} className="block text-neutral-600">
-                    {relativeTime(video.createdAt)}
+                    {formatRelativeTime(video.createdAt, locale)}
                   </Link>
                 </td>
                 {showCampaignColumn ? (
@@ -224,12 +224,12 @@ export function SubmittedClipsList({
                 </td>
                 <td className="px-2 py-3">
                   <Link href={href} className="block font-medium text-neutral-950">
-                    ${video.earned.toFixed(2)}
+                    {formatCurrency(video.earned, locale)}
                   </Link>
                 </td>
                 <td className="px-2 py-3">
                   <Link href={href} className="block text-neutral-950">
-                    {video.views.toLocaleString()}
+                    {formatNumber(video.views, locale)}
                   </Link>
                 </td>
                 <td className="px-2 py-3">
@@ -245,9 +245,9 @@ export function SubmittedClipsList({
                       rel="noreferrer noopener"
                       onClick={(e) => e.stopPropagation()}
                       className="inline-flex items-center gap-1 text-xs font-semibold text-neutral-600 underline-offset-2 hover:text-neutral-950 hover:underline"
-                      title="Open post in new tab"
+                      title={sharedT("actions.openPost")}
                     >
-                      Open
+                      {t("open")}
                       <ExternalIcon />
                     </a>
                   ) : null}
@@ -266,11 +266,15 @@ function SubmittedClipCard({
   video,
   href,
   showCampaign,
+  locale,
 }: {
   video: SubmittedClipData;
   href: string;
   showCampaign: boolean;
+  locale: string;
 }) {
+  const t = useTranslations("creator.videos.list");
+  const sharedT = useTranslations("creator.shared");
   return (
     <article className="rounded-2xl border border-neutral-200 bg-neutral-50 p-4">
       <div className="flex items-start gap-3">
@@ -284,10 +288,10 @@ function SubmittedClipCard({
         <div className="min-w-0 flex-1">
           <Link href={href} className="block">
             <p className="truncate text-sm font-semibold text-neutral-950">
-              {showCampaign ? video.campaignName : "Submitted clip"}
+              {showCampaign ? video.campaignName : t("submittedClip")}
             </p>
             <p className="mt-1 text-xs text-neutral-500">
-              Submitted {relativeTime(video.createdAt)}
+              {t("submittedRelative", { time: formatRelativeTime(video.createdAt, locale) })}
             </p>
           </Link>
           <div className="mt-2 flex flex-wrap items-center gap-2">
@@ -299,15 +303,15 @@ function SubmittedClipCard({
 
       <div className="mt-4 grid grid-cols-2 gap-3">
         <div className="rounded-xl bg-white p-3 ring-1 ring-neutral-200">
-          <p className="text-xs text-neutral-500">Earned</p>
+          <p className="text-xs text-neutral-500">{sharedT("labels.earned")}</p>
           <p className="mt-1 text-lg font-semibold text-neutral-950">
-            ${video.earned.toFixed(2)}
+            {formatCurrency(video.earned, locale)}
           </p>
         </div>
         <div className="rounded-xl bg-white p-3 ring-1 ring-neutral-200">
-          <p className="text-xs text-neutral-500">Views</p>
+          <p className="text-xs text-neutral-500">{sharedT("labels.views")}</p>
           <p className="mt-1 text-lg font-semibold text-neutral-950">
-            {video.views.toLocaleString()}
+            {formatNumber(video.views, locale)}
           </p>
         </div>
       </div>
@@ -317,7 +321,7 @@ function SubmittedClipCard({
           href={href}
           className="inline-flex h-10 flex-1 items-center justify-center rounded-xl bg-neutral-950 px-4 text-sm font-semibold text-white shadow-[0_8px_18px_rgba(0,0,0,0.14)] transition hover:bg-neutral-800"
         >
-          View details
+          {t("viewDetails")}
         </Link>
         {video.postUrl ? (
           <a
@@ -326,7 +330,7 @@ function SubmittedClipCard({
             rel="noreferrer noopener"
             className="inline-flex h-10 items-center justify-center gap-1 rounded-xl border border-neutral-200 bg-white px-4 text-sm font-semibold text-neutral-700 transition hover:bg-neutral-100 hover:text-neutral-950"
           >
-            Open
+            {t("open")}
             <ExternalIcon />
           </a>
         ) : null}
@@ -348,6 +352,8 @@ function FilterMenu({
   onQueueChange: (queue: QueueKey) => void;
   onSortChange: (sort: SortKey) => void;
 }) {
+  const t = useTranslations("creator.videos.list");
+  const sharedT = useTranslations("creator.shared");
   return (
     <DropdownMenu modal={false}>
       <DropdownMenuTrigger asChild>
@@ -355,7 +361,7 @@ function FilterMenu({
           type="button"
           className="inline-flex h-9 items-center gap-2 rounded-lg border border-neutral-200 bg-white px-3 text-xs font-semibold text-neutral-700 transition hover:bg-neutral-50 hover:text-neutral-950"
         >
-          Filter options
+          {t("filterOptions")}
           <ChevronDownIcon />
         </button>
       </DropdownMenuTrigger>
@@ -364,7 +370,7 @@ function FilterMenu({
         className="w-56 rounded-xl border border-neutral-200 bg-white p-1 text-neutral-900 shadow-lg"
       >
         <DropdownMenuLabel className="text-xs font-semibold uppercase tracking-[0.14em] text-neutral-400">
-          Queue
+          {sharedT("labels.queue")}
         </DropdownMenuLabel>
         <DropdownMenuRadioGroup value={queue} onValueChange={(v) => onQueueChange(v as QueueKey)}>
           {queueOptions.map((option) => (
@@ -375,10 +381,10 @@ function FilterMenu({
         </DropdownMenuRadioGroup>
         <DropdownMenuSeparator />
         <DropdownMenuLabel className="text-xs font-semibold uppercase tracking-[0.14em] text-neutral-400">
-          Sort
+          {sharedT("labels.sort")}
         </DropdownMenuLabel>
         <DropdownMenuRadioGroup value={sort} onValueChange={(v) => onSortChange(v as SortKey)}>
-          {SORT_OPTIONS.map((option) => (
+          {sortOptions(sharedT).map((option) => (
             <DropdownMenuRadioItem key={option.key} value={option.key}>
               {option.label}
             </DropdownMenuRadioItem>
@@ -443,11 +449,12 @@ function InlineCta({
 }
 
 function SubmissionStatusBadge({ status }: { status: string }) {
+  const statusT = useTranslations("creator.shared.statuses.submission");
   const styles: Record<string, { bg: string; color: string; label: string }> = {
-    PENDING: { bg: "#fff7ed", color: "#c2410c", label: "Pending" },
-    FLAGGED: { bg: "#f5f3ff", color: "#7c3aed", label: "Flagged" },
-    REJECTED: { bg: "#fef2f2", color: "#dc2626", label: "Rejected" },
-    APPROVED: { bg: "#ecfdf5", color: "#059669", label: "Approved" },
+    PENDING: { bg: "#fff7ed", color: "#c2410c", label: statusT("PENDING") },
+    FLAGGED: { bg: "#f5f3ff", color: "#7c3aed", label: statusT("FLAGGED") },
+    REJECTED: { bg: "#fef2f2", color: "#dc2626", label: statusT("REJECTED") },
+    APPROVED: { bg: "#ecfdf5", color: "#059669", label: statusT("APPROVED") },
   };
   const s = styles[status] ?? styles.PENDING;
   return (
@@ -455,6 +462,23 @@ function SubmissionStatusBadge({ status }: { status: string }) {
       {s.label}
     </span>
   );
+}
+
+function sortOptions(t: ReturnType<typeof useTranslations>): Array<{ key: SortKey; label: string }> {
+  return [
+    { key: "newest", label: t("filters.newest") },
+    { key: "most-views", label: t("filters.mostViews") },
+    { key: "highest-earned", label: t("filters.highestEarned") },
+  ];
+}
+
+function statusLabel(
+  queue: QueueKey,
+  statusT: ReturnType<typeof useTranslations>,
+): string {
+  if (queue === "ISSUES") return "issues";
+  if (queue === "ALL") return "all";
+  return statusT(queue);
 }
 
 function ChevronDownIcon() {

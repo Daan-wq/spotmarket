@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useTranslations } from "next-intl";
 
 interface Props {
   campaignName: string;
@@ -10,6 +11,7 @@ interface Props {
 }
 
 export default function SubmitHeader({ campaignName, requirements, isLoading, onRefresh }: Props) {
+  const t = useTranslations("creator.applications.submit");
   const [showReqs, setShowReqs] = useState(false);
 
   return (
@@ -17,7 +19,7 @@ export default function SubmitHeader({ campaignName, requirements, isLoading, on
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-3">
           <h1 className="text-2xl font-bold" style={{ color: "var(--text-primary)" }}>
-            Submit Content for {campaignName}
+            {t("submitContentFor", { campaign: campaignName })}
           </h1>
           {requirements && (
             <button
@@ -29,7 +31,7 @@ export default function SubmitHeader({ campaignName, requirements, isLoading, on
                 border: "1px solid rgba(99,102,241,0.3)",
               }}
             >
-              Requirements
+              {t("requirements")}
             </button>
           )}
         </div>
@@ -38,7 +40,7 @@ export default function SubmitHeader({ campaignName, requirements, isLoading, on
           disabled={isLoading}
           className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm transition-colors disabled:opacity-40 cursor-pointer disabled:cursor-default"
           style={{ border: "1px solid var(--border)", color: "var(--text-secondary)" }}
-          title="Refresh posts"
+          title={t("refreshPosts")}
         >
           <svg
             width="13"
@@ -55,7 +57,7 @@ export default function SubmitHeader({ campaignName, requirements, isLoading, on
             <path d="M1 20v-6h6" />
             <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15" />
           </svg>
-          Refresh
+          {t("refresh")}
         </button>
       </div>
 
@@ -73,7 +75,7 @@ export default function SubmitHeader({ campaignName, requirements, isLoading, on
           >
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-base font-semibold" style={{ color: "var(--text-primary)" }}>
-                Campaign Requirements
+                {t("campaignRequirements")}
               </h2>
               <button
                 onClick={() => setShowReqs(false)}

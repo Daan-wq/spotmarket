@@ -2,6 +2,7 @@ import { requireAuth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { notFound } from "next/navigation";
 import Link from "next/link";
+import { getTranslations } from "next-intl/server";
 import { parseClipUrl } from "@/lib/parse-clip-url";
 import { ContactClient } from "./_components/contact-client";
 
@@ -12,6 +13,7 @@ export default async function ContactBrandPage({
 }) {
   const { campaignId } = await params;
   const { userId } = await requireAuth("creator");
+  const t = await getTranslations("creator.campaigns.contact");
 
   const user = await prisma.user.findUnique({
     where: { supabaseId: userId },
@@ -49,9 +51,9 @@ export default async function ContactBrandPage({
           <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="mx-auto" style={{ color: "var(--text-muted)" }}>
             <polygon points="23 7 16 12 23 17 23 7" /><rect width="15" height="14" x="1" y="5" rx="2" ry="2" />
           </svg>
-          <h2 className="text-xl font-bold" style={{ color: "var(--text-primary)" }}>No Submissions Yet</h2>
+          <h2 className="text-xl font-bold" style={{ color: "var(--text-primary)" }}>{t("noSubmissionsTitle")}</h2>
           <p className="text-sm" style={{ color: "var(--text-secondary)" }}>
-            You need to create content on this campaign first before contacting the brand
+            {t("noSubmissionsDescription")}
           </p>
           <Link
             href={`/creator/campaigns/${campaignId}`}
@@ -61,7 +63,7 @@ export default async function ContactBrandPage({
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <polygon points="23 7 16 12 23 17 23 7" /><rect width="15" height="14" x="1" y="5" rx="2" ry="2" />
             </svg>
-            Submit a Video
+            {t("submitVideo")}
           </Link>
         </div>
       </div>
@@ -90,9 +92,9 @@ export default async function ContactBrandPage({
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
         <div className="text-center space-y-4 max-w-md">
-          <h2 className="text-xl font-bold" style={{ color: "var(--text-primary)" }}>No owner</h2>
+          <h2 className="text-xl font-bold" style={{ color: "var(--text-primary)" }}>{t("noOwnerTitle")}</h2>
           <p className="text-sm" style={{ color: "var(--text-secondary)" }}>
-            This campaign has no owner — please contact support.
+            {t("noOwnerDescription")}
           </p>
         </div>
       </div>

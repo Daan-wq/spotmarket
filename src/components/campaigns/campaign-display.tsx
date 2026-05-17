@@ -1,8 +1,12 @@
+"use client";
+
 import PlatformIcon from "@/components/shared/PlatformIcon";
 import { Badge, type BadgeVariant } from "@/components/ui/badge";
 import { cn } from "@/lib/cn";
 import { getCampaignDeadlineState } from "@/lib/campaign-submission-state";
+import { formatCurrency } from "@/lib/i18n-format";
 import { Clock } from "lucide-react";
+import { useLocale, useTranslations } from "next-intl";
 
 type CampaignStatus =
   | "draft"
@@ -62,19 +66,19 @@ export function campaignStatusDisplay(status: CampaignStatus, deadline?: Date | 
   const isExpired = deadline ? getCampaignDeadlineState(deadline).state === "ended" : false;
 
   if (normalized === "active" && !isExpired) {
-    return { label: "Active", variant: "active" as BadgeVariant };
+    return { labelKey: "active", variant: "active" as BadgeVariant };
   }
   if (normalized === "paused") {
-    return { label: "Paused", variant: "paused" as BadgeVariant };
+    return { labelKey: "paused", variant: "paused" as BadgeVariant };
   }
   if (
     normalized === "draft" ||
     normalized === "pending_payment" ||
     normalized === "pending_review"
   ) {
-    return { label: "Private", variant: "private" as BadgeVariant };
+    return { labelKey: "private", variant: "private" as BadgeVariant };
   }
-  return { label: "Ended", variant: "neutral" as BadgeVariant };
+  return { labelKey: "ended", variant: "neutral" as BadgeVariant };
 }
 
 export function CampaignStatusBadge({
@@ -86,10 +90,11 @@ export function CampaignStatusBadge({
   deadline?: Date | string | null;
   className?: string;
 }) {
+  const t = useTranslations("creator.shared.statuses.campaign");
   const display = campaignStatusDisplay(status, deadline);
   return (
     <Badge variant={display.variant} className={className}>
-      {display.label}
+      {t(display.labelKey)}
     </Badge>
   );
 }
@@ -105,6 +110,7 @@ export function CampaignDeadlineBadge({
   deadline?: Date | string | null;
   className?: string;
 }) {
+  const t = useTranslations("creator.campaigns.deadline");
   const state = getDeadlineState(deadline);
   const variant: BadgeVariant =
     state.state === "ended"
@@ -119,7 +125,7 @@ export function CampaignDeadlineBadge({
       icon={<Clock className="h-3 w-3" aria-hidden />}
       className={className}
     >
-      {state.label}
+      {deadlineLabel(state, t)}
     </Badge>
   );
 }
@@ -161,8 +167,13 @@ export function CampaignBudgetProgress({
   totalBudget: number;
   compact?: boolean;
 }) {
+  const locale = useLocale();
+  const t = useTranslations("creator.campaigns.deadline");
   const progress =
     totalBudget > 0 ? Math.min((totalPaid / totalBudget) * 100, 100) : 0;
+  const moneyOptions = compact
+    ? { minimumFractionDigits: 0, maximumFractionDigits: 0 }
+    : undefined;
 
   return (
     <div>
@@ -174,10 +185,24 @@ export function CampaignBudgetProgress({
       </div>
       <div className="mt-2 flex justify-between text-xs text-neutral-500">
         <span>
-          ${totalPaid.toFixed(compact ? 0 : 2)} of ${totalBudget.toFixed(compact ? 0 : 2)} paid
+          {t("paidProgress", {
+            paid: formatCurrency(totalPaid, locale, moneyOptions),
+            budget: formatCurrency(totalBudget, locale, moneyOptions),
+          })}
         </span>
         <span>{progress.toFixed(0)}%</span>
       </div>
     </div>
   );
+}
+
+function deadlineLabel(
+  state: ReturnType<typeof getCampaignDeadlineState>,
+  t: ReturnType<typeof useTranslations>,
+): string {
+  if (state.state === "none") return t("noDeadline");
+  if (state.state === "ended") return t("ended");
+  if (state.state === "today") return t("today");
+  if (state.days === 1) return t("oneDay");
+  return t("days", { days: state.days ?? 0 });
 }

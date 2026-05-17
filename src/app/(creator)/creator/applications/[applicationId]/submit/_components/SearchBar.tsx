@@ -1,6 +1,7 @@
 "use client";
 
 import { useRef } from "react";
+import { useTranslations } from "next-intl";
 
 interface Props {
   value: string;
@@ -8,6 +9,7 @@ interface Props {
 }
 
 export default function SearchBar({ value, onChange }: Props) {
+  const t = useTranslations("creator.applications.submit");
   const timeout = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -35,7 +37,7 @@ export default function SearchBar({ value, onChange }: Props) {
         type="text"
         defaultValue={value}
         onChange={handleChange}
-        placeholder="Search by caption…"
+        placeholder={t("searchPlaceholder")}
         className="w-full pl-8 pr-3 py-1.5 rounded-lg border text-sm focus:outline-none"
         style={{
           background: "var(--bg-primary)",

@@ -1,5 +1,8 @@
 "use client";
 
+import { useLocale, useTranslations } from "next-intl";
+import { formatShortDate } from "@/lib/i18n-format";
+
 export interface DateFilter {
   mode: "campaign" | "custom";
   from?: string; // YYYY-MM-DD
@@ -13,6 +16,8 @@ interface Props {
 }
 
 export default function DateFilterControl({ filter, campaignStartDate, onChange }: Props) {
+  const locale = useLocale();
+  const t = useTranslations("creator.applications.submit");
   const isCustom = filter.mode === "custom";
 
   const resetToCampaign = () =>
@@ -24,15 +29,15 @@ export default function DateFilterControl({ filter, campaignStartDate, onChange 
         <>
           <span className="text-xs" style={{ color: "var(--text-muted)" }}>
             {campaignStartDate
-              ? `After ${new Date(campaignStartDate).toLocaleDateString()}`
-              : "All time"}
+              ? t("afterDate", { date: formatShortDate(campaignStartDate, locale) })
+              : t("allTime")}
           </span>
           <button
             onClick={() => onChange({ mode: "custom", from: filter.from, to: filter.to })}
             className="text-xs underline cursor-pointer"
             style={{ color: "var(--primary)" }}
           >
-            Custom range
+            {t("customRange")}
           </button>
         </>
       ) : (
@@ -48,7 +53,7 @@ export default function DateFilterControl({ filter, campaignStartDate, onChange 
               color: "var(--text-primary)",
             }}
           />
-          <span className="text-xs" style={{ color: "var(--text-muted)" }}>to</span>
+          <span className="text-xs" style={{ color: "var(--text-muted)" }}>{t("to")}</span>
           <input
             type="date"
             value={filter.to ?? ""}
@@ -65,7 +70,7 @@ export default function DateFilterControl({ filter, campaignStartDate, onChange 
             className="text-xs underline cursor-pointer"
             style={{ color: "var(--text-muted)" }}
           >
-            Reset
+            {t("reset")}
           </button>
         </>
       )}

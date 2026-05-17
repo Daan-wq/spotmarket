@@ -5,6 +5,8 @@ import { useRouter, useSearchParams } from "next/navigation";
 import type { ReactNode } from "react";
 import { CreatorSectionHeader } from "../../_components/creator-journey";
 import { WithdrawTab } from "./withdraw-tab";
+import { formatCurrency } from "@/lib/i18n-format";
+import { useLocale, useTranslations } from "next-intl";
 
 interface PaymentsTabsProps {
   overviewSlot: ReactNode;
@@ -16,13 +18,9 @@ interface PaymentsTabsProps {
   hasPaymentMethod: boolean;
 }
 
-const TAB_ITEMS = [
-  { key: "overview", label: "Overview" },
-  { key: "withdraw", label: "Withdraw" },
-  { key: "history", label: "History" },
-] as const;
+const TAB_ITEMS = ["overview", "withdraw", "history"] as const;
 
-type TabKey = (typeof TAB_ITEMS)[number]["key"];
+type TabKey = (typeof TAB_ITEMS)[number];
 
 function isTabKey(value: string | null): value is TabKey {
   return value === "overview" || value === "withdraw" || value === "history";
@@ -37,6 +35,8 @@ export function PaymentsTabs({
   pendingPayout,
   hasPaymentMethod,
 }: PaymentsTabsProps) {
+  const locale = useLocale();
+  const t = useTranslations("creator.payouts.tabs");
   const router = useRouter();
   const searchParams = useSearchParams();
   const initial = searchParams.get("tab");
@@ -50,38 +50,38 @@ export function PaymentsTabs({
   }
 
   const paymentFocus = balance > 0
-    ? `$${balance.toFixed(2)} available to withdraw`
+    ? t("focusAvailable", { amount: formatCurrency(balance, locale) })
     : pendingPayout > 0
-      ? `$${pendingPayout.toFixed(2)} already processing`
+      ? t("focusProcessing", { amount: formatCurrency(pendingPayout, locale) })
       : totalEarned > 0
-        ? `$${totalEarned.toFixed(2)} approved so far`
-        : "No approved balance yet";
+        ? t("focusApproved", { amount: formatCurrency(totalEarned, locale) })
+        : t("focusNone");
 
   return (
     <div className="space-y-8">
       {!hasPaymentMethod && balance > 0 ? (
         <div className="rounded-2xl border border-orange-200 bg-orange-50 p-5 text-sm text-orange-800">
-          Add a withdrawal destination before requesting your next payout.
+          {t("missingDestination")}
         </div>
       ) : null}
 
       <section className="rounded-2xl border border-neutral-200 bg-white p-4 md:p-6">
         <div className="mb-5 flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
           <CreatorSectionHeader
-            title="Payment workspace"
-            description={`${paymentFocus}. Paid out: $${totalPaid.toFixed(2)}.`}
+            title={t("title")}
+            description={`${paymentFocus}. ${t("paidOut", { amount: formatCurrency(totalPaid, locale) })}`}
           />
           <div className="inline-flex w-full rounded-xl border border-neutral-200 bg-neutral-50 p-1 md:w-auto">
             {TAB_ITEMS.map((item) => (
               <button
-                key={item.key}
+                key={item}
                 type="button"
-                onClick={() => handleChange(item.key)}
+                onClick={() => handleChange(item)}
                 className={`h-10 flex-1 rounded-lg px-4 text-sm font-semibold transition md:flex-none ${
-                  tab === item.key ? "bg-white text-neutral-950 shadow-sm" : "text-neutral-500 hover:text-neutral-950"
+                  tab === item ? "bg-white text-neutral-950 shadow-sm" : "text-neutral-500 hover:text-neutral-950"
                 }`}
               >
-                {item.label}
+                {t(item)}
               </button>
             ))}
           </div>

@@ -3,6 +3,7 @@ export type UpdateCategory = "New" | "Improved" | "Fixed";
 export interface UpdateEntry {
   /** ISO date — used as the unique key and for read-state tracking. */
   date: string;
+  id: string;
   title: string;
   category: UpdateCategory;
   description: string;
@@ -15,6 +16,7 @@ export interface UpdateEntry {
 export const UPDATES: UpdateEntry[] = [
   {
     date: "2026-05-03",
+    id: "activationChecklist",
     title: "Cleaner dashboard with an activation checklist",
     category: "New",
     description:
@@ -22,6 +24,7 @@ export const UPDATES: UpdateEntry[] = [
   },
   {
     date: "2026-05-03",
+    id: "paymentsPage",
     title: "Wallet and Payouts are now one Payments page",
     category: "Improved",
     description:
@@ -29,6 +32,7 @@ export const UPDATES: UpdateEntry[] = [
   },
   {
     date: "2026-05-03",
+    id: "campaignQualification",
     title: "Campaign cards show whether you qualify",
     category: "New",
     description:
@@ -36,6 +40,7 @@ export const UPDATES: UpdateEntry[] = [
   },
   {
     date: "2026-05-03",
+    id: "connectAccountPrompt",
     title: "We now ask before connecting an account",
     category: "Improved",
     description:
@@ -43,6 +48,7 @@ export const UPDATES: UpdateEntry[] = [
   },
   {
     date: "2026-05-03",
+    id: "feedbackDrawer",
     title: "In-app feedback drawer",
     category: "New",
     description:

@@ -13,6 +13,8 @@ import {
   Wallet,
 } from "lucide-react";
 import { ActivityHeatmap, type ActivityDay } from "./activity-heatmap";
+import { formatCurrency, formatDate, formatShortDate } from "@/lib/i18n-format";
+import { useLocale, useTranslations } from "next-intl";
 
 interface ProfileData {
   displayName: string;
@@ -47,13 +49,12 @@ type TabKey = "general" | "activity" | "balance" | "community";
 
 const TABS: Array<{
   key: TabKey;
-  label: string;
   icon: ComponentType<{ className?: string }>;
 }> = [
-  { key: "general", label: "General", icon: User },
-  { key: "activity", label: "Activity", icon: BarChart3 },
-  { key: "balance", label: "Balance", icon: Wallet },
-  { key: "community", label: "Community", icon: Globe2 },
+  { key: "general", icon: User },
+  { key: "activity", icon: BarChart3 },
+  { key: "balance", icon: Wallet },
+  { key: "community", icon: Globe2 },
 ];
 
 export function ProfileClient({
@@ -62,6 +63,8 @@ export function ProfileClient({
   balanceData,
   activityDays,
 }: ProfileClientProps) {
+  const t = useTranslations("creator.profile");
+  const sharedT = useTranslations("creator.shared");
   const safeInitialTab = TABS.some((tab) => tab.key === initialTab)
     ? (initialTab as TabKey)
     : "general";
@@ -93,7 +96,7 @@ export function ProfileClient({
             )}
             <div className="min-w-0">
               <p className="text-xs font-semibold uppercase text-neutral-400 md:tracking-[0.14em]">
-                Creator Profile
+                {t("header.eyebrow")}
               </p>
               <h1 className="truncate text-2xl font-semibold tracking-normal text-neutral-950">
                 {profileData.displayName}
@@ -108,14 +111,14 @@ export function ProfileClient({
               className="inline-flex h-10 w-full items-center justify-center gap-2 rounded-xl border border-neutral-200 bg-neutral-50 px-4 text-sm font-semibold text-neutral-700 transition hover:bg-neutral-100 hover:text-neutral-950 md:w-auto"
             >
               <LogOut className="h-4 w-4" aria-hidden />
-              Sign out
+              {sharedT("actions.signOut")}
             </button>
           </form>
         </div>
       </section>
 
       <nav
-        aria-label="Profile sections"
+        aria-label={t("header.eyebrow")}
         className="flex gap-2 overflow-x-auto rounded-2xl border border-neutral-200 bg-white p-2"
       >
         {TABS.map((tab) => {
@@ -133,7 +136,7 @@ export function ProfileClient({
               }`}
             >
               <Icon className="h-4 w-4" aria-hidden />
-              {tab.label}
+              {t(`tabs.${tab.key}`)}
             </button>
           );
         })}
@@ -148,22 +151,24 @@ export function ProfileClient({
 }
 
 function GeneralTab({ data }: { data: ProfileData }) {
-  const memberDate = new Date(data.memberSince).toLocaleDateString("en-US", {
+  const locale = useLocale();
+  const t = useTranslations("creator.profile.general");
+  const memberDate = formatDate(data.memberSince, locale, {
     month: "long",
     year: "numeric",
   });
 
   const info = [
-    { label: "Full name", value: data.displayName, icon: User },
-    { label: "Email", value: data.email, icon: Mail, note: "Cannot be changed" },
-    { label: "Country", value: data.primaryGeo, icon: Globe2 },
-    { label: "Member since", value: memberDate, icon: CalendarDays },
+    { label: t("fullName"), value: data.displayName, icon: User },
+    { label: t("email"), value: data.email, icon: Mail, note: t("emailNote") },
+    { label: t("country"), value: data.primaryGeo, icon: Globe2 },
+    { label: t("memberSince"), value: memberDate, icon: CalendarDays },
     {
-      label: "Industry",
-      value: data.experienceLevel || "Not set",
+      label: t("industry"),
+      value: data.experienceLevel || t("notSet"),
       icon: BarChart3,
     },
-    { label: "Objective", value: data.bio || "No bio yet", icon: Target },
+    { label: t("objective"), value: data.bio || t("noBio"), icon: Target },
   ];
 
   return (
@@ -172,7 +177,7 @@ function GeneralTab({ data }: { data: ProfileData }) {
         <div className="flex items-center gap-2">
           <User className="h-4 w-4 text-neutral-500" aria-hidden />
           <h2 className="text-base font-semibold text-neutral-950">
-            Profile Information
+            {t("title")}
           </h2>
         </div>
         <div className="mt-5 grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
@@ -203,19 +208,23 @@ function GeneralTab({ data }: { data: ProfileData }) {
 }
 
 function BalanceTab({ data }: { data: BalanceData }) {
+  const locale = useLocale();
+  const t = useTranslations("creator.profile.balance");
+  const sharedT = useTranslations("creator.shared");
+  const statusT = useTranslations("creator.shared.statuses.payout");
   return (
     <section className="space-y-4">
       <div className="grid grid-cols-2 gap-3 md:gap-4">
         <BalanceCard
-          label="Available"
-          value={`$${data.available.toFixed(0)}`}
-          detail="Ready to withdraw"
+          label={t("available")}
+          value={formatCurrency(data.available, locale, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+          detail={t("readyToWithdraw")}
           tone="success"
         />
         <BalanceCard
-          label="Pending"
-          value={`$${data.pending.toFixed(0)}`}
-          detail="5-10 business days"
+          label={t("pending")}
+          value={formatCurrency(data.pending, locale, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+          detail={t("businessDays")}
         />
       </div>
 
@@ -224,30 +233,35 @@ function BalanceTab({ data }: { data: BalanceData }) {
         className="flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-neutral-950 px-4 text-sm font-semibold text-white shadow-[0_8px_18px_rgba(0,0,0,0.14)] transition hover:bg-neutral-800"
       >
         <Wallet className="h-4 w-4" aria-hidden />
-        Withdraw funds
+        {sharedT("actions.withdrawFunds")}
       </button>
       <p className="text-center text-xs text-neutral-500">
-        Minimum withdrawal amount is $20. Current available: ${data.available.toFixed(0)}
+        {t("minWithdrawal", {
+          amount: formatCurrency(data.available, locale, {
+            minimumFractionDigits: 0,
+            maximumFractionDigits: 0,
+          }),
+        })}
       </p>
 
       <div className="rounded-2xl border border-neutral-200 bg-white p-4 md:p-6">
         <div className="flex items-center gap-2">
           <Wallet className="h-4 w-4 text-neutral-500" aria-hidden />
           <h2 className="text-base font-semibold text-neutral-950">
-            Withdrawal History
+            {t("history")}
           </h2>
         </div>
         <p className="mt-1 text-sm text-neutral-500">
-          Track your payment status and timing.
+          {t("historyDescription")}
         </p>
 
         {data.withdrawalHistory.length === 0 ? (
           <div className="mt-5 rounded-2xl border border-dashed border-neutral-200 bg-neutral-50 px-4 py-10 text-center">
             <p className="text-sm font-semibold text-neutral-950">
-              No withdrawals yet
+              {t("noWithdrawalsTitle")}
             </p>
             <p className="mt-1 text-sm text-neutral-500">
-              Your payout history will appear here.
+              {t("noWithdrawalsDescription")}
             </p>
           </div>
         ) : (
@@ -260,18 +274,18 @@ function BalanceTab({ data }: { data: BalanceData }) {
                 <div className="flex items-start justify-between gap-3">
                   <div>
                     <p className="text-xs text-neutral-500">
-                      {new Date(withdrawal.date).toLocaleDateString()}
+                      {formatShortDate(withdrawal.date, locale)}
                     </p>
                     <p className="mt-1 text-lg font-semibold text-neutral-950">
-                      ${withdrawal.grossAmount.toFixed(2)}
+                      {formatCurrency(withdrawal.grossAmount, locale)}
                     </p>
                   </div>
                   <span className="rounded-full bg-white px-2.5 py-1 text-xs font-semibold capitalize text-neutral-700 ring-1 ring-neutral-200">
-                    {withdrawal.status}
+                    {statusT(withdrawal.status.toLowerCase())}
                   </span>
                 </div>
                 <p className="mt-3 text-xs text-neutral-500">
-                  Method: {withdrawal.method}
+                  {t("method", { method: withdrawal.method })}
                 </p>
               </article>
             ))}
@@ -293,13 +307,14 @@ function BalanceCard({
   detail: string;
   tone?: "neutral" | "success";
 }) {
+  const t = useTranslations("creator.profile.balance");
   return (
     <article className="rounded-2xl border border-neutral-200 bg-neutral-50 p-4 md:p-5">
       <div className="flex items-center justify-between gap-2">
         <p className="text-xs font-semibold uppercase text-neutral-500">{label}</p>
         {tone === "success" ? (
           <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-[11px] font-semibold text-emerald-700">
-            Ready
+            {t("ready")}
           </span>
         ) : null}
       </div>
@@ -312,6 +327,7 @@ function BalanceCard({
 }
 
 function CommunityTab() {
+  const t = useTranslations("creator.profile.community");
   return (
     <section className="rounded-2xl border border-neutral-200 bg-white p-4 md:p-6">
       <div className="flex items-center gap-3">
@@ -320,10 +336,10 @@ function CommunityTab() {
         </div>
         <div>
           <h2 className="text-base font-semibold text-neutral-950">
-            ClipProfit Community
+            {t("title")}
           </h2>
           <p className="text-sm text-neutral-500">
-            Connect with creators, campaign tips, and new opportunities.
+            {t("description")}
           </p>
         </div>
       </div>
@@ -336,7 +352,7 @@ function CommunityTab() {
           allowTransparency={true}
           frameBorder="0"
           sandbox="allow-popups allow-popups-to-escape-sandbox allow-same-origin allow-scripts"
-          title="ClipProfit Discord Community"
+          title={t("iframeTitle")}
           className="block min-h-[360px] w-full"
         />
       </div>

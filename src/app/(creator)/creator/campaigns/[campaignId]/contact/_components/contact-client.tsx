@@ -1,6 +1,8 @@
 "use client";
 
 import { useState } from "react";
+import { useLocale, useTranslations } from "next-intl";
+import { formatShortDate, formatTime } from "@/lib/i18n-format";
 
 interface Submission {
   id: string;
@@ -26,11 +28,11 @@ interface ContactClientProps {
   messages: MessageItem[];
 }
 
-const STATUS_STYLES: Record<string, { bg: string; color: string; label: string }> = {
-  PENDING: { bg: "var(--warning-bg)", color: "var(--warning-text)", label: "Pending Review" },
-  APPROVED: { bg: "var(--success-bg)", color: "var(--success-text)", label: "Approved" },
-  REJECTED: { bg: "var(--error-bg)", color: "var(--error-text)", label: "Rejected" },
-  FLAGGED: { bg: "rgba(139,92,246,0.1)", color: "#8B5CF6", label: "Flagged" },
+const STATUS_STYLES: Record<string, { bg: string; color: string }> = {
+  PENDING: { bg: "var(--warning-bg)", color: "var(--warning-text)" },
+  APPROVED: { bg: "var(--success-bg)", color: "var(--success-text)" },
+  REJECTED: { bg: "var(--error-bg)", color: "var(--error-text)" },
+  FLAGGED: { bg: "rgba(139,92,246,0.1)", color: "#8B5CF6" },
 };
 
 export function ContactClient({
@@ -40,6 +42,10 @@ export function ContactClient({
   submissions,
   messages: initialMessages,
 }: ContactClientProps) {
+  const locale = useLocale();
+  const t = useTranslations("creator.campaigns.contact");
+  const sharedT = useTranslations("creator.shared");
+  const statusT = useTranslations("creator.shared.statuses.submission");
   const [messages, setMessages] = useState(initialMessages);
   const [newMessage, setNewMessage] = useState("");
   const [sending, setSending] = useState(false);
@@ -81,7 +87,7 @@ export function ContactClient({
       {/* Header */}
       <div className="p-4 pb-0 md:p-6 md:pb-0">
         <h2 className="text-lg font-bold" style={{ color: "var(--text-primary)" }}>{brandName}</h2>
-        <p className="text-sm" style={{ color: "var(--text-secondary)" }}>You can send a message</p>
+        <p className="text-sm" style={{ color: "var(--text-secondary)" }}>{t("canSend")}</p>
       </div>
 
       {/* Rules Banner */}
@@ -90,9 +96,9 @@ export function ContactClient({
           <circle cx="12" cy="12" r="10" /><path d="M12 16v-4" /><path d="M12 8h.01" />
         </svg>
         <div>
-          <span className="text-xs font-semibold" style={{ color: "#B45309" }}>Messaging Rules: </span>
+          <span className="text-xs font-semibold" style={{ color: "#B45309" }}>{t("rulesTitle")} </span>
           <span className="text-xs" style={{ color: "#92400E" }}>
-            You can send one message per submission. Wait for the brand to reply before sending another message.
+            {t("rulesDescription")}
           </span>
         </div>
       </div>
@@ -106,21 +112,21 @@ export function ContactClient({
             <div key={sub.id} className="flex justify-end">
               <div className="w-full max-w-sm rounded-xl p-4" style={{ background: "var(--bg-card)", border: "1px solid var(--border-default)" }}>
                 <div className="flex items-center justify-between mb-2">
-                  <span className="text-sm font-semibold" style={{ color: "var(--text-primary)" }}>Video Submission</span>
+                  <span className="text-sm font-semibold" style={{ color: "var(--text-primary)" }}>{t("videoSubmission")}</span>
                   <span className="text-xs font-medium px-2 py-0.5 rounded-full" style={{ background: statusStyle.bg, color: statusStyle.color }}>
-                    {statusStyle.label}
+                    {statusT(sub.status)}
                   </span>
                 </div>
                 <div className="text-xs space-y-1" style={{ color: "var(--text-secondary)" }}>
-                  <div>Platform: <strong className="uppercase">{sub.platform}</strong></div>
+                  <div>{t("platform", { platform: sub.platform })}</div>
                   {sub.postUrl && (
                     <a href={sub.postUrl} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1" style={{ color: "var(--primary)" }}>
                       <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" /><polyline points="15 3 21 3 21 9" /><line x1="10" y1="14" x2="21" y2="3" /></svg>
-                      View original post
+                      {sharedT("actions.viewOriginalPost")}
                     </a>
                   )}
                   <div style={{ color: "var(--text-muted)" }}>
-                    Submitted {new Date(sub.date).toLocaleString()}
+                    {t("submittedAt", { date: formatShortDate(sub.date, locale) })}
                   </div>
                 </div>
               </div>
@@ -141,7 +147,7 @@ export function ContactClient({
             >
               <p className="text-sm">{msg.content}</p>
               <p className="text-xs mt-1 opacity-60">
-                {new Date(msg.date).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                {formatTime(msg.date, locale)}
               </p>
             </div>
           </div>
@@ -152,7 +158,7 @@ export function ContactClient({
       <div className="p-4 flex items-center gap-2" style={{ borderTop: "1px solid var(--border-default)" }}>
         <input
           type="text"
-          placeholder="Type your message..."
+          placeholder={t("placeholder")}
           value={newMessage}
           onChange={(e) => setNewMessage(e.target.value)}
           onKeyDown={(e) => { if (e.key === "Enter") handleSend(); }}
@@ -162,6 +168,7 @@ export function ContactClient({
         <button
           onClick={handleSend}
           disabled={!newMessage.trim() || sending}
+          aria-label={t("send")}
           className="p-2.5 rounded-xl text-white cursor-pointer disabled:opacity-50"
           style={{ background: "var(--primary)" }}
         >

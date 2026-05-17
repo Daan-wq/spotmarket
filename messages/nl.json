@@ -112,13 +112,46 @@
       "connectAccount": "Social account koppelen",
       "browseCampaigns": "Campagnes bekijken",
       "skip": "Overslaan - naar campagnes",
-      "niches": ["Memes", "Sport", "Gaming", "Lifestyle", "Finance", "Tech", "Anders"],
-      "sources": ["Google Search", "Een vriend of collega", "Instagram", "TikTok", "Discord", "Twitter/X", "YouTube", "Anders"],
+      "niches": [
+        "Memes",
+        "Sport",
+        "Gaming",
+        "Lifestyle",
+        "Finance",
+        "Tech",
+        "Anders"
+      ],
+      "sources": [
+        "Google Search",
+        "Een vriend of collega",
+        "Instagram",
+        "TikTok",
+        "Discord",
+        "Twitter/X",
+        "YouTube",
+        "Anders"
+      ],
       "experienceLevels": [
-        { "value": "none", "label": "Geen ervaring", "description": "Ik begin net" },
-        { "value": "some", "label": "Wat ervaring", "description": "Ik heb een paar videos gemaakt" },
-        { "value": "experienced", "label": "Ervaren", "description": "Ik maak regelmatig content" },
-        { "value": "professional", "label": "Professioneel", "description": "Dit is mijn fulltime werk" }
+        {
+          "value": "none",
+          "label": "Geen ervaring",
+          "description": "Ik begin net"
+        },
+        {
+          "value": "some",
+          "label": "Wat ervaring",
+          "description": "Ik heb een paar videos gemaakt"
+        },
+        {
+          "value": "experienced",
+          "label": "Ervaren",
+          "description": "Ik maak regelmatig content"
+        },
+        {
+          "value": "professional",
+          "label": "Professioneel",
+          "description": "Dit is mijn fulltime werk"
+        }
       ]
     }
   },
@@ -131,6 +164,19 @@
     "home": "Naar start"
   },
   "creatorSettings": {
+    "deleteAccount": {
+      "trigger": "Account verwijderen",
+      "title": "Account verwijderen",
+      "subtitle": "Deze actie is permanent en kan niet ongedaan worden gemaakt",
+      "warning": "Dit verwijdert al je data permanent van de servers, inclusief je profiel, gekoppelde accounts, inzendingen en inkomstengeschiedenis.",
+      "confirmLabel": "Typ CONFIRM om je ClipProfit-account en alle data te verwijderen",
+      "confirmPlaceholder": "CONFIRM",
+      "cancel": "Annuleren",
+      "deleting": "Verwijderen...",
+      "delete": "Mijn account verwijderen",
+      "genericError": "Er ging iets mis.",
+      "unexpectedError": "Er ging onverwacht iets mis."
+    },
     "metadata": {
       "title": "Instellingen"
     },
@@ -633,6 +679,810 @@
         "weeklyNumbers": {
           "name": "Weekcijfers",
           "detail": "Opgeslagen wekelijkse reviewsnapshots uit live data"
+        }
+      }
+    }
+  },
+  "creator": {
+    "shared": {
+      "fallbackCreator": "Creator",
+      "emptyValue": "-",
+      "actions": {
+        "back": "Terug",
+        "view": "Bekijken",
+        "open": "Openen",
+        "close": "Sluiten",
+        "edit": "Bewerken",
+        "save": "Opslaan",
+        "saveChanges": "Wijzigingen opslaan",
+        "saveAddress": "Adres opslaan",
+        "cancel": "Annuleren",
+        "continue": "Doorgaan",
+        "copy": "Kopieren",
+        "copied": "Gekopieerd",
+        "filters": "Filters",
+        "filterOptions": "Filteropties",
+        "resetFilters": "Filters resetten",
+        "search": "Zoeken",
+        "submitClip": "Clip indienen",
+        "campaignInfo": "Campagne-info",
+        "browseCampaigns": "Campagnes bekijken",
+        "connectAccount": "Account koppelen",
+        "viewDetails": "Details bekijken",
+        "viewCampaign": "Campagne bekijken",
+        "viewOriginalPost": "Originele post bekijken",
+        "requestWithdrawal": "Uitbetaling aanvragen",
+        "confirmWithdrawal": "Uitbetaling bevestigen",
+        "withdrawFunds": "Geld opnemen",
+        "showAllClips": "Alle clips tonen",
+        "openPost": "Post openen in nieuw tabblad",
+        "submitForCampaign": "Indienen voor campagne",
+        "previousPage": "Vorige pagina",
+        "nextPage": "Volgende pagina",
+        "signOut": "Uitloggen"
+      },
+      "units": {
+        "views": "views",
+        "followers": "volgers",
+        "subscribers": "abonnees",
+        "clips": "clips",
+        "submissions": "inzendingen",
+        "posts": "posts",
+        "creators": "creators",
+        "lessons": "lessen",
+        "businessDays": "werkdagen",
+        "perThousandViews": "per 1K views",
+        "perOneKViews": "/1K views"
+      },
+      "statuses": {
+        "application": {
+          "pending": "In behandeling",
+          "approved": "Goedgekeurd",
+          "rejected": "Afgewezen",
+          "active": "Actief",
+          "completed": "Afgerond",
+          "disputed": "Betwist"
+        },
+        "submission": {
+          "PENDING": "In behandeling",
+          "FLAGGED": "Gemarkeerd",
+          "REJECTED": "Afgewezen",
+          "APPROVED": "Goedgekeurd"
+        },
+        "campaign": {
+          "active": "Actief",
+          "paused": "Gepauzeerd",
+          "private": "Prive",
+          "ended": "Afgelopen",
+          "draft": "Prive",
+          "pending_payment": "Prive",
+          "pending_review": "Prive",
+          "completed": "Afgelopen",
+          "cancelled": "Afgelopen"
+        },
+        "payout": {
+          "pending": "In behandeling",
+          "processing": "Wordt verwerkt",
+          "sent": "Verzonden",
+          "confirmed": "Bevestigd",
+          "failed": "Mislukt",
+          "rejected": "Afgewezen",
+          "paid": "Betaald"
+        },
+        "verification": {
+          "verified": "Geverifieerd",
+          "pending": "In behandeling",
+          "failed": "Mislukt",
+          "disconnected": "Niet verbonden"
+        },
+        "notification": {
+          "unread": "Ongelezen",
+          "read": "Gelezen"
+        }
+      },
+      "labels": {
+        "campaign": "Campagne",
+        "status": "Status",
+        "earned": "Verd verdiend",
+        "views": "Views",
+        "platform": "Platform",
+        "submitted": "Ingediend",
+        "date": "Datum",
+        "amount": "Bedrag",
+        "type": "Type",
+        "method": "Methode",
+        "action": "Actie",
+        "preview": "Preview",
+        "queue": "Wachtrij",
+        "sort": "Sorteren",
+        "page": "Pagina {current} van {total}",
+        "postCount": "{count, plural, one {# post} other {# posts}}",
+        "noCampaign": "Geen campagne",
+        "latestSnapshot": "Laatste snapshot",
+        "likesCommentsShares": "Likes + reacties + shares",
+        "lastSynced": "Laatst gesynchroniseerd {date}",
+        "loading": "Laden..."
+      },
+      "filters": {
+        "all": "Alles",
+        "allPlatforms": "Alle platforms",
+        "allTypes": "Alle types",
+        "allClips": "Alles ({count})",
+        "pending": "In behandeling ({count})",
+        "issues": "Issues ({count})",
+        "approved": "Goedgekeurd ({count})",
+        "recommended": "Aanbevolen",
+        "newest": "Nieuwste",
+        "mostViews": "Meeste views",
+        "highestEarned": "Meest verdiend",
+        "highestPayout": "Hoogste payout",
+        "endingSoon": "Eindigt snel",
+        "on": "Aan"
+      }
+    },
+    "campaigns": {
+      "page": {
+        "eyebrow": "Campagnes",
+        "title": "Campagnes",
+        "description": "{count, plural, one {# campagne beschikbaar} other {# campagnes beschikbaar}}",
+        "marketplace": "Marketplace",
+        "joined": "Gejoinde campagnes",
+        "searchLabel": "Campagnes zoeken",
+        "searchPlaceholder": "Campagnes zoeken",
+        "platform": "Platform",
+        "type": "Type",
+        "sort": "Sorteren",
+        "marketplaceDescription": "Campagnes standaard gesorteerd op geschiktheid en payout.",
+        "joinedDescription": "Campagnes waarop je nu actie kunt nemen."
+      },
+      "guide": {
+        "intro": "Nieuw met campagnes? Leer hoe ze werken.",
+        "rules": "Regels",
+        "howItWorks": "Hoe het werkt",
+        "rulesTitle": "Campagneregels",
+        "howTitle": "Hoe het werkt",
+        "understand": "Ik begrijp het",
+        "gotIt": "Begrepen",
+        "howIntro": "Als je weet hoe campagnes werken, kies je beter werk, dien je clips netjes in en volg je inkomsten zonder verrassingen.",
+        "durationTitle": "Campagneduur",
+        "durationDeadline": "Deadline-based: posts kunnen worden ingediend tot de campagnedeadline. Daarna sluiten inzendingen.",
+        "durationBudget": "Budget-based: campagnes kunnen doorlopen tot het budget op is of de sponsor het werk stopt.",
+        "payoutTitle": "Payoutberekening",
+        "payoutRate": "Payrate-based: je verdient een vast bedrag per getrackte view.",
+        "payoutPot": "Pot-style: payouts zijn evenredig aan jouw aandeel in de totale campagneviews.",
+        "rulesIntro": "Door mee te doen aan campagnes ga je akkoord met deze regels. Overtredingen kunnen leiden tot verwijdering en verlies van inkomsten.",
+        "noBottingTitle": "Geen bots of nep-engagement",
+        "noBotting": "Bots en nep-engagement zijn nergens toegestaan.",
+        "audienceTitle": "Publieksvereisten",
+        "audience": "Join geen campagnes met publieksvereisten die niet bij je eigen publiek passen.",
+        "requirementsTitle": "Volg campagneregels",
+        "requirements": "Ingediende posts moeten voldoen aan de creatieve, disclosure- en platformvereisten van de campagne."
+      },
+      "card": {
+        "payout": "Payout",
+        "youQualify": "Je komt in aanmerking",
+        "submitClosed": "Inzendingen gesloten",
+        "connectPlatforms": "Koppel {platforms}",
+        "needFollowers": "{count} volgers nodig"
+      },
+      "empty": {
+        "noJoinedTitle": "Nog geen campagnes gejoind",
+        "noJoinedDescription": "Bekijk de marketplace om campagnes te vinden die passen bij je platforms en niche.",
+        "noMatchesTitle": "Geen campagnes passen bij je filters",
+        "noMatchesDescription": "Wis de filters of pas je zoekopdracht aan."
+      },
+      "detail": {
+        "back": "Terug naar campagnes",
+        "contact": "Contact",
+        "info": "Campagne-info",
+        "payoutPer1K": "Payout per 1K",
+        "baseRate": "Basis campagnerate",
+        "startDate": "Startdatum",
+        "campaignStart": "Campagnestart",
+        "campaignCreated": "Campagne aangemaakt",
+        "yourClips": "Jouw clips",
+        "yourSubmissions": "Jouw campagne-inzendingen",
+        "yourViews": "Jouw views",
+        "trackedCampaign": "Getrackt in deze campagne",
+        "details": "Campagnedetails",
+        "programRules": "Programmaregels",
+        "programRulesDescription": "Vereisten en payoutlimieten voor deze campagne.",
+        "accountLimit": "Accountlimiet",
+        "unlimited": "Onbeperkt",
+        "category": "Categorie",
+        "general": "Algemeen",
+        "trackingLink": "Trackinglink",
+        "openLink": "Link openen",
+        "guidelines": "Richtlijnen",
+        "openGuidelines": "Richtlijnen openen",
+        "requirements": "Vereisten",
+        "contentNotes": "Contentnotities",
+        "payouts": "Payouts",
+        "estimate": "Schatting",
+        "trackedOrClaimed": "Gebaseerd op getrackte of geclaimde views",
+        "recorded": "Geregistreerd",
+        "currentEarnings": "Huidige campagne-inkomsten",
+        "yourClipsSection": "Jouw clips",
+        "noClipsTitle": "Nog geen clips ingediend",
+        "noClipsDescription": "Dien een clip in vanaf je gekoppelde social accounts en hij verschijnt hier.",
+        "biggestEarners": "Grootste verdieners",
+        "noEarners": "Nog geen goedgekeurde verdieners."
+      },
+      "apply": {
+        "join": "Campagne joinen",
+        "submitClip": "Clip indienen",
+        "joined": "Gejoind",
+        "pending": "Aanmelding in behandeling",
+        "connectRequired": "Koppel eerst het vereiste platform",
+        "connectRequiredDescription": "{count, plural, one {Koppel je {platforms}-account om deze campagne te joinen.} other {Koppel je {platforms}-accounts om deze campagne te joinen.}}",
+        "social": "social",
+        "connectAccountTitle": "Account koppelen",
+        "goToAccounts": "Naar accounts",
+        "cancel": "Annuleren",
+        "discordRequired": "Koppel Discord voordat je joint",
+        "discordPrompt": "Koppel je Discord-account om campagnes te joinen.",
+        "connectDiscord": "Discord koppelen",
+        "closed": "Inzendingen zijn gesloten",
+        "closedDescription": "Deze campagne is afgelopen en accepteert geen inzendingen meer.",
+        "applying": "Joinen...",
+        "processing": "Verwerken...",
+        "error": "Campagne joinen is mislukt.",
+        "unexpectedError": "Er is iets misgegaan",
+        "alreadyApplied": "Je hebt deze campagne al gejoind.",
+        "profileMissing": "Creatorprofiel niet gevonden.",
+        "notFound": "Campagne niet gevonden."
+      },
+      "contact": {
+        "title": "Campagnecontact",
+        "canSend": "Je kunt een bericht sturen",
+        "noSubmissionsTitle": "Nog geen inzendingen",
+        "noSubmissionsDescription": "Je moet eerst content maken voor deze campagne voordat je contact opneemt met het merk.",
+        "submitVideo": "Video indienen",
+        "noOwnerTitle": "Geen eigenaar",
+        "noOwnerDescription": "Deze campagne heeft geen eigenaar. Neem contact op met support.",
+        "rulesTitle": "Berichtregels:",
+        "rulesDescription": "Je kunt een bericht per inzending sturen. Wacht op antwoord van het merk voordat je nog een bericht stuurt.",
+        "videoSubmission": "Video-inzending",
+        "platform": "Platform: {platform}",
+        "submittedAt": "Ingediend {date}",
+        "placeholder": "Schrijf je bericht...",
+        "send": "Bericht sturen",
+        "sending": "Versturen...",
+        "empty": "Nog geen berichten.",
+        "back": "Terug naar campagne"
+      },
+      "leaderboard": {
+        "title": "Campagneleaderboard",
+        "topClippers": "Top clippers",
+        "ranked": "{count} gerankt",
+        "loading": "Leaderboard laden...",
+        "empty": "Nog geen goedgekeurde inzendingen.",
+        "emptyDescription": "Wees de eerste: dien een clip in om de toppositie te pakken.",
+        "clipper": "Clipper",
+        "score": "Score",
+        "topPost": "Toppost",
+        "viewTopClip": "Topclip bekijken"
+      },
+      "deadline": {
+        "noDeadline": "Geen deadline",
+        "ended": "Afgelopen",
+        "today": "Eindigt vandaag",
+        "oneDay": "1 dag over",
+        "days": "{days} dagen over",
+        "paidProgress": "{paid} van {budget} betaald"
+      }
+    },
+    "videos": {
+      "page": {
+        "eyebrow": "Ingediende clips",
+        "title": "Mijn clips",
+        "description": "Beheer je clips en volg prestaties",
+        "totalClips": "Totaal clips",
+        "allSubmissions": "Alle inzendingen",
+        "totalViews": "Totaal views",
+        "trackedOrClaimed": "Getrackt of geclaimd",
+        "unsettledDisclaimer": "Posts moeten worden goedgekeurd voordat inkomsten in je wallet komen."
+      },
+      "list": {
+        "trackingClips": "Tracking clips",
+        "submittedClip": "Ingediende clip",
+        "submittedRelative": "Ingediend {time}",
+        "noClipsYet": "Nog geen clips",
+        "noClipsDescription": "Dien je eerste clip in vanuit een campagne die je hebt gejoind om te verdienen.",
+        "noQueueTitle": "Geen {queue} clips",
+        "noQueueDescription": "Gebruik een andere wachtrij om de rest van de clips te bekijken.",
+        "showingCampaign": "Toont clips voor {campaign}",
+        "filterOptions": "Filteropties",
+        "open": "Openen",
+        "viewDetails": "Details bekijken"
+      },
+      "detail": {
+        "back": "Terug",
+        "earningsDisclaimer": "De post moet worden goedgekeurd voordat inkomsten in je wallet komen.",
+        "engagement": "Engagement",
+        "campaign": "Campagne",
+        "platform": "Platform",
+        "dates": "Datums",
+        "uploaded": "Geupload",
+        "viewCampaign": "Campagne bekijken",
+        "viewOriginalPost": "Originele post bekijken",
+        "rate": "{amount} per 1K views",
+        "metrics": {
+          "views": "Views",
+          "likes": "Likes",
+          "comments": "Reacties",
+          "shares": "Shares"
+        }
+      }
+    },
+    "payouts": {
+      "metadata": {
+        "title": "Betalingen"
+      },
+      "page": {
+        "eyebrow": "Betalingen",
+        "title": "Betalingen",
+        "description": "Volg inkomsten uit goedgekeurde clips naar opnameverzoeken en uitbetalingsgeschiedenis."
+      },
+      "tabs": {
+        "overview": "Overzicht",
+        "withdraw": "Opnemen",
+        "history": "Geschiedenis",
+        "title": "Betaalwerkruimte",
+        "paidOut": "Uitbetaald: {amount}.",
+        "focusAvailable": "{amount} beschikbaar om op te nemen",
+        "focusProcessing": "{amount} wordt al verwerkt",
+        "focusApproved": "{amount} tot nu toe goedgekeurd",
+        "focusNone": "Nog geen goedgekeurd saldo",
+        "missingDestination": "Voeg een opnamebestemming toe voordat je je volgende payout aanvraagt."
+      },
+      "overview": {
+        "availableBalance": "Beschikbaar saldo",
+        "readyUnlocks": "Klaar zodra opnemen vrij is",
+        "pending": "In behandeling",
+        "requestsProgress": "Verzoeken in verwerking",
+        "totalPaid": "Totaal betaald",
+        "confirmedOrSent": "Bevestigd of verzonden",
+        "totalEarned": "Totaal verdiend",
+        "approvedSubmissions": "Goedgekeurde inzendingen",
+        "earningsByCampaign": "Inkomsten per campagne",
+        "earningsDescription": "Goedgekeurde clipinkomsten gegroepeerd per campagne.",
+        "noEarningsTitle": "Nog geen goedgekeurde inkomsten",
+        "noEarningsDescription": "Zodra je clips zijn goedgekeurd, verschijnen je campagne-inkomsten hier."
+      },
+      "history": {
+        "noPayoutsTitle": "Nog geen payouts",
+        "noPayoutsDescription": "Je saldo wordt wekelijks uitbetaald. Zodra we een payout sturen, zie je hem hier."
+      },
+      "withdraw": {
+        "loading": "Laden...",
+        "methodTitle": "Opnamemethode",
+        "methodInfo": "Informatie over opnamemethode",
+        "tooltip": "Zorg dat het adres een USDT TRC-20 wallet op het TRON-netwerk is. Geld naar een niet-TRON-adres komt niet aan.",
+        "methodDescription": "Betalingen worden als USDT op het TRON-netwerk verstuurd. Sla je bestemmingsadres hieronder op - je kunt het altijd wijzigen.",
+        "minimumWithdrawal": "Minimale opname {amount}",
+        "addressLabel": "USDT-walletadres (TRC-20)",
+        "addressError": "Adres moet beginnen met hoofdletter T en 34 tekens lang zijn (TRC-20-formaat).",
+        "saveFailed": "Adres opslaan mislukt",
+        "saveError": "Er ging iets mis bij het opslaan van het adres",
+        "savedAddress": "Opgeslagen adres",
+        "availableToWithdraw": "Beschikbaar om op te nemen",
+        "moreToUnlock": "Nog {amount} om opnemen vrij te spelen",
+        "saveToUnlock": "Sla hierboven een opnameadres op om opnemen vrij te spelen",
+        "withdrawalFailed": "Opname mislukt",
+        "genericError": "Er ging iets mis",
+        "success": "Opnameverzoek ingediend voor {amount}",
+        "confirmText": "We sturen je volledige saldo {amount} naar {address}.",
+        "recentWithdrawals": "Recente opnames",
+        "noWithdrawalsTitle": "Nog geen opnames",
+        "noWithdrawalsDescription": "Opnames die je aanvraagt verschijnen hier zodra ze zijn ingediend.",
+        "txHash": "TX hash"
+      }
+    },
+    "referral": {
+      "page": {
+        "title": "Referralprogramma",
+        "description": "Verdien tot $100 voor elke creator die je uitnodigt - betaald als 10% van hun inkomsten tot je de $100-cap raakt. Wij betalen 110%: creators houden 100%, jouw deel komt daarbovenop.",
+        "emptyTitle": "Nodig een creator uit en verdien tot $100 per signup",
+        "emptyDescription": "Deel je link hieronder. Elke clipper die via jouw link aanmeldt levert je tot $100 op - betaald als 10% van hun payouts tot die cap. Zij houden nog steeds 100%; ons platform betaalt jouw deel.",
+        "peopleInvited": "Mensen uitgenodigd",
+        "totalEarned": "Totaal verdiend",
+        "pending": "In behandeling",
+        "thisMonth": "Deze maand",
+        "earningsOverTime": "Inkomsten door de tijd",
+        "topReferrers": "Top referrers",
+        "yourReferrals": "Jouw referrals",
+        "recentActivity": "Recente activiteit",
+        "anonymous": "Anoniem",
+        "unknown": "Onbekend"
+      },
+      "link": {
+        "title": "Jouw referrallink",
+        "description": "Deel deze link met creators. Je verdient 10% van hun payouts tot de $100-cap.",
+        "code": "Referralcode",
+        "yourCode": "Jouw code: {code}",
+        "copy": "Kopieren",
+        "copyLink": "Link kopieren",
+        "copied": "Gekopieerd",
+        "copiedWithBang": "Gekopieerd!",
+        "share": "Delen",
+        "email": "E-mail",
+        "hideQr": "QR verbergen",
+        "qrCode": "QR-code",
+        "discordTooltip": "Kopieert een opgemaakt bericht dat je in Discord kunt plakken",
+        "shareText": "Join me op ClipProfit en verdien met je content!",
+        "mailSubject": "Join ClipProfit",
+        "mailBody": "Hey! Ik gebruik ClipProfit om met mijn content te verdienen. Meld je aan via mijn referrallink en dan verdienen we allebei:",
+        "discordMessage": "**Verdien met je clips op ClipProfit** - meld je aan via mijn link en dan verdienen we allebei: {url}"
+      },
+      "milestone": {
+        "title": "Referral mijlpaal",
+        "invited": "{count, plural, one {# creator uitgenodigd} other {# creators uitgenodigd}}",
+        "next": "{count, plural, one {nog # invite} other {nog # invites}}",
+        "topTierReached": "Hoogste niveau bereikt",
+        "nextMilestone": "Volgende mijlpaal",
+        "maxDescription": "Je bent voorbij {count} invites. Thanks voor het delen.",
+        "unlocks": "Speelt vrij: {reward}.",
+        "rewards": {
+          "firstCommission": "Eerste commissie vrijgespeeld",
+          "recruiterBadge": "Recruiterbadge op je profiel",
+          "priorityFeedback": "Prioriteit voor feedback op je clips",
+          "earlyAccess": "Vroege toegang tot nieuwe campagnes",
+          "topReferrer": "Top Referrer-status + Discord-rol"
+        }
+      },
+      "table": {
+        "creator": "Creator",
+        "joined": "Aangemeld",
+        "commission": "Commissie",
+        "empty": "Nog geen doorverwezen creators.",
+        "emptyTitle": "Nog geen referrals",
+        "emptyDescription": "Deel je link. Zodra iemand zich aanmeldt en begint te verdienen, verschijnt diegene hier.",
+        "user": "Gebruiker",
+        "capProgress": "Capvoortgang",
+        "yourCommission": "Jouw commissie",
+        "maxed": "Max bereikt",
+        "joinedDate": "Aangemeld {date}",
+        "commissionAmount": "{amount} commissie"
+      },
+      "activity": {
+        "signup": "{name} heeft zich aangemeld",
+        "earning": "{name} genereerde {amount}",
+        "empty": "Nog geen referralactiviteit.",
+        "emptyStart": "Nog geen activiteit. Deel je referrallink om te starten.",
+        "signupWithLink": "{name} meldde zich aan via jouw link",
+        "earnedFrom": "{amount} verdiend via {name}"
+      },
+      "leaderboard": {
+        "referrals": "Referrals",
+        "earned": "Verdiend",
+        "you": "Jij",
+        "empty": "Nog geen referrers. Wees de eerste!",
+        "yourRank": "Jouw rang: #{rank}"
+      },
+      "chart": {
+        "empty": "Nog geen referralinkomsten.",
+        "earnings": "Inkomsten"
+      }
+    },
+    "profile": {
+      "header": {
+        "eyebrow": "Creatorprofiel"
+      },
+      "tabs": {
+        "general": "Algemeen",
+        "activity": "Activiteit",
+        "balance": "Saldo",
+        "community": "Community"
+      },
+      "general": {
+        "title": "Profielinformatie",
+        "fullName": "Volledige naam",
+        "email": "E-mail",
+        "emailNote": "Kan niet worden gewijzigd",
+        "country": "Land",
+        "memberSince": "Lid sinds",
+        "industry": "Industrie",
+        "notSet": "Niet ingesteld",
+        "objective": "Doel",
+        "noBio": "Nog geen bio"
+      },
+      "form": {
+        "title": "Profieldetails",
+        "displayName": "Weergavenaam",
+        "displayNamePlaceholder": "Je naam of paginanaam",
+        "displayNameRequired": "Weergavenaam is verplicht",
+        "bio": "Bio",
+        "bioPlaceholder": "Vertel bedrijven over je pagina en publiek",
+        "primaryGeo": "Primaire publieksregio",
+        "primaryGeoHelper": "Het land waar het grootste deel van je publiek zich bevindt",
+        "evmWallet": "Crypto-walletadres",
+        "forPayouts": "voor payouts",
+        "evmWalletHelper": "EVM-compatible wallet (Ethereum, Polygon, etc.). Vereist om creatorpayouts te ontvangen.",
+        "evmWalletInvalid": "EVM-walletadres moet een geldig Ethereum-adres zijn (0x...)",
+        "usdtWallet": "USDT-wallet (TRC-20 / Tron)",
+        "forCampaignDeposits": "voor campagnedeposito's en refunds",
+        "usdtWalletHelper": "Vereist om campagnes te lanceren. Onbesteed campagnebudget wordt hier teruggestort.",
+        "tronWalletInvalid": "Tron-wallet moet met T beginnen en 34 tekens lang zijn",
+        "saveFailed": "Profiel opslaan is mislukt",
+        "unexpectedError": "Er is iets misgegaan",
+        "saved": "Profiel opgeslagen.",
+        "saving": "Opslaan...",
+        "save": "Profiel opslaan"
+      },
+      "balance": {
+        "available": "Beschikbaar",
+        "ready": "Klaar",
+        "readyToWithdraw": "Klaar om op te nemen",
+        "pending": "In behandeling",
+        "businessDays": "5-10 werkdagen",
+        "minWithdrawal": "Minimale opname is $20. Nu beschikbaar: {amount}",
+        "history": "Opnamegeschiedenis",
+        "historyDescription": "Volg de status en timing van je betalingen.",
+        "noWithdrawalsTitle": "Nog geen opnames",
+        "noWithdrawalsDescription": "Je payoutgeschiedenis verschijnt hier.",
+        "method": "Methode: {method}"
+      },
+      "community": {
+        "title": "ClipProfit Community",
+        "description": "Connect met creators, campagnetips en nieuwe kansen.",
+        "iframeTitle": "ClipProfit Discord Community"
+      },
+      "activity": {
+        "title": "Activiteit",
+        "description": "Clips ingediend in de laatste {weeks} weken.",
+        "noActivity": "Nog geen activiteit",
+        "emptyDescription": "Dien je eerste clip in om je activiteitshistorie op te bouwen.",
+        "browseCampaigns": "Campagnes bekijken",
+        "less": "Minder",
+        "more": "Meer",
+        "totalClips": "Totaal clips",
+        "activeDays": "Actieve dagen",
+        "currentStreak": "Huidige streak",
+        "longestStreak": "Langste streak",
+        "dayCount": "{count, plural, one {# clip} other {# clips}} op {date}",
+        "days": "{count}d",
+        "dayLabels": ["Ma", "Wo", "Vr"]
+      }
+    },
+    "connections": {
+      "page": {
+        "emptyEyebrow": "Accountgezondheid",
+        "emptyTitle": "Accounts",
+        "emptyDescription": "Houd de pagina's waarop je post gekoppeld, geverifieerd en klaar voor tracking.",
+        "headerEyebrow": "Analytics",
+        "headerTitle": "Accounts",
+        "headerDescription": "Beheer gekoppelde pagina's en bekijk prestaties op een plek.",
+        "noPagesTitle": "Nog geen pagina's gekoppeld",
+        "noPagesDescription": "Gebruik de koppelknop hierboven om een platform te kiezen en de eerste pagina toe te voegen.",
+        "noAdminAccountsTitle": "Nog geen accounts gekoppeld",
+        "noAdminAccountsDescription": "Deze clipper heeft nog geen geverifieerd postingaccount gekoppeld.",
+        "noPlatformAccounts": "Geen {platform}-accounts gekoppeld.",
+        "noFollowerSnapshot": "Geen volgersnapshot",
+        "metaFollowers": "{count} volgers",
+        "metaSubscribers": "{count} abonnees",
+        "lastSynced": "Laatst gesynchroniseerd {date}",
+        "neverSynced": "nooit"
+      },
+      "workspace": {
+        "overview": "Overzicht",
+        "content": "Content",
+        "timeline": "Tijdlijn",
+        "audience": "Publiek",
+        "insights": "Inzichten",
+        "allPlatforms": "Alle platforms"
+      },
+      "overview": {
+        "totalViews": "Totaal views",
+        "totalFollowers": "Totaal volgers",
+        "engagement": "Engagement",
+        "earnings": "Inkomsten",
+        "followers": "Volgers",
+        "views": "Views",
+        "topPost": "Toppost",
+        "connections": "Connecties",
+        "noConnections": "Nog geen connecties."
+      },
+      "content": {
+        "noPosts": "Geen posts in deze periode.",
+        "posted": "Geplaatst",
+        "creator": "Creator",
+        "plays": "Plays",
+        "watchMinutes": "Kijken (min)",
+        "watchSeconds": "Kijken (s)",
+        "reactions": "Reacties",
+        "totalInteractions": "Totaal int.",
+        "profileVisits": "Profielbezoeken",
+        "saves": "Saves",
+        "reach": "Bereik",
+        "follows": "Follows",
+        "noAccepting": "Geen campagnes accepteren inzendingen"
+      },
+      "insights": {
+        "trafficSource": "Verkeersbron",
+        "playbackLocation": "Afspeellocatie",
+        "deviceType": "Apparaattype",
+        "contentType": "Contenttype",
+        "subscribedStatus": "Abonneestatus",
+        "postingCadence": "Postritme",
+        "noPosts": "Geen posts in deze periode."
+      },
+      "connect": {
+        "button": "Account koppelen",
+        "title": "Platform koppelen",
+        "description": "Kies het platform dat je wilt koppelen voor tracking en inzendingen.",
+        "optionsAria": "Opties openen voor {label}",
+        "optionsTitle": "Opties voor {label}",
+        "instagram": "Instagram koppelen",
+        "tiktok": "TikTok koppelen",
+        "youtube": "YouTube koppelen",
+        "facebook": "Facebook koppelen",
+        "disconnect": "Loskoppelen",
+        "disconnectAccount": "{label} loskoppelen",
+        "disconnectTitle": "Weet je zeker dat je deze pagina wilt loskoppelen?",
+        "disconnectDescription": "{label} loskoppelen stopt stattracking en inzendingen vanaf dit account. Je kunt later opnieuw koppelen vanaf deze pagina.",
+        "cancel": "Annuleren",
+        "remove": "Verwijderen",
+        "removing": "Verwijderen...",
+        "confirmRemove": "{label} verwijderen?"
+      },
+      "bio": {
+        "title": "Bioverificatie",
+        "pending": "Zet de verificatiecode in je bio en check opnieuw.",
+        "verified": "Geverifieerd en klaar voor campagnes.",
+        "failed": "We konden de code nog niet verifieren."
+      }
+    },
+    "applications": {
+      "page": {
+        "title": "Mijn aanmeldingen",
+        "empty": "Je hebt je nog niet aangemeld voor campagnes",
+        "applied": "Aangemeld"
+      },
+      "detail": {
+        "totalEarned": "Totaal verdiend",
+        "submissions": "Inzendingen",
+        "cpm": "CPM",
+        "submitViews": "Views indienen",
+        "noSubmissions": "Nog geen inzendingen",
+        "claimedViews": "Geclaimde views",
+        "earnedLabel": "Verdiend: {amount}"
+      },
+      "submit": {
+        "title": "Clip indienen",
+        "submitContentFor": "Content indienen voor {campaign}",
+        "requirements": "Vereisten",
+        "campaignRequirements": "Campagnevereisten",
+        "refreshPosts": "Posts verversen",
+        "refresh": "Verversen",
+        "search": "Posts zoeken",
+        "searchPlaceholder": "Zoek op caption of URL",
+        "noPosts": "Geen posts gevonden",
+        "afterDate": "Na {date}",
+        "allTime": "Altijd",
+        "customRange": "Aangepaste periode",
+        "to": "tot",
+        "reset": "Resetten",
+        "containsRequiredHashtags": "Bevat vereiste hashtags",
+        "submitted": "Ingediend",
+        "loadError": "Je {platform}-posts konden niet worden geladen. Probeer het opnieuw.",
+        "submissionFailed": "Indienen mislukt. Probeer het opnieuw.",
+        "submittedSuccess": "{submitted} van {total} posts succesvol ingediend.",
+        "campaignEnded": "Deze campagne is afgelopen en accepteert geen inzendingen meer.",
+        "rateLimited": "Instagram heeft rate limiting. Probeer het over ongeveer 1 minuut opnieuw.",
+        "prefillNotFound": "We konden die post niet automatisch selecteren op deze pagina. Wissel van platformtab of blader terug om hem te vinden.",
+        "connectPromptClose": "Koppelscherm sluiten",
+        "connectPromptTitle": "Je hebt nog geen {platform}-account",
+        "connectPromptDescription": "Koppel het nu om posts te laden en clips in te dienen.",
+        "connectNow": "Nu koppelen",
+        "submitSelected": "Indienen{count}",
+        "selectedCount": "{count, plural, one {# post geselecteerd} other {# posts geselecteerd}}",
+        "selectPosts": "Selecteer de posts die je wilt indienen",
+        "next": "Volgende",
+        "previous": "Vorige",
+        "submit": "Indienen",
+        "submitting": "Indienen...",
+        "dateFilter": "Datumfilter"
+      }
+    },
+    "course": {
+      "metadata": {
+        "title": "Training"
+      },
+      "page": {
+        "eyebrow": "Training",
+        "title": "Course hub",
+        "description": "Kies een training, rond lessen op volgorde af, haal quizzen en verzamel badges als bewijs.",
+        "continueLearning": "Verder leren",
+        "lessonsCompleted": "Lessen afgerond",
+        "acrossCourses": "Over alle beschikbare trainingen",
+        "badgesEarned": "Badges verdiend",
+        "fromQuizzes": "Uit les- en sectiequizzen",
+        "courses": "Trainingen",
+        "readyCourses": "Klaar om door te werken",
+        "availableCourses": "Beschikbare trainingen",
+        "availableDescription": "Elke training bevat leeslessen, quizchecks, voortgang en badges.",
+        "courseFallback": "{platform} training",
+        "lessonsComplete": "{completed}/{total} lessen afgerond"
+      }
+    },
+    "leaderboard": {
+      "rank": "Rang",
+      "earnings": "Inkomsten",
+      "views": "Views",
+      "today": "Vandaag",
+      "last7d": "Laatste 7d",
+      "overall": "Totaal",
+      "last7Days": "Laatste 7 dagen",
+      "allTime": "All-time",
+      "noData": "Nog geen data",
+      "updated": "Bijgewerkt: {time}",
+      "noRank": "#-"
+    },
+    "notifications": {
+      "title": "Meldingen",
+      "emptyTitle": "Nog geen meldingen",
+      "emptyDescription": "Campagne-, payout- en accountupdates verschijnen hier.",
+      "allCaughtUpTitle": "Je bent helemaal bij",
+      "allCaughtUpDescription": "Nieuwe campagneupdates, goedkeuringen en payouts verschijnen hier realtime.",
+      "markAllRead": "Alles als gelezen markeren",
+      "unread": "Ongelezen",
+      "read": "Gelezen",
+      "rejectionReason": "Reden: {reason}",
+      "types": {
+        "CAMPAIGN_LAUNCHED": "Nieuwe campagne beschikbaar",
+        "SUBMISSION_APPROVED": "Inzending goedgekeurd",
+        "SUBMISSION_REJECTED": "Inzending afgewezen",
+        "APPLICATION_APPROVED": "Joinverzoek goedgekeurd",
+        "APPLICATION_REJECTED": "Joinverzoek afgewezen",
+        "DEMOGRAPHICS_VERIFIED": "Demografie geverifieerd",
+        "DEMOGRAPHICS_REJECTED": "Demografie afgewezen",
+        "BIO_VERIFIED": "Bio geverifieerd",
+        "PAYOUT_SENT": "Payout verzonden",
+        "REFERRAL_EARNED": "Referral verdiend"
+      }
+    },
+    "stats": {
+      "title": "Statistieken",
+      "description": "Volg prestaties over gekoppelde accounts.",
+      "comingSoon": "Statistieken zijn beschikbaar via je Accountspagina."
+    },
+    "wallet": {
+      "title": "Wallet",
+      "description": "Volg saldo en opnameactiviteit.",
+      "balance": "Saldo"
+    },
+    "updates": {
+      "metadata": {
+        "title": "Updates"
+      },
+      "title": "Updates",
+      "description": "Wat er recent is veranderd in ClipProfit. Nieuwste eerst.",
+      "categories": {
+        "New": "Nieuw",
+        "Improved": "Verbeterd",
+        "Fixed": "Opgelost"
+      },
+      "items": {
+        "activationChecklist": {
+          "title": "Opgeruimder dashboard met activatiechecklist",
+          "description": "Je dashboard begroet je nu bij naam, waarschuwt wanneer iets aandacht vraagt en toont een stappenplan totdat je je eerste payout hebt gemaakt."
+        },
+        "paymentsPage": {
+          "title": "Wallet en Payouts zijn nu een Payments-pagina",
+          "description": "Overview, opnames en geschiedenis staan in drie tabs. De oude /creator/wallet-link blijft werken."
+        },
+        "campaignQualification": {
+          "title": "Campagnekaarten tonen of je kwalificeert",
+          "description": "Elke kaart laat meteen zien of je voldoet aan de platform- en volgereisen en markeert campagnes die binnen 7 dagen aflopen."
+        },
+        "connectAccountPrompt": {
+          "title": "We vragen nu eerst voordat je een account koppelt",
+          "description": "Een account koppelen opent een kort paneel dat uitlegt waartoe we toegang krijgen en wat we niet doen voordat je naar het platform gaat."
+        },
+        "feedbackDrawer": {
+          "title": "Feedbackdrawer in de app",
+          "description": "Gebruik de Feedback-knop bovenaan om een bugrapport of featureverzoek te sturen. Pagina, browser en viewport worden automatisch meegestuurd."
         }
       }
     }
