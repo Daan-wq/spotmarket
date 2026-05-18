@@ -1368,6 +1368,20 @@
         "removing": "Verwijderen...",
         "confirmRemove": "{label} verwijderen?"
       },
+      "connectWarning": {
+        "facebook": {
+          "title": "Gebruik een Facebook-pagina, geen persoonlijk profiel",
+          "description": "ClipProfit kan Facebook Reels en posts alleen tracken vanaf pagina's die je beheert. Persoonlijke Facebook-profielen kunnen niet worden gekoppeld voor tracking."
+        },
+        "instagram": {
+          "title": "Gebruik een professioneel Instagram-account",
+          "description": "Koppel een Instagram-bedrijfs- of creatorprofiel. Persoonlijke Instagram-accounts leveren niet de inzichten die ClipProfit nodig heeft."
+        },
+        "continue": "Ik begrijp het, doorgaan",
+        "doNotWarn": "Niet meer waarschuwen",
+        "cancel": "Niet nu",
+        "saveError": "We konden die voorkeur niet opslaan. Je kunt nog steeds doorgaan."
+      },
       "bio": {
         "title": "Bioverificatie",
         "pending": "Zet de verificatiecode in je bio en check opnieuw.",

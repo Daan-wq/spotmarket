@@ -71,6 +71,10 @@ interface AccountsAnalyticsWorkspaceProps {
   basePath: string;
   profileScope: CreatorStatsScope;
   searchParams: AccountsAnalyticsSearchParams;
+  connectWarningPreferences?: {
+    facebookPage: boolean;
+    instagramProfessional: boolean;
+  };
   showHeader?: boolean;
 }
 
@@ -90,6 +94,7 @@ export async function AccountsAnalyticsWorkspace({
   basePath,
   profileScope,
   searchParams,
+  connectWarningPreferences,
   showHeader = true,
 }: AccountsAnalyticsWorkspaceProps) {
   const locale = (await getLocale()) as Locale;
@@ -99,13 +104,33 @@ export async function AccountsAnalyticsWorkspace({
   const { scope, accountId } = resolveScope(searchParams, inventory, range.key, basePath);
   const subTab = parseSubTab(searchParams.tab, scope, accountId);
   const readOnly = mode === "admin";
+  const warningActions = {
+    continueLabel: t("connectWarning.continue"),
+    doNotWarnLabel: t("connectWarning.doNotWarn"),
+    cancelLabel: t("connectWarning.cancel"),
+    saveErrorLabel: t("connectWarning.saveError"),
+  };
 
   const connectButtons = mode === "creator" ? (
     <ConnectPlatformDialog>
-      <InstagramConnectButton />
+      <InstagramConnectButton
+        dismissed={connectWarningPreferences?.instagramProfessional ?? false}
+        warningCopy={{
+          title: t("connectWarning.instagram.title"),
+          description: t("connectWarning.instagram.description"),
+          ...warningActions,
+        }}
+      />
       <TikTokConnectButton />
       <YoutubeConnectButton />
-      <FacebookConnectButton />
+      <FacebookConnectButton
+        dismissed={connectWarningPreferences?.facebookPage ?? false}
+        warningCopy={{
+          title: t("connectWarning.facebook.title"),
+          description: t("connectWarning.facebook.description"),
+          ...warningActions,
+        }}
+      />
     </ConnectPlatformDialog>
   ) : undefined;
 
