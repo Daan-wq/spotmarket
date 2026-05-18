@@ -49,7 +49,9 @@
       "or": "of",
       "redirecting": "Doorsturen...",
       "signInWith": "Inloggen met {provider}",
-      "signUpWith": "Aanmelden met {provider}"
+      "signUpWith": "Aanmelden met {provider}",
+      "signInOther": "Log in op een andere manier",
+      "signUpOther": "Registreer op een andere manier"
     },
     "email": {
       "subject": "Bevestig je ClipProfit-account",

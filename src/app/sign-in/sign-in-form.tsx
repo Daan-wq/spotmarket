@@ -28,6 +28,7 @@ export function SignInForm() {
   const searchParams = useSearchParams();
   const t = useTranslations("auth.signIn");
   const forgotT = useTranslations("auth.forgot");
+  const oauthT = useTranslations("auth.oauth");
   const commonT = useTranslations("common");
   const redirectUrl = safeRedirectPath(searchParams.get("redirect_url"), "/");
 
@@ -37,6 +38,7 @@ export function SignInForm() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
+  const [showOtherMethods, setShowOtherMethods] = useState(false);
   const [error, setError] = useState<string | null>(
     authError === "callback_failed" ? t("callbackFailed") : authError
   );
@@ -111,8 +113,9 @@ export function SignInForm() {
         ) : (
           <form onSubmit={handleForgotPassword} className="space-y-4">
             <div>
-              <label className="block text-sm font-medium mb-1.5" style={{ color: "var(--text-secondary)" }}>{commonT("email")}</label>
+              <label htmlFor="forgot-email" className="block text-sm font-medium mb-1.5" style={{ color: "var(--text-secondary)" }}>{commonT("email")}</label>
               <input
+                id="forgot-email"
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
@@ -172,75 +175,100 @@ export function SignInForm() {
         </p>
       )}
 
-      <OAuthButtons mode="signin" />
-      <OAuthDivider />
+      {error && !showOtherMethods && (
+        <p className="text-sm px-3 py-2 rounded-lg mb-4" style={{ color: "#fca5a5", background: "rgba(239,68,68,0.1)", border: "1px solid rgba(239,68,68,0.2)" }}>
+          {error}
+        </p>
+      )}
 
-      <form onSubmit={handleSignIn} className="space-y-4">
-        <div>
-          <label className="block text-sm font-medium mb-1.5" style={{ color: "var(--text-secondary)" }}>{commonT("email")}</label>
-          <input
-            type="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            required
-            className={inputClass}
-            style={inputStyle}
-            onFocus={(e) => { e.currentTarget.style.borderColor = "var(--accent)"; e.currentTarget.style.boxShadow = "0 0 0 3px var(--accent-bg)"; }}
-            onBlur={(e) => { e.currentTarget.style.borderColor = "var(--border)"; e.currentTarget.style.boxShadow = "none"; }}
-          />
-        </div>
-        <div>
-          <div className="flex items-center justify-between mb-1.5">
-            <label className="text-sm font-medium" style={{ color: "var(--text-secondary)" }}>{commonT("password")}</label>
-            <button
-              type="button"
-              onClick={() => { setMode("forgot"); setError(null); }}
-              className="text-xs hover:underline"
-              style={{ color: "var(--text-secondary)" }}
-            >
-              {t("forgotPassword")}
-            </button>
+      <OAuthButtons mode="signin" providers={["discord"]} />
+
+      {showOtherMethods ? (
+        <>
+          <div className="mt-4">
+            <OAuthButtons mode="signin" providers={["google"]} />
           </div>
-          <div className="relative">
-            <input
-              type={showPassword ? "text" : "password"}
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-              className={inputClass}
-              style={{ ...inputStyle, paddingRight: "2.5rem" }}
-              onFocus={(e) => { e.currentTarget.style.borderColor = "var(--accent)"; e.currentTarget.style.boxShadow = "0 0 0 3px var(--accent-bg)"; }}
-              onBlur={(e) => { e.currentTarget.style.borderColor = "var(--border)"; e.currentTarget.style.boxShadow = "none"; }}
-            />
+          <OAuthDivider />
+
+          <form onSubmit={handleSignIn} className="space-y-4">
+            <div>
+              <label htmlFor="sign-in-email" className="block text-sm font-medium mb-1.5" style={{ color: "var(--text-secondary)" }}>{commonT("email")}</label>
+              <input
+                id="sign-in-email"
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                required
+                className={inputClass}
+                style={inputStyle}
+                onFocus={(e) => { e.currentTarget.style.borderColor = "var(--accent)"; e.currentTarget.style.boxShadow = "0 0 0 3px var(--accent-bg)"; }}
+                onBlur={(e) => { e.currentTarget.style.borderColor = "var(--border)"; e.currentTarget.style.boxShadow = "none"; }}
+              />
+            </div>
+            <div>
+              <div className="flex items-center justify-between mb-1.5">
+                <label htmlFor="sign-in-password" className="text-sm font-medium" style={{ color: "var(--text-secondary)" }}>{commonT("password")}</label>
+                <button
+                  type="button"
+                  onClick={() => { setMode("forgot"); setError(null); }}
+                  className="text-xs hover:underline"
+                  style={{ color: "var(--text-secondary)" }}
+                >
+                  {t("forgotPassword")}
+                </button>
+              </div>
+              <div className="relative">
+                <input
+                  id="sign-in-password"
+                  type={showPassword ? "text" : "password"}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  required
+                  className={inputClass}
+                  style={{ ...inputStyle, paddingRight: "2.5rem" }}
+                  onFocus={(e) => { e.currentTarget.style.borderColor = "var(--accent)"; e.currentTarget.style.boxShadow = "0 0 0 3px var(--accent-bg)"; }}
+                  onBlur={(e) => { e.currentTarget.style.borderColor = "var(--border)"; e.currentTarget.style.boxShadow = "none"; }}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword((value) => !value)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2"
+                  style={{ color: "var(--text-secondary)" }}
+                  tabIndex={-1}
+                >
+                  <EyeIcon open={showPassword} />
+                </button>
+              </div>
+            </div>
+
+            {error && (
+              <p className="text-sm px-3 py-2 rounded-lg" style={{ color: "#fca5a5", background: "rgba(239,68,68,0.1)", border: "1px solid rgba(239,68,68,0.2)" }}>
+                {error}
+              </p>
+            )}
+
             <button
-              type="button"
-              onClick={() => setShowPassword((value) => !value)}
-              className="absolute right-3 top-1/2 -translate-y-1/2"
-              style={{ color: "var(--text-secondary)" }}
-              tabIndex={-1}
+              type="submit"
+              disabled={loading}
+              className="w-full py-2.5 rounded-lg text-sm font-semibold text-white transition-opacity disabled:opacity-50"
+              style={{ background: "var(--accent)" }}
+              onMouseEnter={(e) => { if (!loading) (e.currentTarget as HTMLElement).style.opacity = "0.88"; }}
+              onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.opacity = "1"; }}
             >
-              <EyeIcon open={showPassword} />
+              {loading ? t("submitting") : t("submit")}
             </button>
-          </div>
-        </div>
-
-        {error && (
-          <p className="text-sm px-3 py-2 rounded-lg" style={{ color: "#fca5a5", background: "rgba(239,68,68,0.1)", border: "1px solid rgba(239,68,68,0.2)" }}>
-            {error}
-          </p>
-        )}
-
+          </form>
+        </>
+      ) : (
         <button
-          type="submit"
-          disabled={loading}
-          className="w-full py-2.5 rounded-lg text-sm font-semibold text-white transition-opacity disabled:opacity-50"
-          style={{ background: "var(--accent)" }}
-          onMouseEnter={(e) => { if (!loading) (e.currentTarget as HTMLElement).style.opacity = "0.88"; }}
-          onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.opacity = "1"; }}
+          type="button"
+          onClick={() => setShowOtherMethods(true)}
+          className="mt-3 w-full text-center text-xs font-medium transition-colors hover:underline"
+          style={{ color: "var(--text-secondary)" }}
         >
-          {loading ? t("submitting") : t("submit")}
+          {oauthT("signInOther")}
         </button>
-      </form>
+      )}
     </>
   );
 }
