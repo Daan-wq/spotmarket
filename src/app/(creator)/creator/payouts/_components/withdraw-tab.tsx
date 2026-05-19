@@ -224,8 +224,8 @@ export function WithdrawTab() {
                 <h2 className="text-base font-semibold text-neutral-950">{t("panelTitle")}</h2>
                 <label className="mt-4 block text-sm font-semibold text-neutral-950">
                   {t("amountLabel")}
-                  <div className="mt-2 flex overflow-hidden rounded-xl border border-neutral-200 bg-white focus-within:border-neutral-400">
-                    <span className="flex h-11 items-center px-3 text-sm font-semibold text-neutral-500">
+                  <div className="mt-2 flex rounded-xl border border-neutral-200 bg-white focus-within:border-neutral-400">
+                    <span className="flex h-11 shrink-0 items-center border-0 bg-transparent px-3 text-sm font-semibold text-neutral-500">
                       €
                     </span>
                     <input
@@ -237,11 +237,11 @@ export function WithdrawTab() {
                         if (amountError) setAmountError(null);
                       }}
                       placeholder={t("amountPlaceholder")}
-                      className="h-11 min-w-0 flex-1 bg-transparent px-1 text-sm font-semibold text-neutral-950 outline-none placeholder:text-neutral-400"
+                      className="h-11 min-w-0 flex-1 appearance-none border-0 bg-transparent px-1 text-sm font-semibold text-neutral-950 shadow-none outline-none ring-0 placeholder:text-neutral-400 focus:border-0 focus:outline-none focus:ring-0"
                     />
                     <button
                       type="button"
-                      className="px-3 text-sm font-semibold text-neutral-500 transition hover:text-neutral-950"
+                      className="h-11 shrink-0 appearance-none border-0 bg-transparent px-3 text-sm font-semibold text-neutral-500 shadow-none outline-none ring-0 transition hover:text-neutral-950 focus:outline-none focus:ring-0"
                       onClick={() => {
                         setAmountInput(formatAmountInput(balance));
                         setAmountError(null);
