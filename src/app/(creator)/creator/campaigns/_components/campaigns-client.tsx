@@ -474,14 +474,14 @@ function CampaignCard({ campaign }: { campaign: CampaignData }) {
           <button
             type="button"
             disabled
-            className="inline-flex h-10 flex-1 cursor-not-allowed items-center justify-center rounded-xl bg-neutral-200 px-4 text-sm font-semibold text-neutral-500"
+            className="inline-flex h-10 w-full cursor-not-allowed items-center justify-center rounded-xl bg-neutral-200 px-4 text-sm font-semibold text-neutral-500 sm:flex-1"
           >
             {primaryLabel}
           </button>
         ) : (
           <Link
             href={primaryHref}
-            className="inline-flex h-10 flex-1 items-center justify-center rounded-xl bg-neutral-950 px-4 text-sm font-semibold text-white shadow-[0_8px_18px_rgba(0,0,0,0.14)] transition hover:bg-neutral-800"
+            className="inline-flex h-10 w-full items-center justify-center rounded-xl bg-neutral-950 px-4 text-sm font-semibold text-white shadow-[0_8px_18px_rgba(0,0,0,0.14)] transition hover:bg-neutral-800 sm:flex-1"
           >
             {primaryLabel}
           </Link>
