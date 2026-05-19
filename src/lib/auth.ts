@@ -94,6 +94,8 @@ export const getCreatorHeader = cache(async (supabaseId: string) => {
     select: {
       id: true,
       email: true,
+      dismissedFacebookPageWarning: true,
+      dismissedInstagramProfessionalWarning: true,
       creatorProfile: {
         select: { id: true, displayName: true },
       },

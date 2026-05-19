@@ -21,6 +21,8 @@ model User {
   notifyCampaignAlerts Boolean  @default(true)
   notifyPayoutAlerts   Boolean  @default(true)
   profilePublic        Boolean  @default(true)
+  dismissedFacebookPageWarning          Boolean  @default(false)
+  dismissedInstagramProfessionalWarning Boolean  @default(false)
   discordId            String?  @unique
   discordUsername      String?
   createdAt            DateTime @default(now())

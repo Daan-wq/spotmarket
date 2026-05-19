@@ -46,6 +46,10 @@ export default async function CreatorConnectionsPage({ searchParams }: PageProps
           userId: header.id,
           creatorProfileId: header.creatorProfile.id,
         }}
+        connectWarningPreferences={{
+          facebookPage: header.dismissedFacebookPageWarning,
+          instagramProfessional: header.dismissedInstagramProfessionalWarning,
+        }}
         searchParams={sp}
       />
     </div>

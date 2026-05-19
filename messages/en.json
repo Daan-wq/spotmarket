@@ -1397,6 +1397,20 @@
         "removing": "Removing...",
         "confirmRemove": "Remove {label}?"
       },
+      "connectWarning": {
+        "facebook": {
+          "title": "Use a Facebook Page, not a personal profile",
+          "description": "ClipProfit can track Facebook Reels and posts only from Pages you manage. Personal Facebook profiles cannot be connected for tracking."
+        },
+        "instagram": {
+          "title": "Use an Instagram professional account",
+          "description": "Connect a Business or Creator Instagram profile. Personal Instagram accounts cannot provide the insights ClipProfit needs."
+        },
+        "continue": "I understand, continue",
+        "doNotWarn": "Do not warn me again",
+        "cancel": "Not now",
+        "saveError": "Could not save that preference. You can still continue."
+      },
       "bio": {
         "title": "Bio verification",
         "pending": "Add the verification code to your bio, then check again.",

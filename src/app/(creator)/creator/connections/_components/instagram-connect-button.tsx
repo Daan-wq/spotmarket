@@ -2,7 +2,22 @@
 
 import { BioVerifyCard } from "./bio-verify-card";
 
-export function InstagramConnectButton() {
+interface ConnectWarningCopy {
+  title: string;
+  description: string;
+  continueLabel: string;
+  doNotWarnLabel: string;
+  cancelLabel: string;
+  saveErrorLabel: string;
+}
+
+export function InstagramConnectButton({
+  dismissed = false,
+  warningCopy,
+}: {
+  dismissed?: boolean;
+  warningCopy?: ConnectWarningCopy;
+}) {
   return (
     <BioVerifyCard
       brand={{
@@ -11,6 +26,15 @@ export function InstagramConnectButton() {
       }}
       oauthHref="/api/auth/instagram"
       oauthAvailable={true}
+      oauthWarning={
+        warningCopy
+          ? {
+              platform: "INSTAGRAM",
+              dismissed,
+              ...warningCopy,
+            }
+          : undefined
+      }
     />
   );
 }
