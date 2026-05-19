@@ -58,8 +58,8 @@ export function ContactSupportButton() {
         }
       >
         <div className="space-y-4">
-          <div className="flex items-start gap-3 rounded-xl bg-neutral-50 p-4">
-            <div className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-white text-neutral-950 ring-1 ring-neutral-200">
+          <div className="flex items-start gap-3 border-y border-neutral-100 py-4">
+            <div className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-neutral-50 text-neutral-950 ring-1 ring-neutral-200">
               <Ticket className="h-4 w-4" />
             </div>
             <div>
