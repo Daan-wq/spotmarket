@@ -168,7 +168,7 @@ export default async function CampaignsPage() {
       id: c.id,
       name: c.name,
       description: c.description ?? "",
-      rewardRate: Number(c.creatorCpv) * 1000,
+      rewardRate: Number(c.creatorCpv) * 1_000_000,
       totalBudget: Number(c.totalBudget),
       totalPaid,
       platforms: requiredPlatforms,

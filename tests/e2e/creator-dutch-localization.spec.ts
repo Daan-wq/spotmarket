@@ -41,6 +41,9 @@ async function setDutchLocale(context: BrowserContext) {
 
 async function signIn(page: Page) {
   await page.goto("/sign-in");
+  await page
+    .getByRole("button", { name: /sign in another way|log in op een andere manier/i })
+    .click();
   await page.getByLabel(/email/i).fill(process.env.E2E_CREATOR_EMAIL!);
   await page.getByLabel(/password/i).fill(process.env.E2E_CREATOR_PASSWORD!);
   await page

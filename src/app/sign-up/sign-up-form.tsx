@@ -13,12 +13,14 @@ export function SignUpForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const t = useTranslations("auth.signUp");
+  const oauthT = useTranslations("auth.oauth");
   const commonT = useTranslations("common");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [showOtherMethods, setShowOtherMethods] = useState(false);
   const [emailSent, setEmailSent] = useState(false);
   const [ticketId, setTicketId] = useState<string | null>(null);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -141,71 +143,91 @@ export function SignUpForm() {
             </Link>
           </p>
 
-          <OAuthButtons mode="signup" />
-          <OAuthDivider />
+          <OAuthButtons mode="signup" providers={["discord"]} />
 
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium mb-1.5" style={{ color: "var(--text-secondary)" }}>{commonT("email")}</label>
-              <input
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                required
-                className="w-full px-3 py-2.5 rounded-lg text-sm outline-none transition-all text-white"
-                style={{ border: "1px solid rgba(255,255,255,0.1)", background: "rgba(255,255,255,0.05)" }}
-                onFocus={(e) => { e.currentTarget.style.borderColor = "var(--accent)"; e.currentTarget.style.boxShadow = "0 0 0 3px var(--accent-bg)"; }}
-                onBlur={(e) => { e.currentTarget.style.borderColor = "rgba(255,255,255,0.1)"; e.currentTarget.style.boxShadow = "none"; }}
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium mb-1.5" style={{ color: "var(--text-secondary)" }}>
-                {commonT("password")} <span style={{ color: "var(--text-secondary)" }}>({t("passwordHint")})</span>
-              </label>
-              <input
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-                minLength={6}
-                className="w-full px-3 py-2.5 rounded-lg text-sm outline-none transition-all text-white"
-                style={{ border: "1px solid rgba(255,255,255,0.1)", background: "rgba(255,255,255,0.05)" }}
-                onFocus={(e) => { e.currentTarget.style.borderColor = "var(--accent)"; e.currentTarget.style.boxShadow = "0 0 0 3px var(--accent-bg)"; }}
-                onBlur={(e) => { e.currentTarget.style.borderColor = "rgba(255,255,255,0.1)"; e.currentTarget.style.boxShadow = "none"; }}
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium mb-1.5" style={{ color: "var(--text-secondary)" }}>{t("confirmPassword")}</label>
-              <input
-                type="password"
-                value={confirmPassword}
-                onChange={(e) => setConfirmPassword(e.target.value)}
-                required
-                minLength={6}
-                className="w-full px-3 py-2.5 rounded-lg text-sm outline-none transition-all text-white"
-                style={{ border: "1px solid rgba(255,255,255,0.1)", background: "rgba(255,255,255,0.05)" }}
-                onFocus={(e) => { e.currentTarget.style.borderColor = "var(--accent)"; e.currentTarget.style.boxShadow = "0 0 0 3px var(--accent-bg)"; }}
-                onBlur={(e) => { e.currentTarget.style.borderColor = "rgba(255,255,255,0.1)"; e.currentTarget.style.boxShadow = "none"; }}
-              />
-            </div>
+          {showOtherMethods ? (
+            <>
+              <div className="mt-4">
+                <OAuthButtons mode="signup" providers={["google"]} />
+              </div>
+              <OAuthDivider />
 
-            {error && (
-              <p className="text-sm px-3 py-2 rounded-lg" style={{ color: "#fca5a5", background: "rgba(239,68,68,0.1)", border: "1px solid rgba(239,68,68,0.2)" }}>
-                {error}
-              </p>
-            )}
+              <form onSubmit={handleSubmit} className="space-y-4">
+                <div>
+                  <label htmlFor="sign-up-email" className="block text-sm font-medium mb-1.5" style={{ color: "var(--text-secondary)" }}>{commonT("email")}</label>
+                  <input
+                    id="sign-up-email"
+                    type="email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    required
+                    className="w-full px-3 py-2.5 rounded-lg text-sm outline-none transition-all text-white"
+                    style={{ border: "1px solid rgba(255,255,255,0.1)", background: "rgba(255,255,255,0.05)" }}
+                    onFocus={(e) => { e.currentTarget.style.borderColor = "var(--accent)"; e.currentTarget.style.boxShadow = "0 0 0 3px var(--accent-bg)"; }}
+                    onBlur={(e) => { e.currentTarget.style.borderColor = "rgba(255,255,255,0.1)"; e.currentTarget.style.boxShadow = "none"; }}
+                  />
+                </div>
+                <div>
+                  <label htmlFor="sign-up-password" className="block text-sm font-medium mb-1.5" style={{ color: "var(--text-secondary)" }}>
+                    {commonT("password")} <span style={{ color: "var(--text-secondary)" }}>({t("passwordHint")})</span>
+                  </label>
+                  <input
+                    id="sign-up-password"
+                    type="password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    required
+                    minLength={6}
+                    className="w-full px-3 py-2.5 rounded-lg text-sm outline-none transition-all text-white"
+                    style={{ border: "1px solid rgba(255,255,255,0.1)", background: "rgba(255,255,255,0.05)" }}
+                    onFocus={(e) => { e.currentTarget.style.borderColor = "var(--accent)"; e.currentTarget.style.boxShadow = "0 0 0 3px var(--accent-bg)"; }}
+                    onBlur={(e) => { e.currentTarget.style.borderColor = "rgba(255,255,255,0.1)"; e.currentTarget.style.boxShadow = "none"; }}
+                  />
+                </div>
+                <div>
+                  <label htmlFor="sign-up-confirm-password" className="block text-sm font-medium mb-1.5" style={{ color: "var(--text-secondary)" }}>{t("confirmPassword")}</label>
+                  <input
+                    id="sign-up-confirm-password"
+                    type="password"
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    required
+                    minLength={6}
+                    className="w-full px-3 py-2.5 rounded-lg text-sm outline-none transition-all text-white"
+                    style={{ border: "1px solid rgba(255,255,255,0.1)", background: "rgba(255,255,255,0.05)" }}
+                    onFocus={(e) => { e.currentTarget.style.borderColor = "var(--accent)"; e.currentTarget.style.boxShadow = "0 0 0 3px var(--accent-bg)"; }}
+                    onBlur={(e) => { e.currentTarget.style.borderColor = "rgba(255,255,255,0.1)"; e.currentTarget.style.boxShadow = "none"; }}
+                  />
+                </div>
 
+                {error && (
+                  <p className="text-sm px-3 py-2 rounded-lg" style={{ color: "#fca5a5", background: "rgba(239,68,68,0.1)", border: "1px solid rgba(239,68,68,0.2)" }}>
+                    {error}
+                  </p>
+                )}
+
+                <button
+                  type="submit"
+                  disabled={loading}
+                  className="w-full py-2.5 rounded-lg text-sm font-semibold text-white transition-opacity disabled:opacity-50"
+                  style={{ background: "var(--accent)" }}
+                  onMouseEnter={(e) => { if (!loading) (e.currentTarget as HTMLElement).style.opacity = "0.88"; }}
+                  onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.opacity = "1"; }}
+                >
+                  {loading ? t("submitting") : t("submit")}
+                </button>
+              </form>
+            </>
+          ) : (
             <button
-              type="submit"
-              disabled={loading}
-              className="w-full py-2.5 rounded-lg text-sm font-semibold text-white transition-opacity disabled:opacity-50"
-              style={{ background: "var(--accent)" }}
-              onMouseEnter={(e) => { if (!loading) (e.currentTarget as HTMLElement).style.opacity = "0.88"; }}
-              onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.opacity = "1"; }}
+              type="button"
+              onClick={() => setShowOtherMethods(true)}
+              className="mt-3 w-full text-center text-xs font-medium transition-colors hover:underline"
+              style={{ color: "#d4d4d8" }}
             >
-              {loading ? t("submitting") : t("submit")}
+              {oauthT("signUpOther")}
             </button>
-          </form>
+          )}
         </div>
       </div>
     </div>

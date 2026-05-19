@@ -49,7 +49,9 @@
       "or": "of",
       "redirecting": "Doorsturen...",
       "signInWith": "Inloggen met {provider}",
-      "signUpWith": "Aanmelden met {provider}"
+      "signUpWith": "Aanmelden met {provider}",
+      "signInOther": "Log in op een andere manier",
+      "signUpOther": "Registreer op een andere manier"
     },
     "email": {
       "subject": "Bevestig je ClipProfit-account",
@@ -416,7 +418,7 @@
         "title": "Actieve campagnes",
         "description": "Campagnes waaraan je meedoet of bent gestart. Open er een om de volgende clip in te sturen.",
         "emptyTitle": "Nog geen actieve campagnes",
-        "emptyDescription": "Bekijk de marketplace en doe mee aan een campagne die past bij je gekoppelde accounts.",
+        "emptyDescription": "Bekijk alle campagnes en doe mee aan een campagne die past bij je gekoppelde accounts.",
         "browse": "Campagnes bekijken",
         "due": "Deadline {date}"
       },
@@ -734,8 +736,8 @@
         "creators": "creators",
         "lessons": "lessen",
         "businessDays": "werkdagen",
-        "perThousandViews": "per 1K views",
-        "perOneKViews": "/1K views"
+        "perThousandViews": "per 1M views",
+        "perOneKViews": "/1M views"
       },
       "statuses": {
         "application": {
@@ -829,7 +831,7 @@
         "eyebrow": "Campagnes",
         "title": "Campagnes",
         "description": "{count, plural, one {# campagne beschikbaar} other {# campagnes beschikbaar}}",
-        "marketplace": "Marketplace",
+        "marketplace": "Alle Campagnes",
         "joined": "Gejoinde campagnes",
         "searchLabel": "Campagnes zoeken",
         "searchPlaceholder": "Campagnes zoeken",
@@ -847,20 +849,20 @@
         "howTitle": "Hoe het werkt",
         "understand": "Ik begrijp het",
         "gotIt": "Begrepen",
-        "howIntro": "Als je weet hoe campagnes werken, kies je beter werk, dien je clips netjes in en volg je inkomsten zonder verrassingen.",
+        "howIntro": "Als je begrijpt hoe campagnes werken, kun je beter kiezen waar je aan meedoet, je clips op tijd indienen en je inkomsten makkelijker bijhouden.",
         "durationTitle": "Campagneduur",
-        "durationDeadline": "Deadline-based: posts kunnen worden ingediend tot de campagnedeadline. Daarna sluiten inzendingen.",
-        "durationBudget": "Budget-based: campagnes kunnen doorlopen tot het budget op is of de sponsor het werk stopt.",
-        "payoutTitle": "Payoutberekening",
-        "payoutRate": "Payrate-based: je verdient een vast bedrag per getrackte view.",
-        "payoutPot": "Pot-style: payouts zijn evenredig aan jouw aandeel in de totale campagneviews.",
-        "rulesIntro": "Door mee te doen aan campagnes ga je akkoord met deze regels. Overtredingen kunnen leiden tot verwijdering en verlies van inkomsten.",
-        "noBottingTitle": "Geen bots of nep-engagement",
-        "noBotting": "Bots en nep-engagement zijn nergens toegestaan.",
+        "durationDeadline": "Op basis van deadline: posts kunnen worden ingediend tot de campagnedeadline. Daarna sluiten de inzendingen.",
+        "durationBudget": "Op basis van budget: campagnes blijven lopen totdat het budget op is of de sponsor de campagne stopt.",
+        "payoutTitle": "Uitbetaling",
+        "payoutRate": "Vast bedrag per view: je verdient een vast bedrag per getrackte view.",
+        "payoutPot": "",
+        "rulesIntro": "Door mee te doen aan een campagne ga je akkoord met deze regels. Houd je je er niet aan, dan kan je deelname worden stopgezet en kunnen je inkomsten vervallen.",
+        "noBottingTitle": "Geen bots of nepinteractie",
+        "noBotting": "Bots en nepinteractie zijn nooit toegestaan.",
         "audienceTitle": "Publieksvereisten",
-        "audience": "Join geen campagnes met publieksvereisten die niet bij je eigen publiek passen.",
+        "audience": "Doe alleen mee aan campagnes waarvan de publieksvereisten aansluiten bij jouw eigen publiek.",
         "requirementsTitle": "Volg campagneregels",
-        "requirements": "Ingediende posts moeten voldoen aan de creatieve, disclosure- en platformvereisten van de campagne."
+        "requirements": "Posts die je indient moeten voldoen aan de creatieve richtlijnen, de regels voor reclamevermelding en de platformvereisten van de campagne."
       },
       "card": {
         "payout": "Payout",
@@ -871,7 +873,7 @@
       },
       "empty": {
         "noJoinedTitle": "Nog geen campagnes gejoind",
-        "noJoinedDescription": "Bekijk de marketplace om campagnes te vinden die passen bij je platforms en niche.",
+        "noJoinedDescription": "Bekijk alle campagnes om campagnes te vinden die passen bij je platforms en niche.",
         "noMatchesTitle": "Geen campagnes passen bij je filters",
         "noMatchesDescription": "Wis de filters of pas je zoekopdracht aan."
       },
@@ -879,7 +881,7 @@
         "back": "Terug naar campagnes",
         "contact": "Contact",
         "info": "Campagne-info",
-        "payoutPer1K": "Payout per 1K",
+        "payoutPer1K": "Payout per 1M",
         "baseRate": "Basis campagnerate",
         "startDate": "Startdatum",
         "campaignStart": "Campagnestart",
@@ -1010,7 +1012,7 @@
         "uploaded": "Geupload",
         "viewCampaign": "Campagne bekijken",
         "viewOriginalPost": "Originele post bekijken",
-        "rate": "{amount} per 1K views",
+        "rate": "{amount} per 1M views",
         "metrics": {
           "views": "Views",
           "likes": "Likes",

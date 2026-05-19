@@ -49,7 +49,9 @@
       "or": "or",
       "redirecting": "Redirecting...",
       "signInWith": "Sign in with {provider}",
-      "signUpWith": "Sign up with {provider}"
+      "signUpWith": "Sign up with {provider}",
+      "signInOther": "Sign in another way",
+      "signUpOther": "Sign up another way"
     },
     "email": {
       "subject": "Confirm your ClipProfit account",
@@ -734,8 +736,8 @@
         "creators": "creators",
         "lessons": "lessons",
         "businessDays": "business days",
-        "perThousandViews": "per 1K views",
-        "perOneKViews": "/1K views"
+        "perThousandViews": "per 1M views",
+        "perOneKViews": "/1M views"
       },
       "statuses": {
         "application": {
@@ -879,7 +881,7 @@
         "back": "Back to campaigns",
         "contact": "Contact",
         "info": "Campaign info",
-        "payoutPer1K": "Payout per 1K",
+        "payoutPer1K": "Payout per 1M",
         "baseRate": "Base campaign rate",
         "startDate": "Start date",
         "campaignStart": "Campaign start",
@@ -1010,7 +1012,7 @@
         "uploaded": "Uploaded",
         "viewCampaign": "View Campaign",
         "viewOriginalPost": "View Original Post",
-        "rate": "{amount} per 1K views",
+        "rate": "{amount} per 1M views",
         "metrics": {
           "views": "Views",
           "likes": "Likes",

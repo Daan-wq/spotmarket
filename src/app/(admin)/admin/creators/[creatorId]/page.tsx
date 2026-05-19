@@ -171,7 +171,7 @@ export default async function CreatorProfilePage({ params, searchParams }: PageP
                       {application.campaign.name}
                     </Link>
                     <p className="mt-1 text-xs text-neutral-500">
-                      {formatCurrencyPrecise(Number(application.campaign.creatorCpv) * 1000)} CPM - due {formatShortDate(application.campaign.deadline)}
+                      {formatCurrencyPrecise(Number(application.campaign.creatorCpv) * 1_000_000)} CPM - due {formatShortDate(application.campaign.deadline)}
                     </p>
                   </div>
                   <Badge variant={application.status === "active" ? "verified" : "neutral"}>{application.status}</Badge>

@@ -5,6 +5,9 @@ const adminRoutes = ["/admin", "/admin/pricing", "/admin/documents", "/admin/rep
 
 async function signIn(page: import("@playwright/test").Page, email: string, password: string) {
   await page.goto("/sign-in");
+  await page
+    .getByRole("button", { name: /sign in another way|log in op een andere manier/i })
+    .click();
   await page.getByLabel(/email/i).fill(email);
   await page.getByLabel(/password/i).fill(password);
   await page.getByRole("button", { name: /sign in|log in/i }).click();

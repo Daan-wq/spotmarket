@@ -62,7 +62,7 @@ export default async function VideoDetailPage({
   const comments = submission.commentCount ?? 0;
   const shares = submission.shareCount ?? 0;
   const totalEngagement = views > 0 ? (((likes + comments + shares) / views) * 100) : 0;
-  const rewardRate = Number(submission.campaign.creatorCpv) * 1000;
+  const rewardRate = Number(submission.campaign.creatorCpv) * 1_000_000;
   const projectedEarnings = submissionProjectedEarnings(submission);
   const showEarningsDisclaimer = submission.status !== "APPROVED";
   const submissionPlatformIcon = CLIP_TO_ICON[parseClipUrl(submission.postUrl).platform];

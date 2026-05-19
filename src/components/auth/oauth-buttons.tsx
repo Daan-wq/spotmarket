@@ -26,13 +26,16 @@ function DiscordIcon() {
 
 interface OAuthButtonsProps {
   mode: "signin" | "signup";
+  providers?: OAuthProvider[];
 }
 
-export function OAuthButtons({ mode }: OAuthButtonsProps) {
-  const [loading, setLoading] = useState<"google" | "discord" | null>(null);
+type OAuthProvider = "google" | "discord";
+
+export function OAuthButtons({ mode, providers = ["google", "discord"] }: OAuthButtonsProps) {
+  const [loading, setLoading] = useState<OAuthProvider | null>(null);
   const t = useTranslations("auth.oauth");
 
-  async function handleOAuth(provider: "google" | "discord") {
+  async function handleOAuth(provider: OAuthProvider) {
     setLoading(provider);
     const supabase = createSupabaseBrowserClient();
     const params = new URLSearchParams(window.location.search);
@@ -65,35 +68,39 @@ export function OAuthButtons({ mode }: OAuthButtonsProps) {
 
   return (
     <div className="space-y-3">
-      <button
-        type="button"
-        disabled={loading !== null}
-        onClick={() => handleOAuth("google")}
-        className="w-full flex items-center justify-center gap-3 py-2.5 rounded-lg text-sm font-semibold transition-opacity disabled:opacity-50"
-        style={{ background: "#ffffff", color: "#1f1f1f" }}
-        onMouseEnter={(e) => { if (!loading) (e.currentTarget as HTMLElement).style.opacity = "0.88"; }}
-        onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.opacity = "1"; }}
-      >
-        <GoogleIcon />
-        {loading === "google"
-          ? t("redirecting")
-          : t(mode === "signin" ? "signInWith" : "signUpWith", { provider: "Google" })}
-      </button>
+      {providers.includes("google") && (
+        <button
+          type="button"
+          disabled={loading !== null}
+          onClick={() => handleOAuth("google")}
+          className="w-full flex items-center justify-center gap-3 py-2.5 rounded-lg text-sm font-semibold transition-opacity disabled:opacity-50"
+          style={{ background: "#ffffff", color: "#1f1f1f" }}
+          onMouseEnter={(e) => { if (!loading) (e.currentTarget as HTMLElement).style.opacity = "0.88"; }}
+          onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.opacity = "1"; }}
+        >
+          <GoogleIcon />
+          {loading === "google"
+            ? t("redirecting")
+            : t(mode === "signin" ? "signInWith" : "signUpWith", { provider: "Google" })}
+        </button>
+      )}
 
-      <button
-        type="button"
-        disabled={loading !== null}
-        onClick={() => handleOAuth("discord")}
-        className="w-full flex items-center justify-center gap-3 py-2.5 rounded-lg text-sm font-semibold text-white transition-opacity disabled:opacity-50"
-        style={{ background: "#5865F2" }}
-        onMouseEnter={(e) => { if (!loading) (e.currentTarget as HTMLElement).style.opacity = "0.88"; }}
-        onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.opacity = "1"; }}
-      >
-        <DiscordIcon />
-        {loading === "discord"
-          ? t("redirecting")
-          : t(mode === "signin" ? "signInWith" : "signUpWith", { provider: "Discord" })}
-      </button>
+      {providers.includes("discord") && (
+        <button
+          type="button"
+          disabled={loading !== null}
+          onClick={() => handleOAuth("discord")}
+          className="w-full flex items-center justify-center gap-3 py-2.5 rounded-lg text-sm font-semibold text-white transition-opacity disabled:opacity-50"
+          style={{ background: "#5865F2" }}
+          onMouseEnter={(e) => { if (!loading) (e.currentTarget as HTMLElement).style.opacity = "0.88"; }}
+          onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.opacity = "1"; }}
+        >
+          <DiscordIcon />
+          {loading === "discord"
+            ? t("redirecting")
+            : t(mode === "signin" ? "signInWith" : "signUpWith", { provider: "Discord" })}
+        </button>
+      )}
     </div>
   );
 }
