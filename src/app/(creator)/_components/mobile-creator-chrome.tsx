@@ -19,7 +19,7 @@ interface MobileCreatorChromeProps {
 }
 
 export const MOBILE_CREATOR_TOP_CHROME_CLASS =
-  "fixed inset-x-0 top-0 z-40 border-b border-neutral-200 bg-white/95 px-3 py-3 backdrop-blur lg:hidden";
+  "fixed inset-x-0 top-0 z-40 px-3 py-3 lg:hidden";
 
 export function MobileCreatorChrome({
   identitySlot,

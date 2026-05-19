@@ -19,5 +19,8 @@ describe("creator mobile top navigation", () => {
       expect.arrayContaining(["fixed", "top-0"]),
     );
     expect(MOBILE_CREATOR_TOP_CHROME_CLASS).not.toContain("sticky");
+    expect(MOBILE_CREATOR_TOP_CHROME_CLASS).not.toContain("border-b");
+    expect(MOBILE_CREATOR_TOP_CHROME_CLASS).not.toContain("bg-white");
+    expect(MOBILE_CREATOR_TOP_CHROME_CLASS).not.toContain("backdrop-blur");
   });
 });
