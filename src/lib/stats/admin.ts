@@ -8,6 +8,7 @@ import {
   metricSourceToSlug,
 } from "./types";
 import { aggregateAudience, latestPerConnection } from "./audience";
+import { getSocialAccountSummary } from "@/lib/social-account-summary";
 
 export interface AdminPlatformAggregate {
   slug: PlatformSlug;
@@ -132,9 +133,9 @@ async function getFleetFollowers(slug: PlatformSlug): Promise<number> {
     where: { connectionType: connType },
     orderBy: { capturedAt: "desc" },
     distinct: ["connectionId"],
-    select: { followerCount: true },
+    select: { audienceCount: true },
   });
-  return snaps.reduce((s, x) => s + (x.followerCount ?? 0), 0);
+  return snaps.reduce((s, x) => s + (x.audienceCount ?? 0), 0);
 }
 
 async function getFleetConnectionCount(slug: PlatformSlug): Promise<number> {
@@ -344,7 +345,7 @@ export async function getAdminAccountGrowth(slug: PlatformSlug, range: Range) {
   for (const s of snaps) {
     const key = s.capturedAt.toISOString().slice(0, 10);
     const e = byDate.get(key) ?? { date: key, followers: 0, following: 0, videoCount: 0, totalLikes: 0 };
-    e.followers += s.followerCount ?? 0;
+    e.followers += s.audienceCount ?? 0;
     e.following += s.followingCount ?? 0;
     e.videoCount += s.videoCount ?? 0;
     e.totalLikes += Number(s.totalLikes ?? 0);
@@ -357,73 +358,54 @@ export async function getAdminAccountGrowth(slug: PlatformSlug, range: Range) {
 // Admin per-connection (read-only deep view)
 // ──────────────────────────────────────────────
 
-export async function getAdminConnectionStats(slug: PlatformSlug, connectionId: string, range: Range) {
-  let label = "";
-  let handle: string | null = null;
-  let followerCount: number | null = null;
-  let creatorDisplayName = "";
-  let creatorProfileId = "";
-  let isVerified = false;
-  let tokenExpiresAt: Date | null = null;
-  let lastSyncedAt: Date | null = null;
+export async function getAdminConnectionStats(slug: PlatformSlug, connectionId: string) {
+  const owner = await resolveConnectionOwner(slug, connectionId);
+  if (!owner) return null;
+  const account = await getSocialAccountSummary(owner.creatorProfileId, slug, connectionId);
+  if (!account) return null;
 
+  return {
+    slug,
+    connectionId,
+    label: account.label,
+    handle: account.handle,
+    followerCount: account.audienceCount,
+    isVerified: account.isVerified,
+    tokenExpiresAt: account.tokenExpiresAt,
+    lastSyncedAt: account.lastSuccessfulRefreshAt,
+    creatorDisplayName: owner.creatorDisplayName,
+    creatorProfileId: owner.creatorProfileId,
+  };
+}
+
+async function resolveConnectionOwner(
+  slug: PlatformSlug,
+  connectionId: string,
+): Promise<{ creatorProfileId: string; creatorDisplayName: string } | null> {
   if (slug === "ig") {
     const c = await prisma.creatorIgConnection.findFirst({
       where: { id: connectionId },
       include: { creatorProfile: { select: { id: true, displayName: true } } },
     });
-    if (!c) return null;
-    label = c.igUsername;
-    handle = `@${c.igUsername}`;
-    followerCount = c.followerCount;
-    isVerified = c.isVerified;
-    tokenExpiresAt = c.tokenExpiresAt;
-    lastSyncedAt = c.lastCheckedAt;
-    creatorDisplayName = c.creatorProfile.displayName;
-    creatorProfileId = c.creatorProfile.id;
-  } else if (slug === "tt") {
+    return c ? { creatorProfileId: c.creatorProfile.id, creatorDisplayName: c.creatorProfile.displayName } : null;
+  }
+  if (slug === "tt") {
     const c = await prisma.creatorTikTokConnection.findFirst({
       where: { id: connectionId },
       include: { creatorProfile: { select: { id: true, displayName: true } } },
     });
-    if (!c) return null;
-    label = c.displayName ?? c.username;
-    handle = `@${c.username}`;
-    followerCount = c.followerCount;
-    isVerified = c.isVerified;
-    tokenExpiresAt = c.tokenExpiresAt;
-    lastSyncedAt = c.lastCheckedAt;
-    creatorDisplayName = c.creatorProfile.displayName;
-    creatorProfileId = c.creatorProfile.id;
-  } else if (slug === "yt") {
+    return c ? { creatorProfileId: c.creatorProfile.id, creatorDisplayName: c.creatorProfile.displayName } : null;
+  }
+  if (slug === "yt") {
     const c = await prisma.creatorYtConnection.findFirst({
       where: { id: connectionId },
       include: { creatorProfile: { select: { id: true, displayName: true } } },
     });
-    if (!c) return null;
-    label = c.channelName;
-    handle = c.channelName;
-    followerCount = c.subscriberCount;
-    isVerified = c.isVerified;
-    tokenExpiresAt = c.tokenExpiresAt;
-    lastSyncedAt = c.updatedAt;
-    creatorDisplayName = c.creatorProfile.displayName;
-    creatorProfileId = c.creatorProfile.id;
-  } else {
-    const c = await prisma.creatorFbConnection.findFirst({
-      where: { id: connectionId },
-      include: { creatorProfile: { select: { id: true, displayName: true } } },
-    });
-    if (!c) return null;
-    label = c.pageName;
-    handle = c.pageHandle ? `@${c.pageHandle}` : null;
-    followerCount = c.followerCount;
-    isVerified = c.isVerified;
-    tokenExpiresAt = c.tokenExpiresAt;
-    lastSyncedAt = c.lastCheckedAt;
-    creatorDisplayName = c.creatorProfile.displayName;
-    creatorProfileId = c.creatorProfile.id;
+    return c ? { creatorProfileId: c.creatorProfile.id, creatorDisplayName: c.creatorProfile.displayName } : null;
   }
-
-  return { slug, connectionId, label, handle, followerCount, isVerified, tokenExpiresAt, lastSyncedAt, creatorDisplayName, creatorProfileId };
+  const c = await prisma.creatorFbConnection.findFirst({
+    where: { id: connectionId },
+    include: { creatorProfile: { select: { id: true, displayName: true } } },
+  });
+  return c ? { creatorProfileId: c.creatorProfile.id, creatorDisplayName: c.creatorProfile.displayName } : null;
 }

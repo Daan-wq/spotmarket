@@ -8,6 +8,11 @@ import {
   metricSourceToSlug,
 } from "./types";
 import { aggregateAudience, latestPerConnection } from "./audience";
+import {
+  getSocialAccountSummariesForProfile,
+  getSocialAccountSummary,
+  type SocialAccountSummary,
+} from "@/lib/social-account-summary";
 
 export interface PlatformAggregate {
   slug: PlatformSlug;
@@ -127,9 +132,9 @@ async function getTotalFollowers(
       where: { connectionType: slugToConnectionType(slug), connectionId: { in: ids } },
       orderBy: { capturedAt: "desc" },
       distinct: ["connectionId"],
-      select: { followerCount: true },
+      select: { audienceCount: true },
     });
-    for (const s of snaps) total += s.followerCount ?? 0;
+    for (const s of snaps) total += s.audienceCount ?? 0;
   }
   return total;
 }
@@ -255,20 +260,20 @@ async function buildPlatformAggregate(
   range: Range,
 ): Promise<PlatformAggregate> {
   const connType: ConnectionType = slugToConnectionType(slug);
-  const [followerSnaps, viewsAgg, topPost] = await Promise.all([
+  const [audienceSnaps, viewsAgg, topPost] = await Promise.all([
     connIds.length > 0
       ? prisma.platformAccountSnapshot.findMany({
           where: { connectionType: connType, connectionId: { in: connIds } },
           orderBy: { capturedAt: "desc" },
           distinct: ["connectionId"],
-          select: { followerCount: true },
+          select: { audienceCount: true },
         })
-      : Promise.resolve([] as { followerCount: number | null }[]),
+      : Promise.resolve([] as { audienceCount: number | null }[]),
     sumWindowViewsAndEngagement(subIds, range),
     findTopPost(subIds, range),
   ]);
 
-  const followerCount = followerSnaps.reduce((s, x) => s + (x.followerCount ?? 0), 0);
+  const followerCount = audienceSnaps.reduce((s, x) => s + (x.audienceCount ?? 0), 0);
 
   return {
     slug,
@@ -327,7 +332,15 @@ export interface CreatorPlatformStats {
   viewsDelta: number | null;
   engagementDelta: number | null;
   // detailed lists
-  connections: Array<{ id: string; label: string; followerCount: number | null; lastSyncedAt: Date | null }>;
+  connections: Array<{
+    id: string;
+    label: string;
+    followerCount: number | null;
+    lastSyncedAt: Date | null;
+    accountRefreshStatus: string;
+    lastRefreshErrorMessage: string | null;
+    countLabel: "followers" | "subscribers";
+  }>;
 }
 
 export async function getCreatorPlatformStats(
@@ -358,7 +371,7 @@ export async function getCreatorPlatformStatsForScope(
       const prevRange: Range = { ...range, start: prevCap.gte!, end: prevCap.lte! };
       return sumWindowViewsAndEngagement(subIds, prevRange);
     })(),
-    listConnections(slug, ids),
+    listConnections(scope.creatorProfileId, slug, ids),
   ]);
 
   return {
@@ -376,37 +389,23 @@ export async function getCreatorPlatformStatsForScope(
 }
 
 async function listConnections(
+  creatorProfileId: string,
   slug: PlatformSlug,
   ids: string[],
 ): Promise<CreatorPlatformStats["connections"]> {
   if (ids.length === 0) return [];
-  if (slug === "ig") {
-    const rows = await prisma.creatorIgConnection.findMany({
-      where: { id: { in: ids } },
-      select: { id: true, igUsername: true, followerCount: true, lastCheckedAt: true },
-    });
-    return rows.map((r) => ({ id: r.id, label: `@${r.igUsername}`, followerCount: r.followerCount, lastSyncedAt: r.lastCheckedAt }));
-  }
-  if (slug === "tt") {
-    const rows = await prisma.creatorTikTokConnection.findMany({
-      where: { id: { in: ids } },
-      select: { id: true, username: true, followerCount: true, lastCheckedAt: true },
-    });
-    return rows.map((r) => ({ id: r.id, label: `@${r.username}`, followerCount: r.followerCount, lastSyncedAt: r.lastCheckedAt }));
-  }
-  if (slug === "yt") {
-    const rows = await prisma.creatorYtConnection.findMany({
-      where: { id: { in: ids } },
-      select: { id: true, channelName: true, subscriberCount: true, updatedAt: true },
-    });
-    return rows.map((r) => ({ id: r.id, label: r.channelName, followerCount: r.subscriberCount, lastSyncedAt: r.updatedAt }));
-  }
-  // fb
-  const rows = await prisma.creatorFbConnection.findMany({
-    where: { id: { in: ids } },
-    select: { id: true, pageName: true, followerCount: true, lastCheckedAt: true },
-  });
-  return rows.map((r) => ({ id: r.id, label: r.pageName, followerCount: r.followerCount, lastSyncedAt: r.lastCheckedAt }));
+  const accounts = await getSocialAccountSummariesForProfile(creatorProfileId);
+  const rowById = new Map(accounts[slug].map((account) => [account.id, account]));
+  const rows = ids.map((id) => rowById.get(id)).filter((account): account is SocialAccountSummary => Boolean(account));
+  return rows.map((r) => ({
+    id: r.id,
+    label: r.label,
+    followerCount: r.audienceCount,
+    lastSyncedAt: r.lastSuccessfulRefreshAt,
+    accountRefreshStatus: r.accountRefreshStatus,
+    lastRefreshErrorMessage: r.lastRefreshErrorMessage,
+    countLabel: r.countLabel,
+  }));
 }
 
 // ──────────────────────────────────────────────
@@ -487,54 +486,54 @@ async function resolveConnectionMeta(
   creatorProfileId: string,
 ): Promise<ConnectionMeta | null> {
   if (slug === "ig") {
-    const c = await prisma.creatorIgConnection.findFirst({ where: { id: connectionId, creatorProfileId } });
+    const c = await getSocialAccountSummary(creatorProfileId, slug, connectionId);
     if (!c) return null;
     return {
-      label: c.igUsername,
-      handle: `@${c.igUsername}`,
-      matchHandle: c.igUsername,
-      followerCount: c.followerCount,
+      label: c.label,
+      handle: c.handle,
+      matchHandle: c.matchHandle,
+      followerCount: c.audienceCount,
       isVerified: c.isVerified,
       tokenExpiresAt: c.tokenExpiresAt,
-      lastSyncedAt: c.lastCheckedAt,
+      lastSyncedAt: c.lastSuccessfulRefreshAt,
     };
   }
   if (slug === "tt") {
-    const c = await prisma.creatorTikTokConnection.findFirst({ where: { id: connectionId, creatorProfileId } });
+    const c = await getSocialAccountSummary(creatorProfileId, slug, connectionId);
     if (!c) return null;
     return {
-      label: c.displayName ?? c.username,
-      handle: `@${c.username}`,
-      matchHandle: c.username,
-      followerCount: c.followerCount,
+      label: c.label,
+      handle: c.handle,
+      matchHandle: c.matchHandle,
+      followerCount: c.audienceCount,
       isVerified: c.isVerified,
       tokenExpiresAt: c.tokenExpiresAt,
-      lastSyncedAt: c.lastCheckedAt,
+      lastSyncedAt: c.lastSuccessfulRefreshAt,
     };
   }
   if (slug === "yt") {
-    const c = await prisma.creatorYtConnection.findFirst({ where: { id: connectionId, creatorProfileId } });
+    const c = await getSocialAccountSummary(creatorProfileId, slug, connectionId);
     if (!c) return null;
     return {
-      label: c.channelName,
-      handle: c.channelName,
-      matchHandle: c.channelName,
-      followerCount: c.subscriberCount,
+      label: c.label,
+      handle: c.handle,
+      matchHandle: c.matchHandle,
+      followerCount: c.audienceCount,
       isVerified: c.isVerified,
       tokenExpiresAt: c.tokenExpiresAt,
-      lastSyncedAt: c.updatedAt,
+      lastSyncedAt: c.lastSuccessfulRefreshAt,
     };
   }
-  const c = await prisma.creatorFbConnection.findFirst({ where: { id: connectionId, creatorProfileId } });
+  const c = await getSocialAccountSummary(creatorProfileId, slug, connectionId);
   if (!c) return null;
   return {
-    label: c.pageName,
-    handle: c.pageHandle ? `@${c.pageHandle}` : null,
-    matchHandle: c.pageHandle ?? c.pageName,
-    followerCount: c.followerCount,
+    label: c.label,
+    handle: c.handle,
+    matchHandle: c.matchHandle,
+    followerCount: c.audienceCount,
     isVerified: c.isVerified,
     tokenExpiresAt: c.tokenExpiresAt,
-    lastSyncedAt: c.lastCheckedAt,
+    lastSyncedAt: c.lastSuccessfulRefreshAt,
   };
 }
 
@@ -707,7 +706,7 @@ export async function getAccountGrowthForScope(
       videoCount: 0,
       totalLikes: 0,
     };
-    existing.followers = (existing.followers ?? 0) + (s.followerCount ?? 0);
+    existing.followers = (existing.followers ?? 0) + (s.audienceCount ?? 0);
     existing.following = (existing.following ?? 0) + (s.followingCount ?? 0);
     existing.videoCount = (existing.videoCount ?? 0) + (s.videoCount ?? 0);
     existing.totalLikes = (existing.totalLikes ?? 0) + Number(s.totalLikes ?? 0);

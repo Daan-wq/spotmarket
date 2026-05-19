@@ -133,6 +133,12 @@ model CreatorIgConnection {
   accessToken      String?
   accessTokenIv    String?
   tokenExpiresAt   DateTime?
+  accountRefreshStatus    AccountRefreshStatus @default(NEVER_REFRESHED)
+  lastRefreshAttemptAt    DateTime?
+  lastSuccessfulRefreshAt DateTime?
+  lastRefreshFailedAt     DateTime?
+  lastRefreshErrorCode    String?
+  lastRefreshErrorMessage String?
   createdAt        DateTime       @default(now())
   updatedAt        DateTime       @updatedAt
 
@@ -164,6 +170,12 @@ model CreatorFbConnection {
   isVerified       Boolean        @default(false)
   verifiedAt       DateTime?
   lastCheckedAt    DateTime?
+  accountRefreshStatus    AccountRefreshStatus @default(NEVER_REFRESHED)
+  lastRefreshAttemptAt    DateTime?
+  lastSuccessfulRefreshAt DateTime?
+  lastRefreshFailedAt     DateTime?
+  lastRefreshErrorCode    String?
+  lastRefreshErrorMessage String?
   createdAt        DateTime       @default(now())
   updatedAt        DateTime       @updatedAt
 
@@ -195,6 +207,12 @@ model CreatorYtConnection {
   refreshTokenIv   String?
   tokenExpiresAt   DateTime?
   isVerified       Boolean        @default(true)
+  accountRefreshStatus    AccountRefreshStatus @default(NEVER_REFRESHED)
+  lastRefreshAttemptAt    DateTime?
+  lastSuccessfulRefreshAt DateTime?
+  lastRefreshFailedAt     DateTime?
+  lastRefreshErrorCode    String?
+  lastRefreshErrorMessage String?
   createdAt        DateTime       @default(now())
   updatedAt        DateTime       @updatedAt
 
@@ -224,6 +242,12 @@ model CreatorTikTokConnection {
   isVerified       Boolean        @default(false)
   verifiedAt       DateTime?
   lastCheckedAt    DateTime?
+  accountRefreshStatus    AccountRefreshStatus @default(NEVER_REFRESHED)
+  lastRefreshAttemptAt    DateTime?
+  lastSuccessfulRefreshAt DateTime?
+  lastRefreshFailedAt     DateTime?
+  lastRefreshErrorCode    String?
+  lastRefreshErrorMessage String?
   createdAt        DateTime       @default(now())
   updatedAt        DateTime       @updatedAt
 
@@ -262,6 +286,13 @@ model TikTokDemographicSubmission {
 // ─────────────────────────────────────────
 // BIO VERIFICATION
 // ─────────────────────────────────────────
+
+enum AccountRefreshStatus {
+  NEVER_REFRESHED
+  REFRESHING
+  SUCCESS
+  FAILED
+}
 
 model BioVerification {
   id                 String                   @id @default(cuid())
@@ -648,8 +679,8 @@ model CampaignSubmission {
   sourcePlatform BioPlatform?
   sourceMethod   SubmissionMethod @default(UNKNOWN)
   authorHandle   String?
-  lastScrapedAt  DateTime?
-  scrapeFailures Int              @default(0)
+  lastMetricsRefreshAt    DateTime?
+  metricsRefreshFailures  Int              @default(0)
 
   reviewedAt    DateTime?
   reviewedBy    String?
@@ -1411,17 +1442,17 @@ model StoryPost {
   @@index([postedAt])
 }
 
-/// Daily snapshot of platform account state (follower count, video count,
+/// Daily snapshot of platform account state (audience count, video count,
 /// totalLikes for TikTok, etc.). Created by the daily
 /// `/api/cron/poll-platform-account-snapshots` cron — one row per verified
-/// connection per day. Lets us reconstruct "FB page followers over the last
-/// 90 days" / "TT followerCount trend" without diffing connection rows.
+/// connection per day. Lets us reconstruct audience-count trends without
+/// diffing connection rows.
 model PlatformAccountSnapshot {
   id             String         @id @default(cuid())
   connectionType ConnectionType
   connectionId   String
   capturedAt     DateTime       @default(now())
-  followerCount  Int?
+  audienceCount  Int?
   followingCount Int?
   totalLikes     BigInt?
   videoCount     Int?

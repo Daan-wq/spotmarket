@@ -3,7 +3,10 @@ import type { ReactNode } from "react";
 interface Props {
   label: string;
   meta: string;
-  lastSyncedText: string;
+  lastSyncedText?: string;
+  refreshStatus?: string;
+  lastSuccessfulRefreshAt?: string | null;
+  lastRefreshErrorMessage?: string | null;
   removeButton?: ReactNode;
 }
 
@@ -11,8 +14,13 @@ export function AccountMetaRow({
   label,
   meta,
   lastSyncedText,
+  refreshStatus,
+  lastSuccessfulRefreshAt,
+  lastRefreshErrorMessage,
   removeButton,
 }: Props) {
+  const syncText = lastSyncedText ?? formatRefreshStatus(refreshStatus, lastSuccessfulRefreshAt ?? null);
+
   return (
     <div
       className="flex flex-col gap-3 px-5 py-3 md:flex-row md:items-center md:justify-between"
@@ -26,8 +34,13 @@ export function AccountMetaRow({
           {label}
         </p>
         <p className="mt-0.5 text-xs" style={{ color: "var(--text-muted)" }}>
-          {meta} - {lastSyncedText}
+          {meta} - {syncText}
         </p>
+        {refreshStatus === "FAILED" ? (
+          <p className="mt-1 text-xs text-red-600">
+            Refresh failed{lastRefreshErrorMessage ? `: ${lastRefreshErrorMessage}` : ""}
+          </p>
+        ) : null}
       </div>
       {removeButton ? (
         <div className="flex flex-wrap items-center gap-2 md:justify-end">
@@ -36,4 +49,11 @@ export function AccountMetaRow({
       ) : null}
     </div>
   );
+}
+
+function formatRefreshStatus(status: string | undefined, value: string | null) {
+  if (status === "REFRESHING") return "refreshing";
+  if (!value) return "not refreshed yet";
+  const d = new Date(value);
+  return `last refreshed ${d.toLocaleDateString("en-US", { month: "short", day: "numeric" })}`;
 }

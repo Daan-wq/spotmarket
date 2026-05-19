@@ -64,7 +64,7 @@ export default async function ProfilePage({
 
       {params.success === "instagram_connected" && (
         <div className="px-4 py-3 rounded-lg border-l-[3px] border-green-500 bg-green-50">
-          <p className="text-sm text-green-700">Instagram connected successfully. Your stats have been synced.</p>
+          <p className="text-sm text-green-700">Instagram connected successfully. Your account stats have been refreshed.</p>
         </div>
       )}
       {params.error && (

@@ -115,7 +115,7 @@ export default async function ApplicationDetailPage({
             style={{ color: "var(--primary)" }}
             className="text-2xl font-bold"
           >
-            {formatCurrency(Number(application.campaign.creatorCpv) * 1_000_000, locale, {
+            {formatCurrency(Number(application.campaign.creatorCpv) * 1000, locale, {
               minimumFractionDigits: 2,
               maximumFractionDigits: 4,
             })}

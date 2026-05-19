@@ -88,7 +88,7 @@ async function getAccountGrowth(slug: PlatformSlug, connectionId: string, range:
   });
   return snaps.map((s) => ({
     date: s.capturedAt.toISOString().slice(0, 10),
-    followers: s.followerCount,
+    followers: s.audienceCount,
     following: s.followingCount,
     videoCount: s.videoCount,
     totalLikes: s.totalLikes ? Number(s.totalLikes) : null,
@@ -110,7 +110,7 @@ export default async function AdminConnectionStatsPage({ params, searchParams }:
   const sp = await searchParams;
   const range = parseRange(sp);
 
-  const meta = await getAdminConnectionStats(platform, connectionId, range);
+  const meta = await getAdminConnectionStats(platform, connectionId);
   if (!meta) notFound();
 
   const matchHandle = await getMatchHandle(platform, connectionId);
@@ -217,7 +217,7 @@ export default async function AdminConnectionStatsPage({ params, searchParams }:
               {meta.creatorDisplayName}
             </a>
             {meta.handle && <span> · {meta.handle}</span>}
-            {meta.lastSyncedAt && <span> · Last synced {new Date(meta.lastSyncedAt).toLocaleDateString()}</span>}
+            {meta.lastSyncedAt && <span> - Last refreshed {new Date(meta.lastSyncedAt).toLocaleDateString()}</span>}
           </p>
         </div>
         <TimeRangeSelector value={range.key} />

@@ -11,6 +11,7 @@ import {
   REQUIRED_FB_SCOPES,
 } from "@/lib/facebook";
 import { encrypt } from "@/lib/crypto";
+import { recordAccountRefreshSuccess } from "@/lib/social-account-refresh";
 
 export async function GET(req: NextRequest) {
   const code = req.nextUrl.searchParams.get("code");
@@ -102,19 +103,27 @@ export async function GET(req: NextRequest) {
         select: { id: true },
       });
 
-      if (existing) {
-        await prisma.creatorFbConnection.update({
+      const connection = existing
+        ? await prisma.creatorFbConnection.update({
           where: { id: existing.id },
           data: connectionData,
-        });
-      } else {
-        await prisma.creatorFbConnection.create({
+          select: { id: true },
+        })
+        : await prisma.creatorFbConnection.create({
           data: {
             ...connectionData,
             fbPageId: page.id,
           },
+          select: { id: true },
         });
-      }
+
+      await recordAccountRefreshSuccess({
+        connectionType: "FB",
+        connectionId: connection.id,
+        audienceCount: pageProfile.followerCount,
+        raw: pageProfile,
+        capturedAt: verifiedAt,
+      });
     }
 
     if (fbUserId) {

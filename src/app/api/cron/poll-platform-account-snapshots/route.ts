@@ -12,11 +12,14 @@
  */
 
 import { NextRequest, NextResponse } from "next/server";
-import { Prisma, type ConnectionType } from "@prisma/client";
+import type { ConnectionType } from "@prisma/client";
 import { verifyCron } from "@/lib/cron-auth";
 import { prisma } from "@/lib/prisma";
 import { decrypt } from "@/lib/crypto";
-import { recordRawApiResponse } from "@/lib/metrics/raw-storage";
+import {
+  recordAccountRefreshFailure,
+  recordAccountRefreshSuccess,
+} from "@/lib/social-account-refresh";
 
 import { fetchInstagramProfile } from "@/lib/instagram";
 import { fetchFacebookPageProfile } from "@/lib/facebook";
@@ -35,7 +38,7 @@ const CONNECTION_LIMIT = 100;
 interface SnapshotInput {
   connectionType: ConnectionType;
   connectionId: string;
-  followerCount?: number | null;
+  audienceCount?: number | null;
   followingCount?: number | null;
   totalLikes?: bigint | null;
   videoCount?: number | null;
@@ -74,6 +77,12 @@ async function runIg(): Promise<PlatformResult> {
   for (const c of conns) {
     try {
       if (!c.accessToken || !c.accessTokenIv || !c.igUserId) {
+        await recordAccountRefreshFailure({
+          connectionType: "IG",
+          connectionId: c.id,
+          error: new Error("Missing Instagram token or user id"),
+          code: "MISSING_ACCOUNT_CREDENTIALS",
+        }).catch(() => undefined);
         f++;
         continue;
       }
@@ -82,7 +91,7 @@ async function runIg(): Promise<PlatformResult> {
       await persist({
         connectionType: "IG",
         connectionId: c.id,
-        followerCount: profile.followersCount ?? null,
+        audienceCount: profile.followersCount ?? null,
         followingCount: profile.followsCount ?? null,
         videoCount: profile.mediaCount ?? null,
         raw: profile,
@@ -90,6 +99,7 @@ async function runIg(): Promise<PlatformResult> {
       s++;
     } catch (err) {
       console.warn(`[account-snap] IG ${c.id}: ${(err as Error).message}`);
+      await recordAccountRefreshFailure({ connectionType: "IG", connectionId: c.id, error: err }).catch(() => undefined);
       f++;
     }
   }
@@ -107,6 +117,12 @@ async function runFb(): Promise<PlatformResult> {
   for (const c of conns) {
     try {
       if (!c.accessToken || !c.accessTokenIv || !c.fbPageId) {
+        await recordAccountRefreshFailure({
+          connectionType: "FB",
+          connectionId: c.id,
+          error: new Error("Missing Facebook token or page id"),
+          code: "MISSING_ACCOUNT_CREDENTIALS",
+        }).catch(() => undefined);
         f++;
         continue;
       }
@@ -115,12 +131,13 @@ async function runFb(): Promise<PlatformResult> {
       await persist({
         connectionType: "FB",
         connectionId: c.id,
-        followerCount: profile.followerCount ?? null,
+        audienceCount: profile.followerCount ?? null,
         raw: profile,
       });
       s++;
     } catch (err) {
       console.warn(`[account-snap] FB ${c.id}: ${(err as Error).message}`);
+      await recordAccountRefreshFailure({ connectionType: "FB", connectionId: c.id, error: err }).catch(() => undefined);
       f++;
     }
   }
@@ -139,6 +156,12 @@ async function runTt(): Promise<PlatformResult> {
     try {
       const token = await getFreshTikTokAccessToken(c).catch(() => null);
       if (!token) {
+        await recordAccountRefreshFailure({
+          connectionType: "TT",
+          connectionId: c.id,
+          error: new Error("Could not refresh TikTok access token"),
+          code: "TOKEN_REFRESH_FAILED",
+        }).catch(() => undefined);
         f++;
         continue;
       }
@@ -146,7 +169,7 @@ async function runTt(): Promise<PlatformResult> {
       await persist({
         connectionType: "TT",
         connectionId: c.id,
-        followerCount: profile.followerCount,
+        audienceCount: profile.followerCount,
         followingCount: profile.followingCount,
         videoCount: profile.videoCount,
         totalLikes: profile.likesCount != null ? BigInt(profile.likesCount) : null,
@@ -156,6 +179,7 @@ async function runTt(): Promise<PlatformResult> {
       s++;
     } catch (err) {
       console.warn(`[account-snap] TT ${c.id}: ${(err as Error).message}`);
+      await recordAccountRefreshFailure({ connectionType: "TT", connectionId: c.id, error: err }).catch(() => undefined);
       f++;
     }
   }
@@ -174,6 +198,12 @@ async function runYt(): Promise<PlatformResult> {
     try {
       const token = await getFreshYoutubeAccessToken(c).catch(() => null);
       if (!token) {
+        await recordAccountRefreshFailure({
+          connectionType: "YT",
+          connectionId: c.id,
+          error: new Error("Could not refresh YouTube access token"),
+          code: "TOKEN_REFRESH_FAILED",
+        }).catch(() => undefined);
         f++;
         continue;
       }
@@ -181,13 +211,14 @@ async function runYt(): Promise<PlatformResult> {
       await persist({
         connectionType: "YT",
         connectionId: c.id,
-        followerCount: profile.subscriberCount ?? null,
+        audienceCount: profile.subscriberCount ?? null,
         videoCount: profile.videoCount ?? null,
         raw: profile,
       });
       s++;
     } catch (err) {
       console.warn(`[account-snap] YT ${c.id}: ${(err as Error).message}`);
+      await recordAccountRefreshFailure({ connectionType: "YT", connectionId: c.id, error: err }).catch(() => undefined);
       f++;
     }
   }
@@ -195,24 +226,14 @@ async function runYt(): Promise<PlatformResult> {
 }
 
 async function persist(input: SnapshotInput): Promise<void> {
-  await prisma.platformAccountSnapshot.create({
-    data: {
-      connectionType: input.connectionType,
-      connectionId: input.connectionId,
-      followerCount: input.followerCount ?? null,
-      followingCount: input.followingCount ?? null,
-      totalLikes: input.totalLikes ?? null,
-      videoCount: input.videoCount ?? null,
-      isVerified: input.isVerified ?? null,
-      raw: input.raw == null ? Prisma.JsonNull : (input.raw as Prisma.InputJsonValue),
-    },
+  await recordAccountRefreshSuccess({
+    connectionType: input.connectionType,
+    connectionId: input.connectionId,
+    audienceCount: input.audienceCount ?? null,
+    followingCount: input.followingCount ?? null,
+    totalLikes: input.totalLikes ?? null,
+    videoCount: input.videoCount ?? null,
+    isVerified: input.isVerified ?? null,
+    raw: input.raw,
   });
-  if (input.raw != null) {
-    await recordRawApiResponse({
-      connectionType: input.connectionType,
-      connectionId: input.connectionId,
-      endpoint: `${input.connectionType.toLowerCase()}.account.profile`,
-      payload: input.raw,
-    });
-  }
 }

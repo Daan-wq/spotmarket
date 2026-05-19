@@ -11,6 +11,7 @@ import { parseRange } from "@/lib/stats/range";
 import { getCreatorTopStatsForScope, type CreatorStatsScope } from "@/lib/stats/creator";
 import { formatCurrencyPrecise, formatDate, formatNumber, formatShortDate, titleCaseEnum } from "@/lib/admin/agency-format";
 import { getCreatorPayoutTotals, getCreatorPendingCount, getCreatorPlatformVerification } from "@/app/(creator)/creator/dashboard/_data";
+import { getSocialAccountSummariesForProfile, type SocialAccountsByPlatform } from "@/lib/social-account-summary";
 
 export const dynamic = "force-dynamic";
 
@@ -42,7 +43,7 @@ export default async function CreatorProfilePage({ params, searchParams }: PageP
     creatorProfileId: profile.id,
   };
 
-  const [stats, payouts, pendingSubmissions, platformVerification, activeCampaigns, recentSubmissions] =
+  const [stats, payouts, pendingSubmissions, platformVerification, activeCampaigns, recentSubmissions, socialAccounts] =
     await Promise.all([
       getCreatorTopStatsForScope(profileScope, range),
       getCreatorPayoutTotals(profile.user.id),
@@ -80,6 +81,7 @@ export default async function CreatorProfilePage({ params, searchParams }: PageP
           },
         },
       }),
+      getSocialAccountSummariesForProfile(profile.id),
     ]);
 
   const allSignals = recentSubmissions.flatMap((submission) =>
@@ -91,7 +93,7 @@ export default async function CreatorProfilePage({ params, searchParams }: PageP
   );
   allSignals.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
 
-  const accounts = buildAccounts(profile);
+  const accounts = buildAccounts(socialAccounts);
   const accountCount = accounts.length;
   const verifiedAccounts = accounts.filter((account) => account.isVerified).length;
   const accountStatus = getCreatorAccountStatusCopy({
@@ -198,9 +200,14 @@ export default async function CreatorProfilePage({ params, searchParams }: PageP
                         {account.handle}
                       </p>
                       <p className="mt-1 text-xs text-neutral-500">
-                        {account.followers != null ? `${formatNumber(account.followers)} followers` : "No follower snapshot"}
-                        {account.lastSyncedAt ? ` - last synced ${formatShortDate(account.lastSyncedAt)}` : ""}
+                        {account.audienceCount != null ? `${formatNumber(account.audienceCount)} ${account.countLabel}` : "No audience snapshot"}
+                        {account.lastSuccessfulRefreshAt ? ` - last refreshed ${formatShortDate(account.lastSuccessfulRefreshAt)}` : ""}
                       </p>
+                      {account.accountRefreshStatus === "FAILED" ? (
+                        <p className="mt-1 text-xs text-red-600">
+                          Refresh failed{account.lastRefreshErrorMessage ? `: ${account.lastRefreshErrorMessage}` : ""}
+                        </p>
+                      ) : null}
                     </div>
                     <Badge variant={health.variant}>{health.label}</Badge>
                   </li>
@@ -304,46 +311,23 @@ function EmptyLine({ children }: { children: ReactNode }) {
   return <p className="py-5 text-sm text-neutral-500">{children}</p>;
 }
 
-function buildAccounts(profile: {
-  igConnections: Array<{ igUsername: string; followerCount: number | null; tokenExpiresAt: Date | null; isVerified: boolean; lastCheckedAt: Date | null; verifiedAt: Date | null }>;
-  ttConnections: Array<{ username: string; followerCount: number | null; tokenExpiresAt: Date | null; isVerified: boolean; lastCheckedAt: Date | null; verifiedAt: Date | null }>;
-  ytConnections: Array<{ channelName: string; subscriberCount: number | null; tokenExpiresAt: Date | null; isVerified: boolean; updatedAt: Date | null }>;
-  fbConnections: Array<{ pageName: string; followerCount: number | null; tokenExpiresAt: Date | null; isVerified: boolean; lastCheckedAt: Date | null; verifiedAt: Date | null }>;
-}) {
+function buildAccounts(accounts: SocialAccountsByPlatform) {
   return [
-    ...profile.igConnections.map((connection) => ({
-      type: "IG" as const,
-      handle: `@${connection.igUsername}`,
-      followers: connection.followerCount,
-      expiresAt: connection.tokenExpiresAt,
-      isVerified: connection.isVerified,
-      lastSyncedAt: connection.lastCheckedAt ?? connection.verifiedAt,
-    })),
-    ...profile.ttConnections.map((connection) => ({
-      type: "TT" as const,
-      handle: `@${connection.username}`,
-      followers: connection.followerCount,
-      expiresAt: connection.tokenExpiresAt,
-      isVerified: connection.isVerified,
-      lastSyncedAt: connection.lastCheckedAt ?? connection.verifiedAt,
-    })),
-    ...profile.ytConnections.map((connection) => ({
-      type: "YT" as const,
-      handle: connection.channelName,
-      followers: connection.subscriberCount,
-      expiresAt: connection.tokenExpiresAt,
-      isVerified: connection.isVerified,
-      lastSyncedAt: connection.updatedAt,
-    })),
-    ...profile.fbConnections.map((connection) => ({
-      type: "FB" as const,
-      handle: connection.pageName,
-      followers: connection.followerCount,
-      expiresAt: connection.tokenExpiresAt,
-      isVerified: connection.isVerified,
-      lastSyncedAt: connection.lastCheckedAt ?? connection.verifiedAt,
-    })),
-  ];
+    ...accounts.ig,
+    ...accounts.tt,
+    ...accounts.yt,
+    ...accounts.fb,
+  ].map((account) => ({
+    type: account.connectionType,
+    handle: account.handle ?? account.label,
+    audienceCount: account.audienceCount,
+    countLabel: account.countLabel,
+    expiresAt: account.tokenExpiresAt,
+    isVerified: account.isVerified,
+    accountRefreshStatus: account.accountRefreshStatus,
+    lastSuccessfulRefreshAt: account.lastSuccessfulRefreshAt,
+    lastRefreshErrorMessage: account.lastRefreshErrorMessage,
+  }));
 }
 
 function tokenHealth(expiresAt: Date | null): { label: string; variant: "verified" | "pending" | "failed" | "neutral" } {

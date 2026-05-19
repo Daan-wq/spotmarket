@@ -8,7 +8,7 @@
  *   - hot     <  24h    every 15 min   (handled by /api/cron/poll-metrics-hot)
  *   - warm    1–7 days  hourly         (handled by /api/cron/poll-metrics-warm)
  *   - cold    >7 days   daily          (folded into warm; warm cron runs once/hour
- *                                       but cold rows have lastScrapedAt > 23h)
+ *                                       but cold rows have lastMetricsRefreshAt > 23h)
  *   - frozen  >30 days  off            (excluded by the runner)
  */
 
@@ -59,11 +59,11 @@ export async function pollSubmissions(opts: RunOptions): Promise<PollResult> {
       status: { in: ACTIVE_STATUSES },
       createdAt: { gt: minCreatedAt, lte: maxCreatedAt },
       OR: [
-        { lastScrapedAt: null },
-        { lastScrapedAt: { lt: staleBefore } },
+        { lastMetricsRefreshAt: null },
+        { lastMetricsRefreshAt: { lt: staleBefore } },
       ],
     },
-    orderBy: [{ lastScrapedAt: { sort: "asc", nulls: "first" } }],
+    orderBy: [{ lastMetricsRefreshAt: { sort: "asc", nulls: "first" } }],
     take: opts.limit ?? batchSize(opts.tier),
     select: { id: true, postUrl: true, creatorId: true },
   });
@@ -126,8 +126,8 @@ export async function pollSubmissions(opts: RunOptions): Promise<PollResult> {
         await prisma.campaignSubmission.update({
           where: { id: sub.id },
           data: {
-            lastScrapedAt: snap.capturedAt,
-            scrapeFailures: 0,
+            lastMetricsRefreshAt: snap.capturedAt,
+            metricsRefreshFailures: 0,
             viewCount: Math.min(cumulativeViews, 2_147_483_647),
             likeCount: fetched.likeCount,
             commentCount: fetched.commentCount,
@@ -167,8 +167,8 @@ export async function pollSubmissions(opts: RunOptions): Promise<PollResult> {
         await prisma.campaignSubmission.update({
           where: { id: sub.id },
           data: {
-            lastScrapedAt: new Date(),
-            scrapeFailures: { increment: 1 },
+            lastMetricsRefreshAt: new Date(),
+            metricsRefreshFailures: { increment: 1 },
           },
         });
 
@@ -192,7 +192,7 @@ export async function pollSubmissions(opts: RunOptions): Promise<PollResult> {
       await prisma.campaignSubmission
         .update({
           where: { id: sub.id },
-          data: { lastScrapedAt: new Date(), scrapeFailures: { increment: 1 } },
+          data: { lastMetricsRefreshAt: new Date(), metricsRefreshFailures: { increment: 1 } },
         })
         .catch(() => undefined);
     }

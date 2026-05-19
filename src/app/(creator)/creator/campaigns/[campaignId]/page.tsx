@@ -140,7 +140,7 @@ export default async function CampaignDetailPage({
     0,
   );
   const totalBudget = Number(campaign.totalBudget);
-  const rewardRate = Number(campaign.creatorCpv) * 1_000_000;
+  const rewardRate = Number(campaign.creatorCpv) * 1000;
   const hasDiscord = !!user.discordId;
   const isClosedForSubmissions = isCampaignClosedForSubmissions({
     status: campaign.status,

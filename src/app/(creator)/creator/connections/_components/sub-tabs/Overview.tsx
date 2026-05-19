@@ -28,6 +28,9 @@ type ConnectionRow = {
   followerCount: number | null;
   lastSyncedAt: string | null;
   platform: PlatformSlug;
+  accountRefreshStatus?: string;
+  lastRefreshErrorMessage?: string | null;
+  countLabel?: "followers" | "subscribers";
 };
 
 interface AllScopeProps {
@@ -148,6 +151,9 @@ function PlatformScopeView({
           followerCount: c.followerCount,
           lastSyncedAt: c.lastSyncedAt ? c.lastSyncedAt.toISOString() : null,
           platform,
+          accountRefreshStatus: c.accountRefreshStatus,
+          lastRefreshErrorMessage: c.lastRefreshErrorMessage,
+          countLabel: c.countLabel,
         }))}
         rangeKey={range.key}
         basePath={basePath}
@@ -256,6 +262,11 @@ function ConnectionsList({
               {c.lastSyncedAt && (
                 <p className="text-xs mt-0.5" style={{ color: "var(--text-muted)" }}>
                   {sharedT("labels.lastSynced", { date: formatShortDate(c.lastSyncedAt, locale) })}
+                </p>
+              )}
+              {c.accountRefreshStatus === "FAILED" && (
+                <p className="text-xs mt-0.5 text-red-600">
+                  Refresh failed{c.lastRefreshErrorMessage ? `: ${c.lastRefreshErrorMessage}` : ""}
                 </p>
               )}
             </div>

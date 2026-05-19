@@ -41,6 +41,7 @@ const routeMocks = vi.hoisted(() => {
     fetchFacebookPageProfile: vi.fn(),
     fetchFacebookUserId: vi.fn(),
     encrypt: vi.fn(),
+    recordAccountRefreshSuccess: vi.fn(),
     FacebookOAuthError: MockFacebookOAuthError,
   };
 });
@@ -85,6 +86,10 @@ vi.mock("@/lib/crypto", () => ({
   encrypt: routeMocks.encrypt,
 }));
 
+vi.mock("@/lib/social-account-refresh", () => ({
+  recordAccountRefreshSuccess: routeMocks.recordAccountRefreshSuccess,
+}));
+
 function state(returnTo = "/creator/connections") {
   return Buffer.from(JSON.stringify({ returnTo, sub: "supabase-user-1" })).toString("base64url");
 }
@@ -114,6 +119,10 @@ describe("GET /api/auth/facebook/callback", () => {
     });
     routeMocks.fetchFacebookUserId.mockResolvedValue("fb-user-1");
     routeMocks.connectionFindUnique.mockResolvedValue(null);
+    routeMocks.connectionCreate
+      .mockResolvedValueOnce({ id: "fb-connection-1" })
+      .mockResolvedValueOnce({ id: "fb-connection-2" });
+    routeMocks.recordAccountRefreshSuccess.mockResolvedValue(undefined);
     routeMocks.encrypt.mockImplementation((token: string) => ({
       ciphertext: `encrypted:${token}`,
       iv: `iv:${token}`,

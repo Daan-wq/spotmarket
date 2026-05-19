@@ -8,6 +8,7 @@ const routeMocks = vi.hoisted(() => ({
   applicationFindFirst: vi.fn(),
   applicationCreate: vi.fn(),
   notificationCreate: vi.fn(),
+  getSocialAccountSummariesForProfile: vi.fn(),
 }));
 
 vi.mock("@/lib/auth", () => ({
@@ -26,7 +27,31 @@ vi.mock("@/lib/prisma", () => ({
   },
 }));
 
+vi.mock("@/lib/social-account-summary", () => ({
+  getSocialAccountSummariesForProfile: routeMocks.getSocialAccountSummariesForProfile,
+}));
+
 const params = { params: Promise.resolve({ campaignId: "campaign-1" }) };
+
+function socialAccounts(connections: {
+  igConnections?: Array<{ isVerified: boolean }>;
+  ttConnections?: Array<{ isVerified: boolean }>;
+  ytConnections?: Array<{ isVerified: boolean }>;
+  fbConnections?: Array<{ isVerified: boolean }>;
+}) {
+  const map = (rows: Array<{ isVerified: boolean }> | undefined, audienceCount = 1200) =>
+    (rows ?? []).map((row, index) => ({
+      id: `connection-${index}`,
+      isVerified: row.isVerified,
+      audienceCount,
+    }));
+  return {
+    ig: map(connections.igConnections),
+    tt: map(connections.ttConnections),
+    yt: map(connections.ytConnections),
+    fb: map(connections.fbConnections),
+  };
+}
 
 describe("POST /api/campaigns/[campaignId]/applications", () => {
   beforeEach(() => {
@@ -59,6 +84,14 @@ describe("POST /api/campaigns/[campaignId]/applications", () => {
       status: "pending",
     });
     routeMocks.notificationCreate.mockResolvedValue({});
+    routeMocks.getSocialAccountSummariesForProfile.mockResolvedValue(
+      socialAccounts({
+        igConnections: [],
+        ttConnections: [{ isVerified: true }],
+        ytConnections: [],
+        fbConnections: [],
+      }),
+    );
   });
 
   it("allows a TikTok-only creator to join a TikTok campaign without Instagram", async () => {
@@ -149,6 +182,9 @@ describe("POST /api/campaigns/[campaignId]/applications", () => {
           ...connections,
         },
       });
+      routeMocks.getSocialAccountSummariesForProfile.mockResolvedValueOnce(
+        socialAccounts(connections),
+      );
 
       const response = await POST(
         new Request("https://app.test/api/campaigns/campaign-1/applications", {

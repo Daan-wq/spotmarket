@@ -737,7 +737,7 @@
         "lessons": "lessons",
         "businessDays": "business days",
         "perThousandViews": "per 1M views",
-        "perOneKViews": "/1M views"
+        "perOneKViews": "/1K views"
       },
       "statuses": {
         "application": {

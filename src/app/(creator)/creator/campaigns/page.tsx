@@ -6,6 +6,7 @@ import {
   evaluateCampaignJoinEligibility,
 } from "@/lib/campaign-eligibility";
 import { isCampaignClosedForSubmissions } from "@/lib/campaign-submission-state";
+import { getSocialAccountSummariesForProfile } from "@/lib/social-account-summary";
 
 export default async function CampaignsPage() {
   const { userId: supabaseId } = await requireAuth("creator");
@@ -18,10 +19,7 @@ export default async function CampaignsPage() {
   const [
     marketplaceCampaigns,
     myCampaignApplications,
-    igConnections,
-    fbConnections,
-    ytConnections,
-    ttConnections,
+    socialAccounts,
   ] = await Promise.all([
     prisma.campaign.findMany({
       where: { status: "active" },
@@ -76,44 +74,23 @@ export default async function CampaignsPage() {
         })
       : Promise.resolve([]),
     creatorProfileId
-      ? prisma.creatorIgConnection.findMany({
-          where: { creatorProfileId, isVerified: true },
-          select: { followerCount: true },
-        })
-      : Promise.resolve([]),
-    creatorProfileId
-      ? prisma.creatorFbConnection.findMany({
-          where: { creatorProfileId, isVerified: true },
-          select: { followerCount: true },
-        })
-      : Promise.resolve([]),
-    creatorProfileId
-      ? prisma.creatorYtConnection.findMany({
-          where: { creatorProfileId, isVerified: true },
-          select: { subscriberCount: true },
-        })
-      : Promise.resolve([]),
-    creatorProfileId
-      ? prisma.creatorTikTokConnection.findMany({
-          where: { creatorProfileId, isVerified: true },
-          select: { followerCount: true },
-        })
-      : Promise.resolve([]),
+      ? getSocialAccountSummariesForProfile(creatorProfileId)
+      : Promise.resolve({ ig: [], fb: [], yt: [], tt: [] }),
   ]);
 
   const verifiedConnections = {
-    instagram: igConnections.length > 0,
-    facebook: fbConnections.length > 0,
-    youtube: ytConnections.length > 0,
-    tiktok: ttConnections.length > 0,
+    instagram: socialAccounts.ig.some((c) => c.isVerified),
+    facebook: socialAccounts.fb.some((c) => c.isVerified),
+    youtube: socialAccounts.yt.some((c) => c.isVerified),
+    tiktok: socialAccounts.tt.some((c) => c.isVerified),
   };
 
   const maxFollowers = Math.max(
     0,
-    ...igConnections.map((c) => c.followerCount ?? 0),
-    ...fbConnections.map((c) => c.followerCount ?? 0),
-    ...ytConnections.map((c) => c.subscriberCount ?? 0),
-    ...ttConnections.map((c) => c.followerCount ?? 0),
+    ...socialAccounts.ig.map((c) => c.audienceCount ?? 0),
+    ...socialAccounts.fb.map((c) => c.audienceCount ?? 0),
+    ...socialAccounts.yt.map((c) => c.audienceCount ?? 0),
+    ...socialAccounts.tt.map((c) => c.audienceCount ?? 0),
   );
 
   function buildCampaign<
@@ -168,7 +145,7 @@ export default async function CampaignsPage() {
       id: c.id,
       name: c.name,
       description: c.description ?? "",
-      rewardRate: Number(c.creatorCpv) * 1_000_000,
+      rewardRate: Number(c.creatorCpv) * 1000,
       totalBudget: Number(c.totalBudget),
       totalPaid,
       platforms: requiredPlatforms,
