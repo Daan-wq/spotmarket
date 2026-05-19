@@ -9,6 +9,7 @@ import { getCreatorPayoutTotals } from "../_data";
 export async function PayoutSummary({ userId }: { userId: string }) {
   const locale = (await getLocale()) as Locale;
   const t = await getTranslations("dashboard.creator.payoutSummary");
+  const actionsT = await getTranslations("creator.shared.actions");
   const { availableBalance, pendingBalance, profit } =
     await getCreatorPayoutTotals(userId);
 
@@ -27,10 +28,10 @@ export async function PayoutSummary({ userId }: { userId: string }) {
         <MiniPayout label={t("profit")} value={formatCurrencyPrecise(profit, "EUR", locale)} />
       </div>
       <Link
-        href="/creator/payouts"
+        href="/creator/payouts?tab=withdraw"
         className="mt-4 inline-flex h-11 w-full items-center justify-center rounded-xl bg-neutral-950 px-4 text-sm font-semibold text-white shadow-[0_8px_18px_rgba(0,0,0,0.16)] hover:bg-neutral-800"
       >
-        {t("openPayments")}
+        {actionsT("withdrawFunds")}
       </Link>
     </div>
   );

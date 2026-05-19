@@ -295,19 +295,20 @@ export function WithdrawTab() {
               {formatCurrency(balance, locale)}
             </p>
           </div>
-          {balance < MIN_WITHDRAW ? (
-            <span className="text-sm text-neutral-500">
-              {t("moreToUnlock", { amount: formatCurrency(MIN_WITHDRAW - balance, locale) })}
-            </span>
-          ) : (
+          <div className="flex flex-col items-start gap-2 md:items-end">
+            {balance < MIN_WITHDRAW ? (
+              <span className="text-sm text-neutral-500">
+                {t("moreToUnlock", { amount: formatCurrency(MIN_WITHDRAW - balance, locale) })}
+              </span>
+            ) : null}
             <Button
               className="h-11 rounded-xl px-5"
               onClick={handleWithdrawClick}
               disabled={!canWithdraw}
             >
-              {showConfirm ? sharedT("actions.cancel") : sharedT("actions.requestWithdrawal")}
+              {showConfirm ? sharedT("actions.cancel") : sharedT("actions.withdrawFunds")}
             </Button>
-          )}
+          </div>
         </div>
 
         {showConfirm && savedIban && savedAccountName ? (
