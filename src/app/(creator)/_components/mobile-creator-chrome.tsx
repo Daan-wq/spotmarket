@@ -18,6 +18,9 @@ interface MobileCreatorChromeProps {
   balanceSlot: ReactNode;
 }
 
+export const MOBILE_CREATOR_TOP_CHROME_CLASS =
+  "fixed inset-x-0 top-0 z-40 border-b border-neutral-200 bg-white/95 px-3 py-3 backdrop-blur lg:hidden";
+
 export function MobileCreatorChrome({
   identitySlot,
   balanceSlot,
@@ -37,7 +40,7 @@ export function MobileCreatorChrome({
 
   return (
     <>
-      <header className="sticky top-0 z-40 border-b border-neutral-200 bg-white/95 px-3 py-3 backdrop-blur">
+      <header className={MOBILE_CREATOR_TOP_CHROME_CLASS}>
         <div className="mx-auto flex h-14 w-full max-w-[520px] items-center justify-between rounded-2xl border border-neutral-200 bg-neutral-50 px-3 shadow-[0_10px_24px_rgba(0,0,0,0.04)]">
           <Link
             href="/creator/dashboard"
