@@ -9,19 +9,43 @@ import { Dialog } from "@/components/ui/dialog";
 const DISCORD_GUILD_ID = "1486482870272000102";
 const DISCORD_HELP_CHANNEL_ID = "1486745899500830801";
 const DISCORD_HELP_URL = `https://discord.com/channels/${DISCORD_GUILD_ID}/${DISCORD_HELP_CHANNEL_ID}`;
-const DISCORD_APP_URL = `discord://-/channels/${DISCORD_GUILD_ID}/${DISCORD_HELP_CHANNEL_ID}`;
+const DISCORD_APP_URL = `discord:///channels/${DISCORD_GUILD_ID}/${DISCORD_HELP_CHANNEL_ID}`;
+const DISCORD_WEB_FALLBACK_DELAY_MS = 2500;
 
 export function ContactSupportButton() {
   const t = useTranslations("creator.campaigns.detail");
   const [open, setOpen] = useState(false);
 
   const openDiscord = () => {
-    window.location.href = DISCORD_APP_URL;
-    window.setTimeout(() => {
-      if (!document.hidden) {
-        window.location.href = DISCORD_HELP_URL;
+    let fallbackTimerId = 0;
+
+    const cleanup = () => {
+      if (fallbackTimerId) {
+        window.clearTimeout(fallbackTimerId);
       }
-    }, 900);
+      window.removeEventListener("blur", cleanup);
+      window.removeEventListener("pagehide", cleanup);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+    };
+
+    const handleVisibilityChange = () => {
+      if (document.hidden) {
+        cleanup();
+      }
+    };
+
+    window.addEventListener("blur", cleanup, { once: true });
+    window.addEventListener("pagehide", cleanup, { once: true });
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+
+    fallbackTimerId = window.setTimeout(() => {
+      cleanup();
+      if (!document.hidden) {
+        window.open(DISCORD_HELP_URL, "_blank", "noopener,noreferrer");
+      }
+    }, DISCORD_WEB_FALLBACK_DELAY_MS);
+
+    window.location.href = DISCORD_APP_URL;
   };
 
   return (
