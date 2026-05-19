@@ -4,36 +4,24 @@ import { useEffect, useState } from "react";
 import type { FormEvent } from "react";
 import { Button } from "@/components/ui/button";
 import { AlertBanner } from "@/components/ui/alert-banner";
-import { Badge } from "@/components/ui/badge";
-import { EmptyState } from "@/components/ui/empty-state";
-import { formatCurrency, formatShortDate } from "@/lib/i18n-format";
+import { formatCurrency } from "@/lib/i18n-format";
 import { formatIban, isValidIban, maskIban, normalizeIban } from "@/lib/validation/iban";
 import { useLocale, useTranslations } from "next-intl";
 
-interface Withdrawal {
-  id: string;
-  amount: number;
-  status: string;
-  currency: string;
-  paymentMethod: string | null;
-  bankIban: string | null;
-  bankAccountName: string | null;
-  bankReference: string | null;
-  createdAt: string;
-}
-
 const MIN_WITHDRAW = 20;
+
+type AmountParseResult =
+  | { amount: number }
+  | { error: "amountRequired" | "amountCentError" };
 
 export function WithdrawTab() {
   const locale = useLocale();
   const t = useTranslations("creator.payouts.withdraw");
   const sharedT = useTranslations("creator.shared");
-  const statusT = useTranslations("creator.shared.statuses.payout");
 
   const [balance, setBalance] = useState(0);
   const [pendingBalance, setPendingBalance] = useState(0);
   const [profit, setProfit] = useState(0);
-  const [withdrawals, setWithdrawals] = useState<Withdrawal[]>([]);
   const [loading, setLoading] = useState(true);
 
   const [savedIban, setSavedIban] = useState<string | null>(null);
@@ -41,10 +29,11 @@ export function WithdrawTab() {
   const [isEditingBank, setIsEditingBank] = useState(false);
   const [ibanInput, setIbanInput] = useState("");
   const [accountNameInput, setAccountNameInput] = useState("");
-  const [bankSaving, setBankSaving] = useState(false);
   const [bankError, setBankError] = useState<string | null>(null);
 
-  const [showConfirm, setShowConfirm] = useState(false);
+  const [showWithdrawPanel, setShowWithdrawPanel] = useState(false);
+  const [amountInput, setAmountInput] = useState("");
+  const [amountError, setAmountError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
@@ -58,12 +47,13 @@ export function WithdrawTab() {
       const res = await fetch("/api/wallet");
       if (res.ok) {
         const data = await res.json();
-        setBalance(data.availableBalance ?? data.balance ?? 0);
+        const availableBalance = data.availableBalance ?? data.balance ?? 0;
+        setBalance(availableBalance);
         setPendingBalance(data.pendingBalance ?? 0);
         setProfit(data.profit ?? 0);
-        setWithdrawals(data.withdrawals ?? []);
         setSavedIban(data.payoutIban ?? null);
         setSavedAccountName(data.payoutAccountName ?? null);
+        setAmountInput(formatAmountInput(availableBalance));
       }
     } catch {
       // The section falls back to its loading or empty state.
@@ -79,76 +69,90 @@ export function WithdrawTab() {
     setIsEditingBank(true);
   }
 
-  function cancelEditing() {
-    setIbanInput("");
-    setAccountNameInput("");
+  function handleWithdrawPanelToggle() {
+    setError(null);
+    setSuccess(null);
+    setAmountError(null);
     setBankError(null);
-    setIsEditingBank(false);
+
+    if (showWithdrawPanel) {
+      setShowWithdrawPanel(false);
+      setIsEditingBank(false);
+      return;
+    }
+
+    setAmountInput(formatAmountInput(balance));
+    if (!savedIban || !savedAccountName) {
+      startEditing();
+    } else {
+      setIsEditingBank(false);
+    }
+    setShowWithdrawPanel(true);
   }
 
-  async function handleSaveBank(e: FormEvent) {
-    e.preventDefault();
+  async function saveBankDetails() {
     const iban = normalizeIban(ibanInput);
     const accountName = accountNameInput.replace(/\s+/g, " ").trim();
 
     if (!isValidIban(iban)) {
       setBankError(t("ibanError"));
-      return;
+      return false;
     }
     if (accountName.length < 2) {
       setBankError(t("accountNameError"));
-      return;
+      return false;
     }
 
-    setBankSaving(true);
     setBankError(null);
-    try {
-      const res = await fetch("/api/wallet/payout-address", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ iban, accountName }),
-      });
-      const data = await res.json();
-      if (!res.ok) {
-        setBankError(data.error || t("saveFailed"));
-        return;
-      }
-      setSavedIban(data.payoutIban);
-      setSavedAccountName(data.payoutAccountName);
-      setIsEditingBank(false);
-      setIbanInput("");
-      setAccountNameInput("");
-      setSuccess(t("bankSaved"));
-    } catch {
-      setBankError(t("saveError"));
-    } finally {
-      setBankSaving(false);
+    const res = await fetch("/api/wallet/payout-address", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ iban, accountName }),
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      setBankError(data.error || t("saveFailed"));
+      return false;
     }
-  }
 
-  function handleWithdrawClick() {
-    setError(null);
-    setSuccess(null);
-    if (!savedIban || !savedAccountName) {
-      setError(t("bankRequired"));
-      startEditing();
-      return;
-    }
-    setShowConfirm((value) => !value);
+    setSavedIban(data.payoutIban);
+    setSavedAccountName(data.payoutAccountName);
+    setIsEditingBank(false);
+    return true;
   }
 
   async function handleWithdraw(e: FormEvent) {
     e.preventDefault();
+    const parsed = parseAmountInput(amountInput);
+
+    if ("error" in parsed) {
+      setAmountError(t(parsed.error));
+      return;
+    }
+    if (parsed.amount < MIN_WITHDRAW) {
+      setAmountError(t("amountMinError", { amount: formatCurrency(MIN_WITHDRAW, locale) }));
+      return;
+    }
+    if (parsed.amount > roundToCents(balance)) {
+      setAmountError(t("amountMaxError", { amount: formatCurrency(balance, locale) }));
+      return;
+    }
 
     setSubmitting(true);
+    setAmountError(null);
     setError(null);
     setSuccess(null);
 
     try {
+      if (!savedIban || !savedAccountName || isEditingBank) {
+        const bankSaved = await saveBankDetails();
+        if (!bankSaved) return;
+      }
+
       const res = await fetch("/api/wallet/withdraw", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({}),
+        body: JSON.stringify({ amount: parsed.amount }),
       });
 
       const data = await res.json();
@@ -158,8 +162,9 @@ export function WithdrawTab() {
       }
 
       setSuccess(t("success", { amount: formatCurrency(data.withdrawal.amount, locale) }));
-      setShowConfirm(false);
-      fetchWallet();
+      setShowWithdrawPanel(false);
+      setIsEditingBank(false);
+      await fetchWallet();
     } catch {
       setError(t("genericError"));
     } finally {
@@ -172,223 +177,180 @@ export function WithdrawTab() {
   }
 
   const canWithdraw = balance >= MIN_WITHDRAW;
-  const showInput = !savedIban || !savedAccountName || isEditingBank;
+  const showBankInput = !savedIban || !savedAccountName || isEditingBank;
+  const parsedPreview = parseAmountInput(amountInput);
+  const previewAmount = "amount" in parsedPreview ? parsedPreview.amount : null;
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-4">
       {error ? <AlertBanner tone="error" title={error} /> : null}
       {success ? <AlertBanner tone="success" title={success} /> : null}
 
-      <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
+      <div className="grid grid-cols-3 gap-2 md:gap-3">
         <BalanceCard label={t("balance")} value={formatCurrency(balance, locale)} />
         <BalanceCard label={t("pendingBalance")} value={formatCurrency(pendingBalance, locale)} />
         <BalanceCard label={t("profit")} value={formatCurrency(profit, locale)} />
       </div>
 
-      <section className="rounded-2xl border border-neutral-200 bg-neutral-50 p-4 md:p-5">
-        <h2 className="text-base font-semibold text-neutral-950">{t("methodTitle")}</h2>
-        <p className="mt-1 max-w-2xl text-sm leading-6 text-neutral-500">
-          {t("methodDescription")}
-        </p>
-        <div className="mt-4 flex flex-wrap items-center gap-3">
-          <Badge variant="active">EUR</Badge>
-          <span className="text-xs text-neutral-500">
-            {t("minimumWithdrawal", {
-              amount: formatCurrency(MIN_WITHDRAW, locale, {
-                minimumFractionDigits: 0,
-                maximumFractionDigits: 0,
-              }),
-            })}
-          </span>
-        </div>
-
-        {showInput ? (
-          <form onSubmit={handleSaveBank} className="mt-5 grid gap-3 md:grid-cols-2">
-            <label className="block text-sm font-semibold text-neutral-950">
-              {t("ibanLabel")}
-              <input
-                type="text"
-                value={ibanInput}
-                onChange={(e) => {
-                  setIbanInput(formatIban(e.target.value));
-                  if (bankError) setBankError(null);
-                }}
-                placeholder={t("ibanPlaceholder")}
-                required
-                autoComplete="off"
-                spellCheck={false}
-                className="mt-2 h-11 w-full rounded-xl border border-neutral-200 bg-white px-4 font-mono text-sm text-neutral-950 outline-none transition placeholder:text-neutral-400 focus:border-neutral-400"
-              />
-            </label>
-            <label className="block text-sm font-semibold text-neutral-950">
-              {t("accountNameLabel")}
-              <input
-                type="text"
-                value={accountNameInput}
-                onChange={(e) => {
-                  setAccountNameInput(e.target.value);
-                  if (bankError) setBankError(null);
-                }}
-                placeholder={t("accountNamePlaceholder")}
-                required
-                autoComplete="name"
-                className="mt-2 h-11 w-full rounded-xl border border-neutral-200 bg-white px-4 text-sm text-neutral-950 outline-none transition placeholder:text-neutral-400 focus:border-neutral-400"
-              />
-            </label>
-            {bankError ? (
-              <p className="text-xs text-red-600 md:col-span-2">{bankError}</p>
-            ) : null}
-            <div className="flex flex-wrap items-center gap-2 md:col-span-2">
-              <Button
-                type="submit"
-                isPending={bankSaving}
-                disabled={!ibanInput || !accountNameInput}
-                className="h-10 rounded-xl px-4"
-              >
-                {savedIban ? sharedT("actions.saveChanges") : t("saveBankDetails")}
-              </Button>
-              {savedIban && isEditingBank ? (
-                <Button
-                  type="button"
-                  variant="ghost"
-                  className="h-10 rounded-xl px-4"
-                  onClick={cancelEditing}
-                  disabled={bankSaving}
-                >
-                  {sharedT("actions.cancel")}
-                </Button>
-              ) : null}
-            </div>
-          </form>
-        ) : (
-          <div className="mt-5 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-neutral-200 bg-white px-4 py-3">
-            <div className="min-w-0">
-              <p className="text-[11px] font-medium uppercase tracking-wide text-neutral-400">
-                {t("savedBankDetails")}
-              </p>
-              <p className="mt-0.5 truncate font-mono text-sm text-neutral-950" title={savedIban ?? undefined}>
-                {maskIban(savedIban ?? "")}
-              </p>
-              <p className="mt-1 truncate text-sm text-neutral-600">
-                {savedAccountName}
-              </p>
-            </div>
-            <Button
-              type="button"
-              variant="outline"
-              className="h-9 rounded-xl px-3 text-sm"
-              onClick={startEditing}
-            >
-              {sharedT("actions.edit")}
-            </Button>
-          </div>
-        )}
-      </section>
-
       <section className="rounded-2xl border border-neutral-200 bg-white p-4 md:p-5">
         <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.14em] text-neutral-400">
+          <div className="min-w-0">
+            <p className="text-xs font-semibold uppercase text-neutral-400">
               {t("availableToWithdraw")}
             </p>
-            <p className="mt-1 text-4xl font-semibold tracking-normal text-neutral-950">
+            <p className="mt-1 text-4xl font-semibold text-neutral-950">
               {formatCurrency(balance, locale)}
             </p>
-          </div>
-          <div className="flex flex-col items-start gap-2 md:items-end">
             {balance < MIN_WITHDRAW ? (
-              <span className="text-sm text-neutral-500">
+              <p className="mt-2 text-sm text-neutral-500">
                 {t("moreToUnlock", { amount: formatCurrency(MIN_WITHDRAW - balance, locale) })}
-              </span>
+              </p>
             ) : null}
-            <Button
-              className="h-11 rounded-xl px-5"
-              onClick={handleWithdrawClick}
-              disabled={!canWithdraw}
-            >
-              {showConfirm ? sharedT("actions.cancel") : sharedT("actions.withdrawFunds")}
-            </Button>
           </div>
+          <Button
+            className="h-11 w-full rounded-xl px-5 md:w-auto"
+            onClick={handleWithdrawPanelToggle}
+            disabled={!canWithdraw}
+            type="button"
+          >
+            {showWithdrawPanel ? sharedT("actions.cancel") : sharedT("actions.withdrawFunds")}
+          </Button>
         </div>
 
-        {showConfirm && savedIban && savedAccountName ? (
-          <form onSubmit={handleWithdraw} className="mt-5 space-y-4">
-            <div className="rounded-xl border border-neutral-200 bg-neutral-50 px-4 py-3 text-sm text-neutral-700">
-              {t.rich("confirmText", {
-                amount: () => <strong>{formatCurrency(balance, locale)}</strong>,
-                iban: () => (
-                  <span className="font-mono text-neutral-950" title={savedIban}>
-                    {maskIban(savedIban)}
-                  </span>
-                ),
-                accountName: () => <strong>{savedAccountName}</strong>,
-              })}
+        {showWithdrawPanel ? (
+          <form onSubmit={handleWithdraw} className="mt-5 border-t border-neutral-200 pt-5">
+            <div className="grid gap-4 md:grid-cols-[minmax(0,1fr)_minmax(280px,0.9fr)]">
+              <div>
+                <h2 className="text-base font-semibold text-neutral-950">{t("panelTitle")}</h2>
+                <label className="mt-4 block text-sm font-semibold text-neutral-950">
+                  {t("amountLabel")}
+                  <div className="mt-2 flex overflow-hidden rounded-xl border border-neutral-200 bg-white focus-within:border-neutral-400">
+                    <span className="flex h-11 items-center px-3 text-sm font-semibold text-neutral-500">
+                      €
+                    </span>
+                    <input
+                      type="text"
+                      inputMode="decimal"
+                      value={amountInput}
+                      onChange={(e) => {
+                        setAmountInput(e.target.value);
+                        if (amountError) setAmountError(null);
+                      }}
+                      placeholder={t("amountPlaceholder")}
+                      className="h-11 min-w-0 flex-1 bg-transparent px-1 text-sm font-semibold text-neutral-950 outline-none placeholder:text-neutral-400"
+                    />
+                    <button
+                      type="button"
+                      className="px-3 text-sm font-semibold text-neutral-500 transition hover:text-neutral-950"
+                      onClick={() => {
+                        setAmountInput(formatAmountInput(balance));
+                        setAmountError(null);
+                      }}
+                    >
+                      {t("maxAmount")}
+                    </button>
+                  </div>
+                </label>
+                <p className="mt-2 text-xs text-neutral-500">
+                  {t("amountHint", {
+                    min: formatCurrency(MIN_WITHDRAW, locale),
+                    max: formatCurrency(balance, locale),
+                  })}
+                </p>
+                {amountError ? <p className="mt-2 text-xs text-red-600">{amountError}</p> : null}
+              </div>
+
+              <div>
+                <div className="flex items-center justify-between gap-3">
+                  <h2 className="text-base font-semibold text-neutral-950">{t("bankPanelTitle")}</h2>
+                  {!showBankInput ? (
+                    <Button type="button" variant="ghost" size="sm" onClick={startEditing}>
+                      {sharedT("actions.edit")}
+                    </Button>
+                  ) : null}
+                </div>
+
+                {showBankInput ? (
+                  <div className="mt-4 grid gap-3">
+                    <label className="block text-sm font-semibold text-neutral-950">
+                      {t("ibanLabel")}
+                      <input
+                        type="text"
+                        value={ibanInput}
+                        onChange={(e) => {
+                          setIbanInput(formatIban(e.target.value));
+                          if (bankError) setBankError(null);
+                        }}
+                        placeholder={t("ibanPlaceholder")}
+                        autoComplete="off"
+                        spellCheck={false}
+                        className="mt-2 h-11 w-full rounded-xl border border-neutral-200 bg-white px-4 font-mono text-sm text-neutral-950 outline-none transition placeholder:text-neutral-400 focus:border-neutral-400"
+                      />
+                    </label>
+                    <label className="block text-sm font-semibold text-neutral-950">
+                      {t("accountNameLabel")}
+                      <input
+                        type="text"
+                        value={accountNameInput}
+                        onChange={(e) => {
+                          setAccountNameInput(e.target.value);
+                          if (bankError) setBankError(null);
+                        }}
+                        placeholder={t("accountNamePlaceholder")}
+                        autoComplete="name"
+                        className="mt-2 h-11 w-full rounded-xl border border-neutral-200 bg-white px-4 text-sm text-neutral-950 outline-none transition placeholder:text-neutral-400 focus:border-neutral-400"
+                      />
+                    </label>
+                    {bankError ? <p className="text-xs text-red-600">{bankError}</p> : null}
+                  </div>
+                ) : (
+                  <div className="mt-4 rounded-xl border border-neutral-200 bg-neutral-50 px-4 py-3">
+                    <p className="text-[11px] font-semibold uppercase text-neutral-400">
+                      {t("savedBankDetails")}
+                    </p>
+                    <p className="mt-1 truncate font-mono text-sm text-neutral-950" title={savedIban ?? undefined}>
+                      {maskIban(savedIban ?? "")}
+                    </p>
+                    <p className="mt-1 truncate text-sm text-neutral-600">
+                      {savedAccountName}
+                    </p>
+                  </div>
+                )}
+              </div>
             </div>
-            <Button type="submit" isPending={submitting} className="h-11 rounded-xl px-5">
-              {sharedT("actions.confirmWithdrawal")}
-            </Button>
+
+            {previewAmount ? (
+              <div className="mt-4 rounded-xl bg-neutral-50 px-4 py-3 text-sm text-neutral-700">
+                {t.rich("confirmText", {
+                  amount: () => <strong>{formatCurrency(previewAmount, locale)}</strong>,
+                  iban: () => (
+                    <span
+                      className="font-mono text-neutral-950"
+                      title={showBankInput ? normalizeIban(ibanInput) : savedIban ?? undefined}
+                    >
+                      {showBankInput ? formatIban(ibanInput) : maskIban(savedIban ?? "")}
+                    </span>
+                  ),
+                  accountName: () => <strong>{showBankInput ? accountNameInput : savedAccountName}</strong>,
+                })}
+              </div>
+            ) : null}
+
+            <div className="mt-4 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+              <Button
+                type="button"
+                variant="ghost"
+                onClick={handleWithdrawPanelToggle}
+                disabled={submitting}
+              >
+                {sharedT("actions.cancel")}
+              </Button>
+              <Button type="submit" isPending={submitting} disabled={!canWithdraw}>
+                {t("panelTitle")}
+              </Button>
+            </div>
           </form>
         ) : null}
-      </section>
-
-      <section className="overflow-hidden rounded-2xl border border-neutral-200 bg-white">
-        <div className="border-b border-neutral-200 px-5 py-4">
-          <h2 className="text-base font-semibold text-neutral-950">{t("recentWithdrawals")}</h2>
-        </div>
-        {withdrawals.length === 0 ? (
-          <div className="p-5">
-            <EmptyState
-              title={t("noWithdrawalsTitle")}
-              description={t("noWithdrawalsDescription")}
-            />
-          </div>
-        ) : (
-          <>
-            <div className="space-y-3 p-4 md:hidden">
-              {withdrawals.map((withdrawal) => (
-                <WithdrawalCard
-                  key={withdrawal.id}
-                  withdrawal={withdrawal}
-                  locale={locale}
-                  t={t}
-                  statusLabel={statusT(withdrawal.status.toLowerCase())}
-                />
-              ))}
-            </div>
-            <div className="hidden overflow-x-auto md:block">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b border-neutral-200 bg-neutral-50 text-neutral-500">
-                    <th className="px-5 py-2 text-left text-[11px] font-medium uppercase tracking-wide">{sharedT("labels.date")}</th>
-                    <th className="px-5 py-2 text-left text-[11px] font-medium uppercase tracking-wide">{sharedT("labels.amount")}</th>
-                    <th className="px-5 py-2 text-left text-[11px] font-medium uppercase tracking-wide">{sharedT("labels.status")}</th>
-                    <th className="px-5 py-2 text-left text-[11px] font-medium uppercase tracking-wide">{t("bankReference")}</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {withdrawals.map((withdrawal) => (
-                    <tr key={withdrawal.id} className="border-b border-neutral-100 last:border-0">
-                      <td className="px-5 py-3 text-neutral-950">
-                        {formatShortDate(withdrawal.createdAt, locale)}
-                      </td>
-                      <td className="px-5 py-3 font-medium text-neutral-950">
-                        {formatCurrency(withdrawal.amount, locale)}
-                      </td>
-                      <td className="px-5 py-3">
-                        <Badge variant={withdrawalBadge(withdrawal.status)}>
-                          {statusT(withdrawal.status.toLowerCase())}
-                        </Badge>
-                      </td>
-                      <td className="px-5 py-3 text-neutral-600">
-                        {withdrawal.bankReference || "-"}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </>
-        )}
       </section>
     </div>
   );
@@ -396,55 +358,31 @@ export function WithdrawTab() {
 
 function BalanceCard({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-xl border border-neutral-200 bg-white p-4">
-      <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-neutral-400">
+    <div className="min-w-0 rounded-xl border border-neutral-200 bg-white p-3">
+      <p className="truncate text-[10px] font-semibold uppercase text-neutral-400">
         {label}
       </p>
-      <p className="mt-1 text-xl font-semibold text-neutral-950">{value}</p>
+      <p className="mt-1 truncate text-[clamp(0.95rem,3.6vw,1.25rem)] font-semibold text-neutral-950">
+        {value}
+      </p>
     </div>
   );
 }
 
-function WithdrawalCard({
-  withdrawal,
-  locale,
-  t,
-  statusLabel,
-}: {
-  withdrawal: Withdrawal;
-  locale: string;
-  t: (key: "bankReference") => string;
-  statusLabel: string;
-}) {
-  return (
-    <div className="rounded-2xl border border-neutral-200 bg-neutral-50 p-4">
-      <div className="flex items-start justify-between gap-3">
-        <div>
-          <p className="text-xs text-neutral-500">
-            {formatShortDate(withdrawal.createdAt, locale)}
-          </p>
-          <p className="mt-1 text-xl font-semibold text-neutral-950">
-            {formatCurrency(withdrawal.amount, locale)}
-          </p>
-        </div>
-        <Badge variant={withdrawalBadge(withdrawal.status)}>
-          {statusLabel}
-        </Badge>
-      </div>
-      <div className="mt-3 text-sm">
-        <p className="text-xs text-neutral-500">{t("bankReference")}</p>
-        <p className="mt-1 font-medium text-neutral-950">
-          {withdrawal.bankReference || "-"}
-        </p>
-      </div>
-    </div>
-  );
+function parseAmountInput(value: string): AmountParseResult {
+  const trimmed = value.trim().replace(",", ".");
+  if (!trimmed) return { error: "amountRequired" };
+  if (!/^\d+(\.\d{1,2})?$/.test(trimmed)) return { error: "amountCentError" };
+
+  const amount = Number(trimmed);
+  if (!Number.isFinite(amount) || amount <= 0) return { error: "amountRequired" };
+  return { amount: roundToCents(amount) };
 }
 
-function withdrawalBadge(status: string) {
-  const s = status.toLowerCase();
-  if (s === "confirmed" || s === "sent" || s === "paid") return "paid" as const;
-  if (s === "pending" || s === "processing") return "pending" as const;
-  if (s === "failed" || s === "rejected" || s === "disputed") return "failed" as const;
-  return "neutral" as const;
+function formatAmountInput(amount: number) {
+  return amount > 0 ? roundToCents(amount).toFixed(2) : "";
+}
+
+function roundToCents(value: number) {
+  return Math.round(value * 100) / 100;
 }

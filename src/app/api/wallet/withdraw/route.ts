@@ -6,9 +6,27 @@ import { getCreatorPaymentSummary } from "@/lib/creator-payment-summary";
 const MIN_WITHDRAWAL_EUR = 20;
 const OPEN_PAYOUT_STATUSES = ["pending", "processing"] as const;
 
-export async function POST() {
+export async function POST(request: Request) {
   try {
     const { userId } = await requireAuth("creator");
+    const body = await request.json().catch(() => ({}));
+    const parsedAmount = parseWithdrawalAmount(body?.amount);
+
+    if ("error" in parsedAmount) {
+      return NextResponse.json(
+        { error: parsedAmount.error },
+        { status: 400 },
+      );
+    }
+
+    const amount = parsedAmount.amount;
+
+    if (amount < MIN_WITHDRAWAL_EUR) {
+      return NextResponse.json(
+        { error: `Minimum withdrawal amount is EUR ${MIN_WITHDRAWAL_EUR}` },
+        { status: 400 },
+      );
+    }
 
     const user = await prisma.user.findUnique({
       where: { supabaseId: userId },
@@ -55,11 +73,17 @@ export async function POST() {
     }
 
     const summary = await getCreatorPaymentSummary(user.id, creatorProfileId);
-    const amount = summary.availableBalance;
 
-    if (amount < MIN_WITHDRAWAL_EUR) {
+    if (summary.availableBalance < MIN_WITHDRAWAL_EUR) {
       return NextResponse.json(
         { error: `Minimum withdrawal amount is EUR ${MIN_WITHDRAWAL_EUR}` },
+        { status: 400 },
+      );
+    }
+
+    if (amount > roundToCents(summary.availableBalance)) {
+      return NextResponse.json(
+        { error: "Withdrawal amount exceeds available balance." },
         { status: 400 },
       );
     }
@@ -102,4 +126,23 @@ export async function POST() {
       { status: 500 },
     );
   }
+}
+
+function parseWithdrawalAmount(value: unknown) {
+  if (value === null || value === undefined || value === "") {
+    return { error: "Withdrawal amount is required." };
+  }
+  const amount = typeof value === "number" ? value : Number(value);
+  if (!Number.isFinite(amount) || amount <= 0) {
+    return { error: "Withdrawal amount is required." };
+  }
+  const rounded = roundToCents(amount);
+  if (Math.abs(rounded - amount) > 0.000001) {
+    return { error: "Withdrawal amount must use euro cents." };
+  }
+  return { amount: rounded };
+}
+
+function roundToCents(value: number) {
+  return Math.round(value * 100) / 100;
 }

@@ -28,6 +28,16 @@ vi.mock("@/lib/creator-payment-summary", () => ({
 }));
 
 describe("POST /api/wallet/withdraw", () => {
+  function postWithdraw(body?: unknown) {
+    return POST(
+      new Request("http://localhost/api/wallet/withdraw", {
+        method: "POST",
+        body: body === undefined ? undefined : JSON.stringify(body),
+        headers: { "Content-Type": "application/json" },
+      }),
+    );
+  }
+
   beforeEach(() => {
     vi.clearAllMocks();
     routeMocks.requireAuth.mockResolvedValue({ userId: "creator-supabase-1" });
@@ -70,7 +80,7 @@ describe("POST /api/wallet/withdraw", () => {
       },
     });
 
-    const response = await POST();
+    const response = await postWithdraw({ amount: 20 });
 
     expect(response.status).toBe(400);
     await expect(response.json()).resolves.toEqual({
@@ -82,11 +92,41 @@ describe("POST /api/wallet/withdraw", () => {
   it("blocks duplicate open payout requests", async () => {
     routeMocks.payoutFindFirst.mockResolvedValueOnce({ id: "payout-open" });
 
-    const response = await POST();
+    const response = await postWithdraw({ amount: 20 });
 
     expect(response.status).toBe(400);
     await expect(response.json()).resolves.toEqual({
       error: "You already have a payout request in progress.",
+    });
+    expect(routeMocks.payoutCreate).not.toHaveBeenCalled();
+  });
+
+  it("requires an amount", async () => {
+    const response = await postWithdraw({});
+
+    expect(response.status).toBe(400);
+    await expect(response.json()).resolves.toEqual({
+      error: "Withdrawal amount is required.",
+    });
+    expect(routeMocks.payoutCreate).not.toHaveBeenCalled();
+  });
+
+  it("requires the requested amount to be at least EUR 20", async () => {
+    const response = await postWithdraw({ amount: 19.99 });
+
+    expect(response.status).toBe(400);
+    await expect(response.json()).resolves.toEqual({
+      error: "Minimum withdrawal amount is EUR 20",
+    });
+    expect(routeMocks.payoutCreate).not.toHaveBeenCalled();
+  });
+
+  it("requires the requested amount to use euro cents", async () => {
+    const response = await postWithdraw({ amount: 20.999 });
+
+    expect(response.status).toBe(400);
+    await expect(response.json()).resolves.toEqual({
+      error: "Withdrawal amount must use euro cents.",
     });
     expect(routeMocks.payoutCreate).not.toHaveBeenCalled();
   });
@@ -101,7 +141,7 @@ describe("POST /api/wallet/withdraw", () => {
       earningsByCampaign: [],
     });
 
-    const response = await POST();
+    const response = await postWithdraw({ amount: 20 });
 
     expect(response.status).toBe(400);
     await expect(response.json()).resolves.toEqual({
@@ -110,14 +150,35 @@ describe("POST /api/wallet/withdraw", () => {
     expect(routeMocks.payoutCreate).not.toHaveBeenCalled();
   });
 
-  it("creates a pending bank-transfer payout for the full available balance", async () => {
-    const response = await POST();
+  it("does not allow withdrawing more than the available balance", async () => {
+    const response = await postWithdraw({ amount: 43 });
+
+    expect(response.status).toBe(400);
+    await expect(response.json()).resolves.toEqual({
+      error: "Withdrawal amount exceeds available balance.",
+    });
+    expect(routeMocks.payoutCreate).not.toHaveBeenCalled();
+  });
+
+  it("creates a pending bank-transfer payout for the requested amount", async () => {
+    routeMocks.payoutCreate.mockResolvedValueOnce({
+      id: "payout-1",
+      amount: 25.5,
+      status: "pending",
+      currency: "EUR",
+      paymentMethod: "BANK_TRANSFER",
+      bankIbanSnapshot: "NL91ABNA0417164300",
+      bankAccountNameSnapshot: "Clipper Name",
+      requestedAt: new Date("2026-05-19T12:00:00.000Z"),
+    });
+
+    const response = await postWithdraw({ amount: 25.5 });
 
     expect(response.status).toBe(201);
     await expect(response.json()).resolves.toEqual({
       withdrawal: expect.objectContaining({
         id: "payout-1",
-        amount: 42.35,
+        amount: 25.5,
         status: "pending",
         currency: "EUR",
         paymentMethod: "BANK_TRANSFER",
@@ -128,7 +189,7 @@ describe("POST /api/wallet/withdraw", () => {
     expect(routeMocks.payoutCreate).toHaveBeenCalledWith({
       data: expect.objectContaining({
         creatorProfileId: "creator-profile-1",
-        amount: 42.35,
+        amount: 25.5,
         status: "pending",
         paymentMethod: "BANK_TRANSFER",
         bankIbanSnapshot: "NL91ABNA0417164300",
