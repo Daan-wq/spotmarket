@@ -1,1 +1,2 @@
 ALTER TABLE "Payout" ALTER COLUMN "currency" SET DEFAULT 'EUR';
+ALTER TABLE "WithdrawalRequest" ALTER COLUMN "currency" SET DEFAULT 'EUR';

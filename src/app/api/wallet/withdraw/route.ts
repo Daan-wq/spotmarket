@@ -56,7 +56,7 @@ export async function POST(req: NextRequest) {
           amount,
           walletAddress,
           network: "TRC-20",
-          currency: "USDT",
+          currency: "EUR",
           status: "PENDING",
         },
       });

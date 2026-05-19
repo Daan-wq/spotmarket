@@ -1164,7 +1164,7 @@ model WithdrawalRequest {
   amount        Decimal          @db.Decimal(12, 2)
   walletAddress String
   network       String           @default("TRC-20")
-  currency      String           @default("USDT")
+  currency      String           @default("EUR")
   status        WithdrawalStatus @default(PENDING)
   txHash        String?
   processedBy   String?
