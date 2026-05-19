@@ -33,6 +33,7 @@ import {
   type SubmittedClipData,
 } from "@/components/submissions/submitted-clips-list";
 import { CampaignDetailClient } from "./_components/campaign-detail-client";
+import { ContactSupportButton } from "./_components/contact-support-button";
 
 const CLIP_TO_PLATFORM_ICON: Record<ClipPlatform, string | null> = {
   INSTAGRAM: "INSTAGRAM",
@@ -210,12 +211,7 @@ export default async function CampaignDetailPage({
             {t("back")}
           </Link>
         </AnimateIcon>
-        <Link
-          href={`/creator/campaigns/${campaignId}/contact`}
-          className="inline-flex h-10 items-center rounded-xl border border-neutral-200 bg-white px-4 text-sm font-semibold text-neutral-950 transition hover:bg-neutral-50"
-        >
-          {t("contact")}
-        </Link>
+        <ContactSupportButton />
       </div>
 
       <header className="rounded-2xl border border-neutral-200 bg-neutral-50 p-5 md:p-6">
