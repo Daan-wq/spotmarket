@@ -26,7 +26,10 @@ export const CREATOR_NAV_ITEMS: Array<{
 ];
 
 export const CREATOR_BOTTOM_NAV_ITEMS = CREATOR_NAV_ITEMS.filter((item) =>
-  ["/creator/campaigns", "/creator/connections", "/creator/videos"].includes(
-    item.href,
-  ),
+  [
+    "/creator/campaigns",
+    "/creator/connections",
+    "/creator/videos",
+    "/creator/payouts",
+  ].includes(item.href),
 );

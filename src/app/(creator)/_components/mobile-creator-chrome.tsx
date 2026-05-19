@@ -130,7 +130,7 @@ export function MobileCreatorChrome({
 
       <nav
         aria-label={t("menu")}
-        className="fixed inset-x-3 bottom-3 z-40 mx-auto grid max-w-[420px] grid-cols-3 gap-1 rounded-2xl border border-neutral-200 bg-white p-1.5 shadow-[0_16px_40px_rgba(0,0,0,0.16)] lg:hidden"
+        className="fixed inset-x-3 bottom-3 z-40 mx-auto grid max-w-[520px] grid-cols-4 gap-1 rounded-2xl border border-neutral-200 bg-white p-1.5 shadow-[0_16px_40px_rgba(0,0,0,0.16)] lg:hidden"
       >
         {CREATOR_BOTTOM_NAV_ITEMS.map((item) => {
           const Icon = item.icon;
