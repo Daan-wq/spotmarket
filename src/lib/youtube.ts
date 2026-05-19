@@ -32,7 +32,7 @@ export function getYoutubeAuthUrl(state: string): string {
     response_type: "code",
     scope: REQUIRED_YT_SCOPES.join(" "),
     access_type: "offline",
-    prompt: "consent",
+    prompt: "consent select_account",
     include_granted_scopes: "true",
     state,
   });

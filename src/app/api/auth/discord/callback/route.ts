@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { prisma } from "@/lib/prisma";
+import { REQUIRED_DISCORD_SCOPES } from "@/lib/discord";
 
 export async function GET(req: NextRequest) {
   const code = req.nextUrl.searchParams.get("code");
@@ -61,7 +62,6 @@ export async function GET(req: NextRequest) {
       typeof tokenJson.scope === "string" ? tokenJson.scope.split(/\s+/).filter(Boolean) : [];
 
     // Validate required Discord scopes
-    const REQUIRED_DISCORD_SCOPES = ["identify"];
     const missing = REQUIRED_DISCORD_SCOPES.filter((s) => !grantedScopes.includes(s));
     if (missing.length > 0) {
       return NextResponse.redirect(new URL(`${returnTo}?error=discord_missing_scopes`, req.url));

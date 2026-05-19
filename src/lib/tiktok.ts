@@ -7,6 +7,7 @@ import { getRequiredOAuthEnv, getRequiredOAuthRedirectUri } from "@/lib/oauth-en
 
 const TIKTOK_OAUTH_BASE = "https://open.tiktokapis.com/v2/oauth";
 const TIKTOK_API_BASE = "https://open.tiktokapis.com/v2";
+const TIKTOK_AUTH_URL = "https://www.tiktok.com/v2/auth/authorize/";
 
 // ─── OAuth ──────────────────────────────────────────────────────────
 
@@ -24,8 +25,9 @@ export function getTikTokAuthUrl(state: string): string {
     response_type: "code",
     scope: REQUIRED_TT_SCOPES.join(","),
     state,
+    disable_auto_auth: "1",
   });
-  return `https://www.tiktok.com/v2/auth/authorize?${params.toString()}`;
+  return `${TIKTOK_AUTH_URL}?${params.toString()}`;
 }
 
 export async function exchangeCodeForTokens(code: string): Promise<{
