@@ -35,9 +35,8 @@ export default async function PaymentsPage() {
     where: { userId: user.id },
     select: {
       id: true,
-      walletAddress: true,
-      tronsAddress: true,
-      stripeAccountId: true,
+      payoutIban: true,
+      payoutAccountName: true,
     },
   });
   if (!profile) throw new Error("Creator profile not found");
@@ -54,16 +53,14 @@ export default async function PaymentsPage() {
     totalEarned,
     totalPaid,
     pendingPayout,
+    profit,
     availableBalance: balance,
     earningsByCampaign,
   } = paymentSummary;
-  const hasPaymentMethod = Boolean(
-    profile.walletAddress || profile.tronsAddress || profile.stripeAccountId,
-  );
+  const hasPaymentMethod = Boolean(profile.payoutIban && profile.payoutAccountName);
   const overviewSlot = await OverviewTab({
     locale,
-    totalEarned,
-    totalPaid,
+    profit,
     balance,
     pendingPayout,
     earningsByCampaign,
@@ -93,8 +90,7 @@ export default async function PaymentsPage() {
 
 interface OverviewTabProps {
   locale: Locale;
-  totalEarned: number;
-  totalPaid: number;
+  profit: number;
   balance: number;
   pendingPayout: number;
   earningsByCampaign: Array<{
@@ -108,8 +104,7 @@ interface OverviewTabProps {
 
 async function OverviewTab({
   locale,
-  totalEarned,
-  totalPaid,
+  profit,
   balance,
   pendingPayout,
   earningsByCampaign,
@@ -119,13 +114,12 @@ async function OverviewTab({
   const cards = [
     { label: t("availableBalance"), value: formatCurrency(balance, locale), detail: t("readyUnlocks") },
     { label: t("pending"), value: formatCurrency(pendingPayout, locale), detail: t("requestsProgress") },
-    { label: t("totalPaid"), value: formatCurrency(totalPaid, locale), detail: t("confirmedOrSent") },
-    { label: t("totalEarned"), value: formatCurrency(totalEarned, locale), detail: t("approvedSubmissions") },
+    { label: t("profit"), value: formatCurrency(profit, locale), detail: t("profitDetail") },
   ];
 
   return (
     <div className="space-y-5">
-      <div className="grid grid-cols-2 gap-3 md:grid-cols-2 md:gap-4 xl:grid-cols-4">
+      <div className="grid grid-cols-1 gap-3 md:grid-cols-3 md:gap-4">
         {cards.map((card) => (
           <SoftStat key={card.label} label={card.label} value={card.value} detail={card.detail} />
         ))}

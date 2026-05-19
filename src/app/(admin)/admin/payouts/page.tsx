@@ -7,11 +7,28 @@ import { PageHeader, SectionHeader, StatCard } from "@/components/ui/page";
 import { prisma } from "@/lib/prisma";
 import { formatCurrencyPrecise, formatDate, titleCaseEnum } from "@/lib/admin/agency-format";
 import { PayoutRunForm } from "./payout-run-form";
+import { PaymentRequestActions } from "./payment-request-actions";
 
 export const dynamic = "force-dynamic";
 
 export default async function PayoutsPage() {
-  const [runs, payouts, approvedUnpaid] = await Promise.all([
+  const [paymentRequests, runs, payouts, approvedUnpaid] = await Promise.all([
+    prisma.payout.findMany({
+      where: {
+        paymentMethod: "BANK_TRANSFER",
+        status: { in: ["pending", "processing"] },
+      },
+      include: {
+        creatorProfile: {
+          select: {
+            displayName: true,
+            user: { select: { email: true } },
+          },
+        },
+      },
+      orderBy: [{ requestedAt: "asc" }, { createdAt: "asc" }],
+      take: 100,
+    }),
     prisma.payoutRun.findMany({
       orderBy: { createdAt: "desc" },
       include: {
@@ -36,9 +53,6 @@ export default async function PayoutsPage() {
   const openRuns = runs.filter((run) => ["DRAFT", "FINALIZED", "PROCESSING"].includes(run.status));
   const owed = approvedUnpaid.reduce((sum, submission) => sum + Number(submission.earnedAmount), 0);
   const runNet = runs.reduce((sum, run) => sum + Number(run.totalNet), 0);
-  const legacyPending = payouts
-    .filter((payout) => ["pending", "processing"].includes(payout.status))
-    .reduce((sum, payout) => sum + Number(payout.amount), 0);
 
   return (
     <div className="space-y-9">
@@ -53,11 +67,85 @@ export default async function PayoutsPage() {
       />
 
       <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
+        <StatCard label="Payment requests" value={String(paymentRequests.length)} detail="Manual bank transfers waiting" tone={paymentRequests.length > 0 ? "warning" : "neutral"} />
         <StatCard label="Open runs" value={String(openRuns.length)} detail="Draft, finalized, or processing" />
         <StatCard label="Run net total" value={formatCurrencyPrecise(runNet)} detail="All payout run net amounts" />
         <StatCard label="Approved unpaid" value={formatCurrencyPrecise(owed)} detail={`${approvedUnpaid.length} submissions not in a run`} tone={approvedUnpaid.length > 0 ? "warning" : "neutral"} />
-        <StatCard label="Legacy pending" value={formatCurrencyPrecise(legacyPending, "EUR")} detail="Existing payout records" tone={legacyPending > 0 ? "warning" : "neutral"} />
       </div>
+
+      <section>
+        <SectionHeader title="Payment requests" description="Manual IBAN payout requests submitted by clippers." />
+        <DataTable
+          rows={paymentRequests}
+          rowKey={(payout) => payout.id}
+          emptyState={<EmptyState title="No payment requests" description="New clipper withdrawal requests will appear here before you transfer them manually." />}
+          columns={[
+            {
+              key: "creator",
+              header: "Clipper",
+              cell: (payout) => (
+                <div>
+                  <p className="font-semibold text-neutral-950">
+                    {payout.creatorProfile?.displayName || payout.creatorProfile?.user?.email || "-"}
+                  </p>
+                  <p className="mt-1 text-xs text-neutral-500">
+                    {payout.creatorProfile?.user?.email || "-"}
+                  </p>
+                </div>
+              ),
+            },
+            {
+              key: "amount",
+              header: "Amount",
+              align: "right",
+              cell: (payout) => (
+                <span className="font-semibold text-neutral-950">
+                  {formatCurrencyPrecise(payout.amount, payout.currency)}
+                </span>
+              ),
+            },
+            {
+              key: "bank",
+              header: "IBAN",
+              cell: (payout) => (
+                <div className="min-w-[220px]">
+                  <p className="font-mono text-xs text-neutral-950">
+                    {payout.bankIbanSnapshot || "-"}
+                  </p>
+                  <p className="mt-1 text-xs text-neutral-500">
+                    {payout.bankAccountNameSnapshot || "-"}
+                  </p>
+                </div>
+              ),
+            },
+            {
+              key: "requested",
+              header: "Requested",
+              cell: (payout) => formatDate(payout.requestedAt ?? payout.createdAt),
+            },
+            {
+              key: "status",
+              header: "Status",
+              cell: (payout) => (
+                <Badge variant={payout.status === "processing" ? "pending" : "neutral"}>
+                  {titleCaseEnum(payout.status)}
+                </Badge>
+              ),
+            },
+            {
+              key: "actions",
+              header: "Actions",
+              cell: (payout) => (
+                <PaymentRequestActions
+                  id={payout.id}
+                  iban={payout.bankIbanSnapshot}
+                  accountName={payout.bankAccountNameSnapshot}
+                />
+              ),
+            },
+          ]}
+        />
+      </section>
 
       <section>
         <SectionHeader title="Create payout run" description="Group approved unpaid work into a period-based payout run." />

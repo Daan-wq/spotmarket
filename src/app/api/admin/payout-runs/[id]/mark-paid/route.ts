@@ -6,7 +6,7 @@ import { jsonError, serialize } from "@/lib/admin/agency-api";
 
 const paidSchema = z.object({
   proofUrl: z.string().url().optional().nullable(),
-  paymentMethod: z.enum(["CRYPTO", "STRIPE"]).optional(),
+  paymentMethod: z.enum(["CRYPTO", "STRIPE", "BANK_TRANSFER"]).optional(),
 });
 
 export async function POST(

@@ -46,6 +46,8 @@ export const getActivationStatus = cache(
         displayName: true,
         walletAddress: true,
         tronsAddress: true,
+        payoutIban: true,
+        payoutAccountName: true,
         stripeAccountId: true,
       },
     });
@@ -83,7 +85,10 @@ export const getActivationStatus = cache(
     const profileComplete = Boolean(profile.displayName?.trim());
     const accountConnected = igCount + fbCount + ytCount + ttCount > 0;
     const paymentMethodAdded = Boolean(
-      profile.walletAddress || profile.tronsAddress || profile.stripeAccountId,
+      (profile.payoutIban && profile.payoutAccountName) ||
+        profile.walletAddress ||
+        profile.tronsAddress ||
+        profile.stripeAccountId,
     );
     const firstClipSubmitted = submissionCount > 0;
     const firstApproval = approvedCount > 0;

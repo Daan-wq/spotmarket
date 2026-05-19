@@ -2,16 +2,11 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { requireAuth } from "@/lib/auth";
-import { TRON_REGEX } from "@/lib/validation/tron";
+import { formatIban, isValidIban, normalizeIban } from "@/lib/validation/iban";
 
 const payoutAddressSchema = z.object({
-  tronsAddress: z
-    .string()
-    .trim()
-    .regex(
-      TRON_REGEX,
-      "Address must start with capital T and be 34 characters (TRC-20 format).",
-    ),
+  iban: z.string().trim().refine(isValidIban, "Enter a valid IBAN."),
+  accountName: z.string().trim().min(2, "Account holder name is required."),
 });
 
 export async function POST(req: NextRequest) {
@@ -19,7 +14,9 @@ export async function POST(req: NextRequest) {
     const { userId } = await requireAuth("creator");
 
     const body = await req.json();
-    const { tronsAddress } = payoutAddressSchema.parse(body);
+    const { iban, accountName } = payoutAddressSchema.parse(body);
+    const payoutIban = normalizeIban(iban);
+    const payoutAccountName = accountName.replace(/\s+/g, " ").trim();
 
     const user = await prisma.user.findUnique({
       where: { supabaseId: userId },
@@ -38,10 +35,15 @@ export async function POST(req: NextRequest) {
 
     await prisma.creatorProfile.update({
       where: { userId: user.id },
-      data: { tronsAddress },
+      data: { payoutIban, payoutAccountName },
     });
 
-    return NextResponse.json({ tronsAddress });
+    return NextResponse.json({
+      payoutIban,
+      payoutAccountName,
+      iban: formatIban(payoutIban),
+      accountName: payoutAccountName,
+    });
   } catch (err: unknown) {
     if (err instanceof z.ZodError) {
       return NextResponse.json(

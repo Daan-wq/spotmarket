@@ -68,8 +68,23 @@ describe("buildCreatorPaymentSummary", () => {
     });
 
     expect(summary.totalPaid).toBe(30);
+    expect(summary.profit).toBe(30);
     expect(summary.pendingPayout).toBe(20);
     expect(summary.availableBalance).toBe(50);
+  });
+
+  it("ignores failed payouts so rejected requests return to available balance", () => {
+    const summary = buildCreatorPaymentSummary({
+      submissions: [submission({ earnedAmount: 100 })],
+      payouts: [
+        payout({ amount: 20, status: "failed" }),
+        payout({ amount: 10, status: "disputed" }),
+      ],
+    });
+
+    expect(summary.profit).toBe(0);
+    expect(summary.pendingPayout).toBe(0);
+    expect(summary.availableBalance).toBe(100);
   });
 
   it("prefers eligible views, then verified views, then claimed views for campaign rows", () => {

@@ -1,0 +1,113 @@
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import { PATCH } from "./route";
+
+const routeMocks = vi.hoisted(() => ({
+  requireAuth: vi.fn(),
+  userFindUnique: vi.fn(),
+  payoutFindUnique: vi.fn(),
+  payoutUpdate: vi.fn(),
+  auditLogCreate: vi.fn(),
+}));
+
+vi.mock("@/lib/auth", () => ({
+  requireAuth: routeMocks.requireAuth,
+}));
+
+vi.mock("@/lib/prisma", () => ({
+  prisma: {
+    user: { findUnique: routeMocks.userFindUnique },
+    payout: {
+      findUnique: routeMocks.payoutFindUnique,
+      update: routeMocks.payoutUpdate,
+    },
+    auditLog: { create: routeMocks.auditLogCreate },
+  },
+}));
+
+const params = { params: Promise.resolve({ payoutId: "payout-1" }) };
+
+function patchRequest(body: unknown) {
+  return new Request("https://app.test/api/payouts/payout-1", {
+    method: "PATCH",
+    body: JSON.stringify(body),
+  });
+}
+
+describe("PATCH /api/payouts/[payoutId]", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    routeMocks.requireAuth.mockResolvedValue({ userId: "admin-supabase-1" });
+    routeMocks.userFindUnique.mockResolvedValue({ id: "admin-user-1" });
+    routeMocks.payoutFindUnique.mockResolvedValue({
+      id: "payout-1",
+      status: "pending",
+      paymentMethod: "BANK_TRANSFER",
+      bankReference: null,
+    });
+    routeMocks.payoutUpdate.mockImplementation(({ data }) =>
+      Promise.resolve({
+        id: "payout-1",
+        ...data,
+      }),
+    );
+    routeMocks.auditLogCreate.mockResolvedValue({});
+  });
+
+  it("requires a bank reference before confirming a bank-transfer payout", async () => {
+    const response = await PATCH(patchRequest({ status: "confirmed" }), params);
+
+    expect(response.status).toBe(400);
+    await expect(response.json()).resolves.toEqual({
+      error: "Bank reference is required to mark this payout as paid.",
+    });
+    expect(routeMocks.payoutUpdate).not.toHaveBeenCalled();
+  });
+
+  it("marks a bank-transfer payout as confirmed with a bank reference", async () => {
+    const response = await PATCH(
+      patchRequest({ status: "confirmed", bankReference: "ABN transfer 123" }),
+      params,
+    );
+
+    expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toEqual(
+      expect.objectContaining({
+        id: "payout-1",
+        status: "confirmed",
+        bankReference: "ABN transfer 123",
+      }),
+    );
+    expect(routeMocks.payoutUpdate).toHaveBeenCalledWith({
+      where: { id: "payout-1" },
+      data: expect.objectContaining({
+        status: "confirmed",
+        bankReference: "ABN transfer 123",
+        confirmedAt: expect.any(Date),
+        processedAt: expect.any(Date),
+      }),
+    });
+    expect(routeMocks.auditLogCreate).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        action: "payout.confirmed",
+        entityId: "payout-1",
+        metadata: expect.objectContaining({
+          bankReference: "ABN transfer 123",
+          paymentMethod: "BANK_TRANSFER",
+        }),
+      }),
+    });
+  });
+
+  it("marks a rejected payout request as failed without mutating balance directly", async () => {
+    const response = await PATCH(patchRequest({ status: "failed" }), params);
+
+    expect(response.status).toBe(200);
+    expect(routeMocks.payoutUpdate).toHaveBeenCalledWith({
+      where: { id: "payout-1" },
+      data: expect.objectContaining({
+        status: "failed",
+        processedAt: expect.any(Date),
+      }),
+    });
+  });
+});

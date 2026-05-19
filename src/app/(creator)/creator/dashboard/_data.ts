@@ -1,38 +1,42 @@
 import { cache } from "react";
 import { prisma } from "@/lib/prisma";
+import { getCreatorPaymentSummary } from "@/lib/creator-payment-summary";
 
 export interface CreatorPayoutTotals {
   totalEarnings: number;
   totalPaid: number;
+  pendingBalance: number;
+  profit: number;
   availableBalance: number;
   hasUnpaidBalance: boolean;
 }
 
 export const getCreatorPayoutTotals = cache(
   async (userId: string): Promise<CreatorPayoutTotals> => {
-    const [earningsResult, paidResult] = await Promise.all([
-      prisma.campaignSubmission.aggregate({
-        where: { creatorId: userId, status: "APPROVED" },
-        _sum: { earnedAmount: true },
-      }),
-      prisma.payout.aggregate({
-        where: {
-          creatorProfile: { userId },
-          status: { in: ["confirmed", "sent"] },
-        },
-        _sum: { amount: true },
-      }),
-    ]);
+    const profile = await prisma.creatorProfile.findUnique({
+      where: { userId },
+      select: { id: true },
+    });
+    if (!profile) {
+      return {
+        totalEarnings: 0,
+        totalPaid: 0,
+        pendingBalance: 0,
+        profit: 0,
+        availableBalance: 0,
+        hasUnpaidBalance: false,
+      };
+    }
 
-    const totalEarnings = Number(earningsResult._sum.earnedAmount || 0);
-    const totalPaid = Number(paidResult._sum.amount || 0);
-    const availableBalance = Math.max(totalEarnings - totalPaid, 0);
+    const summary = await getCreatorPaymentSummary(userId, profile.id);
 
     return {
-      totalEarnings,
-      totalPaid,
-      availableBalance,
-      hasUnpaidBalance: availableBalance > 0,
+      totalEarnings: summary.totalEarned,
+      totalPaid: summary.totalPaid,
+      pendingBalance: summary.pendingPayout,
+      profit: summary.profit,
+      availableBalance: summary.availableBalance,
+      hasUnpaidBalance: summary.availableBalance > 0,
     };
   },
 );

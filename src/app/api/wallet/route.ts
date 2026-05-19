@@ -1,9 +1,9 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireAuth } from "@/lib/auth";
 import { getCreatorPaymentSummary } from "@/lib/creator-payment-summary";
 
-export async function GET(_req: NextRequest) {
+export async function GET() {
   try {
     const { userId } = await requireAuth("creator");
 
@@ -11,7 +11,13 @@ export async function GET(_req: NextRequest) {
       where: { supabaseId: userId },
       select: {
         id: true,
-        creatorProfile: { select: { id: true, tronsAddress: true } },
+        creatorProfile: {
+          select: {
+            id: true,
+            payoutIban: true,
+            payoutAccountName: true,
+          },
+        },
       },
     });
 
@@ -19,16 +25,26 @@ export async function GET(_req: NextRequest) {
       return NextResponse.json({ error: "User not found" }, { status: 404 });
     }
 
-    const [wallet, summary] = await Promise.all([
-      prisma.wallet.findUnique({
-        where: { userId: user.id },
-        include: {
-          withdrawals: {
-            orderBy: { createdAt: "desc" },
-            take: 20,
+    const [payouts, summary] = await Promise.all([
+      user.creatorProfile
+        ? prisma.payout.findMany({
+          where: { creatorProfileId: user.creatorProfile.id },
+          orderBy: { requestedAt: "desc" },
+          take: 20,
+          select: {
+            id: true,
+            amount: true,
+            status: true,
+            currency: true,
+            paymentMethod: true,
+            bankIbanSnapshot: true,
+            bankAccountNameSnapshot: true,
+            bankReference: true,
+            requestedAt: true,
+            createdAt: true,
           },
-        },
-      }),
+        })
+        : Promise.resolve([]),
       user.creatorProfile
         ? getCreatorPaymentSummary(user.id, user.creatorProfile.id)
         : Promise.resolve(null),
@@ -37,17 +53,24 @@ export async function GET(_req: NextRequest) {
     return NextResponse.json({
       balance: summary?.availableBalance ?? 0,
       availableBalance: summary?.availableBalance ?? 0,
-      tronsAddress: user.creatorProfile?.tronsAddress ?? null,
+      pendingBalance: summary?.pendingPayout ?? 0,
+      profit: summary?.profit ?? 0,
+      payoutIban: user.creatorProfile?.payoutIban ?? null,
+      payoutAccountName: user.creatorProfile?.payoutAccountName ?? null,
       totalEarnings: summary?.totalEarned ?? 0,
       settledEarnings: summary?.totalEarned ?? 0,
       estimatedEarnings: 0,
-      withdrawals: wallet?.withdrawals.map((w) => ({
-        id: w.id,
-        amount: Number(w.amount),
-        status: w.status,
-        txHash: w.txHash,
-        createdAt: w.createdAt,
-      })) ?? [],
+      withdrawals: payouts.map((payout) => ({
+        id: payout.id,
+        amount: Number(payout.amount),
+        status: payout.status,
+        currency: payout.currency,
+        paymentMethod: payout.paymentMethod,
+        bankIban: payout.bankIbanSnapshot,
+        bankAccountName: payout.bankAccountNameSnapshot,
+        bankReference: payout.bankReference,
+        createdAt: payout.requestedAt ?? payout.createdAt,
+      })),
     });
   } catch (err: unknown) {
     console.error("[wallet GET]", err);

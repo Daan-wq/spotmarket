@@ -9,7 +9,7 @@ import { getCreatorPayoutTotals } from "../_data";
 export async function PayoutSummary({ userId }: { userId: string }) {
   const locale = (await getLocale()) as Locale;
   const t = await getTranslations("dashboard.creator.payoutSummary");
-  const { totalEarnings, totalPaid, availableBalance } =
+  const { availableBalance, pendingBalance, profit } =
     await getCreatorPayoutTotals(userId);
 
   return (
@@ -19,12 +19,12 @@ export async function PayoutSummary({ userId }: { userId: string }) {
         description={t("description")}
       />
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-        <MiniPayout label={t("estimated")} value={formatCurrencyPrecise(totalEarnings, "EUR", locale)} />
+        <MiniPayout label={t("balance")} value={formatCurrencyPrecise(availableBalance, "EUR", locale)} />
         <MiniPayout
-          label={t("pendingFinal")}
-          value={formatCurrencyPrecise(availableBalance, "EUR", locale)}
+          label={t("pending")}
+          value={formatCurrencyPrecise(pendingBalance, "EUR", locale)}
         />
-        <MiniPayout label={t("paid")} value={formatCurrencyPrecise(totalPaid, "EUR", locale)} />
+        <MiniPayout label={t("profit")} value={formatCurrencyPrecise(profit, "EUR", locale)} />
       </div>
       <Link
         href="/creator/payouts"

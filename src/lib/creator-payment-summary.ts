@@ -26,6 +26,7 @@ export interface CreatorCampaignEarningsRow {
 export interface CreatorPaymentSummary {
   totalEarned: number;
   totalPaid: number;
+  profit: number;
   pendingPayout: number;
   availableBalance: number;
   earningsByCampaign: CreatorCampaignEarningsRow[];
@@ -93,6 +94,7 @@ export function buildCreatorPaymentSummary({
   return {
     totalEarned,
     totalPaid,
+    profit: totalPaid,
     pendingPayout,
     availableBalance: roundMoney(Math.max(totalEarned - totalPaid - pendingPayout, 0)),
     earningsByCampaign: Array.from(byCampaign.values()).sort(
