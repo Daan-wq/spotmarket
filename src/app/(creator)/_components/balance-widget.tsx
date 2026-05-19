@@ -12,7 +12,7 @@ export async function BalanceWidget({ supabaseId }: BalanceWidgetProps) {
       <div className="text-xs">
         <div style={{ color: "var(--text-muted)" }}>Total Earnings</div>
         <div className="font-semibold text-base" style={{ color: "var(--text-primary)" }}>
-          $0.00
+          €0.00
         </div>
       </div>
     );
@@ -27,7 +27,7 @@ export async function BalanceWidget({ supabaseId }: BalanceWidgetProps) {
     <div className="text-xs">
       <div style={{ color: "var(--text-muted)" }}>Total Earnings</div>
       <div className="font-semibold text-base" style={{ color: "var(--text-primary)" }}>
-        ${totalEarned.toFixed(2)}
+        €{totalEarned.toFixed(2)}
       </div>
     </div>
   );

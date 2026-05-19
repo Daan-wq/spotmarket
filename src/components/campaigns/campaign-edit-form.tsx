@@ -606,7 +606,7 @@ export function CampaignEditForm({
 
         <Section title="Budget, CPM, Timeline">
           <div className="grid gap-4 md:grid-cols-2">
-            <Field label="Total budget (USD) *">
+            <Field label="Total budget (EUR) *">
               <NumberInput
                 value={form.totalBudget}
                 onChange={(value) => setField("totalBudget", value)}
@@ -650,7 +650,7 @@ export function CampaignEditForm({
             <div className="flex flex-wrap items-center justify-between gap-2">
               <span style={{ color: "var(--text-secondary)" }}>Client / business CPM</span>
               <span className="font-semibold tabular-nums" style={{ color: "var(--text-primary)" }}>
-                ${businessCpm.toFixed(2)} per 1M views
+                €{businessCpm.toFixed(2)} per 1M views
               </span>
             </div>
           </div>

@@ -133,7 +133,7 @@ export function TopEarners({
               {data.stats.uniqueEarners} creators earned
             </span>
             <span className="text-xs font-semibold" style={{ color: "var(--text-primary)" }}>
-              ${data.stats.totalPaidOut.toFixed(2)} total
+              €{data.stats.totalPaidOut.toFixed(2)} total
             </span>
           </div>
         )}
@@ -180,7 +180,7 @@ export function TopEarners({
         >
           <p className="text-xs" style={{ color: "var(--text-muted)" }}>
             <span className="font-semibold" style={{ color: "var(--accent)" }}>
-              ${data.stats.totalPaidOut.toFixed(2)}
+              €{data.stats.totalPaidOut.toFixed(2)}
             </span>{" "}
             earned by {data.stats.uniqueEarners} creators
           </p>
@@ -270,7 +270,7 @@ function SidebarRow({ entry }: { entry: LeaderboardEntry }) {
         </p>
       </div>
       <p className="text-sm font-semibold shrink-0" style={{ color: "var(--success)" }}>
-        ${entry.totalEarned.toFixed(2)}
+        €{entry.totalEarned.toFixed(2)}
       </p>
     </div>
   );
@@ -289,7 +289,7 @@ function CompactRow({ entry }: { entry: LeaderboardEntry }) {
         {entry.displayName}
       </p>
       <p className="text-sm font-semibold shrink-0" style={{ color: "var(--success)" }}>
-        ${entry.totalEarned.toFixed(2)}
+        €{entry.totalEarned.toFixed(2)}
       </p>
     </div>
   );
@@ -309,7 +309,7 @@ function InlineRow({ entry, isLast }: { entry: LeaderboardEntry; isLast: boolean
         </p>
       </div>
       <p className="text-sm font-semibold shrink-0" style={{ color: "var(--success)" }}>
-        ${entry.totalEarned.toFixed(2)}
+        €{entry.totalEarned.toFixed(2)}
       </p>
     </div>
   );

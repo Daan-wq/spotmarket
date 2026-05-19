@@ -47,7 +47,7 @@ export function EarningsChart({ data }: { data: EarningsDataPoint[] }) {
         />
         <YAxis
           tick={{ fontSize: 11, fill: "var(--text-muted)" }}
-          tickFormatter={(v) => `$${v}`}
+          tickFormatter={(v) => `€${v}`}
           axisLine={false}
           tickLine={false}
           width={50}
@@ -63,7 +63,7 @@ export function EarningsChart({ data }: { data: EarningsDataPoint[] }) {
           formatter={(value, name) => {
             const v = Number(value ?? 0);
             return name === "earned"
-              ? [`$${v.toFixed(2)}`, "Earned"]
+              ? [`€${v.toFixed(2)}`, "Earned"]
               : [v.toLocaleString(), "Views"];
           }}
         />

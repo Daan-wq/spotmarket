@@ -131,7 +131,7 @@ function Metric({
         {label}
       </div>
       <div className="text-2xl font-bold tabular-nums" style={{ color }}>
-        {loading ? "-" : formatCurrencyPrecise(value, "USD", locale)}
+        {loading ? "-" : formatCurrencyPrecise(value, "EUR", locale)}
       </div>
       <div className="text-xs mt-1" style={{ color: "var(--text-secondary)" }}>
         {subtitle}

@@ -124,7 +124,7 @@ export default async function ReferrerDetailPage({
             className="text-2xl font-bold"
             style={{ color: "var(--text-primary)" }}
           >
-            ${totalEarnings.toFixed(2)}
+            €{totalEarnings.toFixed(2)}
           </p>
         </div>
 
@@ -145,7 +145,7 @@ export default async function ReferrerDetailPage({
             className="text-2xl font-bold"
             style={{ color: "var(--text-primary)" }}
           >
-            ${pendingAmount.toFixed(2)}
+            €{pendingAmount.toFixed(2)}
           </p>
         </div>
       </div>
@@ -276,7 +276,7 @@ export default async function ReferrerDetailPage({
                     className="px-6 py-3 text-sm"
                     style={{ color: "var(--text-primary)" }}
                   >
-                    ${Number(payout.amount).toFixed(2)}
+                    €{Number(payout.amount).toFixed(2)}
                   </td>
                   <td className="px-6 py-3 text-sm">
                     <span

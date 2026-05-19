@@ -180,7 +180,7 @@ async function RecentSubmissions({ creatorId }: { creatorId: string }) {
                     </span>
                   </td>
                   <td className="px-4 py-3 text-neutral-600">
-                    {formatCurrencyPrecise(sub.earnedAmount, "USD", locale)}
+                    {formatCurrencyPrecise(sub.earnedAmount, "EUR", locale)}
                   </td>
                 </tr>
               ))

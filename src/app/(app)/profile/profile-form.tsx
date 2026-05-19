@@ -166,7 +166,7 @@ export function ProfileForm({ profileId, initialData }: ProfileFormProps) {
 
         <div>
           <label className="block text-sm font-medium mb-1.5" style={{ color: "var(--card-foreground)" }}>
-            USDT Wallet (TRC-20 / Tron){" "}
+            Campaign refund address{" "}
             <span style={{ color: "var(--text-muted)", fontWeight: 400 }}>(for campaign deposits &amp; refunds)</span>
           </label>
           <input

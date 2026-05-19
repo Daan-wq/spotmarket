@@ -29,7 +29,7 @@ export async function POST(req: NextRequest) {
 
     if (!wallet || Number(wallet.balance) < 50) {
       return NextResponse.json(
-        { error: "Minimum withdrawal amount is $50" },
+        { error: "Minimum withdrawal amount is €50" },
         { status: 400 }
       );
     }

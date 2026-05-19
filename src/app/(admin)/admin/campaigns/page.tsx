@@ -79,7 +79,7 @@ export default async function CampaignsPage() {
               ),
             },
             { key: "status", header: "Status", cell: (campaign) => <CampaignStatusBadge status={campaign.status} deadline={campaign.deadline} /> },
-            { key: "budget", header: "Budget", align: "right", cell: (campaign) => formatCurrencyPrecise(campaign.totalBudget, "USD") },
+            { key: "budget", header: "Budget", align: "right", cell: (campaign) => formatCurrencyPrecise(campaign.totalBudget, "EUR") },
             { key: "creators", header: "Creators", align: "right", cell: (campaign) => campaign.applications.length },
             {
               key: "assignments",

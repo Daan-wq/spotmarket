@@ -46,7 +46,7 @@ export default async function AdminStatsPage({ searchParams }: PageProps) {
         />
         <KpiCard
           label="Effective CPV"
-          value={`$${stats.effectiveCpv.value.toFixed(6)}`}
+          value={`€${stats.effectiveCpv.value.toFixed(6)}`}
           trend={stats.effectiveCpv.delta}
           hint={range.label}
         />

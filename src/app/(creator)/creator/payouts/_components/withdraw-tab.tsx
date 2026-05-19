@@ -198,7 +198,7 @@ export function WithdrawTab() {
           {t("methodDescription")}
         </p>
         <div className="mt-4 flex flex-wrap items-center gap-3">
-          <Badge variant="active">USDT TRC-20</Badge>
+          <Badge variant="active">EUR</Badge>
           <span className="text-xs text-neutral-500">
             {t("minimumWithdrawal", {
               amount: formatCurrency(MIN_WITHDRAW, locale, {

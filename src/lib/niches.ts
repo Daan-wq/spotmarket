@@ -42,7 +42,7 @@ export const NICHE_CONFIG: Record<Niche, NicheConfig> = {
     cpmBenchmark: 4.5,
     isLegacy: false,
     color: "yellow",
-    description: "Massive reach potential — proven acquisition model (IMGN $85M)",
+    description: "Massive reach potential — proven acquisition model (IMGN €85M)",
   },
   LIFESTYLE: {
     label: "Lifestyle",

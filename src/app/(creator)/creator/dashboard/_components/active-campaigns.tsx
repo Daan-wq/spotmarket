@@ -53,7 +53,7 @@ export async function ActiveCampaigns({ profileId }: { profileId: string }) {
               </div>
               <div className="mt-3 flex items-center gap-2 text-sm text-neutral-500">
                 <span>
-                  {formatCurrencyPrecise(Number(application.campaign.creatorCpv) * 1_000_000, "USD", locale)}{" "}
+                  {formatCurrencyPrecise(Number(application.campaign.creatorCpv) * 1_000_000, "EUR", locale)}{" "}
                   {sharedT("units.cpm")}
                 </span>
                 {application.campaign.platforms.length > 0 && (

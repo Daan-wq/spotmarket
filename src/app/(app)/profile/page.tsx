@@ -109,10 +109,10 @@ export default async function ProfilePage({
       {/* Stats grid */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         {[
-          { label: "Total Earned", value: totalEarned > 0 ? `$${totalEarned.toFixed(2)}` : "—", sub: "from campaigns" },
+          { label: "Total Earned", value: totalEarned > 0 ? `€${totalEarned.toFixed(2)}` : "—", sub: "from campaigns" },
           { label: "Total Views", value: totalViews >= 1000 ? `${(totalViews / 1000).toFixed(1)}K` : totalViews > 0 ? String(totalViews) : "—", sub: "generated" },
           { label: "Campaigns Hosted", value: String((profile?.applications ?? []).length), sub: "as creator" },
-          { label: "Campaigns Launched", value: String(launchedCampaigns.length), sub: `$${totalAdSpend.toLocaleString()} total spend` },
+          { label: "Campaigns Launched", value: String(launchedCampaigns.length), sub: `€${totalAdSpend.toLocaleString()} total spend` },
         ].map(s => (
           <div key={s.label} className="rounded-xl border border-gray-200 bg-white p-4">
             <p className="text-2xl font-bold text-gray-900">{s.value}</p>
@@ -133,7 +133,7 @@ export default async function ProfilePage({
               <div key={c.id} className="px-5 py-3 flex items-center justify-between gap-4">
                 <div className="min-w-0">
                   <p className="text-sm font-medium text-gray-900 truncate">{c.name}</p>
-                  <p className="text-xs text-gray-400">{c._count.applications} applicants · ${Number(c.totalBudget).toLocaleString()} budget</p>
+                  <p className="text-xs text-gray-400">{c._count.applications} applicants · €{Number(c.totalBudget).toLocaleString()} budget</p>
                 </div>
                 <span className={`text-xs px-2 py-0.5 rounded-full capitalize font-medium shrink-0 ${
                   c.status === "active" ? "bg-green-50 text-green-700" :
@@ -164,7 +164,7 @@ export default async function ProfilePage({
                   <p className="text-sm font-medium text-gray-900 truncate">{app.campaign.name}</p>
                   <div className="flex items-center gap-3 shrink-0 text-xs text-gray-400">
                     {views > 0 && <span>{views.toLocaleString()} views</span>}
-                    {earned > 0 && <span className="text-green-600 font-medium">${earned.toFixed(2)}</span>}
+                    {earned > 0 && <span className="text-green-600 font-medium">€{earned.toFixed(2)}</span>}
                     <span className={`px-2 py-0.5 rounded-full capitalize ${
                       app.status === "completed" ? "bg-gray-100 text-gray-500" :
                       app.status === "active" || app.status === "approved" ? "bg-green-50 text-green-700" :

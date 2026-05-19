@@ -230,7 +230,7 @@
         "count": "{count} / 280"
       },
       "wallet": {
-        "label": "USDT-wallet (TRC-20)",
+        "label": "Uitbetalingsadres",
         "helper": "Waar je uitbetalingen standaard naartoe worden gestuurd. Begint met T.",
         "placeholder": "T..."
       },
@@ -1060,10 +1060,10 @@
         "loading": "Laden...",
         "methodTitle": "Opnamemethode",
         "methodInfo": "Informatie over opnamemethode",
-        "tooltip": "Zorg dat het adres een USDT TRC-20 wallet op het TRON-netwerk is. Geld naar een niet-TRON-adres komt niet aan.",
-        "methodDescription": "Betalingen worden als USDT op het TRON-netwerk verstuurd. Sla je bestemmingsadres hieronder op - je kunt het altijd wijzigen.",
+        "tooltip": "Sla het bestemmingsadres op waar opnames naartoe verwerkt moeten worden.",
+        "methodDescription": "Opnames worden getoond en aangevraagd in EUR. Sla je bestemmingsadres hieronder op - je kunt het altijd wijzigen.",
         "minimumWithdrawal": "Minimale opname {amount}",
-        "addressLabel": "USDT-walletadres (TRC-20)",
+        "addressLabel": "Uitbetalingsadres",
         "addressError": "Adres moet beginnen met hoofdletter T en 34 tekens lang zijn (TRC-20-formaat).",
         "saveFailed": "Adres opslaan mislukt",
         "saveError": "Er ging iets mis bij het opslaan van het adres",
@@ -1084,9 +1084,9 @@
     "referral": {
       "page": {
         "title": "Referralprogramma",
-        "description": "Verdien tot $100 voor elke creator die je uitnodigt - betaald als 10% van hun inkomsten tot je de $100-cap raakt. Wij betalen 110%: creators houden 100%, jouw deel komt daarbovenop.",
-        "emptyTitle": "Nodig een creator uit en verdien tot $100 per signup",
-        "emptyDescription": "Deel je link hieronder. Elke clipper die via jouw link aanmeldt levert je tot $100 op - betaald als 10% van hun payouts tot die cap. Zij houden nog steeds 100%; ons platform betaalt jouw deel.",
+        "description": "Verdien tot €100 voor elke creator die je uitnodigt - betaald als 10% van hun inkomsten tot je de €100-cap raakt. Wij betalen 110%: creators houden 100%, jouw deel komt daarbovenop.",
+        "emptyTitle": "Nodig een creator uit en verdien tot €100 per signup",
+        "emptyDescription": "Deel je link hieronder. Elke clipper die via jouw link aanmeldt levert je tot €100 op - betaald als 10% van hun payouts tot die cap. Zij houden nog steeds 100%; ons platform betaalt jouw deel.",
         "peopleInvited": "Mensen uitgenodigd",
         "totalEarned": "Totaal verdiend",
         "pending": "In behandeling",
@@ -1100,7 +1100,7 @@
       },
       "link": {
         "title": "Jouw referrallink",
-        "description": "Deel deze link met creators. Je verdient 10% van hun payouts tot de $100-cap.",
+        "description": "Deel deze link met creators. Je verdient 10% van hun payouts tot de €100-cap.",
         "code": "Referralcode",
         "yourCode": "Jouw code: {code}",
         "copy": "Kopieren",
@@ -1202,7 +1202,7 @@
         "forPayouts": "voor payouts",
         "evmWalletHelper": "EVM-compatible wallet (Ethereum, Polygon, etc.). Vereist om creatorpayouts te ontvangen.",
         "evmWalletInvalid": "EVM-walletadres moet een geldig Ethereum-adres zijn (0x...)",
-        "usdtWallet": "USDT-wallet (TRC-20 / Tron)",
+        "usdtWallet": "Campagne-refundadres",
         "forCampaignDeposits": "voor campagnedeposito's en refunds",
         "usdtWalletHelper": "Vereist om campagnes te lanceren. Onbesteed campagnebudget wordt hier teruggestort.",
         "tronWalletInvalid": "Tron-wallet moet met T beginnen en 34 tekens lang zijn",
@@ -1218,7 +1218,7 @@
         "readyToWithdraw": "Klaar om op te nemen",
         "pending": "In behandeling",
         "businessDays": "5-10 werkdagen",
-        "minWithdrawal": "Minimale opname is $20. Nu beschikbaar: {amount}",
+        "minWithdrawal": "Minimale opname is €20. Nu beschikbaar: {amount}",
         "history": "Opnamegeschiedenis",
         "historyDescription": "Volg de status en timing van je betalingen.",
         "noWithdrawalsTitle": "Nog geen opnames",

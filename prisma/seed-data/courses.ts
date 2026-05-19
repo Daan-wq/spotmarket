@@ -144,17 +144,17 @@ Your earnings are based on the **views** your clips generate. Each campaign sets
 
 ## Example
 
-A TikTok clip in a campaign that pays **$15 per 1,000 views**:
+A TikTok clip in a campaign that pays **€15 per 1,000 views**:
 
 \`\`\`
 Clip views:        50,000
-Campaign rate:     $15 per 1,000 views
+Campaign rate:     €15 per 1,000 views
 Minimum threshold: 5,000 views
 
-Calculation: (50,000 / 1,000) × $15 = $750
+Calculation: (50,000 / 1,000) × €15 = €750
 \`\`\`
 
-You'd earn **$750** for that single clip.
+You'd earn **€750** for that single clip.
 
 ## Minimum view thresholds
 
@@ -171,9 +171,9 @@ Campaigns can set caps to control budget:
 
 | Cap type | What it limits | Example |
 | --- | --- | --- |
-| **Per clip** | Max earnings per individual clip | $500 / clip |
-| **Per campaign** | Max total earnings across all your clips | $2,000 / campaign |
-| **Total budget** | Campaign stops when the budget is depleted | $50,000 total |
+| **Per clip** | Max earnings per individual clip | €500 / clip |
+| **Per campaign** | Max total earnings across all your clips | €2,000 / campaign |
+| **Total budget** | Campaign stops when the budget is depleted | €50,000 total |
 
 Once a cap is reached, view tracking stops on your clip. **Submit early** to maximize earnings.
 
@@ -182,7 +182,7 @@ Once a cap is reached, view tracking stops on your clip. **Submit early** to max
 Set your preferred payment method in **Dashboard → Settings**:
 
 - **PayPal** — fastest (1–3 business days). Email must match your PayPal account exactly.
-- **Crypto** — USDT, USDC, SOL USDC, BTC, ETH. Triple-check your wallet address; transactions are irreversible.
+- **EUR payouts** — save the destination details requested in your dashboard and triple-check them before requesting a withdrawal.
 - **iDEAL / other** — contact support to arrange.
 
 ## Payment timeline
@@ -244,9 +244,9 @@ Bounties are special rewards on top of your view-based earnings. They reward exc
 
 First clipper to reach a view threshold wins:
 
-- First to **100K views**: $500
-- First to **500K views**: $1,000
-- First to **1M views**: $2,500
+- First to **100K views**: €500
+- First to **500K views**: €1,000
+- First to **1M views**: €2,500
 
 Only the first clipper to hit each threshold gets paid.
 
@@ -254,17 +254,17 @@ Only the first clipper to hit each threshold gets paid.
 
 Calculated at campaign end:
 
-- Highest engagement rate: $300
-- Most shares: $400
-- Most comments: $300
+- Highest engagement rate: €300
+- Most shares: €400
+- Most comments: €300
 
 ### Creative bounties
 
 Admin-judged based on quality:
 
-- Best creative execution: $1,000
-- Most on-brand content: $750
-- Viral clip of the week: $500
+- Best creative execution: €1,000
+- Most on-brand content: €750
+- Viral clip of the week: €500
 
 ## How to win
 
@@ -323,16 +323,16 @@ Some campaigns use a **performance-based pot** for bonus rewards on top of view-
 
 ## How pots work
 
-1. The campaign sets a pot value (e.g. $10,000).
+1. The campaign sets a pot value (e.g. €10,000).
 2. Your performance is ranked against other clippers in the campaign.
 3. Top performers split the pot when the campaign ends.
 
 ## Example
 
 \`\`\`
-Total pot:       $10,000
+Total pot:       €10,000
 Your views:      500,000 (20% of total campaign views)
-Your pot share:  $10,000 × 20% = $2,000
+Your pot share:  €10,000 × 20% = €2,000
 \`\`\`
 
 This is **in addition** to your base view-rate earnings.

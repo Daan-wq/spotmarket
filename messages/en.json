@@ -230,7 +230,7 @@
         "count": "{count} / 280"
       },
       "wallet": {
-        "label": "USDT wallet (TRC-20)",
+        "label": "Payout address",
         "helper": "Where your withdrawals will be sent by default. Starts with T.",
         "placeholder": "T..."
       },
@@ -1060,10 +1060,10 @@
         "loading": "Loading...",
         "methodTitle": "Withdrawal method",
         "methodInfo": "Withdrawal method information",
-        "tooltip": "Make sure the address is a USDT TRC-20 wallet on the TRON network. Funds sent to a non-TRON address will not arrive.",
-        "methodDescription": "Payments go out as USDT on the TRON network. Save your destination address below - you can update it any time.",
+        "tooltip": "Save the destination address where withdrawals should be processed.",
+        "methodDescription": "Withdrawals are shown and requested in EUR. Save your destination address below - you can update it any time.",
         "minimumWithdrawal": "Minimum withdrawal {amount}",
-        "addressLabel": "USDT wallet address (TRC-20)",
+        "addressLabel": "Payout address",
         "addressError": "Address must start with capital T and be 34 characters (TRC-20 format).",
         "saveFailed": "Failed to save address",
         "saveError": "An error occurred while saving the address",
@@ -1084,9 +1084,9 @@
     "referral": {
       "page": {
         "title": "Referral Program",
-        "description": "Earn up to $100 for every creator you invite - paid as 10% of their earnings until you hit the $100 cap. We pay 110%: creators keep 100%, your share is on top.",
-        "emptyTitle": "Invite a creator, earn up to $100 per signup",
-        "emptyDescription": "Share your link below. Every clipper who signs up under it earns you up to $100 - paid as 10% of their payouts until that cap. They still keep 100%; our platform covers your share.",
+        "description": "Earn up to €100 for every creator you invite - paid as 10% of their earnings until you hit the €100 cap. We pay 110%: creators keep 100%, your share is on top.",
+        "emptyTitle": "Invite a creator, earn up to €100 per signup",
+        "emptyDescription": "Share your link below. Every clipper who signs up under it earns you up to €100 - paid as 10% of their payouts until that cap. They still keep 100%; our platform covers your share.",
         "peopleInvited": "People Invited",
         "totalEarned": "Total Earned",
         "pending": "Pending",
@@ -1100,7 +1100,7 @@
       },
       "link": {
         "title": "Your referral link",
-        "description": "Share this link with creators. You earn 10% of their payouts until the $100 cap.",
+        "description": "Share this link with creators. You earn 10% of their payouts until the €100 cap.",
         "code": "Referral code",
         "yourCode": "Your code: {code}",
         "copy": "Copy",
@@ -1202,7 +1202,7 @@
         "forPayouts": "for payouts",
         "evmWalletHelper": "EVM-compatible wallet (Ethereum, Polygon, etc.). Required to receive creator payouts.",
         "evmWalletInvalid": "EVM wallet address must be a valid Ethereum address (0x...)",
-        "usdtWallet": "USDT Wallet (TRC-20 / Tron)",
+        "usdtWallet": "Campaign refund address",
         "forCampaignDeposits": "for campaign deposits & refunds",
         "usdtWalletHelper": "Required to launch campaigns. Unspent campaign budget is refunded here.",
         "tronWalletInvalid": "Tron wallet must start with T and be 34 characters",
@@ -1218,7 +1218,7 @@
         "readyToWithdraw": "Ready to withdraw",
         "pending": "Pending",
         "businessDays": "5-10 business days",
-        "minWithdrawal": "Minimum withdrawal amount is $20. Current available: {amount}",
+        "minWithdrawal": "Minimum withdrawal amount is €20. Current available: {amount}",
         "history": "Withdrawal History",
         "historyDescription": "Track your payment status and timing.",
         "noWithdrawalsTitle": "No withdrawals yet",

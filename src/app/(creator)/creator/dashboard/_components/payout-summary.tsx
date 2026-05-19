@@ -19,12 +19,12 @@ export async function PayoutSummary({ userId }: { userId: string }) {
         description={t("description")}
       />
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-        <MiniPayout label={t("estimated")} value={formatCurrencyPrecise(totalEarnings, "USD", locale)} />
+        <MiniPayout label={t("estimated")} value={formatCurrencyPrecise(totalEarnings, "EUR", locale)} />
         <MiniPayout
           label={t("pendingFinal")}
-          value={formatCurrencyPrecise(availableBalance, "USD", locale)}
+          value={formatCurrencyPrecise(availableBalance, "EUR", locale)}
         />
-        <MiniPayout label={t("paid")} value={formatCurrencyPrecise(totalPaid, "USD", locale)} />
+        <MiniPayout label={t("paid")} value={formatCurrencyPrecise(totalPaid, "EUR", locale)} />
       </div>
       <Link
         href="/creator/payouts"
