@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { ExternalLink, LifeBuoy, Ticket } from "lucide-react";
+import { ExternalLink, Hash, LifeBuoy, Ticket } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { Dialog } from "@/components/ui/dialog";
@@ -90,17 +90,23 @@ export function ContactSupportButton() {
           </>
         }
       >
-        <div className="flex items-start gap-3 border-y border-neutral-100 py-4">
-          <div className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-neutral-50 text-neutral-950 ring-1 ring-neutral-200">
-            <Ticket className="h-4 w-4" />
+        <div className="space-y-4">
+          <div className="flex items-start gap-3 border-y border-neutral-100 py-4">
+            <div className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-neutral-50 text-neutral-950 ring-1 ring-neutral-200">
+              <Ticket className="h-4 w-4" />
+            </div>
+            <div>
+              <p className="text-sm font-semibold text-neutral-950">
+                {t("contactSupport.ticketTitle")}
+              </p>
+              <p className="mt-1 text-sm leading-6 text-neutral-600">
+                {t("contactSupport.ticketCopy")}
+              </p>
+            </div>
           </div>
-          <div>
-            <p className="text-sm font-semibold text-neutral-950">
-              {t("contactSupport.ticketTitle")}
-            </p>
-            <p className="mt-1 text-sm leading-6 text-neutral-600">
-              {t("contactSupport.ticketCopy")}
-            </p>
+          <div className="flex items-center gap-2 text-sm font-medium text-neutral-700">
+            <Hash className="h-4 w-4 text-neutral-500" />
+            {t("contactSupport.channel")}
           </div>
         </div>
       </Dialog>

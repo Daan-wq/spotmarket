@@ -920,6 +920,7 @@
           "description": "Support now runs through Discord so the team can keep every request in one place.",
           "ticketTitle": "Create a ticket in Discord",
           "ticketCopy": "Go to #help and click the ticket button. Add your campaign name, issue, and any screenshots so we can help faster.",
+          "channel": "#help",
           "openDiscord": "Open Discord app",
           "close": "Close"
         }
