@@ -55,5 +55,9 @@ function formatRefreshStatus(status: string | undefined, value: string | null) {
   if (status === "REFRESHING") return "refreshing";
   if (!value) return "not refreshed yet";
   const d = new Date(value);
-  return `last refreshed ${d.toLocaleDateString("en-US", { month: "short", day: "numeric" })}`;
+  const formattedDate = new Intl.DateTimeFormat("en-US", {
+    month: "short",
+    day: "numeric",
+  }).format(d);
+  return `last refreshed ${formattedDate}`;
 }

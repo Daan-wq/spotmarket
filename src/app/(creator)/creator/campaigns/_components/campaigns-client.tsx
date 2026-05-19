@@ -503,7 +503,6 @@ function CampaignCard({ campaign }: { campaign: CampaignData }) {
             type="button"
             disabled
             className={`${campaignActionClass} w-full cursor-not-allowed bg-neutral-200 text-neutral-500 sm:flex-1`}
-            className={`${campaignActionClass} w-full cursor-not-allowed bg-neutral-200 text-neutral-500 sm:flex-1`}
           >
             {primaryLabel}
           </button>

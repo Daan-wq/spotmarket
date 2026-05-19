@@ -2,11 +2,13 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 import { AccountMetaRow } from "./AccountMetaRow";
 
+const accountLabel = "@clipprofit";
+
 describe("AccountMetaRow", () => {
   it("renders a successful account refresh timestamp", () => {
     const html = renderToStaticMarkup(
       <AccountMetaRow
-        label="@clipprofit"
+        label={accountLabel}
         meta="1,234 followers"
         refreshStatus="SUCCESS"
         lastSuccessfulRefreshAt="2026-05-17T12:00:00.000Z"
@@ -21,7 +23,7 @@ describe("AccountMetaRow", () => {
   it("renders a never-refreshed account without guessing a date", () => {
     const html = renderToStaticMarkup(
       <AccountMetaRow
-        label="@clipprofit"
+        label={accountLabel}
         meta="No audience snapshot"
         refreshStatus="NEVER_REFRESHED"
         lastSuccessfulRefreshAt={null}
@@ -36,7 +38,7 @@ describe("AccountMetaRow", () => {
   it("renders a refreshing account state", () => {
     const html = renderToStaticMarkup(
       <AccountMetaRow
-        label="@clipprofit"
+        label={accountLabel}
         meta="1,234 followers"
         refreshStatus="REFRESHING"
         lastSuccessfulRefreshAt={null}
@@ -50,7 +52,7 @@ describe("AccountMetaRow", () => {
   it("renders failed refresh state while keeping the last good value visible", () => {
     const html = renderToStaticMarkup(
       <AccountMetaRow
-        label="@clipprofit"
+        label={accountLabel}
         meta="1,234 followers"
         refreshStatus="FAILED"
         lastSuccessfulRefreshAt="2026-05-17T12:00:00.000Z"
