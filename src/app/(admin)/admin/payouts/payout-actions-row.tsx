@@ -192,7 +192,7 @@ export function PayoutActionsRow({
 
         <div className="text-right shrink-0">
           <p className="text-lg font-semibold" style={{ color: "var(--text-primary)" }}>
-            ${parseFloat(payout.amount.toString()).toFixed(4)}
+            €{parseFloat(payout.amount.toString()).toFixed(4)}
           </p>
           <p className="text-xs" style={{ color: "var(--text-muted)" }}>{payout.currency}</p>
           {payout.verifiedViews && (

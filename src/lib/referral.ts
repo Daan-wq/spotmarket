@@ -1,6 +1,6 @@
 
 const REFERRAL_COMMISSION_RATE = 0.10;
-const REFERRAL_CAP_PER_CREATOR = 100; // $100 max per referred creator
+const REFERRAL_CAP_PER_CREATOR = 100; // €100 max per referred creator
 
 interface ReferralSplitResult {
   creatorAmount: number;
@@ -19,7 +19,7 @@ export function normalizeReferralCode(value: string | null | undefined): string 
  * Clipster model:
  * - Creator keeps 100% of earnings (no deduction)
  * - Referrer earns 10% ON TOP (platform pays 110%)
- * - $100 cap per referred creator (lifetime)
+ * - €100 cap per referred creator (lifetime)
  * - No time limit
  *
  * @param totalPaidToReferrer - how much has already been paid to referrer for this creator
@@ -34,7 +34,7 @@ export function calculateReferralSplit(
     return { creatorAmount: fullAmount, referralFee: 0, referrerId: null };
   }
 
-  // Check if referrer has already hit the $100 cap for this creator
+  // Check if referrer has already hit the €100 cap for this creator
   const remainingCap = Math.max(0, REFERRAL_CAP_PER_CREATOR - totalPaidToReferrer);
   if (remainingCap <= 0) {
     return { creatorAmount: fullAmount, referralFee: 0, referrerId: null };

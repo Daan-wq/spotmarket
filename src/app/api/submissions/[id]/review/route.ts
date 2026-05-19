@@ -74,7 +74,7 @@ export async function POST(
 
       // Calculate referral bonus if creator was referred
       if (isFirstApproval && creator?.referredBy) {
-        // Check how much has already been paid to referrer for this creator ($100 cap)
+        // Check how much has already been paid to referrer for this creator (€100 cap)
         const [existingPayout, alreadyPaid] = await Promise.all([
           tx.referralPayout.findFirst({
             where: {

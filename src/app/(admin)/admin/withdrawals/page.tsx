@@ -21,7 +21,7 @@ export default async function WithdrawalsPage() {
   return (
     <div className="p-8">
       <h1 className="text-3xl font-bold mb-1" style={{ color: "var(--text-primary)" }}>Withdrawals</h1>
-      <p className="mb-6" style={{ color: "var(--text-secondary)" }}>Process creator withdrawal requests (USDT TRC-20)</p>
+      <p className="mb-6" style={{ color: "var(--text-secondary)" }}>Process creator withdrawal requests in EUR</p>
       <div className="rounded-xl overflow-hidden" style={{ background: "var(--bg-card)", border: "1px solid var(--border)" }}>
         <table className="w-full">
           <thead>
@@ -49,7 +49,7 @@ export default async function WithdrawalsPage() {
                   <div className="text-xs" style={{ color: "var(--text-secondary)" }}>{w.wallet.user.email}</div>
                 </td>
                 <td className="px-6 py-3 text-sm font-semibold" style={{ color: "var(--text-primary)" }}>
-                  ${Number(w.amount).toFixed(2)}
+                  €{Number(w.amount).toFixed(2)}
                 </td>
                 <td className="px-6 py-3 text-xs font-mono" style={{ color: "var(--text-secondary)" }}>
                   <span title={w.walletAddress}>{w.walletAddress.slice(0, 8)}...{w.walletAddress.slice(-6)}</span>

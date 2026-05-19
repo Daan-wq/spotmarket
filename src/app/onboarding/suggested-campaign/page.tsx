@@ -145,7 +145,7 @@ export default async function SuggestedCampaignPage() {
               <div className="p-3 rounded-xl" style={{ background: "var(--bg-primary)" }}>
                 <p className="text-xs mb-1" style={{ color: "var(--text-muted)" }}>Pay per 1M views</p>
                 <p className="text-lg font-bold" style={{ color: "var(--text-primary)" }}>
-                  ${(Number(campaign.creatorCpv) * 1_000_000).toFixed(0)}
+                  €{(Number(campaign.creatorCpv) * 1_000_000).toFixed(0)}
                 </p>
               </div>
               <div className="p-3 rounded-xl" style={{ background: "var(--bg-primary)" }}>
@@ -181,7 +181,7 @@ export default async function SuggestedCampaignPage() {
                         {earner.displayName}
                       </span>
                       <span className="text-sm font-semibold" style={{ color: "var(--success)" }}>
-                        ${earner.totalEarned.toFixed(2)}
+                        €{earner.totalEarned.toFixed(2)}
                       </span>
                     </div>
                   ))}

@@ -56,7 +56,7 @@ export default async function PayoutsPage() {
         <StatCard label="Open runs" value={String(openRuns.length)} detail="Draft, finalized, or processing" />
         <StatCard label="Run net total" value={formatCurrencyPrecise(runNet)} detail="All payout run net amounts" />
         <StatCard label="Approved unpaid" value={formatCurrencyPrecise(owed)} detail={`${approvedUnpaid.length} submissions not in a run`} tone={approvedUnpaid.length > 0 ? "warning" : "neutral"} />
-        <StatCard label="Legacy pending" value={formatCurrencyPrecise(legacyPending, "USD")} detail="Existing payout records" tone={legacyPending > 0 ? "warning" : "neutral"} />
+        <StatCard label="Legacy pending" value={formatCurrencyPrecise(legacyPending, "EUR")} detail="Existing payout records" tone={legacyPending > 0 ? "warning" : "neutral"} />
       </div>
 
       <section>
@@ -104,7 +104,7 @@ export default async function PayoutsPage() {
               columns={[
                 { key: "campaign", header: "Campaign", cell: (submission) => submission.campaign.name },
                 { key: "creator", header: "Creator", cell: (submission) => submission.creator.email },
-                { key: "amount", header: "Amount", align: "right", cell: (submission) => formatCurrencyPrecise(submission.earnedAmount, "USD") },
+                { key: "amount", header: "Amount", align: "right", cell: (submission) => formatCurrencyPrecise(submission.earnedAmount, "EUR") },
               ]}
             />
           </div>

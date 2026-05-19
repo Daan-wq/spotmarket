@@ -48,7 +48,7 @@ export async function OperatingSnapshot({
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
         <SoftStat
           label={t("totalEarnings")}
-          value={formatCurrencyPrecise(payouts.totalEarnings, "USD", locale)}
+          value={formatCurrencyPrecise(payouts.totalEarnings, "EUR", locale)}
           detail={t("totalEarningsDetail")}
         />
         <SoftStat

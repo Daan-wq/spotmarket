@@ -131,8 +131,8 @@ export default async function CampaignHealthPage({ params }: PageProps) {
         <div className="w-full sm:w-[220px] xl:w-[240px]">
           <KpiCard
             label="Budget burn"
-            value={`$${totalEarned.toFixed(2)}`}
-            hint={`of $${totalBudget.toFixed(2)} (${Math.round(burnPct * 100)}%)`}
+            value={`€${totalEarned.toFixed(2)}`}
+            hint={`of €${totalBudget.toFixed(2)} (${Math.round(burnPct * 100)}%)`}
             tone={burnPct > 0.9 ? "warning" : "default"}
           />
         </div>
@@ -207,7 +207,7 @@ export default async function CampaignHealthPage({ params }: PageProps) {
                       {(submission.eligibleViews ?? 0).toLocaleString()} v
                     </span>
                     <span className="text-xs tabular-nums" style={{ color: "var(--text-secondary)" }}>
-                      ${Number(submission.earnedAmount ?? 0).toFixed(2)}
+                      €{Number(submission.earnedAmount ?? 0).toFixed(2)}
                     </span>
                     <span
                       className="rounded px-2 py-0.5 text-[10px] font-semibold"
@@ -291,7 +291,7 @@ export default async function CampaignHealthPage({ params }: PageProps) {
                           {creator.views.toLocaleString()}
                         </td>
                         <td className="px-5 py-3 text-right text-sm tabular-nums" style={{ color: "var(--text-primary)" }}>
-                          ${creator.earned.toFixed(2)}
+                          €{creator.earned.toFixed(2)}
                         </td>
                         <td
                           className="px-5 py-3 text-right text-sm tabular-nums"

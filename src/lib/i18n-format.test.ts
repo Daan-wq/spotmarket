@@ -13,8 +13,8 @@ describe("locale formatting", () => {
   const date = new Date("2026-05-17T12:00:00Z");
 
   it("formats currency for English and Dutch", () => {
-    expect(formatCurrency(1234.5, "en")).toBe("$1,234.50");
-    expect(formatCurrency(1234.5, "nl")).toBe("US$ 1.234,50");
+    expect(formatCurrency(1234.5, "en")).toBe("€1,234.50");
+    expect(formatCurrency(1234.5, "nl")).toBe("€\u00a01.234,50");
   });
 
   it("formats numbers and compact numbers for English and Dutch", () => {

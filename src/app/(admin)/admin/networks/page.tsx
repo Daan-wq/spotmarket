@@ -117,7 +117,7 @@ export default async function NetworksPage() {
             className="text-2xl font-bold"
             style={{ color: "var(--text-primary)" }}
           >
-            ${totalRevenueShared.toFixed(2)}
+            €{totalRevenueShared.toFixed(2)}
           </p>
         </div>
       </div>
@@ -217,7 +217,7 @@ export default async function NetworksPage() {
                   className="px-6 py-3 text-sm"
                   style={{ color: "var(--text-primary)" }}
                 >
-                  ${Number(ref.referralEarnings).toFixed(2)}
+                  €{Number(ref.referralEarnings).toFixed(2)}
                 </td>
                 <td
                   className="px-6 py-3 text-sm"

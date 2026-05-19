@@ -11,7 +11,7 @@ export function formatCurrency(
 ): string {
   return new Intl.NumberFormat(toIntlLocale(locale), {
     style: "currency",
-    currency: "USD",
+    currency: "EUR",
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
     ...options,

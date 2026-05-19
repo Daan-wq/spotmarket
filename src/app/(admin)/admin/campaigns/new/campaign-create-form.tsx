@@ -468,7 +468,7 @@ export function CampaignCreateForm() {
             ) : null}
           </div>
           <div>
-            <label style={labelStyle}>Your margin ($/1M views)</label>
+            <label style={labelStyle}>Your margin (€/1M views)</label>
             <input
               style={inputStyle}
               type="number"
@@ -485,19 +485,19 @@ export function CampaignCreateForm() {
           <div style={{ borderRadius: "8px", padding: "12px 14px", background: "var(--bg-secondary, var(--bg-primary))", border: "1px solid var(--border)", fontSize: "13px", display: "flex", flexDirection: "column", gap: "6px" }}>
             <div style={{ display: "flex", justifyContent: "space-between", color: "var(--text-secondary)" }}>
               <span>Client pays (per 1M views)</span>
-              <span style={{ fontWeight: 500, color: "var(--text-primary)" }}>${businessPerM.toFixed(2)}</span>
+              <span style={{ fontWeight: 500, color: "var(--text-primary)" }}>€{businessPerM.toFixed(2)}</span>
             </div>
             <div style={{ display: "flex", justifyContent: "space-between", color: "var(--error, #dc2626)" }}>
               <span>Your margin</span>
-              <span>−${margin.toFixed(2)}</span>
+              <span>−€{margin.toFixed(2)}</span>
             </div>
             <div style={{ display: "flex", justifyContent: "space-between", borderTop: "1px solid var(--border)", paddingTop: "6px" }}>
               <span style={{ color: "var(--text-secondary)" }}>Creator earns (per 1M views)</span>
-              <span style={{ fontWeight: 600, color: "var(--text-primary)" }}>${creatorPerM.toFixed(2)}</span>
+              <span style={{ fontWeight: 600, color: "var(--text-primary)" }}>€{creatorPerM.toFixed(2)}</span>
             </div>
             <div style={{ display: "flex", justifyContent: "space-between", fontWeight: 600, color: "var(--accent, #534AB7)" }}>
               <span>Your revenue</span>
-              <span>${((margin / 1_000_000) * goalViews).toFixed(2)}</span>
+              <span>€{((margin / 1_000_000) * goalViews).toFixed(2)}</span>
             </div>
           </div>
         )}

@@ -36,7 +36,6 @@ function isAllowedLiteral(value: string): boolean {
 
   return (
     normalized.length === 0 ||
-    normalized === "USDT TRC-20" ||
     normalized === "0x..." ||
     normalized === "T..." ||
     /^Txx+$/.test(normalized) ||

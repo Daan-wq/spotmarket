@@ -34,7 +34,7 @@ export default async function SubmissionsPage() {
       </div>
 
       <section>
-        <SectionHeader title="Submission Table" description={`${formatCurrencyPrecise(earned, "USD")} earned across approved and tracked submissions.`} />
+        <SectionHeader title="Submission Table" description={`${formatCurrencyPrecise(earned, "EUR")} earned across approved and tracked submissions.`} />
         <DataTable
           rows={submissions}
           rowKey={(submission) => submission.id}
@@ -69,7 +69,7 @@ export default async function SubmissionsPage() {
               ),
             },
             { key: "views", header: "Eligible views", align: "right", cell: (submission) => submission.eligibleViews?.toLocaleString() ?? "-" },
-            { key: "earned", header: "Earned", align: "right", cell: (submission) => Number(submission.earnedAmount) > 0 ? formatCurrencyPrecise(submission.earnedAmount, "USD") : "-" },
+            { key: "earned", header: "Earned", align: "right", cell: (submission) => Number(submission.earnedAmount) > 0 ? formatCurrencyPrecise(submission.earnedAmount, "EUR") : "-" },
             { key: "status", header: "Status", cell: (submission) => <Badge variant={submissionStatusVariant(submission.status)}>{titleCaseEnum(submission.status)}</Badge> },
             {
               key: "actions",
