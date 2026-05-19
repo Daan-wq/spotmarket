@@ -81,5 +81,6 @@ describe("OAuth environment values", () => {
     expect(parsed.searchParams.get("redirect_uri")).toBe(
       "https://app.clipprofit.com/api/auth/youtube/callback"
     );
+    expect(parsed.searchParams.get("prompt")).toBe("consent select_account");
   });
 });
