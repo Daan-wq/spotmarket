@@ -912,7 +912,16 @@
         "noClipsTitle": "Nog geen clips ingediend",
         "noClipsDescription": "Dien een clip in vanaf je gekoppelde social accounts en hij verschijnt hier.",
         "biggestEarners": "Grootste verdieners",
-        "noEarners": "Nog geen goedgekeurde verdieners."
+        "noEarners": "Nog geen goedgekeurde verdieners.",
+        "contactSupport": {
+          "title": "Hulp nodig met deze campagne?",
+          "description": "Support loopt via Discord zodat het team elk verzoek op een plek kan opvolgen.",
+          "ticketTitle": "Maak een ticket aan in Discord",
+          "ticketCopy": "Ga naar #help en klik op de ticketknop. Voeg je campagnenaam, probleem en eventuele screenshots toe zodat we sneller kunnen helpen.",
+          "channel": "#help",
+          "openDiscord": "Open Discord #help",
+          "close": "Sluiten"
+        }
       },
       "apply": {
         "join": "Campagne joinen",
