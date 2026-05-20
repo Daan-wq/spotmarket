@@ -93,19 +93,19 @@ export function SignUpForm() {
     setEmailSent(true);
   }
 
-  const inputClass = "w-full px-3 py-2.5 rounded-lg text-sm outline-none transition-all text-zinc-950";
-  const inputStyle = { border: "1px solid var(--border)", background: "#ffffff" };
+  const inputClass = "w-full px-3 py-2.5 rounded-lg text-sm outline-none transition-all text-zinc-50 placeholder:text-zinc-500";
+  const inputStyle = { border: "1px solid #2a2a2a", background: "#18181b" };
 
   if (emailSent) {
     return (
       <div>
-        <h1 className="mb-2 text-[23px] font-semibold leading-tight text-zinc-950">{t("checkEmailTitle")}</h1>
-        <p className="mb-6 text-sm" style={{ color: "var(--text-secondary)" }}>
+        <h1 className="mb-2 text-[24px] font-semibold leading-tight text-zinc-50">{t("checkEmailTitle")}</h1>
+        <p className="mb-6 text-sm text-[#a1a1aa]">
           {t("checkEmailBody", { email })}
         </p>
-        <p className="text-[13px]" style={{ color: "#666666" }}>
+        <p className="text-[13px] text-[#a1a1aa]">
           {t("alreadyVerified")}{" "}
-          <Link href="/sign-in" className="font-medium text-zinc-950 hover:underline">
+          <Link href="/sign-in" className="font-medium text-white hover:underline">
             {t("signIn")}
           </Link>
         </p>
@@ -115,13 +115,13 @@ export function SignUpForm() {
 
   return (
     <>
-      <h1 className="mb-2 text-[23px] font-semibold leading-tight text-zinc-950">{t("title")}</h1>
-      <p className="mb-3 text-sm" style={{ color: "var(--text-secondary)" }}>
+      <h1 className="mb-2 text-[24px] font-semibold leading-tight text-zinc-50">{t("title")}</h1>
+      <p className="mb-3 text-sm text-[#a1a1aa]">
         {t("subtitle")}
       </p>
-      <p className="mb-6 text-sm" style={{ color: "var(--text-secondary)" }}>
+      <p className="mb-6 text-sm text-[#a1a1aa]">
         {t("hasAccount")}{" "}
-        <Link href="/sign-in" className="font-medium text-zinc-950 hover:underline">
+        <Link href="/sign-in" className="font-medium text-white hover:underline">
           {t("signIn")}
         </Link>
       </p>
@@ -137,7 +137,7 @@ export function SignUpForm() {
 
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-              <label htmlFor="sign-up-email" className="mb-1.5 block text-sm font-medium" style={{ color: "var(--text-secondary)" }}>{commonT("email")}</label>
+              <label htmlFor="sign-up-email" className="mb-1.5 block text-sm font-medium text-[#d4d4d8]">{commonT("email")}</label>
               <input
                 id="sign-up-email"
                 type="email"
@@ -146,13 +146,13 @@ export function SignUpForm() {
                 required
                 className={inputClass}
                 style={inputStyle}
-                onFocus={(e) => { e.currentTarget.style.borderColor = "var(--accent)"; e.currentTarget.style.boxShadow = "0 0 0 3px var(--accent-bg)"; }}
-                onBlur={(e) => { e.currentTarget.style.borderColor = "var(--border)"; e.currentTarget.style.boxShadow = "none"; }}
+                onFocus={(e) => { e.currentTarget.style.borderColor = "#5865F2"; e.currentTarget.style.boxShadow = "0 0 0 3px rgba(88,101,242,0.2)"; }}
+                onBlur={(e) => { e.currentTarget.style.borderColor = "#2a2a2a"; e.currentTarget.style.boxShadow = "none"; }}
               />
             </div>
             <div>
-              <label htmlFor="sign-up-password" className="mb-1.5 block text-sm font-medium" style={{ color: "var(--text-secondary)" }}>
-                {commonT("password")} <span style={{ color: "var(--text-secondary)" }}>({t("passwordHint")})</span>
+              <label htmlFor="sign-up-password" className="mb-1.5 block text-sm font-medium text-[#d4d4d8]">
+                {commonT("password")} <span className="text-[#a1a1aa]">({t("passwordHint")})</span>
               </label>
               <input
                 id="sign-up-password"
@@ -163,12 +163,12 @@ export function SignUpForm() {
                 minLength={6}
                 className={inputClass}
                 style={inputStyle}
-                onFocus={(e) => { e.currentTarget.style.borderColor = "var(--accent)"; e.currentTarget.style.boxShadow = "0 0 0 3px var(--accent-bg)"; }}
-                onBlur={(e) => { e.currentTarget.style.borderColor = "var(--border)"; e.currentTarget.style.boxShadow = "none"; }}
+                onFocus={(e) => { e.currentTarget.style.borderColor = "#5865F2"; e.currentTarget.style.boxShadow = "0 0 0 3px rgba(88,101,242,0.2)"; }}
+                onBlur={(e) => { e.currentTarget.style.borderColor = "#2a2a2a"; e.currentTarget.style.boxShadow = "none"; }}
               />
             </div>
             <div>
-              <label htmlFor="sign-up-confirm-password" className="mb-1.5 block text-sm font-medium" style={{ color: "var(--text-secondary)" }}>{t("confirmPassword")}</label>
+              <label htmlFor="sign-up-confirm-password" className="mb-1.5 block text-sm font-medium text-[#d4d4d8]">{t("confirmPassword")}</label>
               <input
                 id="sign-up-confirm-password"
                 type="password"
@@ -178,13 +178,13 @@ export function SignUpForm() {
                 minLength={6}
                 className={inputClass}
                 style={inputStyle}
-                onFocus={(e) => { e.currentTarget.style.borderColor = "var(--accent)"; e.currentTarget.style.boxShadow = "0 0 0 3px var(--accent-bg)"; }}
-                onBlur={(e) => { e.currentTarget.style.borderColor = "var(--border)"; e.currentTarget.style.boxShadow = "none"; }}
+                onFocus={(e) => { e.currentTarget.style.borderColor = "#5865F2"; e.currentTarget.style.boxShadow = "0 0 0 3px rgba(88,101,242,0.2)"; }}
+                onBlur={(e) => { e.currentTarget.style.borderColor = "#2a2a2a"; e.currentTarget.style.boxShadow = "none"; }}
               />
             </div>
 
             {error && (
-              <p className="rounded-lg px-3 py-2 text-sm" style={{ color: "var(--error-text)", background: "var(--error-bg)", border: "1px solid rgba(239,68,68,0.18)" }}>
+              <p className="rounded-lg px-3 py-2 text-sm" style={{ color: "#fecaca", background: "rgba(239,68,68,0.14)", border: "1px solid rgba(239,68,68,0.24)" }}>
                 {error}
               </p>
             )}
@@ -192,8 +192,8 @@ export function SignUpForm() {
             <button
               type="submit"
               disabled={loading}
-              className="h-12 w-full rounded-xl text-sm font-semibold text-white transition-opacity disabled:opacity-50"
-              style={{ background: "var(--accent)" }}
+              className="h-12 w-full rounded-xl text-sm font-semibold text-zinc-950 transition-opacity disabled:opacity-50"
+              style={{ background: "#ffffff" }}
               onMouseEnter={(e) => { if (!loading) (e.currentTarget as HTMLElement).style.opacity = "0.88"; }}
               onMouseLeave={(e) => { e.currentTarget.style.opacity = "1"; }}
             >
@@ -205,7 +205,7 @@ export function SignUpForm() {
         <button
           type="button"
           onClick={() => setShowOtherMethods(true)}
-          className="mt-4 w-full text-center text-[13px] font-medium text-[#666666] transition-colors hover:text-zinc-950"
+          className="mt-5 w-full text-center text-[13px] font-medium text-[#a1a1aa] transition-colors hover:text-white"
         >
           {oauthT("signUpOther")}
         </button>

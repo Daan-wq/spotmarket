@@ -85,27 +85,26 @@ export function SignInForm() {
     setSuccess(forgotT("success"));
   }
 
-  const inputClass = "w-full px-3 py-2.5 rounded-lg text-sm outline-none transition-all text-zinc-950";
-  const inputStyle = { border: "1px solid var(--border)", background: "#ffffff" };
+  const inputClass = "w-full px-3 py-2.5 rounded-lg text-sm outline-none transition-all text-zinc-50 placeholder:text-zinc-500";
+  const inputStyle = { border: "1px solid #2a2a2a", background: "#18181b" };
 
   if (mode === "forgot") {
     return (
       <>
-        <h1 className="mb-2 text-[23px] font-semibold leading-tight text-zinc-950">{forgotT("title")}</h1>
-        <p className="text-sm mb-6" style={{ color: "var(--text-secondary)" }}>
+        <h1 className="mb-2 text-[24px] font-semibold leading-tight text-zinc-50">{forgotT("title")}</h1>
+        <p className="mb-6 text-sm text-[#a1a1aa]">
           {forgotT("description")}
         </p>
 
         {success ? (
           <div className="space-y-4">
-            <p className="rounded-lg px-3 py-3 text-sm" style={{ color: "var(--success-text)", background: "var(--success-bg)", border: "1px solid rgba(5,150,105,0.18)" }}>
+            <p className="rounded-lg px-3 py-3 text-sm" style={{ color: "#86efac", background: "rgba(34,197,94,0.12)", border: "1px solid rgba(34,197,94,0.22)" }}>
               {success}
             </p>
             <button
               type="button"
               onClick={() => { setMode("signin"); setSuccess(null); setError(null); }}
-              className="text-sm hover:underline"
-              style={{ color: "var(--accent)" }}
+              className="text-sm font-medium text-zinc-50 hover:underline"
             >
               {forgotT("back")}
             </button>
@@ -113,7 +112,7 @@ export function SignInForm() {
         ) : (
           <form onSubmit={handleForgotPassword} className="space-y-4">
             <div>
-              <label htmlFor="forgot-email" className="block text-sm font-medium mb-1.5" style={{ color: "var(--text-secondary)" }}>{commonT("email")}</label>
+              <label htmlFor="forgot-email" className="block text-sm font-medium mb-1.5 text-[#d4d4d8]">{commonT("email")}</label>
               <input
                 id="forgot-email"
                 type="email"
@@ -123,13 +122,13 @@ export function SignInForm() {
                 autoFocus
                 className={inputClass}
                 style={inputStyle}
-                onFocus={(e) => { e.currentTarget.style.borderColor = "var(--accent)"; e.currentTarget.style.boxShadow = "0 0 0 3px var(--accent-bg)"; }}
-                onBlur={(e) => { e.currentTarget.style.borderColor = "var(--border)"; e.currentTarget.style.boxShadow = "none"; }}
+                onFocus={(e) => { e.currentTarget.style.borderColor = "#5865F2"; e.currentTarget.style.boxShadow = "0 0 0 3px rgba(88,101,242,0.2)"; }}
+                onBlur={(e) => { e.currentTarget.style.borderColor = "#2a2a2a"; e.currentTarget.style.boxShadow = "none"; }}
               />
             </div>
 
             {error && (
-              <p className="rounded-lg px-3 py-2 text-sm" style={{ color: "var(--error-text)", background: "var(--error-bg)", border: "1px solid rgba(239,68,68,0.18)" }}>
+              <p className="rounded-lg px-3 py-2 text-sm" style={{ color: "#fecaca", background: "rgba(239,68,68,0.14)", border: "1px solid rgba(239,68,68,0.24)" }}>
                 {error}
               </p>
             )}
@@ -137,8 +136,8 @@ export function SignInForm() {
             <button
               type="submit"
               disabled={loading}
-              className="h-12 w-full rounded-xl text-sm font-semibold text-white transition-opacity disabled:opacity-50"
-              style={{ background: "var(--accent)" }}
+              className="h-12 w-full rounded-xl text-sm font-semibold text-zinc-950 transition-opacity disabled:opacity-50"
+              style={{ background: "#ffffff" }}
               onMouseEnter={(e) => { if (!loading) (e.currentTarget as HTMLElement).style.opacity = "0.88"; }}
               onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.opacity = "1"; }}
             >
@@ -148,8 +147,7 @@ export function SignInForm() {
             <button
               type="button"
               onClick={() => { setMode("signin"); setError(null); }}
-              className="w-full text-sm text-center hover:underline"
-              style={{ color: "var(--text-secondary)" }}
+              className="w-full text-center text-sm text-[#a1a1aa] hover:text-white"
             >
               {forgotT("back")}
             </button>
@@ -161,25 +159,25 @@ export function SignInForm() {
 
   return (
     <>
-      <h1 className="mb-2 text-[23px] font-semibold leading-tight text-zinc-950">{t("title")}</h1>
-      <p className="mb-3 text-sm" style={{ color: "var(--text-secondary)" }}>
+      <h1 className="mb-2 text-[24px] font-semibold leading-tight text-zinc-50">{t("title")}</h1>
+      <p className="mb-3 text-sm text-[#a1a1aa]">
         {t("subtitle")}
       </p>
-      <p className="mb-6 text-sm" style={{ color: "var(--text-secondary)" }}>
+      <p className="mb-6 text-sm text-[#a1a1aa]">
         {t("noAccount")}{" "}
-        <Link href="/sign-up" className="font-medium hover:underline" style={{ color: "var(--accent)" }}>
+        <Link href="/sign-up" className="font-medium text-white hover:underline">
           {t("createOne")}
         </Link>
       </p>
 
       {success && (
-        <p className="mb-4 rounded-lg px-3 py-2 text-sm" style={{ color: "var(--success-text)", background: "var(--success-bg)", border: "1px solid rgba(5,150,105,0.18)" }}>
+        <p className="mb-4 rounded-lg px-3 py-2 text-sm" style={{ color: "#86efac", background: "rgba(34,197,94,0.12)", border: "1px solid rgba(34,197,94,0.22)" }}>
           {success}
         </p>
       )}
 
       {error && !showOtherMethods && (
-        <p className="mb-4 rounded-lg px-3 py-2 text-sm" style={{ color: "var(--error-text)", background: "var(--error-bg)", border: "1px solid rgba(239,68,68,0.18)" }}>
+        <p className="mb-4 rounded-lg px-3 py-2 text-sm" style={{ color: "#fecaca", background: "rgba(239,68,68,0.14)", border: "1px solid rgba(239,68,68,0.24)" }}>
           {error}
         </p>
       )}
@@ -195,7 +193,7 @@ export function SignInForm() {
 
           <form onSubmit={handleSignIn} className="space-y-4">
             <div>
-              <label htmlFor="sign-in-email" className="block text-sm font-medium mb-1.5" style={{ color: "var(--text-secondary)" }}>{commonT("email")}</label>
+              <label htmlFor="sign-in-email" className="block text-sm font-medium mb-1.5 text-[#d4d4d8]">{commonT("email")}</label>
               <input
                 id="sign-in-email"
                 type="email"
@@ -204,18 +202,17 @@ export function SignInForm() {
                 required
                 className={inputClass}
                 style={inputStyle}
-                onFocus={(e) => { e.currentTarget.style.borderColor = "var(--accent)"; e.currentTarget.style.boxShadow = "0 0 0 3px var(--accent-bg)"; }}
-                onBlur={(e) => { e.currentTarget.style.borderColor = "var(--border)"; e.currentTarget.style.boxShadow = "none"; }}
+                onFocus={(e) => { e.currentTarget.style.borderColor = "#5865F2"; e.currentTarget.style.boxShadow = "0 0 0 3px rgba(88,101,242,0.2)"; }}
+                onBlur={(e) => { e.currentTarget.style.borderColor = "#2a2a2a"; e.currentTarget.style.boxShadow = "none"; }}
               />
             </div>
             <div>
               <div className="flex items-center justify-between mb-1.5">
-                <label htmlFor="sign-in-password" className="text-sm font-medium" style={{ color: "var(--text-secondary)" }}>{commonT("password")}</label>
+                <label htmlFor="sign-in-password" className="text-sm font-medium text-[#d4d4d8]">{commonT("password")}</label>
                 <button
                   type="button"
                   onClick={() => { setMode("forgot"); setError(null); }}
-                  className="text-xs hover:underline"
-                  style={{ color: "var(--text-secondary)" }}
+                  className="text-xs text-[#a1a1aa] hover:text-white"
                 >
                   {t("forgotPassword")}
                 </button>
@@ -229,14 +226,14 @@ export function SignInForm() {
                   required
                   className={inputClass}
                   style={{ ...inputStyle, paddingRight: "2.5rem" }}
-                  onFocus={(e) => { e.currentTarget.style.borderColor = "var(--accent)"; e.currentTarget.style.boxShadow = "0 0 0 3px var(--accent-bg)"; }}
-                  onBlur={(e) => { e.currentTarget.style.borderColor = "var(--border)"; e.currentTarget.style.boxShadow = "none"; }}
+                  onFocus={(e) => { e.currentTarget.style.borderColor = "#5865F2"; e.currentTarget.style.boxShadow = "0 0 0 3px rgba(88,101,242,0.2)"; }}
+                  onBlur={(e) => { e.currentTarget.style.borderColor = "#2a2a2a"; e.currentTarget.style.boxShadow = "none"; }}
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword((value) => !value)}
                   className="absolute right-3 top-1/2 -translate-y-1/2"
-                  style={{ color: "var(--text-secondary)" }}
+                  style={{ color: "#a1a1aa" }}
                   tabIndex={-1}
                 >
                   <EyeIcon open={showPassword} />
@@ -245,7 +242,7 @@ export function SignInForm() {
             </div>
 
             {error && (
-              <p className="rounded-lg px-3 py-2 text-sm" style={{ color: "var(--error-text)", background: "var(--error-bg)", border: "1px solid rgba(239,68,68,0.18)" }}>
+              <p className="rounded-lg px-3 py-2 text-sm" style={{ color: "#fecaca", background: "rgba(239,68,68,0.14)", border: "1px solid rgba(239,68,68,0.24)" }}>
                 {error}
               </p>
             )}
@@ -253,8 +250,8 @@ export function SignInForm() {
             <button
               type="submit"
               disabled={loading}
-              className="h-12 w-full rounded-xl text-sm font-semibold text-white transition-opacity disabled:opacity-50"
-              style={{ background: "var(--accent)" }}
+              className="h-12 w-full rounded-xl text-sm font-semibold text-zinc-950 transition-opacity disabled:opacity-50"
+              style={{ background: "#ffffff" }}
               onMouseEnter={(e) => { if (!loading) (e.currentTarget as HTMLElement).style.opacity = "0.88"; }}
               onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.opacity = "1"; }}
             >
@@ -266,7 +263,7 @@ export function SignInForm() {
         <button
           type="button"
           onClick={() => setShowOtherMethods(true)}
-          className="mt-4 w-full text-center text-[13px] font-medium text-[#666666] transition-colors hover:text-zinc-950"
+          className="mt-5 w-full text-center text-[13px] font-medium text-[#a1a1aa] transition-colors hover:text-white"
         >
           {oauthT("signInOther")}
         </button>

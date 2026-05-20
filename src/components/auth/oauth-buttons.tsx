@@ -73,7 +73,7 @@ export function OAuthButtons({ mode, providers = ["google", "discord"] }: OAuthB
           type="button"
           disabled={loading !== null}
           onClick={() => handleOAuth("google")}
-          className="flex h-12 w-full items-center justify-center gap-3 rounded-xl border border-[#e4e4e7] bg-white text-sm font-semibold text-[#1f1f1f] transition-[background-color,opacity,transform] duration-150 hover:bg-[#f7f7f8] active:scale-[0.98] disabled:opacity-50 disabled:active:scale-100"
+          className="flex h-12 w-full items-center justify-center gap-3 rounded-xl border border-[#2a2a2a] bg-[#18181b] text-sm font-semibold text-white transition-[background-color,opacity,transform] duration-150 hover:bg-[#202024] active:scale-[0.98] disabled:opacity-50 disabled:active:scale-100"
         >
           <GoogleIcon />
           {loading === "google"
@@ -104,9 +104,9 @@ export function OAuthDivider() {
 
   return (
     <div className="flex items-center gap-3 my-5">
-      <div className="h-px flex-1" style={{ background: "var(--border)" }} />
-      <span className="text-xs" style={{ color: "var(--text-secondary)" }}>{t("or")}</span>
-      <div className="h-px flex-1" style={{ background: "var(--border)" }} />
+      <div className="h-px flex-1 bg-[#2a2a2a]" />
+      <span className="text-xs text-[#a1a1aa]">{t("or")}</span>
+      <div className="h-px flex-1 bg-[#2a2a2a]" />
     </div>
   );
 }
