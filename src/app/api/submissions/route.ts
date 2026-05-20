@@ -5,7 +5,7 @@ import { z } from "zod";
 import { parseClipUrl, normalizeHandle, type ClipPlatform } from "@/lib/parse-clip-url";
 import { findDuplicate } from "@/lib/duplicate-detector";
 import { publishEvent } from "@/lib/event-bus";
-import { resolveInstagramThumbnail } from "@/lib/clip-thumbnail";
+import { resolveStableSubmissionThumbnail } from "@/lib/clip-thumbnail";
 import {
   CAMPAIGN_CLOSED_FOR_SUBMISSIONS_MESSAGE,
   isCampaignClosedForSubmissions,
@@ -199,21 +199,21 @@ export async function POST(req: NextRequest) {
 
     const sourcePlatform = PLATFORM_TO_BIO[parsed.platform];
 
-    // Server-side IG metadata backfill — covers paths (e.g. manual URL paste
-    // via submit-content-modal) that don't supply thumbnail/mediaType from the
-    // client. Best-effort: failure must not block submission creation.
-    let resolvedThumbnail = thumbnailUrl ?? null;
+    // Server-side thumbnail stabilization: provider CDN URLs from the client
+    // are candidates; final submission thumbnails must be app-owned or stable.
+    let resolvedThumbnail: string | null = null;
     let resolvedMediaType: string | null = mediaType ?? null;
-    if (parsed.platform === "INSTAGRAM" && !resolvedThumbnail) {
-      try {
-        const ig = await resolveInstagramThumbnail(postUrl, creator.id);
-        if (ig) {
-          resolvedThumbnail = ig.thumbnailUrl;
-          if (!resolvedMediaType) resolvedMediaType = ig.mediaType;
-        }
-      } catch (err) {
-        console.warn("[submissions POST] IG thumbnail backfill failed", err);
-      }
+    try {
+      const stable = await resolveStableSubmissionThumbnail({
+        postUrl,
+        creatorId: creator.id,
+        candidateThumbnailUrl: thumbnailUrl ?? null,
+        candidateMediaType: mediaType ?? null,
+      });
+      resolvedThumbnail = stable.thumbnailUrl;
+      resolvedMediaType = stable.mediaType;
+    } catch (err) {
+      console.warn("[submissions POST] thumbnail resolve failed", err);
     }
 
     const submission = await prisma.campaignSubmission.create({

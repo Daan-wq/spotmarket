@@ -144,6 +144,44 @@ describe("creator media cache", () => {
     );
   });
 
+  it("downloads TikTok cover thumbnails into Supabase storage", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(new Uint8Array([4, 5, 6]), {
+        status: 200,
+        headers: { "content-type": "image/jpeg", "content-length": "3" },
+      })
+    );
+    vi.stubGlobal("fetch", fetchMock);
+    cacheMocks.uploadCreatorMediaCacheImage.mockResolvedValue({
+      publicUrl:
+        "https://project.supabase.co/storage/v1/object/public/creator-media-cache/tt/tt-conn-1/video-1.jpg",
+      path: "tt/tt-conn-1/video-1.jpg",
+    });
+
+    const result = await cacheCreatorMediaThumbnail({
+      platform: "tt",
+      connectionId: "tt-conn-1",
+      mediaId: "video-1",
+      sourceUrl: "https://p16-sign.tiktokcdn-us.com/cover.jpg?x-expires=123",
+    });
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      "https://p16-sign.tiktokcdn-us.com/cover.jpg?x-expires=123",
+      { cache: "no-store" },
+    );
+    expect(cacheMocks.uploadCreatorMediaCacheImage).toHaveBeenCalledWith(
+      expect.objectContaining({
+        contentType: "image/jpeg",
+        platform: "tt",
+        connectionId: "tt-conn-1",
+        mediaId: "video-1",
+      })
+    );
+    expect(result).toBe(
+      "https://project.supabase.co/storage/v1/object/public/creator-media-cache/tt/tt-conn-1/video-1.jpg",
+    );
+  });
+
   it("leaves already-stable cached thumbnail URLs untouched", async () => {
     const stableUrl =
       "https://project.supabase.co/storage/v1/object/public/creator-media-cache/ig/ig-conn-1/ig-media-1.jpg";

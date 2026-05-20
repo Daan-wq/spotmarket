@@ -12,6 +12,7 @@ import { fetchTikTokVideos } from "@/lib/tiktok";
 import { fetchFacebookPagePostsPaginated } from "@/lib/facebook";
 import { fetchRecentYoutubeVideos } from "@/lib/youtube";
 import {
+  cacheCreatorMediaThumbnail,
   cacheInstagramMedia,
   readCachedCreatorMedia,
 } from "@/lib/creator-media-cache";
@@ -195,17 +196,24 @@ async function handleTt(
 
   const { videos, nextCursor, hasMore } = result;
 
-  const posts: NormalizedPost[] = videos.map((v) => ({
-    id: v.id,
-    platform: "tt",
-    url: v.shareUrl ?? "",
-    thumbnail: v.coverImageUrl,
-    caption: v.title || null,
-    publishedAt: new Date(v.createTime * 1000).toISOString(),
-    likeCount: v.likeCount,
-    commentCount: v.commentCount ?? null,
-    mediaType: "video",
-  }));
+  const posts: NormalizedPost[] = await Promise.all(
+    videos.map(async (v) => ({
+      id: v.id,
+      platform: "tt" as const,
+      url: v.shareUrl ?? "",
+      thumbnail: await cacheCreatorMediaThumbnail({
+        platform: "tt",
+        connectionId,
+        mediaId: v.id,
+        sourceUrl: v.coverImageUrl,
+      }),
+      caption: v.title || null,
+      publishedAt: new Date(v.createTime * 1000).toISOString(),
+      likeCount: v.likeCount,
+      commentCount: v.commentCount ?? null,
+      mediaType: "video" as const,
+    })),
+  );
 
   return NextResponse.json<MediaResponse>({
     posts: dedupePosts(posts),
@@ -281,17 +289,24 @@ async function handleFb(
     cursor
   );
 
-  const posts: NormalizedPost[] = fbPosts.map((p) => ({
-    id: p.id,
-    platform: "fb",
-    url: p.permalink,
-    thumbnail: p.thumbnailUrl,
-    caption: p.message,
-    publishedAt: p.createdTime,
-    likeCount: p.reactions,
-    commentCount: p.comments ?? null,
-    mediaType: normalizeFbMediaType(p.type),
-  }));
+  const posts: NormalizedPost[] = await Promise.all(
+    fbPosts.map(async (p) => ({
+      id: p.id,
+      platform: "fb" as const,
+      url: p.permalink,
+      thumbnail: await cacheCreatorMediaThumbnail({
+        platform: "fb",
+        connectionId,
+        mediaId: p.id,
+        sourceUrl: p.thumbnailUrl,
+      }),
+      caption: p.message,
+      publishedAt: p.createdTime,
+      likeCount: p.reactions,
+      commentCount: p.comments ?? null,
+      mediaType: normalizeFbMediaType(p.type),
+    })),
+  );
 
   return NextResponse.json<MediaResponse>({
     posts: dedupePosts(posts),

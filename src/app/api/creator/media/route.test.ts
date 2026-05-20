@@ -18,6 +18,7 @@ const routeMocks = vi.hoisted(() => ({
   fetchRecentYoutubeVideos: vi.fn(),
   readCachedCreatorMedia: vi.fn(),
   cacheInstagramMedia: vi.fn(),
+  cacheCreatorMediaThumbnail: vi.fn(),
 }));
 
 vi.mock("@/lib/auth", () => ({
@@ -63,6 +64,7 @@ vi.mock("@/lib/youtube", () => ({
 vi.mock("@/lib/creator-media-cache", () => ({
   readCachedCreatorMedia: routeMocks.readCachedCreatorMedia,
   cacheInstagramMedia: routeMocks.cacheInstagramMedia,
+  cacheCreatorMediaThumbnail: routeMocks.cacheCreatorMediaThumbnail,
 }));
 
 function request(path: string): NextRequest {
@@ -101,6 +103,7 @@ describe("GET /api/creator/media", () => {
         }))
       )
     );
+    routeMocks.cacheCreatorMediaThumbnail.mockResolvedValue(null);
   });
 
   it("returns creator-safe copy when a platform request has no connection id", async () => {
@@ -297,5 +300,68 @@ describe("GET /api/creator/media", () => {
       "UC_test",
       2
     );
+  });
+
+  it("returns stable cached TikTok thumbnails instead of raw TikTok CDN covers", async () => {
+    routeMocks.ttFindFirst.mockResolvedValue({
+      id: "tt-conn-1",
+      accessToken: "encrypted",
+      accessTokenIv: "iv",
+      refreshToken: "refresh",
+      refreshTokenIv: "refresh-iv",
+      tokenExpiresAt: new Date("2026-05-16T10:00:00.000Z"),
+    });
+    routeMocks.getFreshTikTokAccessToken.mockResolvedValue("fresh-tiktok-token");
+    routeMocks.fetchTikTokVideos.mockResolvedValue({
+      videos: [
+        {
+          id: "7123456789012345678",
+          title: "TikTok clip",
+          coverImageUrl: "https://p16-sign.tiktokcdn-us.com/cover.jpg?x-expires=123",
+          shareUrl: "https://www.tiktok.com/@creator/video/7123456789012345678",
+          viewCount: 100,
+          likeCount: 10,
+          commentCount: 2,
+          shareCount: 1,
+          createTime: 1760000000,
+          duration: 15,
+        },
+      ],
+      nextCursor: null,
+      hasMore: false,
+    });
+    routeMocks.cacheCreatorMediaThumbnail.mockResolvedValue(
+      "https://project.supabase.co/storage/v1/object/public/creator-media-cache/tt/tt-conn-1/7123456789012345678.jpg",
+    );
+
+    const response = await GET(
+      request("/api/creator/media?platform=tt&connectionId=tt-conn-1&limit=1")
+    );
+
+    expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toEqual({
+      posts: [
+        {
+          id: "7123456789012345678",
+          platform: "tt",
+          url: "https://www.tiktok.com/@creator/video/7123456789012345678",
+          thumbnail:
+            "https://project.supabase.co/storage/v1/object/public/creator-media-cache/tt/tt-conn-1/7123456789012345678.jpg",
+          caption: "TikTok clip",
+          publishedAt: new Date(1760000000 * 1000).toISOString(),
+          likeCount: 10,
+          commentCount: 2,
+          mediaType: "video",
+        },
+      ],
+      nextCursor: null,
+      hasMore: false,
+    });
+    expect(routeMocks.cacheCreatorMediaThumbnail).toHaveBeenCalledWith({
+      platform: "tt",
+      connectionId: "tt-conn-1",
+      mediaId: "7123456789012345678",
+      sourceUrl: "https://p16-sign.tiktokcdn-us.com/cover.jpg?x-expires=123",
+    });
   });
 });

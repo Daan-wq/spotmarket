@@ -3,13 +3,16 @@ import { resolveThumbnail } from "@/lib/clip-thumbnail";
 import { parseClipUrl, type ClipPlatform } from "@/lib/parse-clip-url";
 import {
   type ClipMediaType,
-  normalizeIgMediaType,
 } from "@/lib/instagram-media-type";
 import { decrypt } from "@/lib/crypto";
 import { fetchRecentMedia } from "@/lib/instagram";
 import { fetchTikTokVideos } from "@/lib/tiktok";
 import { fetchFacebookPagePostsPaginated } from "@/lib/facebook";
 import { getFreshTikTokAccessToken } from "@/lib/token-refresh";
+import {
+  cacheCreatorMediaThumbnail,
+  cacheInstagramMedia,
+} from "@/lib/creator-media-cache";
 import { type Range, withinRange } from "./range";
 import type { PlatformSlug } from "./types";
 
@@ -272,27 +275,32 @@ async function fetchIgOauthRows(connectionId: string, limit: number): Promise<Co
   if (!conn?.accessToken || !conn.accessTokenIv || !conn.igUserId) return [];
   const token = decrypt(conn.accessToken, conn.accessTokenIv);
   const { media } = await fetchRecentMedia(token, conn.igUserId, limit);
+  const posts = await cacheInstagramMedia({
+    connectionId,
+    media,
+    updateState: false,
+  });
   const now = new Date();
-  return media.map((m) => {
-    const postUrl = m.permalink ?? "";
+  return posts.map((post) => {
+    const postUrl = post.url ?? "";
     const parsed = postUrl ? parseClipUrl(postUrl) : null;
     const platformIcon = parsed ? CLIP_TO_PLATFORM_ICON[parsed.platform] : null;
     return {
-      rowId: `ig:${m.id}`,
+      rowId: `ig:${post.id}`,
       submissionId: null,
       platform: "ig" as const,
-      title: m.caption ?? "",
+      title: post.caption ?? "",
       campaignId: null,
       campaignName: null,
       postUrl,
-      thumbnailUrl: m.thumbnail_url ?? m.media_url ?? null,
-      mediaType: normalizeIgMediaType(m.media_type, m.media_product_type),
+      thumbnailUrl: post.thumbnail,
+      mediaType: post.mediaType,
       platformIcon,
-      postedAt: m.timestamp ? new Date(m.timestamp) : null,
+      postedAt: post.publishedAt ? new Date(post.publishedAt) : null,
       capturedAt: now,
       views: 0,
-      likes: m.like_count ?? 0,
-      comments: m.comments_count ?? 0,
+      likes: post.likeCount ?? 0,
+      comments: post.commentCount ?? 0,
       shares: 0,
       source: "oauth" as const,
       saves: null,
@@ -323,7 +331,7 @@ async function fetchTtOauthRows(connectionId: string, limit: number): Promise<Co
   if (!token) return [];
   const { videos } = await fetchTikTokVideos(token, limit);
   const now = new Date();
-  return videos.map((v) => {
+  return Promise.all(videos.map(async (v) => {
     const postUrl = v.shareUrl ?? "";
     return {
       rowId: `tt:${v.id}`,
@@ -333,7 +341,12 @@ async function fetchTtOauthRows(connectionId: string, limit: number): Promise<Co
       campaignId: null,
       campaignName: null,
       postUrl,
-      thumbnailUrl: v.coverImageUrl ?? null,
+      thumbnailUrl: await cacheCreatorMediaThumbnail({
+        platform: "tt",
+        connectionId,
+        mediaId: v.id,
+        sourceUrl: v.coverImageUrl,
+      }),
       mediaType: "video" as const,
       platformIcon: "TIKTOK",
       postedAt: new Date(v.createTime * 1000),
@@ -351,7 +364,7 @@ async function fetchTtOauthRows(connectionId: string, limit: number): Promise<Co
       watchTimeSec: v.duration ?? null,
       extras: null,
     } satisfies ContentRow;
-  });
+  }));
 }
 
 async function fetchFbOauthRows(connectionId: string, limit: number): Promise<ContentRow[]> {
@@ -363,7 +376,7 @@ async function fetchFbOauthRows(connectionId: string, limit: number): Promise<Co
   const token = decrypt(conn.accessToken, conn.accessTokenIv);
   const { posts } = await fetchFacebookPagePostsPaginated(conn.fbPageId, token, limit);
   const now = new Date();
-  return posts.map((p) => {
+  return Promise.all(posts.map(async (p) => {
     const postUrl = p.permalink ?? "";
     return {
       rowId: `fb:${p.id}`,
@@ -373,7 +386,12 @@ async function fetchFbOauthRows(connectionId: string, limit: number): Promise<Co
       campaignId: null,
       campaignName: null,
       postUrl,
-      thumbnailUrl: p.thumbnailUrl ?? null,
+      thumbnailUrl: await cacheCreatorMediaThumbnail({
+        platform: "fb",
+        connectionId,
+        mediaId: p.id,
+        sourceUrl: p.thumbnailUrl,
+      }),
       mediaType: p.type === "video" || p.type === "reel" ? ("video" as const) : ("image" as const),
       platformIcon: "FACEBOOK",
       postedAt: p.createdTime ? new Date(p.createdTime) : null,
@@ -391,5 +409,5 @@ async function fetchFbOauthRows(connectionId: string, limit: number): Promise<Co
       watchTimeSec: null,
       extras: null,
     } satisfies ContentRow;
-  });
+  }));
 }
