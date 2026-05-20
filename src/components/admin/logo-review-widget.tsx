@@ -2,7 +2,6 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import Image from "next/image";
 import { toast } from "sonner";
 
 export type LogoVerdict = "PENDING" | "PRESENT" | "MISSING";
@@ -29,6 +28,8 @@ export function LogoReviewWidget({
   const [status, setStatus] = useState<LogoVerdict>(initialStatus);
   const [verifiedAt, setVerifiedAt] = useState<string | null>(initialVerifiedAt);
   const [verifiedBy, setVerifiedBy] = useState<string | null>(initialVerifiedBy);
+  const [failedThumbnailUrl, setFailedThumbnailUrl] = useState<string | null>(null);
+  const showThumbnail = Boolean(thumbnailUrl && failedThumbnailUrl !== thumbnailUrl);
 
   async function setVerdict(verdict: "PRESENT" | "MISSING") {
     if (pending) return;
@@ -63,21 +64,20 @@ export function LogoReviewWidget({
         className="shrink-0 rounded-md overflow-hidden flex items-center justify-center"
         style={{ width: 96, height: 96, background: "var(--bg-primary)", border: "1px solid var(--border)" }}
       >
-        {thumbnailUrl ? (
+        {showThumbnail ? (
           // Use a plain img to avoid Next image-domain config friction for arbitrary CDN hosts
           // eslint-disable-next-line @next/next/no-img-element
           <img
-            src={thumbnailUrl}
+            src={thumbnailUrl ?? undefined}
             alt="Submission thumbnail"
             style={{ width: "100%", height: "100%", objectFit: "cover" }}
+            onError={() => setFailedThumbnailUrl(thumbnailUrl)}
           />
         ) : (
           <span className="text-[10px] text-center px-2" style={{ color: "var(--text-muted, var(--text-secondary))" }}>
             No thumbnail
           </span>
         )}
-        {/* Suppress unused import warning */}
-        {false && <Image src="" alt="" width={1} height={1} />}
       </div>
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2 mb-1">

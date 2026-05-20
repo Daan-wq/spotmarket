@@ -3,11 +3,16 @@ import { prisma } from "./prisma";
 import { decrypt } from "./crypto";
 import { fetchRecentMedia, type IgMediaItem } from "./instagram";
 import { normalizeIgMediaType, type ClipMediaType } from "./instagram-media-type";
+import { fetchTikTokVideos } from "./tiktok";
+import { getFreshTikTokAccessToken } from "./token-refresh";
 import {
+  cacheCreatorMediaThumbnail,
   cacheInstagramMedia,
   findCachedInstagramMediaForUrl,
   isExpiringInstagramThumbnailUrl,
 } from "./creator-media-cache";
+
+const TIKTOK_THUMBNAIL_SEARCH_PAGES = 4;
 
 /**
  * Synchronous URL-only derivation. YouTube has predictable thumbnail URLs by
@@ -36,15 +41,23 @@ export interface ResolvedClipThumbnail {
   mediaType: ClipMediaType;
 }
 
+interface StableSubmissionThumbnailInput {
+  postUrl: string | null | undefined;
+  creatorId: string | null | undefined;
+  candidateThumbnailUrl?: string | null;
+  candidateMediaType?: ClipMediaType | null;
+  submissionId?: string | null;
+}
+
 /**
- * Server-only async resolver. Falls back to TikTok oEmbed when no synchronous
- * derivation is possible. For Instagram, uses the creator's verified OAuth
- * connection to fetch media metadata via Graph API and locates the matching
- * post by permalink/shortcode.
+ * Server-only async resolver. When no synchronous derivation is possible, it
+ * uses the creator's verified Instagram/TikTok OAuth connection to fetch media
+ * metadata via official APIs and locates the matching post by permalink,
+ * shortcode, or video id.
  *
- * Cached for 1h via Next's fetch cache for TikTok. For IG, results are
- * persisted back to the CampaignSubmission row (write-through cache) so we
- * never re-call Graph API for the same submission.
+ * Provider CDN URLs are treated as expiring candidates, never as final stored
+ * thumbnails. Resolved images are downloaded into the app-owned media cache
+ * and persisted back to CampaignSubmission when a submission id is supplied.
  *
  * Use only from server components / route handlers.
  */
@@ -55,11 +68,9 @@ export async function resolveThumbnail(
 ): Promise<ResolvedClipThumbnail> {
   const fallbackMediaType: ClipMediaType = options.storedMediaType ?? deriveMediaTypeFromUrl(postUrl);
   const parsed = postUrl ? parseClipUrl(postUrl) : null;
+  const storedIsUnstable = isUnstableProviderThumbnailUrl(storedThumbnailUrl, parsed?.platform);
 
-  if (
-    storedThumbnailUrl &&
-    !(parsed?.platform === "INSTAGRAM" && isExpiringInstagramThumbnailUrl(storedThumbnailUrl))
-  ) {
+  if (storedThumbnailUrl && !storedIsUnstable) {
     return { thumbnailUrl: storedThumbnailUrl, mediaType: fallbackMediaType };
   }
   const sync = deriveThumbnail(postUrl);
@@ -67,37 +78,29 @@ export async function resolveThumbnail(
   if (!postUrl) return { thumbnailUrl: null, mediaType: fallbackMediaType };
   if (!parsed) return { thumbnailUrl: null, mediaType: fallbackMediaType };
 
-  if (parsed.platform === "TIKTOK") {
-    try {
-      const res = await fetch(
-        `https://www.tiktok.com/oembed?url=${encodeURIComponent(postUrl)}`,
-        { next: { revalidate: 3600 } },
-      );
-      if (!res.ok) return { thumbnailUrl: null, mediaType: fallbackMediaType };
-      const data = (await res.json()) as { thumbnail_url?: string };
-      return {
-        thumbnailUrl: data.thumbnail_url ?? null,
-        mediaType: fallbackMediaType,
-      };
-    } catch {
-      return { thumbnailUrl: null, mediaType: fallbackMediaType };
+  if (parsed.platform === "TIKTOK" && options.creatorId) {
+    const resolved = await resolveTikTokThumbnail(postUrl, options.creatorId);
+    if (resolved?.thumbnailUrl) {
+      await writeThroughSubmissionThumbnail(resolved, options);
+      return resolved;
     }
+    if (storedIsUnstable) {
+      const cleared = { thumbnailUrl: null, mediaType: fallbackMediaType };
+      await writeThroughSubmissionThumbnail(cleared, options);
+      return cleared;
+    }
+    return { thumbnailUrl: null, mediaType: fallbackMediaType };
   }
 
   if (parsed.platform === "INSTAGRAM" && options.creatorId) {
     const resolved = await resolveInstagramThumbnail(postUrl, options.creatorId);
-    if (resolved && options.submissionId) {
-      try {
-        await prisma.campaignSubmission.update({
-          where: { id: options.submissionId },
-          data: {
-            thumbnailUrl: resolved.thumbnailUrl,
-            mediaType: resolved.mediaType,
-          },
-        });
-      } catch (err) {
-        console.warn("[clip-thumbnail] write-through failed", err);
-      }
+    if (resolved) {
+      await writeThroughSubmissionThumbnail(resolved, options);
+    } else if (storedIsUnstable) {
+      await writeThroughSubmissionThumbnail(
+        { thumbnailUrl: null, mediaType: fallbackMediaType },
+        options,
+      );
     }
     return {
       thumbnailUrl: resolved?.thumbnailUrl ?? null,
@@ -105,7 +108,56 @@ export async function resolveThumbnail(
     };
   }
 
+  if (storedIsUnstable) {
+    await writeThroughSubmissionThumbnail(
+      { thumbnailUrl: null, mediaType: fallbackMediaType },
+      options,
+    );
+  }
+
   return { thumbnailUrl: null, mediaType: fallbackMediaType };
+}
+
+export async function resolveStableSubmissionThumbnail({
+  postUrl,
+  creatorId,
+  candidateThumbnailUrl = null,
+  candidateMediaType = null,
+  submissionId = null,
+}: StableSubmissionThumbnailInput): Promise<ResolvedClipThumbnail> {
+  return resolveThumbnail(postUrl, candidateThumbnailUrl, {
+    creatorId,
+    submissionId,
+    storedMediaType: candidateMediaType,
+  });
+}
+
+export function isUnstableProviderThumbnailUrl(
+  url: string | null | undefined,
+  platform?: string | null,
+): boolean {
+  if (!url) return false;
+  if (isExpiringInstagramThumbnailUrl(url)) return true;
+
+  try {
+    const parsed = new URL(url);
+    const host = parsed.hostname.toLowerCase();
+    const platformName = platform?.toUpperCase();
+    if (host.includes("tiktokcdn") || host.endsWith("tiktokv.com")) return true;
+    if (host === "fbcdn.net" || host.endsWith(".fbcdn.net")) return true;
+    if (
+      platformName === "TIKTOK" &&
+      (parsed.searchParams.has("x-expires") ||
+        parsed.searchParams.has("expire") ||
+        parsed.searchParams.has("expires"))
+    ) {
+      return true;
+    }
+  } catch {
+    return false;
+  }
+
+  return false;
 }
 
 /**
@@ -214,6 +266,102 @@ export async function resolveInstagramThumbnail(
   }
 
   return null;
+}
+
+async function resolveTikTokThumbnail(
+  postUrl: string,
+  creatorId: string,
+): Promise<{ thumbnailUrl: string | null; mediaType: ClipMediaType } | null> {
+  const parsed = parseClipUrl(postUrl);
+  if (parsed.platform !== "TIKTOK") return null;
+
+  try {
+    const creator = await prisma.user.findUnique({
+      where: { id: creatorId },
+      select: {
+        creatorProfile: {
+          select: {
+            ttConnections: {
+              where: { isVerified: true, accessToken: { not: null } },
+              select: {
+                id: true,
+                username: true,
+                accessToken: true,
+                accessTokenIv: true,
+                refreshToken: true,
+                refreshTokenIv: true,
+                tokenExpiresAt: true,
+              },
+            },
+          },
+        },
+      },
+    });
+
+    const connections = creator?.creatorProfile?.ttConnections ?? [];
+    const targetId = parsed.postId ?? "";
+    const normalizedTarget = normalizePermalink(postUrl);
+    const normalizedAuthor = parsed.authorHandle?.toLowerCase() ?? null;
+    const orderedConnections = normalizedAuthor
+      ? [...connections].sort((a, b) => {
+          const aMatches = a.username.toLowerCase() === normalizedAuthor;
+          const bMatches = b.username.toLowerCase() === normalizedAuthor;
+          return Number(bMatches) - Number(aMatches);
+        })
+      : connections;
+
+    for (const conn of orderedConnections) {
+      if (!conn.accessToken || !conn.accessTokenIv) continue;
+      const token = await getFreshTikTokAccessToken(conn);
+      if (!token) continue;
+
+      let cursor: number | undefined = undefined;
+      for (let page = 0; page < TIKTOK_THUMBNAIL_SEARCH_PAGES; page++) {
+        const chunk = await fetchTikTokVideos(token, 20, cursor);
+        const match = chunk.videos.find((video) => {
+          if (targetId && video.id === targetId) return true;
+          if (targetId && (video.shareUrl ?? "").includes(targetId)) return true;
+          return Boolean(video.shareUrl && normalizePermalink(video.shareUrl) === normalizedTarget);
+        });
+
+        if (match) {
+          const thumbnailUrl = await cacheCreatorMediaThumbnail({
+            platform: "tt",
+            connectionId: conn.id,
+            mediaId: match.id,
+            sourceUrl: match.coverImageUrl,
+          });
+          return { thumbnailUrl, mediaType: "video" };
+        }
+
+        if (!chunk.hasMore || chunk.nextCursor == null) break;
+        cursor = chunk.nextCursor;
+      }
+    }
+  } catch (err) {
+    console.warn("[clip-thumbnail] TT resolve failed", err);
+  }
+
+  return null;
+}
+
+async function writeThroughSubmissionThumbnail(
+  resolved: ResolvedClipThumbnail,
+  options: ResolveOptions,
+): Promise<void> {
+  if (!options.submissionId) return;
+
+  try {
+    await prisma.campaignSubmission.update({
+      where: { id: options.submissionId },
+      data: {
+        thumbnailUrl: resolved.thumbnailUrl,
+        mediaType: resolved.mediaType,
+      },
+    });
+  } catch (err) {
+    console.warn("[clip-thumbnail] write-through failed", err);
+  }
 }
 
 function normalizePermalink(url: string): string {

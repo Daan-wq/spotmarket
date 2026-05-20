@@ -28,6 +28,7 @@ interface VideoGridProps {
 export function VideoGrid({ videos, platform, username, activeApplications = [] }: VideoGridProps) {
   const [openPopover, setOpenPopover] = useState<string | null>(null);
   const [showJoinPrompt, setShowJoinPrompt] = useState<string | null>(null);
+  const [failedThumbnailUrls, setFailedThumbnailUrls] = useState<Set<string>>(() => new Set());
   const hasSubmittableApplications = activeApplications.some(
     (app) => !app.campaign.closedForSubmissions,
   );
@@ -61,27 +62,37 @@ export function VideoGrid({ videos, platform, username, activeApplications = [] 
 
   return (
     <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
-      {videos.map((video) => (
-        <div
-          key={video.id}
-          className="group relative rounded-lg overflow-hidden border"
-          style={{ borderColor: "var(--border)", aspectRatio: "9/16" }}
-        >
-          {/* Thumbnail */}
-          {video.thumbnailUrl ? (
-            <img
-              src={video.thumbnailUrl}
-              alt={video.title}
-              className="w-full h-full object-cover"
-            />
-          ) : (
-            <div
-              className="w-full h-full flex items-center justify-center"
-              style={{ background: "var(--bg-primary)" }}
-            >
-              <span className="text-xs" style={{ color: "var(--text-muted)" }}>No thumbnail</span>
-            </div>
-          )}
+      {videos.map((video) => {
+        const thumbnailUrl = video.thumbnailUrl;
+        const showThumbnail = Boolean(
+          thumbnailUrl && !failedThumbnailUrls.has(thumbnailUrl),
+        );
+
+        return (
+          <div
+            key={video.id}
+            className="group relative rounded-lg overflow-hidden border"
+            style={{ borderColor: "var(--border)", aspectRatio: "9/16" }}
+          >
+            {/* Thumbnail */}
+            {showThumbnail ? (
+              <img
+                src={thumbnailUrl ?? undefined}
+                alt={video.title}
+                className="w-full h-full object-cover"
+                onError={() => {
+                  if (!thumbnailUrl) return;
+                  setFailedThumbnailUrls((prev) => new Set(prev).add(thumbnailUrl));
+                }}
+              />
+            ) : (
+              <div
+                className="w-full h-full flex items-center justify-center"
+                style={{ background: "var(--bg-primary)" }}
+              >
+                <span className="text-xs" style={{ color: "var(--text-muted)" }}>No thumbnail</span>
+              </div>
+            )}
 
           {/* Title overlay (always visible at bottom) */}
           <div className="absolute bottom-0 left-0 right-0 p-2 bg-gradient-to-t from-black/80 to-transparent pointer-events-none">
@@ -242,8 +253,9 @@ export function VideoGrid({ videos, platform, username, activeApplications = [] 
               </div>
             </div>
           </div>
-        </div>
-      ))}
+          </div>
+        );
+      })}
     </div>
   );
 }

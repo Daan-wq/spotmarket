@@ -42,17 +42,19 @@ export default function ClipThumbnail({
   const [aspectRatio, setAspectRatio] = useState<number>(
     initialAspectRatio ?? defaultRatioForMediaType(mediaType),
   );
+  const [failedSrc, setFailedSrc] = useState<string | null>(null);
 
   const imgClass = dynamicAspectRatio
     ? "w-full h-full object-contain"
     : "w-full h-full object-cover";
+  const showImage = Boolean(thumbnailUrl && failedSrc !== thumbnailUrl);
 
   const inner = (
     <>
-      {thumbnailUrl ? (
+      {showImage ? (
         // eslint-disable-next-line @next/next/no-img-element
         <img
-          src={thumbnailUrl}
+          src={thumbnailUrl ?? undefined}
           alt={caption?.slice(0, 60) ?? "Post"}
           className={imgClass}
           onLoad={
@@ -65,6 +67,7 @@ export default function ClipThumbnail({
                 }
               : undefined
           }
+          onError={() => setFailedSrc(thumbnailUrl)}
         />
       ) : (
         <div
