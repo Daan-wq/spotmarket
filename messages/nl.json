@@ -15,6 +15,7 @@
   "auth": {
     "signIn": {
       "title": "Welkom terug",
+      "subtitle": "Log in om verder te gaan met ClipProfit",
       "noAccount": "Nog geen account?",
       "createOne": "Maak er een aan",
       "forgotPassword": "Wachtwoord vergeten?",
@@ -33,6 +34,7 @@
     },
     "signUp": {
       "title": "Account aanmaken",
+      "subtitle": "Maak je ClipProfit-account aan om te starten",
       "hasAccount": "Heb je al een account?",
       "signIn": "Inloggen",
       "confirmPassword": "Bevestig wachtwoord",

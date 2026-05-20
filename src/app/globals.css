@@ -199,6 +199,27 @@ summary {
   }
 }
 
+.auth-page-enter {
+  animation: authFadeSlide 180ms ease-out both;
+}
+
+@keyframes authFadeSlide {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .auth-page-enter {
+    animation: none;
+  }
+}
+
 @keyframes slideUp {
   from {
     opacity: 0;
