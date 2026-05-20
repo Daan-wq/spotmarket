@@ -1,10 +1,13 @@
 import { Suspense } from "react";
+import { AuthShell } from "@/components/auth/auth-shell";
 import { SignUpForm } from "./sign-up-form";
 
 export default function SignUpPage() {
   return (
-    <Suspense>
-      <SignUpForm />
-    </Suspense>
+    <AuthShell>
+      <Suspense>
+        <SignUpForm />
+      </Suspense>
+    </AuthShell>
   );
 }

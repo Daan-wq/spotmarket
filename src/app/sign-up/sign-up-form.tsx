@@ -1,13 +1,12 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
+import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
 import posthog from "posthog-js";
-import { createSupabaseBrowserClient } from "@/lib/supabase/client";
-import { Logo } from "@/components/shared/logo";
-import Link from "next/link";
 import { OAuthButtons, OAuthDivider } from "@/components/auth/oauth-buttons";
+import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 
 export function SignUpForm() {
   const router = useRouter();
@@ -35,7 +34,7 @@ export function SignUpForm() {
 
         if (data.pending) return;
 
-        // Ticket redeemed — clear polling and log in
+        // Ticket redeemed - clear polling and log in.
         if (pollRef.current) clearInterval(pollRef.current);
 
         if (!res.ok || !data.session) return;
@@ -50,7 +49,7 @@ export function SignUpForm() {
         router.push(redirectTo);
         router.refresh();
       } catch {
-        // Network error — keep polling
+        // Network error - keep polling.
       }
     }, 2500);
 
@@ -94,142 +93,123 @@ export function SignUpForm() {
     setEmailSent(true);
   }
 
+  const inputClass = "w-full px-3 py-2.5 rounded-lg text-sm outline-none transition-all text-zinc-950";
+  const inputStyle = { border: "1px solid var(--border)", background: "#ffffff" };
+
   if (emailSent) {
     return (
-      <div className="min-h-screen flex items-center justify-center px-4" style={{ background: "#0a0a0a" }}>
-        <div className="w-full max-w-sm">
-          <div className="text-center mb-8">
-            <Link href="/" className="inline-block">
-              <Logo variant="dark" size="sm" />
-            </Link>
-          </div>
-          <div className="rounded-xl p-8 text-center" style={{ background: "#111111", border: "1px solid rgba(255,255,255,0.07)" }}>
-            <div className="w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-4" style={{ background: "var(--accent-bg)" }}>
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <rect x="2" y="4" width="20" height="16" rx="2" />
-                <path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7" />
-              </svg>
-            </div>
-            <h1 className="text-xl font-semibold mb-2 text-white">{t("checkEmailTitle")}</h1>
-            <p className="text-sm mb-6" style={{ color: "var(--text-secondary)" }}>
-              {t("checkEmailBody", { email })}
-            </p>
-            <p className="text-xs" style={{ color: "#d4d4d8" }}>
-              {t("alreadyVerified")}{" "}
-              <Link href="/sign-in" className="font-medium text-white hover:underline">
-                {t("signIn")}
-              </Link>
-            </p>
-          </div>
-        </div>
+      <div>
+        <h1 className="mb-2 text-[23px] font-semibold leading-tight text-zinc-950">{t("checkEmailTitle")}</h1>
+        <p className="mb-6 text-sm" style={{ color: "var(--text-secondary)" }}>
+          {t("checkEmailBody", { email })}
+        </p>
+        <p className="text-[13px]" style={{ color: "#666666" }}>
+          {t("alreadyVerified")}{" "}
+          <Link href="/sign-in" className="font-medium text-zinc-950 hover:underline">
+            {t("signIn")}
+          </Link>
+        </p>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center px-4" style={{ background: "#0a0a0a" }}>
-      <div className="w-full max-w-sm">
-        <div className="text-center mb-8">
-          <Link href="/" className="inline-block">
-            <Logo variant="dark" size="sm" />
-          </Link>
-        </div>
-        <div className="rounded-xl p-8" style={{ background: "#111111", border: "1px solid rgba(255,255,255,0.07)" }}>
-          <h1 className="text-xl font-semibold mb-1 text-white">{t("title")}</h1>
-          <p className="text-sm mb-6" style={{ color: "#d4d4d8" }}>
-            {t("hasAccount")}{" "}
-            <Link href="/sign-in" className="font-medium text-white hover:underline">
-              {t("signIn")}
-            </Link>
-          </p>
+    <>
+      <h1 className="mb-2 text-[23px] font-semibold leading-tight text-zinc-950">{t("title")}</h1>
+      <p className="mb-3 text-sm" style={{ color: "var(--text-secondary)" }}>
+        {t("subtitle")}
+      </p>
+      <p className="mb-6 text-sm" style={{ color: "var(--text-secondary)" }}>
+        {t("hasAccount")}{" "}
+        <Link href="/sign-in" className="font-medium text-zinc-950 hover:underline">
+          {t("signIn")}
+        </Link>
+      </p>
 
-          <OAuthButtons mode="signup" providers={["discord"]} />
+      <OAuthButtons mode="signup" providers={["discord"]} />
 
-          {showOtherMethods ? (
-            <>
-              <div className="mt-4">
-                <OAuthButtons mode="signup" providers={["google"]} />
-              </div>
-              <OAuthDivider />
+      {showOtherMethods ? (
+        <>
+          <div className="mt-4">
+            <OAuthButtons mode="signup" providers={["google"]} />
+          </div>
+          <OAuthDivider />
 
-              <form onSubmit={handleSubmit} className="space-y-4">
-                <div>
-                  <label htmlFor="sign-up-email" className="block text-sm font-medium mb-1.5" style={{ color: "var(--text-secondary)" }}>{commonT("email")}</label>
-                  <input
-                    id="sign-up-email"
-                    type="email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    required
-                    className="w-full px-3 py-2.5 rounded-lg text-sm outline-none transition-all text-white"
-                    style={{ border: "1px solid rgba(255,255,255,0.1)", background: "rgba(255,255,255,0.05)" }}
-                    onFocus={(e) => { e.currentTarget.style.borderColor = "var(--accent)"; e.currentTarget.style.boxShadow = "0 0 0 3px var(--accent-bg)"; }}
-                    onBlur={(e) => { e.currentTarget.style.borderColor = "rgba(255,255,255,0.1)"; e.currentTarget.style.boxShadow = "none"; }}
-                  />
-                </div>
-                <div>
-                  <label htmlFor="sign-up-password" className="block text-sm font-medium mb-1.5" style={{ color: "var(--text-secondary)" }}>
-                    {commonT("password")} <span style={{ color: "var(--text-secondary)" }}>({t("passwordHint")})</span>
-                  </label>
-                  <input
-                    id="sign-up-password"
-                    type="password"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    required
-                    minLength={6}
-                    className="w-full px-3 py-2.5 rounded-lg text-sm outline-none transition-all text-white"
-                    style={{ border: "1px solid rgba(255,255,255,0.1)", background: "rgba(255,255,255,0.05)" }}
-                    onFocus={(e) => { e.currentTarget.style.borderColor = "var(--accent)"; e.currentTarget.style.boxShadow = "0 0 0 3px var(--accent-bg)"; }}
-                    onBlur={(e) => { e.currentTarget.style.borderColor = "rgba(255,255,255,0.1)"; e.currentTarget.style.boxShadow = "none"; }}
-                  />
-                </div>
-                <div>
-                  <label htmlFor="sign-up-confirm-password" className="block text-sm font-medium mb-1.5" style={{ color: "var(--text-secondary)" }}>{t("confirmPassword")}</label>
-                  <input
-                    id="sign-up-confirm-password"
-                    type="password"
-                    value={confirmPassword}
-                    onChange={(e) => setConfirmPassword(e.target.value)}
-                    required
-                    minLength={6}
-                    className="w-full px-3 py-2.5 rounded-lg text-sm outline-none transition-all text-white"
-                    style={{ border: "1px solid rgba(255,255,255,0.1)", background: "rgba(255,255,255,0.05)" }}
-                    onFocus={(e) => { e.currentTarget.style.borderColor = "var(--accent)"; e.currentTarget.style.boxShadow = "0 0 0 3px var(--accent-bg)"; }}
-                    onBlur={(e) => { e.currentTarget.style.borderColor = "rgba(255,255,255,0.1)"; e.currentTarget.style.boxShadow = "none"; }}
-                  />
-                </div>
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div>
+              <label htmlFor="sign-up-email" className="mb-1.5 block text-sm font-medium" style={{ color: "var(--text-secondary)" }}>{commonT("email")}</label>
+              <input
+                id="sign-up-email"
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                required
+                className={inputClass}
+                style={inputStyle}
+                onFocus={(e) => { e.currentTarget.style.borderColor = "var(--accent)"; e.currentTarget.style.boxShadow = "0 0 0 3px var(--accent-bg)"; }}
+                onBlur={(e) => { e.currentTarget.style.borderColor = "var(--border)"; e.currentTarget.style.boxShadow = "none"; }}
+              />
+            </div>
+            <div>
+              <label htmlFor="sign-up-password" className="mb-1.5 block text-sm font-medium" style={{ color: "var(--text-secondary)" }}>
+                {commonT("password")} <span style={{ color: "var(--text-secondary)" }}>({t("passwordHint")})</span>
+              </label>
+              <input
+                id="sign-up-password"
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+                minLength={6}
+                className={inputClass}
+                style={inputStyle}
+                onFocus={(e) => { e.currentTarget.style.borderColor = "var(--accent)"; e.currentTarget.style.boxShadow = "0 0 0 3px var(--accent-bg)"; }}
+                onBlur={(e) => { e.currentTarget.style.borderColor = "var(--border)"; e.currentTarget.style.boxShadow = "none"; }}
+              />
+            </div>
+            <div>
+              <label htmlFor="sign-up-confirm-password" className="mb-1.5 block text-sm font-medium" style={{ color: "var(--text-secondary)" }}>{t("confirmPassword")}</label>
+              <input
+                id="sign-up-confirm-password"
+                type="password"
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                required
+                minLength={6}
+                className={inputClass}
+                style={inputStyle}
+                onFocus={(e) => { e.currentTarget.style.borderColor = "var(--accent)"; e.currentTarget.style.boxShadow = "0 0 0 3px var(--accent-bg)"; }}
+                onBlur={(e) => { e.currentTarget.style.borderColor = "var(--border)"; e.currentTarget.style.boxShadow = "none"; }}
+              />
+            </div>
 
-                {error && (
-                  <p className="text-sm px-3 py-2 rounded-lg" style={{ color: "#fca5a5", background: "rgba(239,68,68,0.1)", border: "1px solid rgba(239,68,68,0.2)" }}>
-                    {error}
-                  </p>
-                )}
+            {error && (
+              <p className="rounded-lg px-3 py-2 text-sm" style={{ color: "var(--error-text)", background: "var(--error-bg)", border: "1px solid rgba(239,68,68,0.18)" }}>
+                {error}
+              </p>
+            )}
 
-                <button
-                  type="submit"
-                  disabled={loading}
-                  className="w-full py-2.5 rounded-lg text-sm font-semibold text-white transition-opacity disabled:opacity-50"
-                  style={{ background: "var(--accent)" }}
-                  onMouseEnter={(e) => { if (!loading) (e.currentTarget as HTMLElement).style.opacity = "0.88"; }}
-                  onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.opacity = "1"; }}
-                >
-                  {loading ? t("submitting") : t("submit")}
-                </button>
-              </form>
-            </>
-          ) : (
             <button
-              type="button"
-              onClick={() => setShowOtherMethods(true)}
-              className="mt-3 w-full text-center text-xs font-medium transition-colors hover:underline"
-              style={{ color: "#d4d4d8" }}
+              type="submit"
+              disabled={loading}
+              className="h-12 w-full rounded-xl text-sm font-semibold text-white transition-opacity disabled:opacity-50"
+              style={{ background: "var(--accent)" }}
+              onMouseEnter={(e) => { if (!loading) (e.currentTarget as HTMLElement).style.opacity = "0.88"; }}
+              onMouseLeave={(e) => { e.currentTarget.style.opacity = "1"; }}
             >
-              {oauthT("signUpOther")}
+              {loading ? t("submitting") : t("submit")}
             </button>
-          )}
-        </div>
-      </div>
-    </div>
+          </form>
+        </>
+      ) : (
+        <button
+          type="button"
+          onClick={() => setShowOtherMethods(true)}
+          className="mt-4 w-full text-center text-[13px] font-medium text-[#666666] transition-colors hover:text-zinc-950"
+        >
+          {oauthT("signUpOther")}
+        </button>
+      )}
+    </>
   );
 }

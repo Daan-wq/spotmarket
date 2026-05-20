@@ -91,14 +91,14 @@ export function SignInForm() {
   if (mode === "forgot") {
     return (
       <>
-        <h1 className="text-xl font-semibold mb-1 text-zinc-950">{forgotT("title")}</h1>
+        <h1 className="mb-2 text-[23px] font-semibold leading-tight text-zinc-950">{forgotT("title")}</h1>
         <p className="text-sm mb-6" style={{ color: "var(--text-secondary)" }}>
           {forgotT("description")}
         </p>
 
         {success ? (
           <div className="space-y-4">
-            <p className="text-sm px-3 py-3 rounded-lg" style={{ color: "#86efac", background: "rgba(34,197,94,0.1)", border: "1px solid rgba(34,197,94,0.2)" }}>
+            <p className="rounded-lg px-3 py-3 text-sm" style={{ color: "var(--success-text)", background: "var(--success-bg)", border: "1px solid rgba(5,150,105,0.18)" }}>
               {success}
             </p>
             <button
@@ -129,7 +129,7 @@ export function SignInForm() {
             </div>
 
             {error && (
-              <p className="text-sm px-3 py-2 rounded-lg" style={{ color: "#fca5a5", background: "rgba(239,68,68,0.1)", border: "1px solid rgba(239,68,68,0.2)" }}>
+              <p className="rounded-lg px-3 py-2 text-sm" style={{ color: "var(--error-text)", background: "var(--error-bg)", border: "1px solid rgba(239,68,68,0.18)" }}>
                 {error}
               </p>
             )}
@@ -137,7 +137,7 @@ export function SignInForm() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full py-2.5 rounded-lg text-sm font-semibold text-white transition-opacity disabled:opacity-50"
+              className="h-12 w-full rounded-xl text-sm font-semibold text-white transition-opacity disabled:opacity-50"
               style={{ background: "var(--accent)" }}
               onMouseEnter={(e) => { if (!loading) (e.currentTarget as HTMLElement).style.opacity = "0.88"; }}
               onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.opacity = "1"; }}
@@ -161,22 +161,25 @@ export function SignInForm() {
 
   return (
     <>
-      <h1 className="text-xl font-semibold mb-1 text-zinc-950">{t("title")}</h1>
-      <p className="text-sm mb-6" style={{ color: "var(--text-secondary)" }}>
+      <h1 className="mb-2 text-[23px] font-semibold leading-tight text-zinc-950">{t("title")}</h1>
+      <p className="mb-3 text-sm" style={{ color: "var(--text-secondary)" }}>
+        {t("subtitle")}
+      </p>
+      <p className="mb-6 text-sm" style={{ color: "var(--text-secondary)" }}>
         {t("noAccount")}{" "}
-        <Link href="/sign-up" className="hover:underline" style={{ color: "var(--accent)" }}>
+        <Link href="/sign-up" className="font-medium hover:underline" style={{ color: "var(--accent)" }}>
           {t("createOne")}
         </Link>
       </p>
 
       {success && (
-        <p className="text-sm px-3 py-2 rounded-lg mb-4" style={{ color: "#86efac", background: "rgba(34,197,94,0.1)", border: "1px solid rgba(34,197,94,0.2)" }}>
+        <p className="mb-4 rounded-lg px-3 py-2 text-sm" style={{ color: "var(--success-text)", background: "var(--success-bg)", border: "1px solid rgba(5,150,105,0.18)" }}>
           {success}
         </p>
       )}
 
       {error && !showOtherMethods && (
-        <p className="text-sm px-3 py-2 rounded-lg mb-4" style={{ color: "#fca5a5", background: "rgba(239,68,68,0.1)", border: "1px solid rgba(239,68,68,0.2)" }}>
+        <p className="mb-4 rounded-lg px-3 py-2 text-sm" style={{ color: "var(--error-text)", background: "var(--error-bg)", border: "1px solid rgba(239,68,68,0.18)" }}>
           {error}
         </p>
       )}
@@ -242,7 +245,7 @@ export function SignInForm() {
             </div>
 
             {error && (
-              <p className="text-sm px-3 py-2 rounded-lg" style={{ color: "#fca5a5", background: "rgba(239,68,68,0.1)", border: "1px solid rgba(239,68,68,0.2)" }}>
+              <p className="rounded-lg px-3 py-2 text-sm" style={{ color: "var(--error-text)", background: "var(--error-bg)", border: "1px solid rgba(239,68,68,0.18)" }}>
                 {error}
               </p>
             )}
@@ -250,7 +253,7 @@ export function SignInForm() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full py-2.5 rounded-lg text-sm font-semibold text-white transition-opacity disabled:opacity-50"
+              className="h-12 w-full rounded-xl text-sm font-semibold text-white transition-opacity disabled:opacity-50"
               style={{ background: "var(--accent)" }}
               onMouseEnter={(e) => { if (!loading) (e.currentTarget as HTMLElement).style.opacity = "0.88"; }}
               onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.opacity = "1"; }}
@@ -263,8 +266,7 @@ export function SignInForm() {
         <button
           type="button"
           onClick={() => setShowOtherMethods(true)}
-          className="mt-3 w-full text-center text-xs font-medium transition-colors hover:underline"
-          style={{ color: "var(--text-secondary)" }}
+          className="mt-4 w-full text-center text-[13px] font-medium text-[#666666] transition-colors hover:text-zinc-950"
         >
           {oauthT("signInOther")}
         </button>

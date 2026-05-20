@@ -73,10 +73,7 @@ export function OAuthButtons({ mode, providers = ["google", "discord"] }: OAuthB
           type="button"
           disabled={loading !== null}
           onClick={() => handleOAuth("google")}
-          className="w-full flex items-center justify-center gap-3 py-2.5 rounded-lg text-sm font-semibold transition-opacity disabled:opacity-50"
-          style={{ background: "#ffffff", color: "#1f1f1f" }}
-          onMouseEnter={(e) => { if (!loading) (e.currentTarget as HTMLElement).style.opacity = "0.88"; }}
-          onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.opacity = "1"; }}
+          className="flex h-12 w-full items-center justify-center gap-3 rounded-xl border border-[#e4e4e7] bg-white text-sm font-semibold text-[#1f1f1f] transition-[background-color,opacity,transform] duration-150 hover:bg-[#f7f7f8] active:scale-[0.98] disabled:opacity-50 disabled:active:scale-100"
         >
           <GoogleIcon />
           {loading === "google"
@@ -90,10 +87,7 @@ export function OAuthButtons({ mode, providers = ["google", "discord"] }: OAuthB
           type="button"
           disabled={loading !== null}
           onClick={() => handleOAuth("discord")}
-          className="w-full flex items-center justify-center gap-3 py-2.5 rounded-lg text-sm font-semibold text-white transition-opacity disabled:opacity-50"
-          style={{ background: "#5865F2" }}
-          onMouseEnter={(e) => { if (!loading) (e.currentTarget as HTMLElement).style.opacity = "0.88"; }}
-          onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.opacity = "1"; }}
+          className="flex h-12 w-full items-center justify-center gap-3 rounded-xl bg-[#5865F2] text-sm font-semibold text-white transition-[background-color,opacity,transform] duration-150 hover:bg-[#4752C4] active:scale-[0.98] disabled:opacity-50 disabled:active:scale-100"
         >
           <DiscordIcon />
           {loading === "discord"
@@ -110,9 +104,9 @@ export function OAuthDivider() {
 
   return (
     <div className="flex items-center gap-3 my-5">
-      <div className="flex-1 h-px" style={{ background: "rgba(255,255,255,0.1)" }} />
+      <div className="h-px flex-1" style={{ background: "var(--border)" }} />
       <span className="text-xs" style={{ color: "var(--text-secondary)" }}>{t("or")}</span>
-      <div className="flex-1 h-px" style={{ background: "rgba(255,255,255,0.1)" }} />
+      <div className="h-px flex-1" style={{ background: "var(--border)" }} />
     </div>
   );
 }
