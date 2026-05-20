@@ -33,6 +33,7 @@ export default async function SettingsPage() {
       creatorProfile: {
         select: {
           displayName: true,
+          username: true,
           bio: true,
           avatarUrl: true,
           createdAt: true,
@@ -63,6 +64,7 @@ export default async function SettingsPage() {
 
   const profile = user?.creatorProfile;
   const displayName = profile?.displayName || t("fallbackCreator");
+  const username = profile?.username ? `@${profile.username}` : "-";
   const joinedAt = profile?.createdAt ?? user?.createdAt;
   const verifiedPlatforms = getVerifiedPlatformLabels({
     instagram: Boolean(profile?.igConnections.length),
@@ -107,6 +109,7 @@ export default async function SettingsPage() {
       <section className="grid grid-cols-2 gap-3 md:grid-cols-4 md:gap-4">
         <ProfileSummaryCard
           name={displayName}
+          username={username}
           email={user?.email ?? "-"}
           imageUrl={profile?.avatarUrl ?? null}
         />
@@ -144,6 +147,7 @@ export default async function SettingsPage() {
         </div>
         <ProfileEditForm
           initialDisplayName={profile?.displayName ?? ""}
+          initialUsername={profile?.username ?? ""}
           initialBio={profile?.bio ?? ""}
         />
       </section>
@@ -154,6 +158,7 @@ export default async function SettingsPage() {
         </div>
         <div className="text-sm">
           <Row label={t("account.email")} value={user?.email ?? "-"} />
+          <Row label={t("account.username")} value={username} />
           <Row label={t("account.joined")} value={joinedLabel} />
           <Row label={t("account.loginMethod")} value={authProvider} />
           <Row label={t("account.userId")} value={user?.supabaseId ?? "-"} />
@@ -207,10 +212,12 @@ function Row({ label, value }: { label: string; value: string }) {
 
 function ProfileSummaryCard({
   name,
+  username,
   email,
   imageUrl,
 }: {
   name: string;
+  username: string;
   email: string;
   imageUrl: string | null;
 }) {
@@ -233,6 +240,7 @@ function ProfileSummaryCard({
         )}
         <div className="min-w-0">
           <p className="truncate text-base font-semibold text-neutral-950">{name}</p>
+          <p className="truncate text-xs font-medium text-neutral-600">{username}</p>
           <p className="truncate text-xs text-neutral-500">{email}</p>
         </div>
       </div>

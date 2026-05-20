@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { cookies } from "next/headers";
+import { Prisma } from "@prisma/client";
 import { requireAuth } from "@/lib/auth";
 import {
   isLocale,
@@ -10,6 +11,7 @@ import {
   type Locale,
 } from "@/i18n/routing";
 import { prisma } from "@/lib/prisma";
+import { USERNAME_TAKEN_ERROR, validateUsername } from "@/lib/username";
 
 export interface UpdateProfileResult {
   ok: boolean;
@@ -44,6 +46,7 @@ export async function updateCreatorProfile(formData: FormData): Promise<UpdatePr
   const { userId: supabaseId } = await requireAuth("creator");
 
   const displayName = String(formData.get("displayName") ?? "").trim();
+  const usernameResult = validateUsername(String(formData.get("username") ?? ""));
   const bio = String(formData.get("bio") ?? "").trim();
 
   if (displayName.length === 0) {
@@ -55,6 +58,9 @@ export async function updateCreatorProfile(formData: FormData): Promise<UpdatePr
   if (bio.length > 280) {
     return { ok: false, error: "Bio must be 280 characters or fewer." };
   }
+  if (!usernameResult.ok) {
+    return { ok: false, error: usernameResult.error };
+  }
 
   const user = await prisma.user.findUnique({
     where: { supabaseId },
@@ -62,17 +68,43 @@ export async function updateCreatorProfile(formData: FormData): Promise<UpdatePr
   });
   if (!user) return { ok: false, error: "User not found." };
 
-  await prisma.creatorProfile.update({
-    where: { userId: user.id },
-    data: {
-      displayName,
-      bio: bio.length > 0 ? bio : null,
-    },
+  const existingUsername = await prisma.creatorProfile.findUnique({
+    where: { username: usernameResult.username },
+    select: { userId: true },
   });
+  if (existingUsername && existingUsername.userId !== user.id) {
+    return { ok: false, error: USERNAME_TAKEN_ERROR };
+  }
+
+  try {
+    await prisma.creatorProfile.update({
+      where: { userId: user.id },
+      data: {
+        displayName,
+        username: usernameResult.username,
+        bio: bio.length > 0 ? bio : null,
+      },
+    });
+  } catch (err) {
+    if (isUsernameUniqueError(err)) {
+      return { ok: false, error: USERNAME_TAKEN_ERROR };
+    }
+    throw err;
+  }
 
   revalidatePath("/creator/settings");
   revalidatePath("/creator/dashboard");
   revalidatePath("/creator/profile");
 
   return { ok: true };
+}
+
+function isUsernameUniqueError(err: unknown): boolean {
+  if (!(err instanceof Prisma.PrismaClientKnownRequestError)) return false;
+  if (err.code !== "P2002") return false;
+
+  const target = err.meta?.target;
+  return Array.isArray(target)
+    ? target.includes("username")
+    : typeof target === "string" && target.includes("username");
 }

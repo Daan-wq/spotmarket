@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { nanoid } from "nanoid";
 import { isValidTronAddress } from "@/lib/validation/tron";
 import { normalizeReferralCode } from "@/lib/referral";
+import { createUniqueUsername } from "@/lib/username";
 
 const VALID_ROLES = ["creator"] as const;
 
@@ -100,10 +101,19 @@ export async function POST(req: Request) {
     include: { creatorProfile: true },
   });
 
+  const username = await createUniqueUsername(displayName, async (candidate) => {
+    const existing = await prisma.creatorProfile.findUnique({
+      where: { username: candidate },
+      select: { userId: true },
+    });
+    return Boolean(existing && existing.userId !== user.id);
+  });
+
   if (!user.creatorProfile) {
     await prisma.creatorProfile.create({
       data: {
         userId: user.id,
+        username,
         displayName,
         tronsAddress: tronsAddress ?? null,
         attributionSource: attributionSource ?? null,
@@ -116,6 +126,7 @@ export async function POST(req: Request) {
       where: { userId: user.id },
       data: {
         ...(tronsAddress ? { tronsAddress } : {}),
+        ...(user.creatorProfile.username ? {} : { username }),
         ...(attributionSource ? { attributionSource } : {}),
         ...(experienceLevel ? { experienceLevel } : {}),
         ...(portfolioVideoUrl ? { portfolioVideoUrl } : {}),

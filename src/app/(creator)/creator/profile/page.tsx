@@ -80,6 +80,7 @@ export default async function ProfilePage({
         initialTab={params.tab ?? "general"}
         profileData={{
           displayName: profile.displayName,
+          username: profile.username,
           email: authUser.email ?? "",
           avatarUrl: profile.avatarUrl,
           bio: profile.bio,

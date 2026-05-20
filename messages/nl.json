@@ -220,6 +220,11 @@
     "profileForm": {
       "saved": "Opgeslagen",
       "saveFailed": "Wijzigingen konden niet worden opgeslagen.",
+      "username": {
+        "label": "Username",
+        "helper": "Uniek binnen ClipProfit. Gebruik kleine letters, cijfers en underscores.",
+        "placeholder": "jouw_username"
+      },
       "displayName": {
         "label": "Weergavenaam",
         "helper": "De naam die op je dashboard, profiel en leaderboards staat."
@@ -239,6 +244,7 @@
     "account": {
       "title": "Accountgegevens",
       "email": "E-mail",
+      "username": "Username",
       "joined": "Aangemeld",
       "loginMethod": "Loginmethode",
       "userId": "Gebruikers-ID"
@@ -490,7 +496,7 @@
         "progress": "{completed} van {total}",
         "profile": {
           "label": "Maak je profiel compleet",
-          "description": "Voeg een weergavenaam toe zodat we je kunnen aanspreken.",
+          "description": "Voeg een weergavenaam en unieke username toe zodat we je kunnen herkennen.",
           "cta": "Bewerken"
         },
         "account": {
@@ -1215,6 +1221,7 @@
       "general": {
         "title": "Profielinformatie",
         "fullName": "Volledige naam",
+        "username": "Username",
         "email": "E-mail",
         "emailNote": "Kan niet worden gewijzigd",
         "country": "Land",
