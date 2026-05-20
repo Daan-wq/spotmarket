@@ -3,6 +3,7 @@
 import { useState, type ComponentType } from "react";
 import { useRouter } from "next/navigation";
 import {
+  AtSign,
   BarChart3,
   CalendarDays,
   Globe2,
@@ -13,11 +14,13 @@ import {
   Wallet,
 } from "lucide-react";
 import { ActivityHeatmap, type ActivityDay } from "./activity-heatmap";
+import { ProfileEditForm } from "../../settings/_components/profile-edit-form";
 import { formatCurrency, formatDate, formatShortDate } from "@/lib/i18n-format";
 import { useLocale, useTranslations } from "next-intl";
 
 interface ProfileData {
   displayName: string;
+  username: string | null;
   email: string;
   avatarUrl: string | null;
   bio: string | null;
@@ -101,6 +104,11 @@ export function ProfileClient({
               <h1 className="truncate text-2xl font-semibold tracking-normal text-neutral-950">
                 {profileData.displayName}
               </h1>
+              {profileData.username ? (
+                <p className="truncate text-sm font-semibold text-neutral-700">
+                  @{profileData.username}
+                </p>
+              ) : null}
               <p className="truncate text-sm text-neutral-500">{profileData.email}</p>
             </div>
           </div>
@@ -160,6 +168,11 @@ function GeneralTab({ data }: { data: ProfileData }) {
 
   const info = [
     { label: t("fullName"), value: data.displayName, icon: User },
+    {
+      label: t("username"),
+      value: data.username ? `@${data.username}` : t("notSet"),
+      icon: AtSign,
+    },
     { label: t("email"), value: data.email, icon: Mail, note: t("emailNote") },
     { label: t("country"), value: data.primaryGeo, icon: Globe2 },
     { label: t("memberSince"), value: memberDate, icon: CalendarDays },
@@ -201,6 +214,13 @@ function GeneralTab({ data }: { data: ProfileData }) {
               </article>
             );
           })}
+        </div>
+        <div className="mt-6 border-t border-neutral-100 pt-5">
+          <ProfileEditForm
+            initialDisplayName={data.displayName}
+            initialUsername={data.username ?? ""}
+            initialBio={data.bio ?? ""}
+          />
         </div>
       </div>
     </section>

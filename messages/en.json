@@ -222,6 +222,11 @@
     "profileForm": {
       "saved": "Saved",
       "saveFailed": "Could not save changes.",
+      "username": {
+        "label": "Username",
+        "helper": "Unique across ClipProfit. Use lowercase letters, numbers, and underscores.",
+        "placeholder": "your_username"
+      },
       "displayName": {
         "label": "Display name",
         "helper": "The name that shows on your dashboard, profile, and leaderboards."
@@ -241,6 +246,7 @@
     "account": {
       "title": "Account info",
       "email": "Email",
+      "username": "Username",
       "joined": "Joined",
       "loginMethod": "Login method",
       "userId": "User ID"
@@ -492,7 +498,7 @@
         "progress": "{completed} of {total}",
         "profile": {
           "label": "Complete your profile",
-          "description": "Add a display name so we can address you.",
+          "description": "Add a display name and unique username so we can identify you.",
           "cta": "Edit"
         },
         "account": {
@@ -1218,6 +1224,7 @@
       "general": {
         "title": "Profile Information",
         "fullName": "Full name",
+        "username": "Username",
         "email": "Email",
         "emailNote": "Cannot be changed",
         "country": "Country",

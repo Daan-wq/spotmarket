@@ -53,6 +53,7 @@ model CreatorProfile {
   id                 String   @id @default(cuid())
   userId             String   @unique
   user               User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  username           String?  @unique
   displayName        String
   bio                String?
   avatarUrl          String?

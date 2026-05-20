@@ -7,8 +7,8 @@ import { CreatorPageHeader } from "../_components/creator-journey";
 import type { Locale } from "@/i18n/routing";
 
 export async function generateMetadata(): Promise<Metadata> {
-  const t = await getTranslations("creatorSettings.metadata");
-  return { title: t("title") };
+  const t = await getTranslations("creatorSettings");
+  return { title: t("metaTitle") };
 }
 
 export default async function SettingsPage() {
@@ -28,8 +28,8 @@ export default async function SettingsPage() {
         currentLocale={locale}
         title={t("language.title")}
         description={t("language.description")}
-        ariaLabel={t("language.ariaLabel")}
         savedLabel={t("language.saved")}
+        savingLabel={t("language.saving")}
         errorLabel={t("language.error")}
       />
 
@@ -38,16 +38,13 @@ export default async function SettingsPage() {
         <p className="mb-4 mt-1 text-xs text-neutral-500">
           {t("danger.description")}
         </p>
-
-        <div className="flex flex-col gap-4 rounded-2xl border border-red-100 bg-red-50 p-4 md:flex-row md:items-center md:justify-between">
-          <div>
-            <p className="text-sm font-medium text-neutral-950">{t("danger.deleteTitle")}</p>
-            <p className="mt-0.5 text-xs text-neutral-500">
-              {t("danger.deleteDescription")}
-            </p>
-          </div>
-          <DeleteAccountButton />
-        </div>
+        <DeleteAccountButton
+          label={t("danger.deleteButton")}
+          confirmTitle={t("danger.confirmTitle")}
+          confirmDescription={t("danger.confirmDescription")}
+          confirmLabel={t("danger.confirmButton")}
+          cancelLabel={t("danger.cancelButton")}
+        />
       </section>
     </div>
   );

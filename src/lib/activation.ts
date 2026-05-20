@@ -44,6 +44,7 @@ export const getActivationStatus = cache(
       select: {
         id: true,
         displayName: true,
+        username: true,
         walletAddress: true,
         tronsAddress: true,
         payoutIban: true,
@@ -82,7 +83,7 @@ export const getActivationStatus = cache(
         }),
       ]);
 
-    const profileComplete = Boolean(profile.displayName?.trim());
+    const profileComplete = Boolean(profile.displayName?.trim() && profile.username?.trim());
     const accountConnected = igCount + fbCount + ytCount + ttCount > 0;
     const paymentMethodAdded = Boolean(
       (profile.payoutIban && profile.payoutAccountName) ||
