@@ -29,7 +29,6 @@ export interface CreatorCampaignDisplayLabels {
   minimumAge: string;
   requiredHashtags: string;
   trackingLink: string;
-  bannerImage: string;
   bannerVideo: string;
   briefAsset: string;
   guidelines: string;
@@ -115,7 +114,6 @@ export function buildCreatorCampaignConfigSections(
 
   const resourceItems: CreatorCampaignConfigItem[] = [];
   addLink(resourceItems, labels.trackingLink, campaign.referralLink);
-  addLink(resourceItems, labels.bannerImage, campaign.bannerUrl);
   addLink(resourceItems, labels.bannerVideo, campaign.bannerVideoUrl);
   addLink(resourceItems, labels.briefAsset, campaign.briefAssetUrl);
   addLink(resourceItems, labels.guidelines, campaign.guidelinesUrl);

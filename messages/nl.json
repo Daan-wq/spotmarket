@@ -917,7 +917,6 @@
         "requirements": "Vereisten",
         "contentNotes": "Contentnotities",
         "description": "Beschrijving",
-        "bannerImage": "Bannerafbeelding",
         "bannerVideo": "Bannervideo",
         "briefAsset": "Briefbestand",
         "contentAsset": "Contentbestand {index}",

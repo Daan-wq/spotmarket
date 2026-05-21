@@ -168,7 +168,6 @@ export default async function CampaignDetailPage({
       minimumAge: t("minimumAge"),
       requiredHashtags: t("requiredHashtags"),
       trackingLink: t("trackingLink"),
-      bannerImage: t("bannerImage"),
       bannerVideo: t("bannerVideo"),
       briefAsset: t("briefAsset"),
       guidelines: t("guidelines"),

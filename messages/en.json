@@ -917,7 +917,6 @@
         "requirements": "Requirements",
         "contentNotes": "Content notes",
         "description": "Description",
-        "bannerImage": "Banner image",
         "bannerVideo": "Banner video",
         "briefAsset": "Brief asset",
         "contentAsset": "Content asset {index}",

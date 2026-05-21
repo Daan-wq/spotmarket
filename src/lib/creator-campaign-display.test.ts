@@ -18,7 +18,6 @@ const labels: CreatorCampaignDisplayLabels = {
   minimumAge: "Minimum age",
   requiredHashtags: "Required hashtags",
   trackingLink: "Tracking link",
-  bannerImage: "Banner image",
   bannerVideo: "Banner video",
   briefAsset: "Brief asset",
   guidelines: "Guidelines",
@@ -121,6 +120,11 @@ describe("buildCreatorCampaignConfigSections", () => {
         { kind: "text", label: "Approval required", value: "Yes" },
       ]),
     );
+    expect(sections.flatMap((section) => section.items)).not.toContainEqual({
+      kind: "link",
+      label: "Banner image",
+      href: "https://example.com/banner.png",
+    });
   });
 
   it("hides blank, empty, default-zero, and internal admin-only values", () => {
