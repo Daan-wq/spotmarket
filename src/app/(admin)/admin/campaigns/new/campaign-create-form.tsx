@@ -24,6 +24,42 @@ const COUNTRY_OPTIONS = [
   "United Kingdom", "United States",
 ] as const;
 
+const GEO_OPTIONS = [
+  "US",
+  "GB",
+  "NL",
+  "BE",
+  "DE",
+  "GR",
+  "AU",
+  "CA",
+  "SE",
+  "NO",
+  "FI",
+  "DK",
+  "AT",
+  "CH",
+  "ES",
+  "FR",
+  "IT",
+  "PT",
+  "PL",
+  "CZ",
+  "HU",
+  "RO",
+  "BG",
+  "HR",
+  "SK",
+  "SI",
+  "EE",
+  "LV",
+  "LT",
+  "MT",
+  "CY",
+  "LU",
+  "IE",
+] as const;
+
 const PAGE_STAT_OPTIONS: readonly { key: string; label: string; placeholder: string; suffix?: string }[] = [
   { key: "minAge", label: "Minimum age", placeholder: "e.g. 25+" },
   { key: "minEngagement", label: "Min. engagement rate", placeholder: "e.g. 3", suffix: "%" },
@@ -85,6 +121,20 @@ function fmtViews(n: number) {
   return `${n} views`;
 }
 
+function parseLines(value: string): string[] {
+  return value
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter(Boolean);
+}
+
+function numberOrUndefined(value: string): number | undefined {
+  const trimmed = value.trim();
+  if (!trimmed) return undefined;
+  const parsed = Number(trimmed);
+  return Number.isFinite(parsed) ? parsed : undefined;
+}
+
 export function CampaignCreateForm() {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
@@ -98,7 +148,9 @@ export function CampaignCreateForm() {
   const [countrySearch, setCountrySearch] = useState("");
   const [platforms, setPlatforms] = useState<PlatformValue[]>([]);
   const [selectedContentTypes, setSelectedContentTypes] = useState<string[]>([]);
+  const [description, setDescription] = useState("");
   const [requirements, setRequirements] = useState("");
+  const [requiredHashtagsText, setRequiredHashtagsText] = useState("");
   const [enabledStats, setEnabledStats] = useState<Record<string, boolean>>({});
   const [statValues, setStatValues] = useState<Record<string, string>>({});
 
@@ -107,8 +159,21 @@ export function CampaignCreateForm() {
   const [adminMarginPerM, setAdminMarginPerM] = useState("25");
   const [referralLink, setReferralLink] = useState("");
   const [contentGuidelines, setContentGuidelines] = useState("");
+  const [bannerVideoUrl, setBannerVideoUrl] = useState("");
+  const [briefAssetUrl, setBriefAssetUrl] = useState("");
+  const [guidelinesUrl, setGuidelinesUrl] = useState("");
+  const [contentAssetUrlsText, setContentAssetUrlsText] = useState("");
+  const [targetCountry, setTargetCountry] = useState("");
+  const [targetCountryPercent, setTargetCountryPercent] = useState("");
+  const [targetMinAge18Percent, setTargetMinAge18Percent] = useState("");
+  const [targetMalePercent, setTargetMalePercent] = useState("");
+  const [minFollowers, setMinFollowers] = useState("");
+  const [minEngagementRate, setMinEngagementRate] = useState("");
+  const [bioRequirement, setBioRequirement] = useState("");
+  const [linkInBioRequired, setLinkInBioRequired] = useState("");
   const [deadline, setDeadline] = useState("");
   const [startsAt, setStartsAt] = useState("");
+  const [maxSlots, setMaxSlots] = useState("");
 
   const budget = parseFloat(totalBudget) || 0;
   const goalViews = parseViews(goalViewsRaw);
@@ -178,10 +243,14 @@ export function CampaignCreateForm() {
         }
       }
 
+      const contentAssetUrls = parseLines(contentAssetUrlsText);
+      const requiredHashtags = parseLines(requiredHashtagsText);
+
       const body: Record<string, unknown> = {
         name,
         platforms,
         contentType: selectedContentTypes.length > 0 ? selectedContentTypes.join(" · ") : undefined,
+        description: description || undefined,
         requirements: requirements || undefined,
         otherNotes: regionsStr,
         pageStats: Object.keys(pageStats).length > 0 ? JSON.stringify(pageStats) : undefined,
@@ -189,11 +258,25 @@ export function CampaignCreateForm() {
         contentGuidelines: contentGuidelines || undefined,
         referralLink: referralLink || undefined,
         bannerUrl: bannerUrl || undefined,
+        bannerVideoUrl: bannerVideoUrl || undefined,
+        briefAssetUrl: briefAssetUrl || undefined,
+        guidelinesUrl: guidelinesUrl || undefined,
+        contentAssetUrls: contentAssetUrls.length > 0 ? contentAssetUrls : undefined,
+        requiredHashtags: requiredHashtags.length > 0 ? requiredHashtags : undefined,
+        targetCountry: targetCountry || undefined,
+        targetCountryPercent: numberOrUndefined(targetCountryPercent),
+        targetMinAge18Percent: numberOrUndefined(targetMinAge18Percent),
+        targetMalePercent: numberOrUndefined(targetMalePercent),
+        minFollowers: numberOrUndefined(minFollowers),
+        minEngagementRate: numberOrUndefined(minEngagementRate),
+        bioRequirement: bioRequirement || undefined,
+        linkInBioRequired: linkInBioRequired || undefined,
         totalBudget: budget,
         goalViews: goalViews ?? undefined,
         adminMarginPerM: margin,
         deadline: new Date(deadline).toISOString(),
         startsAt: startsAt ? new Date(startsAt).toISOString() : undefined,
+        maxSlots: numberOrUndefined(maxSlots),
         requiresApproval: true,
       };
 
@@ -391,6 +474,16 @@ export function CampaignCreateForm() {
         </div>
 
         <div>
+          <label style={labelStyle}>Description</label>
+          <textarea
+            style={{ ...inputStyle, minHeight: "80px", resize: "vertical" }}
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+            placeholder="Short public campaign description"
+          />
+        </div>
+
+        <div>
           <label style={labelStyle}>Page statistics</label>
           <p style={{ fontSize: "11px", color: "var(--text-secondary)", marginBottom: "8px" }}>
             Toggle the stats you want to require. Optionally set a minimum value.
@@ -437,6 +530,16 @@ export function CampaignCreateForm() {
             value={requirements}
             onChange={(e) => setRequirements(e.target.value)}
             placeholder={"Banner must appear in clip\nClickable link in bio"}
+          />
+        </div>
+
+        <div>
+          <label style={labelStyle}>Required hashtags</label>
+          <textarea
+            style={{ ...inputStyle, minHeight: "72px", resize: "vertical" }}
+            value={requiredHashtagsText}
+            onChange={(e) => setRequiredHashtagsText(e.target.value)}
+            placeholder="#tag per line"
           />
         </div>
       </div>
@@ -540,6 +643,171 @@ export function CampaignCreateForm() {
               type="date"
               value={startsAt}
               onChange={(e) => setStartsAt(e.target.value)}
+            />
+          </div>
+          <div>
+            <label style={labelStyle}>Max creators</label>
+            <input
+              style={inputStyle}
+              type="number"
+              min="1"
+              step="1"
+              value={maxSlots}
+              onChange={(e) => setMaxSlots(e.target.value)}
+            />
+          </div>
+        </div>
+      </div>
+
+      <div style={cardStyle}>
+        <div>
+          <p style={{ fontSize: "13px", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.05em", color: "var(--text-muted, var(--text-secondary))", marginBottom: "4px" }}>
+            Assets
+          </p>
+          <p style={{ fontSize: "12px", color: "var(--text-secondary)" }}>
+            Public links and content resources creators need for this campaign.
+          </p>
+        </div>
+
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
+          <div>
+            <label style={labelStyle}>Banner video URL</label>
+            <input
+              style={inputStyle}
+              type="url"
+              value={bannerVideoUrl}
+              onChange={(e) => setBannerVideoUrl(e.target.value)}
+              placeholder="https://..."
+            />
+          </div>
+          <div>
+            <label style={labelStyle}>Brief asset URL</label>
+            <input
+              style={inputStyle}
+              type="url"
+              value={briefAssetUrl}
+              onChange={(e) => setBriefAssetUrl(e.target.value)}
+              placeholder="https://..."
+            />
+          </div>
+          <div>
+            <label style={labelStyle}>Guidelines URL</label>
+            <input
+              style={inputStyle}
+              type="url"
+              value={guidelinesUrl}
+              onChange={(e) => setGuidelinesUrl(e.target.value)}
+              placeholder="https://..."
+            />
+          </div>
+          <div>
+            <label style={labelStyle}>Content asset URLs</label>
+            <textarea
+              style={{ ...inputStyle, minHeight: "88px", resize: "vertical" }}
+              value={contentAssetUrlsText}
+              onChange={(e) => setContentAssetUrlsText(e.target.value)}
+              placeholder="One URL per line"
+            />
+          </div>
+        </div>
+      </div>
+
+      <div style={cardStyle}>
+        <div>
+          <p style={{ fontSize: "13px", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.05em", color: "var(--text-muted, var(--text-secondary))", marginBottom: "4px" }}>
+            Targeting
+          </p>
+          <p style={{ fontSize: "12px", color: "var(--text-secondary)" }}>
+            Audience requirements creators should be able to check before applying.
+          </p>
+        </div>
+
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
+          <div>
+            <label style={labelStyle}>Target country</label>
+            <select
+              style={inputStyle}
+              value={targetCountry}
+              onChange={(e) => setTargetCountry(e.target.value)}
+            >
+              <option value="">No target country</option>
+              {GEO_OPTIONS.map((country) => (
+                <option key={country} value={country}>
+                  {country}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label style={labelStyle}>Target country audience (%)</label>
+            <input
+              style={inputStyle}
+              type="number"
+              min="0"
+              max="100"
+              value={targetCountryPercent}
+              onChange={(e) => setTargetCountryPercent(e.target.value)}
+            />
+          </div>
+          <div>
+            <label style={labelStyle}>Target 18+ audience (%)</label>
+            <input
+              style={inputStyle}
+              type="number"
+              min="0"
+              max="100"
+              value={targetMinAge18Percent}
+              onChange={(e) => setTargetMinAge18Percent(e.target.value)}
+            />
+          </div>
+          <div>
+            <label style={labelStyle}>Target male audience (%)</label>
+            <input
+              style={inputStyle}
+              type="number"
+              min="0"
+              max="100"
+              value={targetMalePercent}
+              onChange={(e) => setTargetMalePercent(e.target.value)}
+            />
+          </div>
+          <div>
+            <label style={labelStyle}>Minimum followers</label>
+            <input
+              style={inputStyle}
+              type="number"
+              min="0"
+              step="1"
+              value={minFollowers}
+              onChange={(e) => setMinFollowers(e.target.value)}
+            />
+          </div>
+          <div>
+            <label style={labelStyle}>Minimum engagement rate (%)</label>
+            <input
+              style={inputStyle}
+              type="number"
+              min="0"
+              max="100"
+              step="0.1"
+              value={minEngagementRate}
+              onChange={(e) => setMinEngagementRate(e.target.value)}
+            />
+          </div>
+          <div>
+            <label style={labelStyle}>Bio requirement</label>
+            <input
+              style={inputStyle}
+              value={bioRequirement}
+              onChange={(e) => setBioRequirement(e.target.value)}
+            />
+          </div>
+          <div>
+            <label style={labelStyle}>Link in bio requirement</label>
+            <input
+              style={inputStyle}
+              value={linkInBioRequired}
+              onChange={(e) => setLinkInBioRequired(e.target.value)}
             />
           </div>
         </div>

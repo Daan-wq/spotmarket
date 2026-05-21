@@ -181,7 +181,7 @@ export function CampaignEditForm({
     guidelinesUrl: campaign.guidelinesUrl ?? "",
     contentAssetUrlsText: (campaign.contentAssetUrls ?? []).join("\n"),
     requiredHashtagsText: (campaign.requiredHashtags ?? []).join("\n"),
-    targetCountry: campaign.targetCountry ?? "US",
+    targetCountry: campaign.targetCountry ?? "",
     targetCountryPercent: toInputValue(campaign.targetCountryPercent),
     targetMinAge18Percent: toInputValue(campaign.targetMinAge18Percent),
     targetMalePercent: toInputValue(campaign.targetMalePercent),

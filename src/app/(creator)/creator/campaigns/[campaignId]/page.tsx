@@ -155,6 +155,75 @@ export default async function CampaignDetailPage({
   const requirementSteps = campaign.requirements
     ? campaign.requirements.split("\n").filter((r) => r.trim())
     : [];
+  const pageStatsSummary = formatPageStats(campaign.pageStats, {
+    minAge: t("minimumAge"),
+    minEngagement: t("minimumEngagementRate"),
+    minFollowers: t("minimumFollowers"),
+    malePercent: t("targetMaleAudience"),
+    countryPercent: t("targetCountryAudience"),
+  });
+  const resourceLinks = [
+    { label: t("trackingLink"), href: campaign.referralLink },
+    { label: t("bannerVideo"), href: campaign.bannerVideoUrl },
+    { label: t("briefAsset"), href: campaign.briefAssetUrl },
+    { label: t("guidelines"), href: campaign.guidelinesUrl },
+    ...campaign.contentAssetUrls.map((href, index) => ({
+      label: t("contentAsset", { index: index + 1 }),
+      href,
+    })),
+  ].filter((link): link is { label: string; href: string } => Boolean(link.href));
+  const shortDetails: Array<{ label: string; value: ReactNode }> = [
+    {
+      label: t("accountLimit"),
+      value: campaign.maxSlots
+        ? `${formatNumber(campaign.maxSlots, locale)} ${sharedT("units.creators")}`
+        : t("unlimited"),
+    },
+    {
+      label: t("category"),
+      value: campaign.contentType ?? campaign.niche ?? t("general"),
+    },
+    {
+      label: t("goalViews"),
+      value: campaign.goalViews ? formatNumber(Number(campaign.goalViews), locale) : null,
+    },
+    {
+      label: t("approvalRequired"),
+      value: campaign.requiresApproval ? t("yes") : null,
+    },
+    { label: t("minimumAge"), value: campaign.minAge },
+    {
+      label: t("requiredHashtags"),
+      value: campaign.requiredHashtags.length > 0 ? campaign.requiredHashtags.join(", ") : null,
+    },
+    { label: t("targetCountry"), value: campaign.targetCountry },
+    {
+      label: t("targetCountryAudience"),
+      value: formatOptionalPercent(campaign.targetCountryPercent, locale),
+    },
+    {
+      label: t("target18Audience"),
+      value: formatOptionalPercent(campaign.targetMinAge18Percent, locale),
+    },
+    {
+      label: t("targetMaleAudience"),
+      value: formatOptionalPercent(campaign.targetMalePercent, locale),
+    },
+    {
+      label: t("minimumFollowers"),
+      value: campaign.minFollowers > 0 ? formatNumber(campaign.minFollowers, locale) : null,
+    },
+    {
+      label: t("minimumEngagementRate"),
+      value: Number(campaign.minEngagementRate) > 0 ? `${formatNumber(Number(campaign.minEngagementRate), locale)}%` : null,
+    },
+    { label: t("bioRequirement"), value: campaign.bioRequirement },
+    { label: t("linkInBioRequirement"), value: campaign.linkInBioRequired },
+  ].filter((row) => {
+    if (row.value === null || row.value === undefined) return false;
+    if (typeof row.value === "string" && row.value.trim() === "") return false;
+    return true;
+  });
 
   const videos: SubmittedClipData[] = await Promise.all(
     mySubmissions.map(async (submission) => {
@@ -303,25 +372,21 @@ export default async function CampaignDetailPage({
             </p>
           </div>
           <div className="grid gap-4 px-5 py-4 md:grid-cols-2">
-            <DetailRow
-              label={t("accountLimit")}
-              value={
-                campaign.maxSlots
-                  ? `${formatNumber(campaign.maxSlots, locale)} ${sharedT("units.creators")}`
-                  : t("unlimited")
-              }
-            />
-            <DetailRow
-              label={t("category")}
-              value={campaign.contentType ?? campaign.niche ?? t("general")}
-            />
-            {campaign.referralLink ? (
+            {shortDetails.map((detail) => (
               <DetailRow
-                label={t("trackingLink")}
+                key={detail.label}
+                label={detail.label}
+                value={detail.value}
+              />
+            ))}
+            {resourceLinks.map((link) => (
+              <DetailRow
+                key={`${link.label}-${link.href}`}
+                label={link.label}
                 value={
                   <a
-                    className="underline"
-                    href={campaign.referralLink}
+                    className="break-all underline"
+                    href={link.href}
                     target="_blank"
                     rel="noreferrer"
                   >
@@ -329,23 +394,17 @@ export default async function CampaignDetailPage({
                   </a>
                 }
               />
-            ) : null}
-            {campaign.guidelinesUrl ? (
-              <DetailRow
-                label={t("guidelines")}
-                value={
-                  <a
-                    className="underline"
-                    href={campaign.guidelinesUrl}
-                    target="_blank"
-                    rel="noreferrer"
-                  >
-                    {t("openGuidelines")}
-                  </a>
-                }
-              />
-            ) : null}
+            ))}
           </div>
+          {campaign.description ? (
+            <TextPanel label={t("description")} value={campaign.description} />
+          ) : null}
+          {campaign.otherNotes ? (
+            <TextPanel label={t("otherNotes")} value={campaign.otherNotes} />
+          ) : null}
+          {pageStatsSummary ? (
+            <TextPanel label={t("pageStats")} value={pageStatsSummary} />
+          ) : null}
           {requirementSteps.length > 0 ? (
             <div className="border-t border-neutral-200 px-5 py-4">
               <p className="mb-3 text-xs font-semibold uppercase tracking-[0.14em] text-neutral-400">
@@ -492,11 +551,52 @@ function InfoCard({
   );
 }
 
-function DetailRow({ label, value }: { label: string; value: ReactNode }) {
+function TextPanel({ label, value }: { label: string; value: string }) {
   return (
-    <div className="flex items-center justify-between gap-4 text-sm">
-      <span className="text-neutral-500">{label}</span>
-      <span className="text-right font-medium text-neutral-950">{value}</span>
+    <div className="border-t border-neutral-200 px-5 py-4">
+      <p className="mb-2 text-xs font-semibold uppercase tracking-[0.14em] text-neutral-400">
+        {label}
+      </p>
+      <p className="whitespace-pre-wrap break-words text-sm leading-6 text-neutral-700">
+        {value}
+      </p>
     </div>
   );
+}
+
+function DetailRow({ label, value }: { label: string; value: ReactNode }) {
+  return (
+    <div className="flex flex-col gap-1 text-sm sm:flex-row sm:items-center sm:justify-between sm:gap-4">
+      <span className="text-neutral-500">{label}</span>
+      <span className="break-words font-medium text-neutral-950 sm:text-right">{value}</span>
+    </div>
+  );
+}
+
+function formatOptionalPercent(value: number | null | undefined, locale: Locale): string | null {
+  if (value === null || value === undefined) return null;
+  return `${formatNumber(value, locale)}%`;
+}
+
+function formatPageStats(
+  value: string | null | undefined,
+  labels: Record<string, string>,
+): string | null {
+  if (!value?.trim()) return null;
+
+  try {
+    const parsed = JSON.parse(value) as Record<string, unknown>;
+    const entries = Object.entries(parsed)
+      .filter(([, entryValue]) => entryValue !== null && entryValue !== undefined && String(entryValue).trim() !== "")
+      .map(([key, entryValue]) => `${labels[key] ?? titleFromKey(key)}: ${entryValue}`);
+    return entries.length > 0 ? entries.join("\n") : null;
+  } catch {
+    return value;
+  }
+}
+
+function titleFromKey(value: string): string {
+  return value
+    .replace(/([A-Z])/g, " $1")
+    .replace(/^./, (character) => character.toUpperCase());
 }
