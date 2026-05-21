@@ -19,6 +19,7 @@ const routeMocks = vi.hoisted(() => {
 
   return {
     requireAuth: vi.fn(),
+    userFindUnique: vi.fn(),
     submissionFindUnique: vi.fn(),
     transaction: vi.fn(async (callback: (client: ReviewTransaction) => unknown) => callback(tx)),
     tx,
@@ -32,6 +33,7 @@ vi.mock("@/lib/auth", () => ({
 vi.mock("@/lib/prisma", () => ({
   prisma: {
     $transaction: routeMocks.transaction,
+    user: { findUnique: routeMocks.userFindUnique },
     campaignSubmission: {
       findUnique: routeMocks.submissionFindUnique,
     },
@@ -75,7 +77,8 @@ function submission(overrides: Record<string, unknown> = {}) {
 describe("POST /api/submissions/[id]/review", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    routeMocks.requireAuth.mockResolvedValue({ userId: "admin-user-1" });
+    routeMocks.requireAuth.mockResolvedValue({ userId: "admin-supabase-1" });
+    routeMocks.userFindUnique.mockResolvedValue({ id: "admin-user-1" });
     routeMocks.tx.user.findUnique.mockResolvedValue({
       referredBy: null,
       createdAt: new Date("2026-01-01T00:00:00.000Z"),
@@ -130,6 +133,7 @@ describe("POST /api/submissions/[id]/review", () => {
         action: "submission.reject",
         entityType: "CampaignSubmission",
         entityId: "submission-1",
+        userId: "admin-user-1",
         metadata: expect.objectContaining({
           rejectionReason: "INVALID_POST",
           previousStatus: "PENDING",

@@ -67,6 +67,17 @@ export async function POST(
       return NextResponse.json({ error: "Submission not found" }, { status: 404 });
     }
 
+    const adminAuditUserId =
+      status === "REJECTED"
+        ? (await prisma.user.findUnique({
+            where: { supabaseId: userId },
+            select: { id: true },
+          }))?.id ?? null
+        : null;
+    if (status === "REJECTED" && !adminAuditUserId) {
+      return NextResponse.json({ error: "Admin user not found" }, { status: 404 });
+    }
+
     if (
       submission.status === "APPROVED" &&
       (status === "REJECTED" || status === "APPROVED") &&
@@ -272,9 +283,10 @@ export async function POST(
       });
 
       if (status === "REJECTED") {
+        if (!adminAuditUserId) throw new Error("Admin user not found");
         await tx.auditLog.create({
           data: {
-            userId,
+            userId: adminAuditUserId,
             action: "submission.reject",
             entityType: "CampaignSubmission",
             entityId: submission.id,
