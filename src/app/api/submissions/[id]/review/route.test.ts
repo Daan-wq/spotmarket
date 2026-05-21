@@ -96,11 +96,11 @@ describe("POST /api/submissions/[id]/review", () => {
     });
   });
 
-  it("requires a rejection reason and note", async () => {
+  it("requires a rejection reason", async () => {
     routeMocks.submissionFindUnique.mockResolvedValue(submission());
 
     const response = await POST(
-      reviewRequest({ status: "REJECTED", rejectionNote: "" }),
+      reviewRequest({ status: "REJECTED" }),
       params,
     );
 
@@ -115,7 +115,6 @@ describe("POST /api/submissions/[id]/review", () => {
       reviewRequest({
         status: "REJECTED",
         rejectionReason: "INVALID_POST",
-        rejectionNote: "The post URL no longer resolves.",
       }),
       params,
     );
@@ -128,7 +127,7 @@ describe("POST /api/submissions/[id]/review", () => {
           status: "REJECTED",
           earnedAmount: 0,
           eligibleViews: 0,
-          rejectionNote: "The post URL no longer resolves.",
+          rejectionNote: "Invalid post",
         }),
       }),
     );

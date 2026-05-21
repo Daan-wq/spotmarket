@@ -13,6 +13,14 @@ const rejectionReasonSchema = z.enum([
   "OTHER",
 ]);
 
+const REJECTION_REASON_LABELS = {
+  BOT_TRAFFIC: "Botted traffic",
+  INVALID_POST: "Invalid post",
+  RULE_VIOLATION: "Rule violation",
+  DUPLICATE: "Duplicate",
+  OTHER: "Other",
+} satisfies Record<z.infer<typeof rejectionReasonSchema>, string>;
+
 const reviewSchema = z.object({
   status: z.enum(["APPROVED", "REJECTED"]),
   rejectionReason: rejectionReasonSchema.optional(),
@@ -28,13 +36,6 @@ const reviewSchema = z.object({
     });
   }
 
-  if (!data.rejectionNote) {
-    ctx.addIssue({
-      code: "custom",
-      path: ["rejectionNote"],
-      message: "Rejection note is required",
-    });
-  }
 });
 
 const PAID_LOCKED_ERROR =
@@ -49,7 +50,11 @@ export async function POST(
     const { id } = await params;
 
     const body = await req.json();
-    const { status, rejectionReason, rejectionNote } = reviewSchema.parse(body);
+    const { status, rejectionReason, rejectionNote: rawRejectionNote } = reviewSchema.parse(body);
+    const rejectionNote =
+      status === "REJECTED" && rejectionReason
+        ? rawRejectionNote || REJECTION_REASON_LABELS[rejectionReason]
+        : rawRejectionNote;
 
     const submission = await prisma.campaignSubmission.findUnique({
       where: { id },

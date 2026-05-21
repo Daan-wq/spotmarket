@@ -34,7 +34,6 @@ export default function SubmissionActions({
   const [optimisticStatus, setOptimisticStatus] = useOptimistic(status);
   const [showRejectForm, setShowRejectForm] = useState(false);
   const [rejectionReason, setRejectionReason] = useState<RejectionReason>("BOT_TRAFFIC");
-  const [rejectionNote, setRejectionNote] = useState("");
 
   const canReview = REVIEWABLE_STATUSES.has(optimisticStatus);
   const canRejectCurrent =
@@ -69,9 +68,8 @@ export default function SubmissionActions({
 
   function reject() {
     if (isPending) return;
-    const note = rejectionNote.trim();
-    if (!rejectionReason || !note) {
-      toast.error("Choose a reason and add a note before rejecting.");
+    if (!rejectionReason) {
+      toast.error("Choose a reason before rejecting.");
       return;
     }
 
@@ -85,7 +83,6 @@ export default function SubmissionActions({
           body: JSON.stringify({
             status: "REJECTED",
             rejectionReason,
-            rejectionNote: note,
           }),
         });
         if (!res.ok) {
@@ -139,18 +136,11 @@ export default function SubmissionActions({
               </option>
             ))}
           </select>
-          <textarea
-            value={rejectionNote}
-            onChange={(event) => setRejectionNote(event.target.value)}
-            placeholder="Required rejection note"
-            rows={3}
-            className="w-full resize-none rounded-lg border border-neutral-200 bg-white px-2 py-2 text-xs text-neutral-950 outline-none focus:border-neutral-500"
-          />
           <div className="flex flex-wrap gap-2">
             <button
               type="button"
               onClick={reject}
-              disabled={isPending || !rejectionNote.trim()}
+              disabled={isPending}
               className="h-8 rounded-md px-3 text-xs font-semibold disabled:opacity-50"
               style={{ background: "var(--error-bg)", color: "var(--error-text)" }}
             >
