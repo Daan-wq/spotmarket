@@ -20,7 +20,10 @@ const createCampaignSchema = z.object({
   targetCountryPercent: z.number().int().min(0).max(100).optional(),
   targetMinAge18Percent: z.number().int().min(0).max(100).optional(),
   targetMalePercent: z.number().int().min(0).max(100).optional(),
+  minFollowers: z.number().int().min(0).optional().default(0),
   minEngagementRate: z.number().min(0).max(100).optional().default(0),
+  bioRequirement: z.string().max(500).optional(),
+  linkInBioRequired: z.string().max(500).optional(),
 
   // Section 3 — budget/goals via CPM
   totalBudget: z.number().positive(),
@@ -32,7 +35,9 @@ const createCampaignSchema = z.object({
   startsAt: z.string().datetime().optional(),
   referralLink: z.string().optional().refine((v) => !v || /^https?:\/\//.test(v), "Referral link must start with https://"),
   bannerUrl: z.string().optional().refine((v) => !v || /^https?:\/\//.test(v), "Must be a valid URL"),
+  bannerVideoUrl: z.string().optional().refine((v) => !v || /^https?:\/\//.test(v), "Must be a valid URL"),
   contentAssetUrls: z.array(z.string().url()).optional().default([]),
+  requiredHashtags: z.array(z.string().max(100)).optional().default([]),
 
   // Keep for backwards compat / direct slots config
   briefAssetUrl: z.string().url().optional(),
@@ -140,7 +145,7 @@ export async function POST(req: Request) {
         minAge: d.minAge,
         referralLink: d.referralLink || null,
         targetGeo,
-        minFollowers: 0,
+        minFollowers: d.minFollowers,
         minEngagementRate: d.minEngagementRate,
         totalBudget: d.totalBudget,
         creatorCpv,
@@ -157,8 +162,12 @@ export async function POST(req: Request) {
         targetMinAge18Percent: d.targetMinAge18Percent,
         targetMalePercent: d.targetMalePercent,
         bannerUrl: d.bannerUrl,
+        bannerVideoUrl: d.bannerVideoUrl,
         contentAssetUrls: d.contentAssetUrls,
+        requiredHashtags: d.requiredHashtags,
         guidelinesUrl: d.guidelinesUrl,
+        bioRequirement: d.bioRequirement,
+        linkInBioRequired: d.linkInBioRequired,
         createdByUserId: user.id,
       },
     });
