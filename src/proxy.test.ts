@@ -21,4 +21,24 @@ describe("proxy canonical app domain", () => {
       "https://app.clipprofit.com/creator/connections?x=1"
     );
   });
+
+  it("defaults app.clipprofit.com requests to Dutch", async () => {
+    const response = await proxy(new NextRequest("https://app.clipprofit.com/sign-in"));
+
+    expect(response.headers.get("content-language")).toBe("nl");
+    expect(response.headers.get("x-locale")).toBe("nl");
+    expect(response.headers.get("set-cookie")).toContain("NEXT_LOCALE=nl");
+  });
+
+  it("preserves an explicit English preference", async () => {
+    const response = await proxy(
+      new NextRequest("https://app.clipprofit.com/sign-in", {
+        headers: { cookie: "NEXT_LOCALE=en" },
+      })
+    );
+
+    expect(response.headers.get("content-language")).toBe("en");
+    expect(response.headers.get("x-locale")).toBe("en");
+    expect(response.headers.get("set-cookie")).toBeNull();
+  });
 });

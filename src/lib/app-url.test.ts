@@ -38,9 +38,9 @@ describe("app URL and locale routing", () => {
     expect(getLocaleFromHost("app.clipprofit.nl:443")).toBe("nl");
   });
 
-  it("maps non-NL hosts to en", () => {
-    expect(getLocaleFromHost("app.clipprofit.com")).toBe("en");
-    expect(getLocaleFromHost("localhost:3000")).toBe("en");
+  it("maps non-NL hosts to the Dutch default locale", () => {
+    expect(getLocaleFromHost("app.clipprofit.com")).toBe("nl");
+    expect(getLocaleFromHost("localhost:3000")).toBe("nl");
   });
 
   it("returns the locale-specific app URL", () => {

@@ -1,7 +1,7 @@
 export const LOCALES = ["en", "nl"] as const;
 export type Locale = (typeof LOCALES)[number];
 
-export const DEFAULT_LOCALE: Locale = "en";
+export const DEFAULT_LOCALE: Locale = "nl";
 export const LOCALE_COOKIE_NAME = "NEXT_LOCALE";
 export const LOCALE_COOKIE_MAX_AGE = 60 * 60 * 24 * 365;
 
@@ -25,5 +25,5 @@ export function getLocaleFromHost(host: string | null | undefined): Locale {
     return "nl";
   }
 
-  return "en";
+  return DEFAULT_LOCALE;
 }
