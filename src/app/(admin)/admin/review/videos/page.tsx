@@ -153,7 +153,11 @@ export default async function VideoReviewPage() {
                       Approve / reject
                     </p>
                     {canApprove ? (
-                      <SubmissionActions id={s.id} status={s.status} />
+                      <SubmissionActions
+                        id={s.id}
+                        status={s.status}
+                        postUrl={s.postUrl}
+                      />
                     ) : (
                       <p className="text-[11px]" style={{ color: "var(--text-muted, var(--text-secondary))" }}>
                         Approve unlocks once logo is marked <strong>Present</strong>. Logo currently:{" "}

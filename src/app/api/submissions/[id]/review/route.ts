@@ -1,17 +1,36 @@
 import { NextRequest, NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
-import { requireAuth } from "@/lib/auth";
-import { calculateReferralSplit } from "@/lib/referral";
-import { calculatePaidViews } from "@/lib/paid-views";
 import { z } from "zod";
+import { requireAuth } from "@/lib/auth";
+import { prisma } from "@/lib/prisma";
+import { calculatePaidViews } from "@/lib/paid-views";
+import { calculateReferralSplit } from "@/lib/referral";
+
+const rejectionReasonSchema = z.enum([
+  "BOT_TRAFFIC",
+  "INVALID_POST",
+  "RULE_VIOLATION",
+  "DUPLICATE",
+  "OTHER",
+]);
 
 const reviewSchema = z.object({
   status: z.enum(["APPROVED", "REJECTED"]),
-  rejectionNote: z.string().trim().max(5000).optional(),
+  rejectionReason: rejectionReasonSchema.optional(),
+  rejectionNote: z.string().trim().optional(),
   baselineViews: z.number().int().min(0).optional(),
   viewCount: z.number().int().min(0).optional(),
 }).superRefine((data, ctx) => {
-  if (data.status === "REJECTED" && !data.rejectionNote) {
+  if (data.status !== "REJECTED") return;
+
+  if (!data.rejectionReason) {
+    ctx.addIssue({
+      code: "custom",
+      path: ["rejectionReason"],
+      message: "Rejection reason is required",
+    });
+  }
+
+  if (!data.rejectionNote) {
     ctx.addIssue({
       code: "custom",
       path: ["rejectionNote"],
@@ -20,45 +39,86 @@ const reviewSchema = z.object({
   }
 });
 
+const PAID_LOCKED_ERROR =
+  "This approved submission is already paid or locked in a payout run. Use a financial adjustment workflow instead.";
+
 export async function POST(
   req: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ id: string }> },
 ) {
   try {
     const { userId } = await requireAuth("admin");
     const { id } = await params;
 
     const body = await req.json();
-    const { status, rejectionNote, baselineViews, viewCount } = reviewSchema.parse(body);
+    const { status, rejectionReason, rejectionNote, baselineViews, viewCount } =
+      reviewSchema.parse(body);
 
     const submission = await prisma.campaignSubmission.findUnique({
       where: { id },
-      include: { campaign: true, application: true },
+      include: {
+        campaign: true,
+        application: true,
+        payoutRunItems: { select: { id: true } },
+      },
     });
 
     if (!submission) {
       return NextResponse.json({ error: "Submission not found" }, { status: 404 });
     }
 
+    if (
+      submission.status === "APPROVED" &&
+      (status === "REJECTED" || status === "APPROVED") &&
+      (submission.settledAt || submission.payoutRunItems.length > 0)
+    ) {
+      return NextResponse.json({ error: PAID_LOCKED_ERROR }, { status: 409 });
+    }
+
     let earnedAmount = Number(submission.earnedAmount);
     let eligibleViews: number | null = null;
-    let approvedBaselineViews: number | undefined;
-    let approvedViewCount: number | undefined;
 
     if (status === "APPROVED") {
-      approvedBaselineViews = baselineViews ?? submission.baselineViews ?? 0;
-      approvedViewCount = viewCount ?? submission.viewCount ?? submission.claimedViews ?? 0;
-      eligibleViews = calculatePaidViews({
-        rawViews: approvedViewCount,
-        baselineViews: approvedBaselineViews,
+      if (submission.logoStatus == null || submission.logoStatus === "PENDING") {
+        return NextResponse.json(
+          { error: "Logo verification is pending - review the submission's logo before approving." },
+          { status: 400 },
+        );
+      }
+
+      if (submission.logoStatus === "MISSING") {
+        return NextResponse.json(
+          { error: "Submission marked as logo missing - cannot approve. Mark logo present first or reject." },
+          { status: 400 },
+        );
+      }
+
+      if (baselineViews == null || viewCount == null) {
+        return NextResponse.json(
+          { error: "baselineViews and viewCount are required for approval" },
+          { status: 400 },
+        );
+      }
+
+      const paidViews = calculatePaidViews({
+        rawViews: viewCount,
+        baselineViews,
         minimumPaidViews: submission.campaign.minimumPaidViews,
         maximumPaidViews: submission.campaign.maximumPaidViews,
-      }).payableViews;
-      earnedAmount = eligibleViews * Number(submission.campaign.creatorCpv);
+        creatorCpv: submission.campaign.creatorCpv,
+      });
+      eligibleViews = paidViews.payableViews;
+      earnedAmount = paidViews.earnedAmount;
+    } else {
+      earnedAmount = 0;
+      eligibleViews = 0;
     }
 
     const updated = await prisma.$transaction(async (tx) => {
       const isFirstApproval = status === "APPROVED" && submission.status !== "APPROVED";
+      const isApprovedRejection =
+        status === "REJECTED" && submission.status === "APPROVED";
+      const previousEarnedAmount = Number(submission.earnedAmount);
 
       const creator = await tx.user.findUnique({
         where: { id: submission.creatorId },
@@ -91,7 +151,7 @@ export async function POST(
           earnedAmount,
           creator.referredBy,
           creator.createdAt,
-          totalPaidSoFar
+          totalPaidSoFar,
         );
         creatorAmount = split.creatorAmount;
 
@@ -131,8 +191,8 @@ export async function POST(
         data: {
           status,
           earnedAmount,
-          baselineViews: approvedBaselineViews ?? baselineViews ?? undefined,
-          viewCount: approvedViewCount ?? viewCount ?? undefined,
+          baselineViews: baselineViews ?? undefined,
+          viewCount: viewCount ?? undefined,
           eligibleViews: eligibleViews ?? undefined,
           rejectionNote: status === "REJECTED" ? rejectionNote : null,
           reviewedAt: new Date(),
@@ -150,18 +210,84 @@ export async function POST(
         });
       }
 
+      if (isApprovedRejection && submission.application && previousEarnedAmount > 0) {
+        await tx.campaignApplication.update({
+          where: { id: submission.application.id },
+          data: {
+            earnedAmount: { decrement: Math.round(previousEarnedAmount) },
+          },
+        });
+      }
+
+      if (isApprovedRejection) {
+        const referralPayout = await tx.referralPayout.findFirst({
+          where: {
+            submissionId: submission.id,
+            status: "pending",
+          },
+          select: {
+            id: true,
+            amount: true,
+            referrerId: true,
+          },
+        });
+
+        if (referralPayout) {
+          await tx.referralPayout.deleteMany({
+            where: {
+              id: referralPayout.id,
+              status: "pending",
+            },
+          });
+          await tx.user.update({
+            where: { id: referralPayout.referrerId },
+            data: {
+              referralEarnings: { decrement: Number(referralPayout.amount) },
+            },
+          });
+        }
+      }
+
+      const notificationData =
+        status === "APPROVED"
+          ? {
+              campaignName: submission.campaign.name,
+              submissionId: submission.id,
+              earnedAmount,
+            }
+          : {
+              campaignName: submission.campaign.name,
+              submissionId: submission.id,
+              earnedAmount: null,
+              rejectionReason,
+              rejectionNote,
+            };
+
       await tx.notification.create({
         data: {
           userId: submission.creatorId,
           type: status === "APPROVED" ? "SUBMISSION_APPROVED" : "SUBMISSION_REJECTED",
-          data: {
-            campaignName: submission.campaign.name,
-            submissionId: submission.id,
-            earnedAmount: status === "APPROVED" ? earnedAmount : null,
-            rejectionNote,
-          },
+          data: notificationData,
         },
       });
+
+      if (status === "REJECTED") {
+        await tx.auditLog.create({
+          data: {
+            userId,
+            action: "submission.reject",
+            entityType: "CampaignSubmission",
+            entityId: submission.id,
+            metadata: {
+              rejectionReason,
+              rejectionNote,
+              previousStatus: submission.status,
+              previousEarnedAmount,
+              wasApproved: isApprovedRejection,
+            },
+          },
+        });
+      }
 
       return sub;
     });

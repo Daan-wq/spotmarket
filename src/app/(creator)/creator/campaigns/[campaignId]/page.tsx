@@ -12,9 +12,10 @@ import { prisma } from "@/lib/prisma";
 import { resolveThumbnail } from "@/lib/clip-thumbnail";
 import { parseClipUrl, type ClipPlatform } from "@/lib/parse-clip-url";
 import {
+  submissionMinimumPaidViews,
+  submissionNeedsPaidViewThreshold,
   submissionProjectedEarnings,
   submissionViews,
-  totalProjectedEarnings,
 } from "@/lib/earnings";
 import {
   CampaignAvatar,
@@ -258,6 +259,12 @@ export default async function CampaignDetailPage({
           storedMediaType: asClipMediaType(submission.mediaType),
         },
       );
+      const needsThreshold = submissionNeedsPaidViewThreshold(submission);
+      const earned = needsThreshold
+        ? 0
+        : submission.status === "APPROVED"
+          ? Number(submission.earnedAmount ?? 0)
+          : submissionProjectedEarnings(submission);
 
       return {
         id: submission.id,
@@ -265,7 +272,16 @@ export default async function CampaignDetailPage({
         thumbnailUrl,
         mediaType,
         status: submission.status,
-        earned: submissionProjectedEarnings(submission),
+        earned,
+        earningDisplay: needsThreshold
+          ? {
+              state: "threshold" as const,
+              minimumPaidViews: submissionMinimumPaidViews(submission),
+            }
+          : {
+              state: "amount" as const,
+              amount: earned,
+            },
         views: submissionViews(submission),
         createdAt: submission.createdAt.toISOString(),
         campaignName: submission.campaign.name,
@@ -282,7 +298,7 @@ export default async function CampaignDetailPage({
     ALL: videos.length,
   };
   const myViews = videos.reduce((sum, video) => sum + video.views, 0);
-  const projectedEarned = totalProjectedEarnings(mySubmissions);
+  const projectedEarned = videos.reduce((sum, video) => sum + video.earned, 0);
 
   return (
     <div className="w-full space-y-6 md:space-y-8 md:px-6 md:py-8">

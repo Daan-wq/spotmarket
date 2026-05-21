@@ -29,7 +29,7 @@ const createCampaignSchema = z.object({
   totalBudget: z.number().positive(),
   goalViews: z.number().int().positive().optional(),
   minimumPaidViews: z.number().int().min(0).optional().default(0),
-  maximumPaidViews: z.number().int().min(0).optional().nullable(),
+  maximumPaidViews: z.number().int().min(0).nullable().optional(),
   adminMarginPerK: z.number().min(0).optional().default(0),
 
   // Section 4

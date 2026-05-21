@@ -39,6 +39,21 @@ describe("buildCreatorPaymentSummary", () => {
     expect(summary.availableBalance).toBe(19.8);
   });
 
+  it("includes qualifying approved clips and excludes below-threshold clips with zero stored earnings", () => {
+    const summary = buildCreatorPaymentSummary({
+      submissions: [
+        submission({ earnedAmount: 50, eligibleViews: 5000 }),
+        submission({ earnedAmount: 0, eligibleViews: 0, viewCount: 200 }),
+      ],
+      payouts: [],
+    });
+
+    expect(summary.totalEarned).toBe(50);
+    expect(summary.availableBalance).toBe(50);
+    expect(summary.earningsByCampaign[0]?.totalEarned).toBe(50);
+    expect(summary.earningsByCampaign[0]?.totalViews).toBe(5000);
+  });
+
   it("does not recalculate approved earnings from campaign CPV changes", () => {
     const summary = buildCreatorPaymentSummary({
       submissions: [

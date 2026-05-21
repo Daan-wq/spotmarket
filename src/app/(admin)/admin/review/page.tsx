@@ -91,7 +91,11 @@ export default async function ReviewPage() {
                     <ExternalLink className="h-4 w-4" animateOnHover />
                     Open post
                   </a>
-                  <SubmissionActions id={submission.id} status={submission.status} />
+                  <SubmissionActions
+                    id={submission.id}
+                    status={submission.status}
+                    postUrl={submission.postUrl}
+                  />
                 </div>
               </article>
             ))}

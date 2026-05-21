@@ -95,7 +95,11 @@ export default async function SubmissionsPage() {
                       </a>
                     ) : null}
                     <div className="rounded-2xl border border-neutral-200 bg-neutral-50 p-4">
-                      <SubmissionActions id={submission.id} status={submission.status} />
+                      <SubmissionActions
+                        id={submission.id}
+                        status={submission.status}
+                        postUrl={submission.postUrl}
+                      />
                     </div>
                   </div>
                 </ProgressiveActionDrawer>

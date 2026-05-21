@@ -917,6 +917,7 @@
         "requirements": "Vereisten",
         "contentNotes": "Contentnotities",
         "description": "Beschrijving",
+        "bannerImage": "Bannerafbeelding",
         "bannerVideo": "Bannervideo",
         "briefAsset": "Briefbestand",
         "contentAsset": "Contentbestand {index}",
@@ -1043,12 +1044,14 @@
         "noQueueDescription": "Gebruik een andere wachtrij om de rest van de clips te bekijken.",
         "showingCampaign": "Toont clips voor {campaign}",
         "filterOptions": "Filteropties",
+        "thresholdMessage": "Je hebt {views} views nodig om te kunnen verdienen met deze video",
         "open": "Openen",
         "viewDetails": "Details bekijken"
       },
       "detail": {
         "back": "Terug",
         "earningsDisclaimer": "De post moet worden goedgekeurd voordat inkomsten in je wallet komen.",
+        "thresholdMessage": "Je hebt {views} views nodig om te kunnen verdienen met deze video",
         "engagement": "Engagement",
         "campaign": "Campagne",
         "platform": "Platform",

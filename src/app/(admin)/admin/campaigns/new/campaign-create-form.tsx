@@ -602,10 +602,10 @@ export function CampaignCreateForm() {
               style={inputStyle}
               value={minimumPaidViewsRaw}
               onChange={(e) => setMinimumPaidViewsRaw(e.target.value)}
-              placeholder="e.g. 2k"
+              placeholder="e.g. 5k"
             />
             {minimumPaidViewsRaw && minimumPaidViews === null ? (
-              <p style={{ fontSize: "11px", marginTop: "4px", color: "var(--error, #dc2626)" }}>Invalid - try: 2k, 5000</p>
+              <p style={{ fontSize: "11px", marginTop: "4px", color: "var(--error, #dc2626)" }}>Invalid - try: 5k, 5000</p>
             ) : null}
           </div>
           <div>

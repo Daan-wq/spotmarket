@@ -47,13 +47,14 @@ export interface ProjectedEarningsSubmission extends ViewableSubmission {
 export function submissionProjectedEarnings(
   s: ProjectedEarningsSubmission,
 ): number {
-  const payableViews = calculatePaidViews({
+  const paidViews = calculatePaidViews({
     rawViews: submissionViews(s),
     baselineViews: s.baselineViews,
     minimumPaidViews: s.campaign.minimumPaidViews,
     maximumPaidViews: s.campaign.maximumPaidViews,
-  }).payableViews;
-  return projectedEarnings(payableViews, s.campaign.creatorCpv);
+    creatorCpv: s.campaign.creatorCpv,
+  });
+  return paidViews.earnedAmount;
 }
 
 export function totalProjectedEarnings(
@@ -63,6 +64,30 @@ export function totalProjectedEarnings(
     (sum, s) => sum + submissionProjectedEarnings(s),
     0,
   );
+}
+
+export function submissionNeedsPaidViewThreshold(
+  s: ProjectedEarningsSubmission,
+): boolean {
+  const minimumPaidViews = Number(s.campaign.minimumPaidViews ?? 0);
+  if (!Number.isFinite(minimumPaidViews) || minimumPaidViews <= 0) return false;
+
+  const paidViews = calculatePaidViews({
+    rawViews: submissionViews(s),
+    baselineViews: s.baselineViews,
+    minimumPaidViews,
+    maximumPaidViews: s.campaign.maximumPaidViews,
+    creatorCpv: s.campaign.creatorCpv,
+  });
+  return paidViews.trackedViews < minimumPaidViews;
+}
+
+export function submissionMinimumPaidViews(
+  s: ProjectedEarningsSubmission,
+): number {
+  const minimumPaidViews = Number(s.campaign.minimumPaidViews ?? 0);
+  if (!Number.isFinite(minimumPaidViews) || minimumPaidViews <= 0) return 0;
+  return Math.trunc(minimumPaidViews);
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -143,16 +168,14 @@ export async function getCreatorTotalEarnings(
     const snapshotViews = latestSnap ? Number(latestSnap.viewCount) : null;
     const fallbackViews = s.viewCount ?? s.claimedViews ?? 0;
     const rawViews = snapshotViews ?? fallbackViews;
-    const eligible =
-      s.eligibleViews ??
-      calculatePaidViews({
-        rawViews,
-        baselineViews: s.baselineViews,
-        minimumPaidViews: s.campaign.minimumPaidViews,
-        maximumPaidViews: s.campaign.maximumPaidViews,
-      }).payableViews;
-    const cpv = Number(s.campaign.creatorCpv);
-    estimated += eligible * cpv;
+    const paidViews = calculatePaidViews({
+      rawViews,
+      baselineViews: s.baselineViews,
+      minimumPaidViews: s.campaign.minimumPaidViews,
+      maximumPaidViews: s.campaign.maximumPaidViews,
+      creatorCpv: s.campaign.creatorCpv,
+    });
+    estimated += paidViews.earnedAmount;
   }
 
   const withdrawn =

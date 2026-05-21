@@ -1,20 +1,29 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { POST } from "./route";
 
-const routeMocks = vi.hoisted(() => ({
-  requireAuth: vi.fn(),
-  campaignSubmissionFindUnique: vi.fn(),
-  transaction: vi.fn(),
-  txUserFindUnique: vi.fn(),
-  txUserUpdate: vi.fn(),
-  txReferralPayoutFindFirst: vi.fn(),
-  txReferralPayoutAggregate: vi.fn(),
-  txReferralPayoutCreate: vi.fn(),
-  txCampaignSubmissionUpdate: vi.fn(),
-  txCampaignApplicationUpdate: vi.fn(),
-  txNotificationCreate: vi.fn(),
-  calculateReferralSplit: vi.fn(),
-}));
+const routeMocks = vi.hoisted(() => {
+  const tx = {
+    user: { findUnique: vi.fn(), update: vi.fn() },
+    referralPayout: {
+      aggregate: vi.fn(),
+      create: vi.fn(),
+      deleteMany: vi.fn(),
+      findFirst: vi.fn(),
+    },
+    campaignSubmission: { update: vi.fn() },
+    campaignApplication: { update: vi.fn() },
+    notification: { create: vi.fn() },
+    auditLog: { create: vi.fn() },
+  };
+  type ReviewTransaction = typeof tx;
+
+  return {
+    requireAuth: vi.fn(),
+    submissionFindUnique: vi.fn(),
+    transaction: vi.fn(async (callback: (client: ReviewTransaction) => unknown) => callback(tx)),
+    tx,
+  };
+});
 
 vi.mock("@/lib/auth", () => ({
   requireAuth: routeMocks.requireAuth,
@@ -22,189 +31,269 @@ vi.mock("@/lib/auth", () => ({
 
 vi.mock("@/lib/prisma", () => ({
   prisma: {
-    campaignSubmission: { findUnique: routeMocks.campaignSubmissionFindUnique },
     $transaction: routeMocks.transaction,
+    campaignSubmission: {
+      findUnique: routeMocks.submissionFindUnique,
+    },
   },
 }));
 
-vi.mock("@/lib/referral", () => ({
-  calculateReferralSplit: routeMocks.calculateReferralSplit,
-}));
+const params = { params: Promise.resolve({ id: "submission-1" }) };
 
-type ReviewTransaction = {
-  user: {
-    findUnique: typeof routeMocks.txUserFindUnique;
-    update: typeof routeMocks.txUserUpdate;
-  };
-  referralPayout: {
-    findFirst: typeof routeMocks.txReferralPayoutFindFirst;
-    aggregate: typeof routeMocks.txReferralPayoutAggregate;
-    create: typeof routeMocks.txReferralPayoutCreate;
-  };
-  campaignSubmission: {
-    update: typeof routeMocks.txCampaignSubmissionUpdate;
-  };
-  campaignApplication: {
-    update: typeof routeMocks.txCampaignApplicationUpdate;
-  };
-  notification: {
-    create: typeof routeMocks.txNotificationCreate;
-  };
-};
+function reviewRequest(body: unknown) {
+  return new Request("https://app.test/api/submissions/submission-1/review", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  }) as never;
+}
 
-function postReview(body: unknown) {
-  return POST(
-    new Request("http://localhost/api/submissions/submission-1/review", {
-      method: "POST",
-      body: JSON.stringify(body),
-      headers: { "Content-Type": "application/json" },
-    }) as Parameters<typeof POST>[0],
-    { params: Promise.resolve({ id: "submission-1" }) },
-  );
+function submission(overrides: Record<string, unknown> = {}) {
+  return {
+    id: "submission-1",
+    status: "PENDING",
+    creatorId: "creator-user-1",
+    applicationId: "application-1",
+    earnedAmount: 0,
+    logoStatus: "PRESENT",
+    settledAt: null,
+    payoutRunItems: [],
+    campaign: {
+      id: "campaign-1",
+      name: "Spring Campaign",
+      creatorCpv: 0.01,
+      minimumPaidViews: 0,
+      maximumPaidViews: null,
+    },
+    application: {
+      id: "application-1",
+    },
+    ...overrides,
+  };
 }
 
 describe("POST /api/submissions/[id]/review", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    vi.spyOn(console, "error").mockImplementation(() => undefined);
-
-    routeMocks.requireAuth.mockResolvedValue({ userId: "admin-1" });
-    routeMocks.txUserFindUnique.mockResolvedValue({ referredBy: null, createdAt: new Date("2026-05-01T00:00:00.000Z") });
-    routeMocks.txCampaignSubmissionUpdate.mockResolvedValue({ id: "submission-1", status: "APPROVED" });
-    routeMocks.txCampaignApplicationUpdate.mockResolvedValue({ id: "application-1" });
-    routeMocks.txNotificationCreate.mockResolvedValue({ id: "notification-1" });
-    routeMocks.transaction.mockImplementation(async (callback: (tx: ReviewTransaction) => Promise<unknown>) =>
-      callback({
-        user: {
-          findUnique: routeMocks.txUserFindUnique,
-          update: routeMocks.txUserUpdate,
-        },
-        referralPayout: {
-          findFirst: routeMocks.txReferralPayoutFindFirst,
-          aggregate: routeMocks.txReferralPayoutAggregate,
-          create: routeMocks.txReferralPayoutCreate,
-        },
-        campaignSubmission: {
-          update: routeMocks.txCampaignSubmissionUpdate,
-        },
-        campaignApplication: {
-          update: routeMocks.txCampaignApplicationUpdate,
-        },
-        notification: {
-          create: routeMocks.txNotificationCreate,
-        },
-      }),
-    );
-  });
-
-  afterEach(() => {
-    vi.restoreAllMocks();
-  });
-
-  it("approves using stored API-refreshed views when no manual views are submitted", async () => {
-    routeMocks.campaignSubmissionFindUnique.mockResolvedValue({
-      id: "submission-1",
-      creatorId: "creator-1",
-      applicationId: "application-1",
-      application: { id: "application-1" },
-      campaign: { id: "campaign-1", name: "Campaign", creatorCpv: 1 },
-      status: "PENDING",
-      earnedAmount: 0,
-      viewCount: 1500,
-      baselineViews: 200,
-      claimedViews: 50,
+    routeMocks.requireAuth.mockResolvedValue({ userId: "admin-user-1" });
+    routeMocks.tx.user.findUnique.mockResolvedValue({
+      referredBy: null,
+      createdAt: new Date("2026-01-01T00:00:00.000Z"),
     });
+    routeMocks.tx.referralPayout.aggregate.mockResolvedValue({ _sum: { amount: 0 } });
+    routeMocks.tx.referralPayout.findFirst.mockResolvedValue(null);
+    routeMocks.tx.referralPayout.deleteMany.mockResolvedValue({ count: 0 });
+    routeMocks.tx.campaignSubmission.update.mockResolvedValue({
+      id: "submission-1",
+      status: "REJECTED",
+    });
+  });
 
-    const response = await postReview({ status: "APPROVED" });
+  it("requires a rejection reason and note", async () => {
+    routeMocks.submissionFindUnique.mockResolvedValue(submission());
+
+    const response = await POST(
+      reviewRequest({ status: "REJECTED", rejectionNote: "" }),
+      params,
+    );
+
+    expect(response.status).toBe(400);
+    expect(routeMocks.tx.campaignSubmission.update).not.toHaveBeenCalled();
+  });
+
+  it("rejects a pending submission when a reason is supplied", async () => {
+    routeMocks.submissionFindUnique.mockResolvedValue(submission());
+
+    const response = await POST(
+      reviewRequest({
+        status: "REJECTED",
+        rejectionReason: "INVALID_POST",
+        rejectionNote: "The post URL no longer resolves.",
+      }),
+      params,
+    );
 
     expect(response.status).toBe(200);
-    expect(routeMocks.txCampaignSubmissionUpdate).toHaveBeenCalledWith(
+    expect(routeMocks.tx.campaignSubmission.update).toHaveBeenCalledWith(
       expect.objectContaining({
         where: { id: "submission-1" },
         data: expect.objectContaining({
+          status: "REJECTED",
+          earnedAmount: 0,
+          eligibleViews: 0,
+          rejectionNote: "The post URL no longer resolves.",
+        }),
+      }),
+    );
+    expect(routeMocks.tx.auditLog.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        action: "submission.reject",
+        entityType: "CampaignSubmission",
+        entityId: "submission-1",
+        metadata: expect.objectContaining({
+          rejectionReason: "INVALID_POST",
+          previousStatus: "PENDING",
+        }),
+      }),
+    });
+  });
+
+  it("reverses unpaid approved earnings when rejecting an approved submission", async () => {
+    routeMocks.submissionFindUnique.mockResolvedValue(
+      submission({
+        status: "APPROVED",
+        earnedAmount: 42.75,
+        eligibleViews: 4275,
+        viewCount: 5000,
+        baselineViews: 725,
+      }),
+    );
+    routeMocks.tx.referralPayout.findFirst.mockResolvedValue({
+      id: "referral-payout-1",
+      amount: 4.28,
+      status: "pending",
+      referrerId: "referrer-user-1",
+    });
+
+    const response = await POST(
+      reviewRequest({
+        status: "REJECTED",
+        rejectionReason: "BOT_TRAFFIC",
+        rejectionNote: "Traffic spike came from suspected bot traffic.",
+      }),
+      params,
+    );
+
+    expect(response.status).toBe(200);
+    expect(routeMocks.tx.campaignSubmission.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          status: "REJECTED",
+          earnedAmount: 0,
+          eligibleViews: 0,
+          rejectionNote: "Traffic spike came from suspected bot traffic.",
+        }),
+      }),
+    );
+    expect(routeMocks.tx.campaignApplication.update).toHaveBeenCalledWith({
+      where: { id: "application-1" },
+      data: { earnedAmount: { decrement: 43 } },
+    });
+    expect(routeMocks.tx.referralPayout.deleteMany).toHaveBeenCalledWith({
+      where: {
+        id: "referral-payout-1",
+        status: "pending",
+      },
+    });
+    expect(routeMocks.tx.user.update).toHaveBeenCalledWith({
+      where: { id: "referrer-user-1" },
+      data: { referralEarnings: { decrement: 4.28 } },
+    });
+  });
+
+  it("blocks rejecting approved submissions that are already paid or locked in a payout run", async () => {
+    routeMocks.submissionFindUnique.mockResolvedValue(
+      submission({
+        status: "APPROVED",
+        settledAt: new Date("2026-05-20T12:00:00.000Z"),
+        payoutRunItems: [{ id: "payout-run-item-1" }],
+      }),
+    );
+
+    const response = await POST(
+      reviewRequest({
+        status: "REJECTED",
+        rejectionReason: "BOT_TRAFFIC",
+        rejectionNote: "Botted traffic found after approval.",
+      }),
+      params,
+    );
+
+    expect(response.status).toBe(409);
+    await expect(response.json()).resolves.toEqual({
+      error: "This approved submission is already paid or locked in a payout run. Use a financial adjustment workflow instead.",
+    });
+    expect(routeMocks.tx.campaignSubmission.update).not.toHaveBeenCalled();
+  });
+
+  it("still requires logo verification and view counts before approval", async () => {
+    routeMocks.submissionFindUnique.mockResolvedValue(
+      submission({ logoStatus: "PENDING" }),
+    );
+
+    const response = await POST(
+      reviewRequest({ status: "APPROVED", baselineViews: 0, viewCount: 1000 }),
+      params,
+    );
+
+    expect(response.status).toBe(400);
+    await expect(response.json()).resolves.toEqual({
+      error: "Logo verification is pending - review the submission's logo before approving.",
+    });
+    expect(routeMocks.tx.campaignSubmission.update).not.toHaveBeenCalled();
+  });
+
+  it("stores earned amount for an approved clip that meets the campaign threshold", async () => {
+    routeMocks.submissionFindUnique.mockResolvedValue(
+      submission({
+        campaign: {
+          id: "campaign-1",
+          name: "Spring Campaign",
+          creatorCpv: 0.01,
+          minimumPaidViews: 5000,
+          maximumPaidViews: null,
+        },
+      }),
+    );
+
+    const response = await POST(
+      reviewRequest({ status: "APPROVED", baselineViews: 0, viewCount: 5000 }),
+      params,
+    );
+
+    expect(response.status).toBe(200);
+    expect(routeMocks.tx.campaignSubmission.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
           status: "APPROVED",
-          baselineViews: 200,
-          viewCount: 1500,
-          eligibleViews: 1300,
-          earnedAmount: 1300,
+          baselineViews: 0,
+          viewCount: 5000,
+          eligibleViews: 5000,
+          earnedAmount: 50,
         }),
       }),
     );
   });
 
-  it("stores zero payable views when approved views are below the minimum", async () => {
-    routeMocks.campaignSubmissionFindUnique.mockResolvedValue({
-      id: "submission-1",
-      creatorId: "creator-1",
-      applicationId: "application-1",
-      application: { id: "application-1" },
-      campaign: {
-        id: "campaign-1",
-        name: "Campaign",
-        creatorCpv: 0.001,
-        minimumPaidViews: 2_000,
-        maximumPaidViews: null,
-      },
-      status: "PENDING",
-      earnedAmount: 0,
-      viewCount: 1_999,
-      baselineViews: 0,
-      claimedViews: 0,
-    });
+  it("stores zero earnings for an approved clip below the campaign threshold", async () => {
+    routeMocks.submissionFindUnique.mockResolvedValue(
+      submission({
+        campaign: {
+          id: "campaign-1",
+          name: "Spring Campaign",
+          creatorCpv: 0.00045,
+          minimumPaidViews: 5000,
+          maximumPaidViews: null,
+        },
+      }),
+    );
 
-    const response = await postReview({ status: "APPROVED" });
+    const response = await POST(
+      reviewRequest({ status: "APPROVED", baselineViews: 0, viewCount: 200 }),
+      params,
+    );
 
     expect(response.status).toBe(200);
-    expect(routeMocks.txCampaignSubmissionUpdate).toHaveBeenCalledWith(
+    expect(routeMocks.tx.campaignSubmission.update).toHaveBeenCalledWith(
       expect.objectContaining({
         data: expect.objectContaining({
+          status: "APPROVED",
+          baselineViews: 0,
+          viewCount: 200,
           eligibleViews: 0,
           earnedAmount: 0,
         }),
       }),
     );
-  });
-
-  it("caps payable views at the campaign maximum after subtracting baseline views", async () => {
-    routeMocks.campaignSubmissionFindUnique.mockResolvedValue({
-      id: "submission-1",
-      creatorId: "creator-1",
-      applicationId: "application-1",
-      application: { id: "application-1" },
-      campaign: {
-        id: "campaign-1",
-        name: "Campaign",
-        creatorCpv: 0.001,
-        minimumPaidViews: 2_000,
-        maximumPaidViews: 5_000,
-      },
-      status: "PENDING",
-      earnedAmount: 0,
-      viewCount: 7_000,
-      baselineViews: 1_000,
-      claimedViews: 0,
-    });
-
-    const response = await postReview({ status: "APPROVED" });
-
-    expect(response.status).toBe(200);
-    expect(routeMocks.txCampaignSubmissionUpdate).toHaveBeenCalledWith(
-      expect.objectContaining({
-        data: expect.objectContaining({
-          baselineViews: 1_000,
-          viewCount: 7_000,
-          eligibleViews: 5_000,
-          earnedAmount: 5,
-        }),
-      }),
-    );
-  });
-
-  it("requires a note before rejecting", async () => {
-    const response = await postReview({ status: "REJECTED" });
-
-    expect(response.status).toBe(400);
-    expect(routeMocks.campaignSubmissionFindUnique).not.toHaveBeenCalled();
-    expect(routeMocks.transaction).not.toHaveBeenCalled();
   });
 });

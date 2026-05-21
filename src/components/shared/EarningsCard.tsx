@@ -14,6 +14,7 @@ interface Props {
   label?: string;
   /** When provided, renders an info icon next to the label that reveals this text on hover. */
   disclaimer?: string | null;
+  message?: string | null;
 }
 
 /**
@@ -29,6 +30,7 @@ export default function EarningsCard({
   amount,
   label,
   disclaimer,
+  message,
 }: Props) {
   const locale = useLocale();
   const t = useTranslations("creator.shared");
@@ -90,9 +92,15 @@ export default function EarningsCard({
           </TooltipProvider>
         ) : null}
       </div>
-      <div className="text-3xl font-bold" style={{ color: "var(--text-primary)" }}>
-        {formatCurrency(amount, locale)}
-      </div>
+      {message ? (
+        <p className="text-sm font-semibold leading-6" style={{ color: "var(--text-primary)" }}>
+          {message}
+        </p>
+      ) : (
+        <div className="text-3xl font-bold" style={{ color: "var(--text-primary)" }}>
+          {formatCurrency(amount, locale)}
+        </div>
+      )}
     </div>
   );
 }

@@ -158,17 +158,20 @@ export async function PATCH(
     minEngagementRate,
     creatorRatePerK,
     adminMarginPerK,
-    minimumPaidViews,
-    maximumPaidViews,
     ...rest
   } = parsed.data;
 
-  const nextMinimumPaidViews = minimumPaidViews ?? authorized.campaign.minimumPaidViews;
+  const nextMinimumPaidViews =
+    rest.minimumPaidViews ?? authorized.campaign.minimumPaidViews;
   const nextMaximumPaidViews =
-    maximumPaidViews === undefined
-      ? authorized.campaign.maximumPaidViews
-      : maximumPaidViews;
-  if (nextMaximumPaidViews !== null && nextMaximumPaidViews < nextMinimumPaidViews) {
+    rest.maximumPaidViews !== undefined
+      ? rest.maximumPaidViews
+      : authorized.campaign.maximumPaidViews;
+  if (
+    nextMaximumPaidViews !== null &&
+    nextMaximumPaidViews !== undefined &&
+    nextMaximumPaidViews < nextMinimumPaidViews
+  ) {
     return NextResponse.json(
       { error: "Maximum paid views must be blank or greater than or equal to minimum paid views" },
       { status: 400 },
@@ -183,8 +186,6 @@ export async function PATCH(
     data.platforms = platforms as Platform[];
   }
   if (goalViews !== undefined) data.goalViews = goalViews ? BigInt(goalViews) : null;
-  if (minimumPaidViews !== undefined) data.minimumPaidViews = minimumPaidViews;
-  if (maximumPaidViews !== undefined) data.maximumPaidViews = maximumPaidViews;
   if (minEngagementRate !== undefined) data.minEngagementRate = minEngagementRate;
   if (creatorRatePerK !== undefined || adminMarginPerK !== undefined) {
     const nextCreatorRatePerK = creatorRatePerK ?? Number(authorized.campaign.creatorCpv) * 1_000;

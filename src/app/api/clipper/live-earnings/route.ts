@@ -76,17 +76,16 @@ export async function GET() {
     const snapshotViews = latestSnap ? Number(latestSnap.viewCount) : null;
     const fallbackViews = s.viewCount ?? s.claimedViews ?? 0;
     const rawViews = snapshotViews ?? fallbackViews;
-    // eligibleViews when present is authoritative; otherwise compute the current payable view count.
-    const eligible =
-      s.eligibleViews ??
-      calculatePaidViews({
-        rawViews,
-        baselineViews: s.baselineViews,
-        minimumPaidViews: s.campaign.minimumPaidViews,
-        maximumPaidViews: s.campaign.maximumPaidViews,
-      }).payableViews;
+    const paidViews = calculatePaidViews({
+      rawViews,
+      baselineViews: s.baselineViews,
+      minimumPaidViews: s.campaign.minimumPaidViews,
+      maximumPaidViews: s.campaign.maximumPaidViews,
+      creatorCpv: s.campaign.creatorCpv,
+    });
+    const eligible = paidViews.payableViews;
     const cpv = Number(s.campaign.creatorCpv);
-    const estimated = eligible * cpv;
+    const estimated = paidViews.earnedAmount;
     estimatedTotal += estimated;
     if (latestSnap && (!latestSnapshotAt || latestSnap.capturedAt > latestSnapshotAt)) {
       latestSnapshotAt = latestSnap.capturedAt;

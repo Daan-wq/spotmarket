@@ -1,4 +1,4 @@
-export type ViewLimitValue =
+export type PaidViewNumeric =
   | number
   | bigint
   | string
@@ -7,15 +7,19 @@ export type ViewLimitValue =
   | undefined;
 
 export interface PaidViewInput {
-  rawViews: ViewLimitValue;
-  baselineViews?: ViewLimitValue;
-  minimumPaidViews?: ViewLimitValue;
-  maximumPaidViews?: ViewLimitValue;
+  rawViews: PaidViewNumeric;
+  baselineViews?: PaidViewNumeric;
+  minimumPaidViews?: PaidViewNumeric;
+  maximumPaidViews?: PaidViewNumeric;
+  creatorCpv?: PaidViewNumeric;
 }
 
 export interface PaidViewResult {
-  eligibleViews: number;
+  actualViews: number;
+  trackedViews: number;
   payableViews: number;
+  eligibleViews: number;
+  earnedAmount: number;
 }
 
 export function calculatePaidViews({
@@ -23,8 +27,9 @@ export function calculatePaidViews({
   baselineViews = 0,
   minimumPaidViews = 0,
   maximumPaidViews = null,
+  creatorCpv = 0,
 }: PaidViewInput): PaidViewResult {
-  const raw = toWholeNumber(rawViews);
+  const actualViews = toWholeNumber(rawViews);
   const baseline = toWholeNumber(baselineViews);
   const minimum = toWholeNumber(minimumPaidViews);
   const maximum =
@@ -32,18 +37,34 @@ export function calculatePaidViews({
       ? null
       : toWholeNumber(maximumPaidViews);
 
-  const eligibleViews = Math.max(0, raw - baseline);
+  const trackedViews = Math.max(0, actualViews - baseline);
   const payableViews =
-    eligibleViews >= minimum
-      ? Math.min(eligibleViews, maximum ?? eligibleViews)
+    trackedViews >= minimum
+      ? Math.min(trackedViews, maximum ?? trackedViews)
       : 0;
 
-  return { eligibleViews, payableViews };
+  return {
+    actualViews,
+    trackedViews,
+    payableViews,
+    eligibleViews: payableViews,
+    earnedAmount: roundMoney(payableViews * toMoneyNumber(creatorCpv)),
+  };
 }
 
-function toWholeNumber(value: ViewLimitValue): number {
+export function roundMoney(value: number): number {
+  return Math.round((value + Number.EPSILON) * 100) / 100;
+}
+
+function toWholeNumber(value: PaidViewNumeric): number {
   if (value === null || value === undefined) return 0;
   const parsed = typeof value === "bigint" ? Number(value) : Number(value);
   if (!Number.isFinite(parsed) || parsed <= 0) return 0;
   return Math.trunc(parsed);
+}
+
+function toMoneyNumber(value: PaidViewNumeric): number {
+  if (value === null || value === undefined) return 0;
+  const parsed = typeof value === "bigint" ? Number(value) : Number(value);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : 0;
 }
