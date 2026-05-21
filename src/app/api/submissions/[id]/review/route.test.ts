@@ -223,7 +223,7 @@ describe("POST /api/submissions/[id]/review", () => {
     expect(routeMocks.tx.campaignSubmission.update).not.toHaveBeenCalled();
   });
 
-  it("still requires logo verification before approval", async () => {
+  it("approves even when logo verification is pending", async () => {
     routeMocks.submissionFindUnique.mockResolvedValue(
       submission({ logoStatus: "PENDING" }),
     );
@@ -233,11 +233,14 @@ describe("POST /api/submissions/[id]/review", () => {
       params,
     );
 
-    expect(response.status).toBe(400);
-    await expect(response.json()).resolves.toEqual({
-      error: "Logo verification is pending - review the submission's logo before approving.",
-    });
-    expect(routeMocks.tx.campaignSubmission.update).not.toHaveBeenCalled();
+    expect(response.status).toBe(200);
+    expect(routeMocks.tx.campaignSubmission.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          status: "APPROVED",
+        }),
+      }),
+    );
   });
 
   it("approves without manual views and stores earnings from tracked metrics", async () => {

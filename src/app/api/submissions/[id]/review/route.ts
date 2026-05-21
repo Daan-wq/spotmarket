@@ -98,20 +98,6 @@ export async function POST(
     let trackedViewCount: number | null = null;
 
     if (status === "APPROVED") {
-      if (submission.logoStatus == null || submission.logoStatus === "PENDING") {
-        return NextResponse.json(
-          { error: "Logo verification is pending - review the submission's logo before approving." },
-          { status: 400 },
-        );
-      }
-
-      if (submission.logoStatus === "MISSING") {
-        return NextResponse.json(
-          { error: "Submission marked as logo missing - cannot approve. Mark logo present first or reject." },
-          { status: 400 },
-        );
-      }
-
       trackedViewCount = getTrackedViewCount(submission);
       if (trackedViewCount !== null) {
         const paidViews = calculatePaidViews({

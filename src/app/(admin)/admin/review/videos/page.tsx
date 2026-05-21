@@ -1,18 +1,9 @@
 import { prisma } from "@/lib/prisma";
 import Link from "next/link";
-import { LogoReviewWidget } from "@/components/admin/logo-review-widget";
 import SubmissionActions from "../../submissions/_components/submission-actions";
-import { resolveThumbnail } from "@/lib/clip-thumbnail";
-import type { ClipMediaType } from "@/lib/instagram-media-type";
 
 export const dynamic = "force-dynamic";
 
-/**
- * Submission review queue with manual logo verification widget.
- *
- * Thumbnails come from stored metadata or official platform account data.
- * Creator screenshots are used as the final fallback.
- */
 function platformFromBio(p: string | null): "INSTAGRAM" | "TIKTOK" | "YOUTUBE_SHORTS" | "FACEBOOK" | null {
   if (!p) return null;
   if (p === "INSTAGRAM" || p === "TIKTOK" || p === "YOUTUBE_SHORTS" || p === "FACEBOOK") return p;
@@ -33,20 +24,6 @@ export default async function VideoReviewPage() {
     },
     take: 100,
   });
-  const reviewRows = await Promise.all(
-    submissions.map(async (submission) => {
-      const resolved = await resolveThumbnail(submission.postUrl, submission.thumbnailUrl, {
-        creatorId: submission.creator.id,
-        submissionId: submission.id,
-        storedMediaType: submission.mediaType as ClipMediaType | null,
-      });
-
-      return {
-        submission,
-        thumbnailUrl: resolved.thumbnailUrl ?? submission.screenshotUrl,
-      };
-    }),
-  );
 
   return (
     <div className="w-full p-8">
@@ -55,7 +32,7 @@ export default async function VideoReviewPage() {
           Video review
         </h1>
         <p style={{ color: "var(--text-secondary)" }}>
-          Verify the brand logo is present in each post, then approve or reject.
+          Open each submitted post, then approve or reject. Rejections require a reason.
         </p>
       </div>
 
@@ -73,10 +50,8 @@ export default async function VideoReviewPage() {
         </div>
       ) : (
         <div className="space-y-4">
-          {reviewRows.map(({ submission: s, thumbnailUrl }) => {
+          {submissions.map((s) => {
             const platform = platformFromBio(s.sourcePlatform);
-            const logoStatus = (s.logoStatus ?? "PENDING") as "PENDING" | "PRESENT" | "MISSING";
-            const canApprove = logoStatus === "PRESENT";
 
             return (
               <article
@@ -136,15 +111,23 @@ export default async function VideoReviewPage() {
                 )}
 
                 <div className="grid grid-cols-1 md:grid-cols-[2fr_1fr] gap-4">
-                  <LogoReviewWidget
-                    submissionId={s.id}
-                    thumbnailUrl={thumbnailUrl}
-                    postUrl={s.postUrl}
-                    initialStatus={logoStatus}
-                    initialVerifiedAt={s.logoVerifiedAt?.toISOString() ?? null}
-                    initialVerifiedBy={s.logoVerifiedBy}
-                  />
-
+                  <div
+                    className="rounded-lg p-4"
+                    style={{ background: "var(--bg-primary)", border: "1px solid var(--border)" }}
+                  >
+                    <p className="text-[11px] uppercase tracking-wide font-semibold mb-2" style={{ color: "var(--text-secondary)" }}>
+                      Submitted post
+                    </p>
+                    <a
+                      href={s.postUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-sm font-semibold underline"
+                      style={{ color: "var(--primary)" }}
+                    >
+                      Open post
+                    </a>
+                  </div>
                   <div
                     className="rounded-lg p-3"
                     style={{ background: "var(--bg-primary)", border: "1px solid var(--border)" }}
@@ -152,18 +135,11 @@ export default async function VideoReviewPage() {
                     <p className="text-[11px] uppercase tracking-wide font-semibold mb-2" style={{ color: "var(--text-secondary)" }}>
                       Approve / reject
                     </p>
-                    {canApprove ? (
-                      <SubmissionActions
-                        id={s.id}
-                        status={s.status}
-                        postUrl={s.postUrl}
-                      />
-                    ) : (
-                      <p className="text-[11px]" style={{ color: "var(--text-muted, var(--text-secondary))" }}>
-                        Approve unlocks once logo is marked <strong>Present</strong>. Logo currently:{" "}
-                        <strong>{logoStatus}</strong>.
-                      </p>
-                    )}
+                    <SubmissionActions
+                      id={s.id}
+                      status={s.status}
+                      postUrl={s.postUrl}
+                    />
                   </div>
                 </div>
               </article>

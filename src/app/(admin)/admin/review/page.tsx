@@ -37,7 +37,7 @@ export default async function ReviewPage() {
       <PageHeader
         eyebrow="Clip review"
         title="Clip review"
-        description="Open each submitted post, then approve or reject. Rejections require a note."
+        description="Open each submitted post, then approve or reject. Rejections require a reason."
       />
 
       <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
