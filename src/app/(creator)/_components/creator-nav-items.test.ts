@@ -14,13 +14,16 @@ describe("creator mobile bottom navigation", () => {
 });
 
 describe("creator mobile top navigation", () => {
-  it("keeps the top chrome fixed to the viewport", () => {
+  it("keeps the top chrome sticky at the top of the page", () => {
     expect(MOBILE_CREATOR_TOP_CHROME_CLASS.split(" ")).toEqual(
-      expect.arrayContaining(["fixed", "top-0"]),
+      expect.arrayContaining([
+        "sticky",
+        "top-0",
+        "border-b",
+        "bg-white/95",
+        "backdrop-blur",
+      ]),
     );
-    expect(MOBILE_CREATOR_TOP_CHROME_CLASS).not.toContain("sticky");
-    expect(MOBILE_CREATOR_TOP_CHROME_CLASS).not.toContain("border-b");
-    expect(MOBILE_CREATOR_TOP_CHROME_CLASS).not.toContain("bg-white");
-    expect(MOBILE_CREATOR_TOP_CHROME_CLASS).not.toContain("backdrop-blur");
+    expect(MOBILE_CREATOR_TOP_CHROME_CLASS).not.toContain("fixed");
   });
 });

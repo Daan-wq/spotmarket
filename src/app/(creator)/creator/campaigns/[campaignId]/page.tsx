@@ -1,5 +1,4 @@
 import Link from "next/link";
-import type { ReactNode } from "react";
 import { getLocale, getTranslations } from "next-intl/server";
 import { notFound } from "next/navigation";
 import { requireAuth } from "@/lib/auth";
@@ -28,6 +27,7 @@ import { AnimateIcon } from "@/components/animate-ui/icons/icon";
 import { ChevronLeft } from "@/components/animate-ui/icons/chevron-left";
 import { evaluateCampaignJoinEligibility } from "@/lib/campaign-eligibility";
 import { isCampaignClosedForSubmissions } from "@/lib/campaign-submission-state";
+import { buildCreatorCampaignConfigSections } from "@/lib/creator-campaign-display";
 import {
   SubmittedClipsList,
   type SubmittedClipData,
@@ -152,78 +152,55 @@ export default async function CampaignDetailPage({
     !existingApplication &&
     hasDiscord &&
     !isClosedForSubmissions;
-  const requirementSteps = campaign.requirements
-    ? campaign.requirements.split("\n").filter((r) => r.trim())
-    : [];
-  const pageStatsSummary = formatPageStats(campaign.pageStats, {
-    minAge: t("minimumAge"),
-    minEngagement: t("minimumEngagementRate"),
-    minFollowers: t("minimumFollowers"),
-    malePercent: t("targetMaleAudience"),
-    countryPercent: t("targetCountryAudience"),
-  });
-  const resourceLinks = [
-    { label: t("trackingLink"), href: campaign.referralLink },
-    { label: t("bannerVideo"), href: campaign.bannerVideoUrl },
-    { label: t("briefAsset"), href: campaign.briefAssetUrl },
-    { label: t("guidelines"), href: campaign.guidelinesUrl },
-    ...campaign.contentAssetUrls.map((href, index) => ({
-      label: t("contentAsset", { index: index + 1 }),
-      href,
-    })),
-  ].filter((link): link is { label: string; href: string } => Boolean(link.href));
-  const shortDetails: Array<{ label: string; value: ReactNode }> = [
+  const configSections = buildCreatorCampaignConfigSections(
+    campaign,
     {
-      label: t("accountLimit"),
-      value: campaign.maxSlots
-        ? `${formatNumber(campaign.maxSlots, locale)} ${sharedT("units.creators")}`
-        : t("unlimited"),
+      briefTitle: t("briefAndRequirements"),
+      resourcesTitle: t("resources"),
+      targetingTitle: t("targeting"),
+      timelineTitle: t("timelineAndLimits"),
+      description: t("description"),
+      contentType: t("contentType"),
+      requirements: t("requirements"),
+      contentGuidelines: t("contentNotes"),
+      otherNotes: t("otherNotes"),
+      pageStats: t("pageStats"),
+      minimumAge: t("minimumAge"),
+      requiredHashtags: t("requiredHashtags"),
+      trackingLink: t("trackingLink"),
+      bannerImage: t("bannerImage"),
+      bannerVideo: t("bannerVideo"),
+      briefAsset: t("briefAsset"),
+      guidelines: t("guidelines"),
+      contentAsset: (index) => t("contentAsset", { index }),
+      targetCountry: t("targetCountry"),
+      targetCountryAudience: t("targetCountryAudience"),
+      target18Audience: t("target18Audience"),
+      targetMaleAudience: t("targetMaleAudience"),
+      minimumFollowers: t("minimumFollowers"),
+      minimumEngagementRate: t("minimumEngagementRate"),
+      bioRequirement: t("bioRequirement"),
+      linkInBioRequirement: t("linkInBioRequirement"),
+      goalViews: t("goalViews"),
+      startDate: t("startDate"),
+      deadline: t("deadline"),
+      accountLimit: t("accountLimit"),
+      approvalRequired: t("approvalRequired"),
+      yes: t("yes"),
+      pageStatsLabels: {
+        minAge: t("minimumAge"),
+        minEngagement: t("minimumEngagementRate"),
+        minFollowers: t("minimumFollowers"),
+        malePercent: t("targetMaleAudience"),
+        countryPercent: t("targetCountryAudience"),
+      },
     },
     {
-      label: t("category"),
-      value: campaign.contentType ?? campaign.niche ?? t("general"),
+      number: (value) => formatNumber(value, locale),
+      percent: (value) => `${formatNumber(value, locale)}%`,
+      date: (value) => formatShortDate(value, locale),
     },
-    {
-      label: t("goalViews"),
-      value: campaign.goalViews ? formatNumber(Number(campaign.goalViews), locale) : null,
-    },
-    {
-      label: t("approvalRequired"),
-      value: campaign.requiresApproval ? t("yes") : null,
-    },
-    { label: t("minimumAge"), value: campaign.minAge },
-    {
-      label: t("requiredHashtags"),
-      value: campaign.requiredHashtags.length > 0 ? campaign.requiredHashtags.join(", ") : null,
-    },
-    { label: t("targetCountry"), value: campaign.targetCountry },
-    {
-      label: t("targetCountryAudience"),
-      value: formatOptionalPercent(campaign.targetCountryPercent, locale),
-    },
-    {
-      label: t("target18Audience"),
-      value: formatOptionalPercent(campaign.targetMinAge18Percent, locale),
-    },
-    {
-      label: t("targetMaleAudience"),
-      value: formatOptionalPercent(campaign.targetMalePercent, locale),
-    },
-    {
-      label: t("minimumFollowers"),
-      value: campaign.minFollowers > 0 ? formatNumber(campaign.minFollowers, locale) : null,
-    },
-    {
-      label: t("minimumEngagementRate"),
-      value: Number(campaign.minEngagementRate) > 0 ? `${formatNumber(Number(campaign.minEngagementRate), locale)}%` : null,
-    },
-    { label: t("bioRequirement"), value: campaign.bioRequirement },
-    { label: t("linkInBioRequirement"), value: campaign.linkInBioRequired },
-  ].filter((row) => {
-    if (row.value === null || row.value === undefined) return false;
-    if (typeof row.value === "string" && row.value.trim() === "") return false;
-    return true;
-  });
+  );
 
   const videos: SubmittedClipData[] = await Promise.all(
     mySubmissions.map(async (submission) => {
@@ -328,7 +305,7 @@ export default async function CampaignDetailPage({
 
       <section>
         <SectionTitle title={t("info")} />
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
+        <div className="grid grid-cols-2 gap-3 md:grid-cols-4 md:gap-4">
           <InfoCard
             label={t("payoutPer1K")}
             value={formatCurrency(rewardRate, locale)}
@@ -368,70 +345,11 @@ export default async function CampaignDetailPage({
               {t("programRulesDescription")}
             </p>
           </div>
-          <div className="grid gap-4 px-5 py-4 md:grid-cols-2">
-            {shortDetails.map((detail) => (
-              <DetailRow
-                key={detail.label}
-                label={detail.label}
-                value={detail.value}
-              />
-            ))}
-            {resourceLinks.map((link) => (
-              <DetailRow
-                key={`${link.label}-${link.href}`}
-                label={link.label}
-                value={
-                  <a
-                    className="break-all underline"
-                    href={link.href}
-                    target="_blank"
-                    rel="noreferrer"
-                  >
-                    {t("openLink")}
-                  </a>
-                }
-              />
+          <div className="divide-y divide-neutral-200">
+            {configSections.map((section) => (
+              <CampaignConfigSection key={section.id} section={section} />
             ))}
           </div>
-          {campaign.description ? (
-            <TextPanel label={t("description")} value={campaign.description} />
-          ) : null}
-          {campaign.otherNotes ? (
-            <TextPanel label={t("otherNotes")} value={campaign.otherNotes} />
-          ) : null}
-          {pageStatsSummary ? (
-            <TextPanel label={t("pageStats")} value={pageStatsSummary} />
-          ) : null}
-          {requirementSteps.length > 0 ? (
-            <div className="border-t border-neutral-200 px-5 py-4">
-              <p className="mb-3 text-xs font-semibold uppercase tracking-[0.14em] text-neutral-400">
-                {t("requirements")}
-              </p>
-              <div className="flex flex-wrap gap-2">
-                {requirementSteps.map((step, index) => (
-                  <span
-                    key={`${step}-${index}`}
-                    className="inline-flex items-center gap-1.5 rounded-lg border border-neutral-200 bg-white px-3 py-2 text-sm text-neutral-950"
-                  >
-                    <span className="font-semibold text-neutral-400">
-                      {index + 1}/
-                    </span>
-                    {step.trim()}
-                  </span>
-                ))}
-              </div>
-            </div>
-          ) : null}
-          {campaign.contentGuidelines ? (
-            <div className="border-t border-neutral-200 px-5 py-4">
-              <p className="mb-2 text-xs font-semibold uppercase tracking-[0.14em] text-neutral-400">
-                {t("contentNotes")}
-              </p>
-              <p className="whitespace-pre-wrap text-sm leading-6 text-neutral-700">
-                {campaign.contentGuidelines}
-              </p>
-            </div>
-          ) : null}
         </div>
       </section>
 
@@ -538,62 +456,68 @@ function InfoCard({
   detail: string;
 }) {
   return (
-    <div className="rounded-2xl border border-neutral-200 bg-neutral-50 p-4">
-      <p className="text-sm font-medium text-neutral-700">{label}</p>
-      <p className="mt-2 text-2xl font-semibold tracking-normal text-neutral-950">
+    <div className="rounded-2xl border border-neutral-200 bg-neutral-50 p-3 md:p-4">
+      <p className="text-xs font-medium text-neutral-700 md:text-sm">{label}</p>
+      <p className="mt-1.5 break-words text-xl font-semibold tracking-normal text-neutral-950 md:mt-2 md:text-2xl">
         {value}
       </p>
-      <p className="mt-1 text-xs text-neutral-500">{detail}</p>
-    </div>
-  );
-}
-
-function TextPanel({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="border-t border-neutral-200 px-5 py-4">
-      <p className="mb-2 text-xs font-semibold uppercase tracking-[0.14em] text-neutral-400">
-        {label}
-      </p>
-      <p className="whitespace-pre-wrap break-words text-sm leading-6 text-neutral-700">
-        {value}
+      <p className="mt-1 text-[11px] leading-snug text-neutral-500 md:text-xs">
+        {detail}
       </p>
     </div>
   );
 }
 
-function DetailRow({ label, value }: { label: string; value: ReactNode }) {
+function CampaignConfigSection({
+  section,
+}: {
+  section: ReturnType<typeof buildCreatorCampaignConfigSections>[number];
+}) {
   return (
-    <div className="flex flex-col gap-1 text-sm sm:flex-row sm:items-center sm:justify-between sm:gap-4">
-      <span className="text-neutral-500">{label}</span>
-      <span className="break-words font-medium text-neutral-950 sm:text-right">{value}</span>
+    <div className="px-5 py-4">
+      <p className="mb-3 text-xs font-semibold uppercase tracking-[0.14em] text-neutral-400">
+        {section.title}
+      </p>
+      <div className="grid gap-4 md:grid-cols-2">
+        {section.items.map((item) => (
+          <CampaignConfigItem key={`${item.label}-${item.kind}`} item={item} />
+        ))}
+      </div>
     </div>
   );
 }
 
-function formatOptionalPercent(value: number | null | undefined, locale: Locale): string | null {
-  if (value === null || value === undefined) return null;
-  return `${formatNumber(value, locale)}%`;
-}
+function CampaignConfigItem({
+  item,
+}: {
+  item: ReturnType<typeof buildCreatorCampaignConfigSections>[number]["items"][number];
+}) {
+  const value =
+    item.kind === "link" ? (
+      <a
+        className="break-all font-medium text-neutral-950 underline underline-offset-2 transition hover:text-neutral-600"
+        href={item.href}
+        target="_blank"
+        rel="noreferrer"
+      >
+        {item.href}
+      </a>
+    ) : (
+      <span
+        className={
+          item.kind === "multiline"
+            ? "whitespace-pre-wrap break-words font-medium text-neutral-950"
+            : "break-words font-medium text-neutral-950"
+        }
+      >
+        {item.value}
+      </span>
+    );
 
-function formatPageStats(
-  value: string | null | undefined,
-  labels: Record<string, string>,
-): string | null {
-  if (!value?.trim()) return null;
-
-  try {
-    const parsed = JSON.parse(value) as Record<string, unknown>;
-    const entries = Object.entries(parsed)
-      .filter(([, entryValue]) => entryValue !== null && entryValue !== undefined && String(entryValue).trim() !== "")
-      .map(([key, entryValue]) => `${labels[key] ?? titleFromKey(key)}: ${entryValue}`);
-    return entries.length > 0 ? entries.join("\n") : null;
-  } catch {
-    return value;
-  }
-}
-
-function titleFromKey(value: string): string {
-  return value
-    .replace(/([A-Z])/g, " $1")
-    .replace(/^./, (character) => character.toUpperCase());
+  return (
+    <div className={item.kind === "multiline" ? "text-sm md:col-span-2" : "text-sm"}>
+      <p className="mb-1 text-neutral-500">{item.label}</p>
+      {value}
+    </div>
+  );
 }
