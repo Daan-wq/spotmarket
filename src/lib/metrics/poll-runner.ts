@@ -17,6 +17,7 @@ import { Prisma, type $Enums } from "@prisma/client";
 import { publishEvent } from "@/lib/event-bus";
 import { routeMetric } from "./router";
 import { scoreVelocity, type FlagDraft } from "@/lib/velocity-scorer";
+import { calculatePaidViews } from "@/lib/paid-views";
 
 export type Tier = "hot" | "warm" | "cold";
 
@@ -65,7 +66,22 @@ export async function pollSubmissions(opts: RunOptions): Promise<PollResult> {
     },
     orderBy: [{ lastMetricsRefreshAt: { sort: "asc", nulls: "first" } }],
     take: opts.limit ?? batchSize(opts.tier),
-    select: { id: true, postUrl: true, creatorId: true },
+    select: {
+      id: true,
+      postUrl: true,
+      creatorId: true,
+      status: true,
+      baselineViews: true,
+      settledAt: true,
+      payoutRunItems: { select: { id: true }, take: 1 },
+      campaign: {
+        select: {
+          creatorCpv: true,
+          minimumPaidViews: true,
+          maximumPaidViews: true,
+        },
+      },
+    },
   });
 
   let succeeded = 0;
@@ -122,6 +138,19 @@ export async function pollSubmissions(opts: RunOptions): Promise<PollResult> {
         const prev = recent.length >= 2 ? recent[recent.length - 2] : null;
         const deltaViews = prev ? Number(snap.viewCount) - Number(prev.viewCount) : Number(snap.viewCount);
         const cumulativeViews = Number(snap.viewCount);
+        const shouldRefreshEarnings =
+          sub.status === "APPROVED" &&
+          !sub.settledAt &&
+          sub.payoutRunItems.length === 0;
+        const paidViews = shouldRefreshEarnings
+          ? calculatePaidViews({
+              rawViews: cumulativeViews,
+              baselineViews: sub.baselineViews,
+              minimumPaidViews: sub.campaign.minimumPaidViews,
+              maximumPaidViews: sub.campaign.maximumPaidViews,
+              creatorCpv: sub.campaign.creatorCpv,
+            })
+          : null;
 
         await prisma.campaignSubmission.update({
           where: { id: sub.id },
@@ -134,6 +163,12 @@ export async function pollSubmissions(opts: RunOptions): Promise<PollResult> {
             shareCount: fetched.shareCount,
             velocityScore: scored.velocityScore ?? undefined,
             sourceMethod: "OAUTH",
+            ...(paidViews
+              ? {
+                  eligibleViews: paidViews.payableViews,
+                  earnedAmount: paidViews.earnedAmount,
+                }
+              : {}),
           },
         });
 

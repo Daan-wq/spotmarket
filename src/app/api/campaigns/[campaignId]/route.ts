@@ -55,6 +55,8 @@ const patchSchema = z.object({
   linkInBioRequired: z.string().optional().nullable(),
   totalBudget: z.number().positive().optional(),
   goalViews: z.number().int().positive().optional().nullable(),
+  minimumPaidViews: z.number().int().min(0).optional(),
+  maximumPaidViews: z.number().int().min(0).optional().nullable(),
   creatorRatePerK: z.number().min(0).optional(),
   adminMarginPerK: z.number().min(0).optional(),
   maxSlots: z.number().int().positive().optional().nullable(),
@@ -158,6 +160,23 @@ export async function PATCH(
     adminMarginPerK,
     ...rest
   } = parsed.data;
+
+  const nextMinimumPaidViews =
+    rest.minimumPaidViews ?? authorized.campaign.minimumPaidViews;
+  const nextMaximumPaidViews =
+    rest.maximumPaidViews !== undefined
+      ? rest.maximumPaidViews
+      : authorized.campaign.maximumPaidViews;
+  if (
+    nextMaximumPaidViews !== null &&
+    nextMaximumPaidViews !== undefined &&
+    nextMaximumPaidViews < nextMinimumPaidViews
+  ) {
+    return NextResponse.json(
+      { error: "Maximum paid views must be blank or greater than or equal to minimum paid views" },
+      { status: 400 },
+    );
+  }
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const data: Record<string, any> = { ...rest };

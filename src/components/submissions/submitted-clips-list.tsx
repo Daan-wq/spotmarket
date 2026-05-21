@@ -17,6 +17,9 @@ import {
 } from "@/components/animate-ui/components/radix/dropdown-menu";
 
 export type SubmittedClipMediaType = "video" | "image" | "carousel";
+export type SubmittedClipEarningDisplay =
+  | { state: "amount"; amount: number }
+  | { state: "threshold"; minimumPaidViews: number };
 
 export interface SubmittedClipData {
   id: string;
@@ -25,6 +28,7 @@ export interface SubmittedClipData {
   mediaType: SubmittedClipMediaType;
   status: string;
   earned: number;
+  earningDisplay?: SubmittedClipEarningDisplay;
   views: number;
   createdAt: string;
   campaignName: string;
@@ -224,7 +228,7 @@ export function SubmittedClipsList({
                 </td>
                 <td className="px-2 py-3">
                   <Link href={href} className="block font-medium text-neutral-950">
-                    {formatCurrency(video.earned, locale)}
+                    <EarningValue video={video} locale={locale} />
                   </Link>
                 </td>
                 <td className="px-2 py-3">
@@ -304,9 +308,7 @@ function SubmittedClipCard({
       <div className="mt-4 grid grid-cols-2 gap-3">
         <div className="rounded-xl bg-white p-3 ring-1 ring-neutral-200">
           <p className="text-xs text-neutral-500">{sharedT("labels.earned")}</p>
-          <p className="mt-1 text-lg font-semibold text-neutral-950">
-            {formatCurrency(video.earned, locale)}
-          </p>
+          <EarningValue video={video} locale={locale} mobile />
         </div>
         <div className="rounded-xl bg-white p-3 ring-1 ring-neutral-200">
           <p className="text-xs text-neutral-500">{sharedT("labels.views")}</p>
@@ -336,6 +338,44 @@ function SubmittedClipCard({
         ) : null}
       </div>
     </article>
+  );
+}
+
+function EarningValue({
+  video,
+  locale,
+  mobile = false,
+}: {
+  video: SubmittedClipData;
+  locale: string;
+  mobile?: boolean;
+}) {
+  const t = useTranslations("creator.videos.list");
+  const display = video.earningDisplay ?? {
+    state: "amount" as const,
+    amount: video.earned,
+  };
+
+  if (display.state === "threshold") {
+    return (
+      <span
+        className={
+          mobile
+            ? "mt-1 block text-xs font-medium leading-5 text-neutral-600"
+            : "block max-w-[240px] text-xs font-medium leading-5 text-neutral-600"
+        }
+      >
+        {t("thresholdMessage", {
+          views: formatNumber(display.minimumPaidViews, locale),
+        })}
+      </span>
+    );
+  }
+
+  return (
+    <span className={mobile ? "mt-1 block text-lg font-semibold text-neutral-950" : undefined}>
+      {formatCurrency(display.amount, locale)}
+    </span>
   );
 }
 

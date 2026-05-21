@@ -3,9 +3,10 @@ import { prisma } from "@/lib/prisma";
 import { resolveThumbnail } from "@/lib/clip-thumbnail";
 import { parseClipUrl, type ClipPlatform } from "@/lib/parse-clip-url";
 import {
+  submissionMinimumPaidViews,
+  submissionNeedsPaidViewThreshold,
   submissionProjectedEarnings,
   submissionViews,
-  totalProjectedEarnings,
 } from "@/lib/earnings";
 import { VideosClient } from "./_components/videos-client";
 
@@ -46,11 +47,14 @@ export default async function MyVideosPage() {
       earnedAmount: true,
       claimedViews: true,
       viewCount: true,
+      baselineViews: true,
       createdAt: true,
       campaign: {
         select: {
           name: true,
           creatorCpv: true,
+          minimumPaidViews: true,
+          maximumPaidViews: true,
         },
       },
     },
@@ -75,13 +79,28 @@ export default async function MyVideosPage() {
           storedMediaType: asClipMediaType(s.mediaType),
         },
       );
+      const needsThreshold = submissionNeedsPaidViewThreshold(s);
+      const earned = needsThreshold
+        ? 0
+        : s.status === "APPROVED"
+          ? Number(s.earnedAmount ?? 0)
+          : submissionProjectedEarnings(s);
       return {
         id: s.id,
         postUrl: s.postUrl,
         thumbnailUrl,
         mediaType,
         status: s.status,
-        earned: submissionProjectedEarnings(s),
+        earned,
+        earningDisplay: needsThreshold
+          ? {
+              state: "threshold" as const,
+              minimumPaidViews: submissionMinimumPaidViews(s),
+            }
+          : {
+              state: "amount" as const,
+              amount: earned,
+            },
         views: submissionViews(s),
         createdAt: s.createdAt.toISOString(),
         campaignName: s.campaign.name,
@@ -98,7 +117,7 @@ export default async function MyVideosPage() {
     ALL: videos.length,
   };
 
-  const totalEarnedProjected = totalProjectedEarnings(submissions);
+  const totalEarnedProjected = videos.reduce((sum, video) => sum + video.earned, 0);
 
   return (
     <VideosClient

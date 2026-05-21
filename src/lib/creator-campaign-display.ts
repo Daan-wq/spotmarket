@@ -43,6 +43,8 @@ export interface CreatorCampaignDisplayLabels {
   bioRequirement: string;
   linkInBioRequirement: string;
   goalViews: string;
+  minimumPaidViews: string;
+  maximumPaidViews: string;
   startDate: string;
   deadline: string;
   accountLimit: string;
@@ -84,6 +86,8 @@ export interface CreatorCampaignDisplayInput {
   bioRequirement?: string | null;
   linkInBioRequired?: string | null;
   goalViews?: NumericDisplayValue | null;
+  minimumPaidViews?: NumericDisplayValue | null;
+  maximumPaidViews?: NumericDisplayValue | null;
   startsAt?: Date | string | null;
   deadline?: Date | string | null;
   maxSlots?: number | null;
@@ -162,6 +166,16 @@ export function buildCreatorCampaignConfigSections(
     timelineItems,
     labels.goalViews,
     formatPositiveNumber(campaign.goalViews, formatters),
+  );
+  addText(
+    timelineItems,
+    labels.minimumPaidViews,
+    formatPositiveNumber(campaign.minimumPaidViews, formatters),
+  );
+  addText(
+    timelineItems,
+    labels.maximumPaidViews,
+    formatPositiveNumber(campaign.maximumPaidViews, formatters),
   );
   addText(
     timelineItems,

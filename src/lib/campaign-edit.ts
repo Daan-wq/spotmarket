@@ -31,6 +31,8 @@ export interface CampaignEditFormState {
   linkInBioRequired: string;
   totalBudget: string;
   goalViews: string;
+  minimumPaidViews: string;
+  maximumPaidViews: string;
   creatorRatePerK: string;
   adminMarginPerK: string;
   deadline: string;
@@ -110,6 +112,8 @@ export function buildCampaignEditPayload(state: CampaignEditFormState) {
     linkInBioRequired: emptyToNull(state.linkInBioRequired),
     totalBudget: numberOrZero(state.totalBudget),
     goalViews: numberOrNull(state.goalViews),
+    minimumPaidViews: numberOrZero(state.minimumPaidViews),
+    maximumPaidViews: numberOrNull(state.maximumPaidViews),
     creatorRatePerK,
     adminMarginPerK,
     deadline: dateOrNull(state.deadline),

@@ -15,11 +15,12 @@ const routeMocks = vi.hoisted(() => {
     notification: { create: vi.fn() },
     auditLog: { create: vi.fn() },
   };
+  type ReviewTransaction = typeof tx;
 
   return {
     requireAuth: vi.fn(),
     submissionFindUnique: vi.fn(),
-    transaction: vi.fn(async (callback: (tx: typeof tx) => unknown) => callback(tx)),
+    transaction: vi.fn(async (callback: (client: ReviewTransaction) => unknown) => callback(tx)),
     tx,
   };
 });
@@ -61,6 +62,8 @@ function submission(overrides: Record<string, unknown> = {}) {
       id: "campaign-1",
       name: "Spring Campaign",
       creatorCpv: 0.01,
+      minimumPaidViews: 0,
+      maximumPaidViews: null,
     },
     application: {
       id: "application-1",
@@ -228,5 +231,69 @@ describe("POST /api/submissions/[id]/review", () => {
       error: "Logo verification is pending - review the submission's logo before approving.",
     });
     expect(routeMocks.tx.campaignSubmission.update).not.toHaveBeenCalled();
+  });
+
+  it("stores earned amount for an approved clip that meets the campaign threshold", async () => {
+    routeMocks.submissionFindUnique.mockResolvedValue(
+      submission({
+        campaign: {
+          id: "campaign-1",
+          name: "Spring Campaign",
+          creatorCpv: 0.01,
+          minimumPaidViews: 5000,
+          maximumPaidViews: null,
+        },
+      }),
+    );
+
+    const response = await POST(
+      reviewRequest({ status: "APPROVED", baselineViews: 0, viewCount: 5000 }),
+      params,
+    );
+
+    expect(response.status).toBe(200);
+    expect(routeMocks.tx.campaignSubmission.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          status: "APPROVED",
+          baselineViews: 0,
+          viewCount: 5000,
+          eligibleViews: 5000,
+          earnedAmount: 50,
+        }),
+      }),
+    );
+  });
+
+  it("stores zero earnings for an approved clip below the campaign threshold", async () => {
+    routeMocks.submissionFindUnique.mockResolvedValue(
+      submission({
+        campaign: {
+          id: "campaign-1",
+          name: "Spring Campaign",
+          creatorCpv: 0.00045,
+          minimumPaidViews: 5000,
+          maximumPaidViews: null,
+        },
+      }),
+    );
+
+    const response = await POST(
+      reviewRequest({ status: "APPROVED", baselineViews: 0, viewCount: 200 }),
+      params,
+    );
+
+    expect(response.status).toBe(200);
+    expect(routeMocks.tx.campaignSubmission.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          status: "APPROVED",
+          baselineViews: 0,
+          viewCount: 200,
+          eligibleViews: 0,
+          earnedAmount: 0,
+        }),
+      }),
+    );
   });
 });

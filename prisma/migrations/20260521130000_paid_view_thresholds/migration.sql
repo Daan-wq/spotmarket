@@ -1,0 +1,2 @@
+ALTER TABLE "Campaign" ADD COLUMN "minimumPaidViews" INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE "Campaign" ADD COLUMN "maximumPaidViews" INTEGER;

@@ -28,6 +28,8 @@ const createCampaignSchema = z.object({
   // Section 3 - budget/goals via per-1K rate
   totalBudget: z.number().positive(),
   goalViews: z.number().int().positive().optional(),
+  minimumPaidViews: z.number().int().min(0).optional().default(0),
+  maximumPaidViews: z.number().int().min(0).nullable().optional(),
   adminMarginPerK: z.number().min(0).optional().default(0),
 
   // Section 4
@@ -44,6 +46,18 @@ const createCampaignSchema = z.object({
   maxSlots: z.number().int().positive().optional(),
   requiresApproval: z.boolean().optional().default(false),
   guidelinesUrl: z.string().optional().refine((v) => !v || /^https?:\/\//.test(v), "Must be a valid URL"),
+}).superRefine((data, ctx) => {
+  if (
+    data.maximumPaidViews !== null &&
+    data.maximumPaidViews !== undefined &&
+    data.maximumPaidViews < data.minimumPaidViews
+  ) {
+    ctx.addIssue({
+      code: "custom",
+      path: ["maximumPaidViews"],
+      message: "Maximum paid views must be blank or greater than or equal to minimum paid views",
+    });
+  }
 });
 
 export async function GET(req: Request) {
@@ -151,6 +165,8 @@ export async function POST(req: Request) {
         adminMargin: adminMarginCpv,
         businessCpv,
         goalViews: d.goalViews ? BigInt(d.goalViews) : null,
+        minimumPaidViews: d.minimumPaidViews,
+        maximumPaidViews: d.maximumPaidViews ?? null,
         deadline: new Date(d.deadline),
         startsAt: d.startsAt ? new Date(d.startsAt) : null,
         briefAssetUrl: d.briefAssetUrl,

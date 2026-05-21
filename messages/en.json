@@ -922,6 +922,8 @@
         "briefAsset": "Brief asset",
         "contentAsset": "Content asset {index}",
         "goalViews": "Goal views",
+        "minimumPaidViews": "Minimum paid views",
+        "maximumPaidViews": "Maximum paid views",
         "deadline": "Deadline",
         "approvalRequired": "Approval required",
         "yes": "Yes",
@@ -1042,12 +1044,14 @@
         "noQueueDescription": "Use another queue to view the rest of the submitted clips.",
         "showingCampaign": "Showing clips for {campaign}",
         "filterOptions": "Filter options",
+        "thresholdMessage": "You need {views} views to start earning with this video",
         "open": "Open",
         "viewDetails": "View details"
       },
       "detail": {
         "back": "Back",
         "earningsDisclaimer": "The post has to be accepted for the earnings to enter the wallet.",
+        "thresholdMessage": "You need {views} views to start earning with this video",
         "engagement": "Engagement",
         "campaign": "Campaign",
         "platform": "Platform",

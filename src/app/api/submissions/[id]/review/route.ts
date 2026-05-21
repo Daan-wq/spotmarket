@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { requireAuth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { calculatePaidViews } from "@/lib/paid-views";
 import { calculateReferralSplit } from "@/lib/referral";
 
 const rejectionReasonSchema = z.enum([
@@ -38,7 +39,7 @@ const reviewSchema = z.object({
   }
 });
 
-const PAID_REJECTION_ERROR =
+const PAID_LOCKED_ERROR =
   "This approved submission is already paid or locked in a payout run. Use a financial adjustment workflow instead.";
 
 export async function POST(
@@ -67,11 +68,11 @@ export async function POST(
     }
 
     if (
-      status === "REJECTED" &&
       submission.status === "APPROVED" &&
+      (status === "REJECTED" || status === "APPROVED") &&
       (submission.settledAt || submission.payoutRunItems.length > 0)
     ) {
-      return NextResponse.json({ error: PAID_REJECTION_ERROR }, { status: 409 });
+      return NextResponse.json({ error: PAID_LOCKED_ERROR }, { status: 409 });
     }
 
     let earnedAmount = Number(submission.earnedAmount);
@@ -99,8 +100,15 @@ export async function POST(
         );
       }
 
-      eligibleViews = Math.max(0, viewCount - baselineViews);
-      earnedAmount = eligibleViews * Number(submission.campaign.creatorCpv);
+      const paidViews = calculatePaidViews({
+        rawViews: viewCount,
+        baselineViews,
+        minimumPaidViews: submission.campaign.minimumPaidViews,
+        maximumPaidViews: submission.campaign.maximumPaidViews,
+        creatorCpv: submission.campaign.creatorCpv,
+      });
+      eligibleViews = paidViews.payableViews;
+      earnedAmount = paidViews.earnedAmount;
     } else {
       earnedAmount = 0;
       eligibleViews = 0;

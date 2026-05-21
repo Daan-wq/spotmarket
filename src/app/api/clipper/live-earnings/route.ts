@@ -14,6 +14,7 @@
 import { NextResponse } from "next/server";
 import { requireAuth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { calculatePaidViews } from "@/lib/paid-views";
 
 export const dynamic = "force-dynamic";
 
@@ -53,7 +54,13 @@ export async function GET() {
       claimedViews: true,
       eligibleViews: true,
       baselineViews: true,
-      campaign: { select: { creatorCpv: true } },
+      campaign: {
+        select: {
+          creatorCpv: true,
+          minimumPaidViews: true,
+          maximumPaidViews: true,
+        },
+      },
       metricSnapshots: {
         orderBy: { capturedAt: "desc" },
         take: 1,
@@ -69,12 +76,16 @@ export async function GET() {
     const snapshotViews = latestSnap ? Number(latestSnap.viewCount) : null;
     const fallbackViews = s.viewCount ?? s.claimedViews ?? 0;
     const rawViews = snapshotViews ?? fallbackViews;
-    const baseline = s.baselineViews ?? 0;
-    // eligibleViews when present is authoritative; otherwise compute from raw - baseline.
-    const eligible =
-      s.eligibleViews ?? Math.max(0, rawViews - baseline);
+    const paidViews = calculatePaidViews({
+      rawViews,
+      baselineViews: s.baselineViews,
+      minimumPaidViews: s.campaign.minimumPaidViews,
+      maximumPaidViews: s.campaign.maximumPaidViews,
+      creatorCpv: s.campaign.creatorCpv,
+    });
+    const eligible = paidViews.payableViews;
     const cpv = Number(s.campaign.creatorCpv);
-    const estimated = eligible * cpv;
+    const estimated = paidViews.earnedAmount;
     estimatedTotal += estimated;
     if (latestSnap && (!latestSnapshotAt || latestSnap.capturedAt > latestSnapshotAt)) {
       latestSnapshotAt = latestSnap.capturedAt;
