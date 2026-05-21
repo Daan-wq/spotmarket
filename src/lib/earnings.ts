@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import type { Prisma } from "@prisma/client";
+import { calculatePaidViews } from "@/lib/paid-views";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Projected per-submission earnings (forecast, regardless of status)
@@ -28,6 +29,7 @@ export function projectedEarnings(views: number, creatorCpv: CpvLike): number {
 interface ViewableSubmission {
   viewCount?: number | null;
   claimedViews?: number | null;
+  baselineViews?: number | null;
 }
 
 export function submissionViews(s: ViewableSubmission): number {
@@ -35,13 +37,23 @@ export function submissionViews(s: ViewableSubmission): number {
 }
 
 export interface ProjectedEarningsSubmission extends ViewableSubmission {
-  campaign: { creatorCpv: CpvLike };
+  campaign: {
+    creatorCpv: CpvLike;
+    minimumPaidViews?: number | null;
+    maximumPaidViews?: number | null;
+  };
 }
 
 export function submissionProjectedEarnings(
   s: ProjectedEarningsSubmission,
 ): number {
-  return projectedEarnings(submissionViews(s), s.campaign.creatorCpv);
+  const payableViews = calculatePaidViews({
+    rawViews: submissionViews(s),
+    baselineViews: s.baselineViews,
+    minimumPaidViews: s.campaign.minimumPaidViews,
+    maximumPaidViews: s.campaign.maximumPaidViews,
+  }).payableViews;
+  return projectedEarnings(payableViews, s.campaign.creatorCpv);
 }
 
 export function totalProjectedEarnings(
@@ -98,7 +110,13 @@ export async function getCreatorTotalEarnings(
         claimedViews: true,
         eligibleViews: true,
         baselineViews: true,
-        campaign: { select: { creatorCpv: true } },
+        campaign: {
+          select: {
+            creatorCpv: true,
+            minimumPaidViews: true,
+            maximumPaidViews: true,
+          },
+        },
         metricSnapshots: {
           orderBy: { capturedAt: "desc" },
           take: 1,
@@ -125,8 +143,14 @@ export async function getCreatorTotalEarnings(
     const snapshotViews = latestSnap ? Number(latestSnap.viewCount) : null;
     const fallbackViews = s.viewCount ?? s.claimedViews ?? 0;
     const rawViews = snapshotViews ?? fallbackViews;
-    const baseline = s.baselineViews ?? 0;
-    const eligible = s.eligibleViews ?? Math.max(0, rawViews - baseline);
+    const eligible =
+      s.eligibleViews ??
+      calculatePaidViews({
+        rawViews,
+        baselineViews: s.baselineViews,
+        minimumPaidViews: s.campaign.minimumPaidViews,
+        maximumPaidViews: s.campaign.maximumPaidViews,
+      }).payableViews;
     const cpv = Number(s.campaign.creatorCpv);
     estimated += eligible * cpv;
   }

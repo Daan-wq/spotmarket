@@ -56,6 +56,8 @@ export default async function CampaignHealthPage({ params }: PageProps) {
   );
   const totalBudget = Number(campaign.totalBudget);
   const goalViews = campaign.goalViews ? Number(campaign.goalViews) : 0;
+  const minimumPaidViews = campaign.minimumPaidViews ?? 0;
+  const maximumPaidViews = campaign.maximumPaidViews;
   const burnPct = totalBudget > 0 ? totalEarned / totalBudget : 0;
   const goalPct = goalViews > 0 ? totalEligibleViews / goalViews : 0;
 
@@ -152,6 +154,20 @@ export default async function CampaignHealthPage({ params }: PageProps) {
             label="Active creators"
             value={byCreator.size}
             hint="unique creators with submissions"
+          />
+        </div>
+        <div className="w-full sm:w-[220px] xl:w-[240px]">
+          <KpiCard
+            label="Minimum paid views"
+            value={minimumPaidViews.toLocaleString()}
+            hint="per submitted video"
+          />
+        </div>
+        <div className="w-full sm:w-[220px] xl:w-[240px]">
+          <KpiCard
+            label="Maximum paid views"
+            value={maximumPaidViews === null ? "Unlimited" : maximumPaidViews.toLocaleString()}
+            hint="per submitted video"
           />
         </div>
       </div>

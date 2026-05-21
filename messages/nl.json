@@ -921,6 +921,8 @@
         "briefAsset": "Briefbestand",
         "contentAsset": "Contentbestand {index}",
         "goalViews": "Doelviews",
+        "minimumPaidViews": "Minimum betaalde views",
+        "maximumPaidViews": "Maximum betaalde views",
         "deadline": "Deadline",
         "approvalRequired": "Goedkeuring vereist",
         "yes": "Ja",

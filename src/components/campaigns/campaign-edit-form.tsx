@@ -121,6 +121,8 @@ interface CampaignData {
   linkInBioRequired?: string | null;
   totalBudget?: NumericValue;
   goalViews?: NumericValue;
+  minimumPaidViews?: NumericValue;
+  maximumPaidViews?: NumericValue;
   creatorCpv?: NumericValue;
   adminMargin?: NumericValue;
   deadline?: string | null;
@@ -191,6 +193,8 @@ export function CampaignEditForm({
     linkInBioRequired: campaign.linkInBioRequired ?? "",
     totalBudget: toInputValue(campaign.totalBudget),
     goalViews: toInputValue(campaign.goalViews),
+    minimumPaidViews: toInputValue(campaign.minimumPaidViews),
+    maximumPaidViews: toInputValue(campaign.maximumPaidViews),
     creatorRatePerK: toInputValue(cpvToRatePerK(campaign.creatorCpv)),
     adminMarginPerK: toInputValue(cpvToRatePerK(campaign.adminMargin)),
     deadline: toDateInput(campaign.deadline),
@@ -624,6 +628,24 @@ export function CampaignEditForm({
               />
             </Field>
 
+            <Field label="Minimum paid views">
+              <NumberInput
+                value={form.minimumPaidViews}
+                onChange={(value) => setField("minimumPaidViews", value)}
+                min={0}
+                step={1}
+              />
+            </Field>
+
+            <Field label="Maximum paid views">
+              <NumberInput
+                value={form.maximumPaidViews}
+                onChange={(value) => setField("maximumPaidViews", value)}
+                min={0}
+                step={1}
+              />
+            </Field>
+
             <Field label="Creator payout / 1K views">
               <NumberInput
                 value={form.creatorRatePerK}
@@ -798,6 +820,8 @@ function validateForm(state: CampaignEditFormState): string | null {
 
   const nonNegativeChecks: Array<[string, string]> = [
     ["Minimum followers", state.minFollowers],
+    ["Minimum paid views", state.minimumPaidViews],
+    ["Maximum paid views", state.maximumPaidViews],
     ["Creator payout", state.creatorRatePerK],
     ["Admin margin", state.adminMarginPerK],
   ];
@@ -805,6 +829,16 @@ function validateForm(state: CampaignEditFormState): string | null {
     if (!value.trim()) continue;
     const parsed = Number(value);
     if (!Number.isFinite(parsed) || parsed < 0) return `${label} cannot be negative`;
+  }
+
+  const wholeNumberChecks: Array<[string, string]> = [
+    ["Minimum paid views", state.minimumPaidViews],
+    ["Maximum paid views", state.maximumPaidViews],
+  ];
+  for (const [label, value] of wholeNumberChecks) {
+    if (!value.trim()) continue;
+    const parsed = Number(value);
+    if (!Number.isInteger(parsed)) return `${label} must be a whole number`;
   }
 
   const positiveOptionalChecks: Array<[string, string]> = [
@@ -815,6 +849,20 @@ function validateForm(state: CampaignEditFormState): string | null {
     if (!value.trim()) continue;
     const parsed = Number(value);
     if (!Number.isFinite(parsed) || parsed <= 0) return `${label} must be greater than 0`;
+  }
+
+  if (state.maximumPaidViews.trim()) {
+    const maximumPaidViews = Number(state.maximumPaidViews);
+    const minimumPaidViews = state.minimumPaidViews.trim()
+      ? Number(state.minimumPaidViews)
+      : 0;
+    if (
+      Number.isFinite(maximumPaidViews) &&
+      Number.isFinite(minimumPaidViews) &&
+      maximumPaidViews < minimumPaidViews
+    ) {
+      return "Maximum paid views must be blank or greater than or equal to minimum paid views";
+    }
   }
 
   return null;

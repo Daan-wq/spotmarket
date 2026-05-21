@@ -42,11 +42,14 @@ export interface CreatorCampaignDisplayLabels {
   bioRequirement: string;
   linkInBioRequirement: string;
   goalViews: string;
+  minimumPaidViews: string;
+  maximumPaidViews: string;
   startDate: string;
   deadline: string;
   accountLimit: string;
   approvalRequired: string;
   yes: string;
+  unlimited: string;
   pageStatsLabels: Record<string, string>;
 }
 
@@ -83,6 +86,8 @@ export interface CreatorCampaignDisplayInput {
   bioRequirement?: string | null;
   linkInBioRequired?: string | null;
   goalViews?: NumericDisplayValue | null;
+  minimumPaidViews?: NumericDisplayValue | null;
+  maximumPaidViews?: NumericDisplayValue | null;
   startsAt?: Date | string | null;
   deadline?: Date | string | null;
   maxSlots?: number | null;
@@ -163,6 +168,16 @@ export function buildCreatorCampaignConfigSections(
   );
   addText(
     timelineItems,
+    labels.minimumPaidViews,
+    formatNonNegativeNumber(campaign.minimumPaidViews, formatters),
+  );
+  addText(
+    timelineItems,
+    labels.maximumPaidViews,
+    formatMaximumPaidViews(campaign.maximumPaidViews, labels, formatters),
+  );
+  addText(
+    timelineItems,
     labels.accountLimit,
     formatPositiveNumber(campaign.maxSlots, formatters),
   );
@@ -235,6 +250,26 @@ function formatPositiveNumber(
   const parsed = Number(value);
   if (!Number.isFinite(parsed) || parsed <= 0) return null;
   return formatters.number(parsed);
+}
+
+function formatNonNegativeNumber(
+  value: NumericDisplayValue | null | undefined,
+  formatters: CreatorCampaignDisplayFormatters,
+): string | null {
+  if (value === null || value === undefined) return null;
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed) || parsed < 0) return null;
+  return formatters.number(parsed);
+}
+
+function formatMaximumPaidViews(
+  value: NumericDisplayValue | null | undefined,
+  labels: CreatorCampaignDisplayLabels,
+  formatters: CreatorCampaignDisplayFormatters,
+): string | null {
+  if (value === undefined) return null;
+  if (value === null) return labels.unlimited;
+  return formatNonNegativeNumber(value, formatters);
 }
 
 function formatPercent(

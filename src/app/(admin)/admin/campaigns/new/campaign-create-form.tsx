@@ -156,6 +156,8 @@ export function CampaignCreateForm() {
 
   // — Full details (revealed after approval) —
   const [goalViewsRaw, setGoalViewsRaw] = useState("");
+  const [minimumPaidViewsRaw, setMinimumPaidViewsRaw] = useState("");
+  const [maximumPaidViewsRaw, setMaximumPaidViewsRaw] = useState("");
   const [adminMarginPerK, setAdminMarginPerK] = useState("0.03");
   const [referralLink, setReferralLink] = useState("");
   const [contentGuidelines, setContentGuidelines] = useState("");
@@ -177,6 +179,8 @@ export function CampaignCreateForm() {
 
   const budget = parseFloat(totalBudget) || 0;
   const goalViews = parseViews(goalViewsRaw);
+  const minimumPaidViews = minimumPaidViewsRaw.trim() ? parseViews(minimumPaidViewsRaw) : 0;
+  const maximumPaidViews = maximumPaidViewsRaw.trim() ? parseViews(maximumPaidViewsRaw) : null;
   const margin = parseFloat(adminMarginPerK) || 0;
   const businessPerK = goalViews && budget > 0 ? (budget / goalViews) * 1_000 : null;
   const creatorPerK = businessPerK !== null ? businessPerK - margin : null;
@@ -226,6 +230,12 @@ export function CampaignCreateForm() {
     if (!budget || budget <= 0) { setError("Budget must be a positive number"); return; }
     if (!deadline) { setError("Deadline is required"); return; }
     if (creatorPerK !== null && creatorPerK < 0) { setError("Margin too high - creator rate would be negative"); return; }
+    if (minimumPaidViewsRaw.trim() && minimumPaidViews === null) { setError("Minimum paid views must be a whole number"); return; }
+    if (maximumPaidViewsRaw.trim() && maximumPaidViews === null) { setError("Maximum paid views must be a whole number or blank"); return; }
+    if (maximumPaidViews !== null && minimumPaidViews !== null && maximumPaidViews < minimumPaidViews) {
+      setError("Maximum paid views must be blank or greater than or equal to minimum paid views");
+      return;
+    }
 
     setLoading(true);
     try {
@@ -273,6 +283,8 @@ export function CampaignCreateForm() {
         linkInBioRequired: linkInBioRequired || undefined,
         totalBudget: budget,
         goalViews: goalViews ?? undefined,
+        minimumPaidViews: minimumPaidViews ?? 0,
+        maximumPaidViews: maximumPaidViewsRaw.trim() ? maximumPaidViews : undefined,
         adminMarginPerK: margin,
         deadline: new Date(deadline).toISOString(),
         startsAt: startsAt ? new Date(startsAt).toISOString() : undefined,
@@ -580,6 +592,33 @@ export function CampaignCreateForm() {
               onChange={(e) => setAdminMarginPerK(e.target.value)}
               placeholder="0.03"
             />
+          </div>
+        </div>
+
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
+          <div>
+            <label style={labelStyle}>Minimum paid views</label>
+            <input
+              style={inputStyle}
+              value={minimumPaidViewsRaw}
+              onChange={(e) => setMinimumPaidViewsRaw(e.target.value)}
+              placeholder="e.g. 2k"
+            />
+            {minimumPaidViewsRaw && minimumPaidViews === null ? (
+              <p style={{ fontSize: "11px", marginTop: "4px", color: "var(--error, #dc2626)" }}>Invalid - try: 2k, 5000</p>
+            ) : null}
+          </div>
+          <div>
+            <label style={labelStyle}>Maximum paid views</label>
+            <input
+              style={inputStyle}
+              value={maximumPaidViewsRaw}
+              onChange={(e) => setMaximumPaidViewsRaw(e.target.value)}
+              placeholder="Blank for unlimited"
+            />
+            {maximumPaidViewsRaw && maximumPaidViews === null ? (
+              <p style={{ fontSize: "11px", marginTop: "4px", color: "var(--error, #dc2626)" }}>Invalid - try: 100k, 500000</p>
+            ) : null}
           </div>
         </div>
 

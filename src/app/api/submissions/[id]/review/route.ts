@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireAuth } from "@/lib/auth";
 import { calculateReferralSplit } from "@/lib/referral";
+import { calculatePaidViews } from "@/lib/paid-views";
 import { z } from "zod";
 
 const reviewSchema = z.object({
@@ -47,7 +48,12 @@ export async function POST(
     if (status === "APPROVED") {
       approvedBaselineViews = baselineViews ?? submission.baselineViews ?? 0;
       approvedViewCount = viewCount ?? submission.viewCount ?? submission.claimedViews ?? 0;
-      eligibleViews = Math.max(0, approvedViewCount - approvedBaselineViews);
+      eligibleViews = calculatePaidViews({
+        rawViews: approvedViewCount,
+        baselineViews: approvedBaselineViews,
+        minimumPaidViews: submission.campaign.minimumPaidViews,
+        maximumPaidViews: submission.campaign.maximumPaidViews,
+      }).payableViews;
       earnedAmount = eligibleViews * Number(submission.campaign.creatorCpv);
     }
 

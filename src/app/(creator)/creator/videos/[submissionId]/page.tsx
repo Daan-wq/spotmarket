@@ -50,6 +50,8 @@ export default async function VideoDetailPage({
           id: true,
           name: true,
           creatorCpv: true,
+          minimumPaidViews: true,
+          maximumPaidViews: true,
         },
       },
     },

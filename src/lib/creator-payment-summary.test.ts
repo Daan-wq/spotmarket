@@ -99,4 +99,23 @@ describe("buildCreatorPaymentSummary", () => {
 
     expect(summary.earningsByCampaign[0]?.totalViews).toBe(35);
   });
+
+  it("uses paid view thresholds when falling back from missing stored eligible views", () => {
+    const summary = buildCreatorPaymentSummary({
+      submissions: [
+        submission({
+          campaignId: "a",
+          campaignName: "A",
+          eligibleViews: null,
+          viewCount: 7_000,
+          baselineViews: 1_000,
+          minimumPaidViews: 2_000,
+          maximumPaidViews: 5_000,
+        }),
+      ],
+      payouts: [],
+    });
+
+    expect(summary.earningsByCampaign[0]?.totalViews).toBe(5_000);
+  });
 });

@@ -921,6 +921,8 @@
         "briefAsset": "Brief asset",
         "contentAsset": "Content asset {index}",
         "goalViews": "Goal views",
+        "minimumPaidViews": "Minimum paid views",
+        "maximumPaidViews": "Maximum paid views",
         "deadline": "Deadline",
         "approvalRequired": "Approval required",
         "yes": "Yes",

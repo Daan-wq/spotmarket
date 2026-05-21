@@ -15,6 +15,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { requireAuth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { resolveCreatorLeaderboardName } from "@/lib/creator-leaderboard-name";
+import { calculatePaidViews } from "@/lib/paid-views";
 
 export const dynamic = "force-dynamic";
 
@@ -44,7 +45,13 @@ export async function GET(
 
   const campaign = await prisma.campaign.findUnique({
     where: { id: campaignId },
-    select: { id: true, name: true, creatorCpv: true },
+    select: {
+      id: true,
+      name: true,
+      creatorCpv: true,
+      minimumPaidViews: true,
+      maximumPaidViews: true,
+    },
   });
   if (!campaign) {
     return NextResponse.json({ error: "Campaign not found" }, { status: 404 });
@@ -60,6 +67,7 @@ export async function GET(
       viewCount: true,
       claimedViews: true,
       eligibleViews: true,
+      baselineViews: true,
       earnedAmount: true,
       createdAt: true,
       creatorId: true,
@@ -123,7 +131,13 @@ export async function GET(
     const profile = s.creator.creatorProfile;
     const key = s.creatorId;
     const views =
-      s.eligibleViews ?? s.viewCount ?? s.claimedViews ?? 0;
+      s.eligibleViews ??
+      calculatePaidViews({
+        rawViews: s.viewCount ?? s.claimedViews ?? 0,
+        baselineViews: s.baselineViews,
+        minimumPaidViews: campaign.minimumPaidViews,
+        maximumPaidViews: campaign.maximumPaidViews,
+      }).payableViews;
     const earned = Number(s.earnedAmount ?? 0);
 
     const existing = byCreator.get(key);

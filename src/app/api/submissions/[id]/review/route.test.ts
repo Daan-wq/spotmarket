@@ -132,6 +132,74 @@ describe("POST /api/submissions/[id]/review", () => {
     );
   });
 
+  it("stores zero payable views when approved views are below the minimum", async () => {
+    routeMocks.campaignSubmissionFindUnique.mockResolvedValue({
+      id: "submission-1",
+      creatorId: "creator-1",
+      applicationId: "application-1",
+      application: { id: "application-1" },
+      campaign: {
+        id: "campaign-1",
+        name: "Campaign",
+        creatorCpv: 0.001,
+        minimumPaidViews: 2_000,
+        maximumPaidViews: null,
+      },
+      status: "PENDING",
+      earnedAmount: 0,
+      viewCount: 1_999,
+      baselineViews: 0,
+      claimedViews: 0,
+    });
+
+    const response = await postReview({ status: "APPROVED" });
+
+    expect(response.status).toBe(200);
+    expect(routeMocks.txCampaignSubmissionUpdate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          eligibleViews: 0,
+          earnedAmount: 0,
+        }),
+      }),
+    );
+  });
+
+  it("caps payable views at the campaign maximum after subtracting baseline views", async () => {
+    routeMocks.campaignSubmissionFindUnique.mockResolvedValue({
+      id: "submission-1",
+      creatorId: "creator-1",
+      applicationId: "application-1",
+      application: { id: "application-1" },
+      campaign: {
+        id: "campaign-1",
+        name: "Campaign",
+        creatorCpv: 0.001,
+        minimumPaidViews: 2_000,
+        maximumPaidViews: 5_000,
+      },
+      status: "PENDING",
+      earnedAmount: 0,
+      viewCount: 7_000,
+      baselineViews: 1_000,
+      claimedViews: 0,
+    });
+
+    const response = await postReview({ status: "APPROVED" });
+
+    expect(response.status).toBe(200);
+    expect(routeMocks.txCampaignSubmissionUpdate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          baselineViews: 1_000,
+          viewCount: 7_000,
+          eligibleViews: 5_000,
+          earnedAmount: 5,
+        }),
+      }),
+    );
+  });
+
   it("requires a note before rejecting", async () => {
     const response = await postReview({ status: "REJECTED" });
 

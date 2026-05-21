@@ -46,11 +46,14 @@ export default async function MyVideosPage() {
       earnedAmount: true,
       claimedViews: true,
       viewCount: true,
+      baselineViews: true,
       createdAt: true,
       campaign: {
         select: {
           name: true,
           creatorCpv: true,
+          minimumPaidViews: true,
+          maximumPaidViews: true,
         },
       },
     },

@@ -1,3 +1,5 @@
+import { calculatePaidViews } from "@/lib/paid-views";
+
 type NumericLike = number | string | { toString(): string } | null | undefined;
 
 export interface CreatorPaymentSubmission {
@@ -7,6 +9,9 @@ export interface CreatorPaymentSubmission {
   eligibleViews?: number | null;
   viewCount?: number | null;
   claimedViews?: number | null;
+  baselineViews?: number | null;
+  minimumPaidViews?: number | null;
+  maximumPaidViews?: number | null;
   creatorCpv?: NumericLike;
 }
 
@@ -51,7 +56,15 @@ function normalizedStatus(status: string): string {
 }
 
 function campaignViews(submission: CreatorPaymentSubmission): number {
-  return submission.eligibleViews ?? submission.viewCount ?? submission.claimedViews ?? 0;
+  return (
+    submission.eligibleViews ??
+    calculatePaidViews({
+      rawViews: submission.viewCount ?? submission.claimedViews ?? 0,
+      baselineViews: submission.baselineViews,
+      minimumPaidViews: submission.minimumPaidViews,
+      maximumPaidViews: submission.maximumPaidViews,
+    }).payableViews
+  );
 }
 
 export function buildCreatorPaymentSummary({
@@ -117,7 +130,14 @@ export async function getCreatorPaymentSummary(
         eligibleViews: true,
         viewCount: true,
         claimedViews: true,
-        campaign: { select: { name: true } },
+        baselineViews: true,
+        campaign: {
+          select: {
+            name: true,
+            minimumPaidViews: true,
+            maximumPaidViews: true,
+          },
+        },
       },
       orderBy: { createdAt: "desc" },
     }),
@@ -135,6 +155,9 @@ export async function getCreatorPaymentSummary(
       eligibleViews: submission.eligibleViews,
       viewCount: submission.viewCount,
       claimedViews: submission.claimedViews,
+      baselineViews: submission.baselineViews,
+      minimumPaidViews: submission.campaign.minimumPaidViews,
+      maximumPaidViews: submission.campaign.maximumPaidViews,
     })),
     payouts,
   });

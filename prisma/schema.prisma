@@ -502,6 +502,8 @@ model Campaign {
   adminMargin       Decimal        @db.Decimal(8, 6)
   businessCpv       Decimal        @db.Decimal(8, 6)
   goalViews         BigInt?
+  minimumPaidViews  Int            @default(0)
+  maximumPaidViews  Int?
   deadline          DateTime
   startsAt          DateTime?
   status            CampaignStatus @default(draft)
