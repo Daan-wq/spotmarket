@@ -2,7 +2,8 @@ import { describe, expect, it } from "vitest";
 import {
   buildCampaignLeaderboardRows,
   campaignLeaderboardEarnings,
-  campaignLeaderboardViews,
+  campaignLeaderboardPayableViews,
+  campaignLeaderboardTotalViews,
   type CampaignLeaderboardSubmission,
 } from "./campaign-leaderboard";
 
@@ -36,13 +37,58 @@ function submission(
 }
 
 describe("campaign leaderboard helpers", () => {
-  it("uses stored eligible views before recalculating payable views", () => {
-    expect(campaignLeaderboardViews(submission({ eligibleViews: 1_234 }))).toBe(1_234);
+  it("uses stored positive eligible views before recalculating payable views", () => {
+    expect(campaignLeaderboardPayableViews(submission({ eligibleViews: 1_234 }))).toBe(1_234);
   });
 
   it("falls back to campaign payable views when stored earned amount is zero", () => {
-    expect(campaignLeaderboardViews(submission())).toBe(7_500);
+    expect(campaignLeaderboardPayableViews(submission())).toBe(7_500);
     expect(campaignLeaderboardEarnings(submission())).toBe(7.5);
+  });
+
+  it("does not treat stored zero eligible views as final when imported views are available", () => {
+    expect(
+      campaignLeaderboardPayableViews(
+        submission({
+          eligibleViews: 0,
+          viewCount: 5_882,
+          baselineViews: 0,
+          campaign: {
+            creatorCpv: 0.0004,
+            minimumPaidViews: 2_000,
+            maximumPaidViews: 100_000,
+          },
+        }),
+      ),
+    ).toBe(5_882);
+  });
+
+  it("shows total imported views separately from payable views", () => {
+    const imported = submission({
+      eligibleViews: 0,
+      viewCount: 249,
+      baselineViews: 1_000,
+      campaign: {
+        creatorCpv: 0.0004,
+        minimumPaidViews: 2_000,
+        maximumPaidViews: 100_000,
+      },
+    });
+
+    expect(campaignLeaderboardTotalViews(imported)).toBe(249);
+    expect(campaignLeaderboardPayableViews(imported)).toBe(0);
+  });
+
+  it("prefers latest metric snapshot for displayed and payable views", () => {
+    const imported = submission({
+      viewCount: 0,
+      eligibleViews: 0,
+      metricSnapshots: [{ viewCount: "10000" }],
+    });
+
+    expect(campaignLeaderboardTotalViews(imported)).toBe(10_000);
+    expect(campaignLeaderboardPayableViews(imported)).toBe(7_500);
+    expect(campaignLeaderboardEarnings(imported)).toBe(7.5);
   });
 
   it("keeps stored earned amount when it is already tracked", () => {
@@ -65,10 +111,10 @@ describe("campaign leaderboard helpers", () => {
         creatorId: "user_1",
         displayName: "discord_creator",
         submissionCount: 2,
-        totalViews: 15_000,
+        totalViews: 30_000,
         totalEarned: 12.5,
-        bestPostUrl: "https://example.com/post",
-        bestPostViews: 7_500,
+        bestPostUrl: "https://example.com/better",
+        bestPostViews: 20_000,
       }),
     ]);
   });

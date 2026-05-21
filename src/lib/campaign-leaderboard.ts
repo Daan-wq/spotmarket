@@ -3,6 +3,11 @@ import { resolveCreatorLeaderboardName } from "@/lib/creator-leaderboard-name";
 
 type NumericLike = number | string | { toString(): string } | null | undefined;
 
+interface CampaignLeaderboardMetricSnapshot {
+  viewCount: NumericLike;
+  capturedAt?: Date | string | null;
+}
+
 export interface CampaignLeaderboardSubmission {
   creatorId: string;
   postUrl?: string | null;
@@ -11,6 +16,7 @@ export interface CampaignLeaderboardSubmission {
   eligibleViews?: number | null;
   baselineViews?: NumericLike;
   earnedAmount?: NumericLike;
+  metricSnapshots?: ReadonlyArray<CampaignLeaderboardMetricSnapshot>;
   campaign: {
     creatorCpv: NumericLike;
     minimumPaidViews?: NumericLike;
@@ -50,18 +56,27 @@ function roundMoney(value: number): number {
   return Math.round((value + Number.EPSILON) * 100) / 100;
 }
 
-export function campaignLeaderboardViews(
+export function campaignLeaderboardTotalViews(
   submission: CampaignLeaderboardSubmission,
 ): number {
-  return (
-    submission.eligibleViews ??
-    calculatePaidViews({
-      rawViews: submission.viewCount ?? submission.claimedViews ?? 0,
-      baselineViews: submission.baselineViews,
-      minimumPaidViews: submission.campaign.minimumPaidViews,
-      maximumPaidViews: submission.campaign.maximumPaidViews,
-    }).payableViews
-  );
+  const latestSnapshotViews = submission.metricSnapshots?.[0]?.viewCount;
+  return toNumber(latestSnapshotViews ?? submission.viewCount ?? submission.claimedViews ?? 0);
+}
+
+export function campaignLeaderboardPayableViews(
+  submission: CampaignLeaderboardSubmission,
+): number {
+  const calculated = calculatePaidViews({
+    rawViews: campaignLeaderboardTotalViews(submission),
+    baselineViews: submission.baselineViews,
+    minimumPaidViews: submission.campaign.minimumPaidViews,
+    maximumPaidViews: submission.campaign.maximumPaidViews,
+  }).payableViews;
+
+  if (submission.eligibleViews == null) return calculated;
+
+  const storedEligibleViews = toNumber(submission.eligibleViews);
+  return storedEligibleViews > 0 ? storedEligibleViews : calculated;
 }
 
 export function campaignLeaderboardEarnings(
@@ -71,7 +86,7 @@ export function campaignLeaderboardEarnings(
   if (stored > 0) return roundMoney(stored);
 
   return roundMoney(
-    campaignLeaderboardViews(submission) * toNumber(submission.campaign.creatorCpv),
+    campaignLeaderboardPayableViews(submission) * toNumber(submission.campaign.creatorCpv),
   );
 }
 
@@ -82,7 +97,7 @@ export function buildCampaignLeaderboardRows(
 
   for (const submission of submissions) {
     const profile = submission.creator.creatorProfile;
-    const views = campaignLeaderboardViews(submission);
+    const views = campaignLeaderboardTotalViews(submission);
     const earned = campaignLeaderboardEarnings(submission);
     const current =
       byCreator.get(submission.creatorId) ??

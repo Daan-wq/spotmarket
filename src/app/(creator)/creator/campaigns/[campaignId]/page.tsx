@@ -142,6 +142,11 @@ export default async function CampaignDetailPage({
       eligibleViews: true,
       baselineViews: true,
       earnedAmount: true,
+      metricSnapshots: {
+        orderBy: { capturedAt: "desc" },
+        take: 1,
+        select: { viewCount: true, capturedAt: true },
+      },
       campaign: {
         select: {
           creatorCpv: true,

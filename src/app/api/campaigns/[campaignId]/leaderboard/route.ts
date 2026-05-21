@@ -70,6 +70,11 @@ export async function GET(
       earnedAmount: true,
       createdAt: true,
       creatorId: true,
+      metricSnapshots: {
+        orderBy: { capturedAt: "desc" },
+        take: 1,
+        select: { viewCount: true, capturedAt: true },
+      },
       creator: {
         select: {
           id: true,
