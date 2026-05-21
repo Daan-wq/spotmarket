@@ -28,8 +28,8 @@ export default async function SettingsPage() {
         currentLocale={locale}
         title={t("language.title")}
         description={t("language.description")}
+        ariaLabel={t("language.ariaLabel")}
         savedLabel={t("language.saved")}
-        savingLabel={t("language.saving")}
         errorLabel={t("language.error")}
       />
 
@@ -38,13 +38,7 @@ export default async function SettingsPage() {
         <p className="mb-4 mt-1 text-xs text-neutral-500">
           {t("danger.description")}
         </p>
-        <DeleteAccountButton
-          label={t("danger.deleteButton")}
-          confirmTitle={t("danger.confirmTitle")}
-          confirmDescription={t("danger.confirmDescription")}
-          confirmLabel={t("danger.confirmButton")}
-          cancelLabel={t("danger.cancelButton")}
-        />
+        <DeleteAccountButton />
       </section>
     </div>
   );
