@@ -25,10 +25,10 @@ const createCampaignSchema = z.object({
   bioRequirement: z.string().max(500).optional(),
   linkInBioRequired: z.string().max(500).optional(),
 
-  // Section 3 — budget/goals via CPM
+  // Section 3 - budget/goals via per-1K rate
   totalBudget: z.number().positive(),
   goalViews: z.number().int().positive().optional(),
-  adminMarginPerM: z.number().min(0).optional().default(0),
+  adminMarginPerK: z.number().min(0).optional().default(0),
 
   // Section 4
   deadline: z.string().datetime(),
@@ -118,13 +118,12 @@ export async function POST(req: Request) {
 
   const d = parsed.data;
 
-  // Compute CPV values from CPM inputs
-  const adminMarginCpv = d.adminMarginPerM / 1_000_000;
+  const adminMarginCpv = d.adminMarginPerK / 1_000;
   const businessCpv = d.goalViews ? d.totalBudget / d.goalViews : adminMarginCpv;
   const creatorCpv = businessCpv - adminMarginCpv;
 
   if (creatorCpv < 0) {
-    return NextResponse.json({ error: "Admin margin is too high — creator CPM would be negative" }, { status: 400 });
+    return NextResponse.json({ error: "Admin margin is too high - creator rate would be negative" }, { status: 400 });
   }
 
   // Derive targetGeo from targetCountry for creator matching

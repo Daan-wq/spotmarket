@@ -9,12 +9,21 @@ export function formatCurrency(
   locale: Locale | string | undefined = "en",
   options: Intl.NumberFormatOptions = {},
 ): string {
+  const {
+    minimumFractionDigits: minimumOverride,
+    maximumFractionDigits: maximumOverride,
+    ...restOptions
+  } = options;
+  const maximumFractionDigits = maximumOverride ?? 2;
+  const minimumFractionDigits =
+    minimumOverride ?? Math.min(2, maximumFractionDigits);
+
   return new Intl.NumberFormat(toIntlLocale(locale), {
     style: "currency",
     currency: "EUR",
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-    ...options,
+    minimumFractionDigits,
+    maximumFractionDigits,
+    ...restOptions,
   }).format(value);
 }
 

@@ -3,7 +3,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { Platform, Niche } from "@prisma/client";
 import { z } from "zod";
-import { cpmPerMToCpv } from "@/lib/campaign-edit";
+import { ratePerKToCpv } from "@/lib/campaign-edit";
 
 function serialize<T>(data: T): T {
   return JSON.parse(
@@ -55,8 +55,8 @@ const patchSchema = z.object({
   linkInBioRequired: z.string().optional().nullable(),
   totalBudget: z.number().positive().optional(),
   goalViews: z.number().int().positive().optional().nullable(),
-  creatorCpmPerM: z.number().min(0).optional(),
-  adminMarginPerM: z.number().min(0).optional(),
+  creatorRatePerK: z.number().min(0).optional(),
+  adminMarginPerK: z.number().min(0).optional(),
   maxSlots: z.number().int().positive().optional().nullable(),
   requiresApproval: z.boolean().optional(),
   status: z.enum(["draft", "pending_payment", "pending_review", "active", "paused", "completed", "cancelled"]).optional(),
@@ -154,8 +154,8 @@ export async function PATCH(
     platforms,
     goalViews,
     minEngagementRate,
-    creatorCpmPerM,
-    adminMarginPerM,
+    creatorRatePerK,
+    adminMarginPerK,
     ...rest
   } = parsed.data;
 
@@ -168,11 +168,11 @@ export async function PATCH(
   }
   if (goalViews !== undefined) data.goalViews = goalViews ? BigInt(goalViews) : null;
   if (minEngagementRate !== undefined) data.minEngagementRate = minEngagementRate;
-  if (creatorCpmPerM !== undefined || adminMarginPerM !== undefined) {
-    const nextCreatorCpmPerM = creatorCpmPerM ?? Number(authorized.campaign.creatorCpv) * 1_000_000;
-    const nextAdminMarginPerM = adminMarginPerM ?? Number(authorized.campaign.adminMargin) * 1_000_000;
-    const creatorCpv = cpmPerMToCpv(nextCreatorCpmPerM);
-    const adminMargin = cpmPerMToCpv(nextAdminMarginPerM);
+  if (creatorRatePerK !== undefined || adminMarginPerK !== undefined) {
+    const nextCreatorRatePerK = creatorRatePerK ?? Number(authorized.campaign.creatorCpv) * 1_000;
+    const nextAdminMarginPerK = adminMarginPerK ?? Number(authorized.campaign.adminMargin) * 1_000;
+    const creatorCpv = ratePerKToCpv(nextCreatorRatePerK);
+    const adminMargin = ratePerKToCpv(nextAdminMarginPerK);
     data.creatorCpv = creatorCpv;
     data.adminMargin = adminMargin;
     data.businessCpv = creatorCpv + adminMargin;
