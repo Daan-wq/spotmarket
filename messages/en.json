@@ -188,7 +188,7 @@
     "header": {
       "eyebrow": "Preferences",
       "title": "Settings",
-      "description": "Manage your profile and account preferences"
+      "description": "Manage your account preferences"
     },
     "stats": {
       "accounts": {
@@ -905,6 +905,25 @@
         "openGuidelines": "Open guidelines",
         "requirements": "Requirements",
         "contentNotes": "Content notes",
+        "description": "Description",
+        "bannerVideo": "Banner video",
+        "briefAsset": "Brief asset",
+        "contentAsset": "Content asset {index}",
+        "goalViews": "Goal views",
+        "approvalRequired": "Approval required",
+        "yes": "Yes",
+        "minimumAge": "Minimum age",
+        "requiredHashtags": "Required hashtags",
+        "targetCountry": "Target country",
+        "targetCountryAudience": "Target country audience",
+        "target18Audience": "Target 18+ audience",
+        "targetMaleAudience": "Target male audience",
+        "minimumFollowers": "Minimum followers",
+        "minimumEngagementRate": "Minimum engagement rate",
+        "bioRequirement": "Bio requirement",
+        "linkInBioRequirement": "Link in bio requirement",
+        "pageStats": "Page stats",
+        "otherNotes": "Other notes",
         "payouts": "Payouts",
         "estimate": "Estimate",
         "trackedOrClaimed": "Based on tracked or claimed views",
