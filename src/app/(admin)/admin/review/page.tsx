@@ -4,27 +4,11 @@ import { ExternalLink } from "@/components/animate-ui/icons/external-link";
 import { Badge } from "@/components/ui/badge";
 import { EmptyState } from "@/components/ui/empty-state";
 import { PageHeader, SectionHeader, StatCard } from "@/components/ui/page";
-import { LogoReviewWidget } from "@/components/admin/logo-review-widget";
 import SubmissionActions from "../submissions/_components/submission-actions";
 import { prisma } from "@/lib/prisma";
 import { formatDate, titleCaseEnum } from "@/lib/admin/agency-format";
-import { ClipReviewForm } from "./clip-review-form";
-import { resolveThumbnail } from "@/lib/clip-thumbnail";
-import type { ClipMediaType } from "@/lib/instagram-media-type";
 
 export const dynamic = "force-dynamic";
-
-const SCORECARD = [
-  "Logo",
-  "Hook",
-  "Pacing",
-  "Captions",
-  "Brand fit",
-  "Spelling",
-  "9:16 format",
-  "Audio",
-  "CTA",
-];
 
 export default async function ReviewPage() {
   const submissions = await prisma.campaignSubmission.findMany({
@@ -41,42 +25,23 @@ export default async function ReviewPage() {
           creatorProfile: { select: { displayName: true } },
         },
       },
-      qcReviews: { orderBy: { createdAt: "desc" }, take: 1 },
-      submissionSignals: { where: { resolvedAt: null }, select: { id: true, type: true, severity: true } },
     },
     take: 80,
   });
 
-  const logoMissing = submissions.filter((submission) => submission.logoStatus === "MISSING").length;
   const revisions = submissions.filter((submission) => submission.status === "NEEDS_REVISION").length;
   const flagged = submissions.filter((submission) => submission.status === "FLAGGED").length;
-  const reviewRows = await Promise.all(
-    submissions.map(async (submission) => {
-      const resolved = await resolveThumbnail(submission.postUrl, submission.thumbnailUrl, {
-        creatorId: submission.creator.id,
-        submissionId: submission.id,
-        storedMediaType: submission.mediaType as ClipMediaType | null,
-      });
-
-      return {
-        submission,
-        thumbnailUrl: resolved.thumbnailUrl ?? submission.screenshotUrl,
-      };
-    }),
-  );
 
   return (
     <div className="space-y-9">
       <PageHeader
         eyebrow="Clip review"
         title="Clip review"
-        description="Review clips for logo, hook, pacing, captions, brand fit, spelling, format, audio, CTA, notes, and decision."
-        actions={[{ label: "Legacy logo queue", href: "/admin/review/videos", icon: ClipboardCheck }]}
+        description="Open each submitted post, then approve or reject. Rejections require a note."
       />
 
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
         <StatCard label="Needs review" value={String(submissions.length)} detail="Pending, flagged, or revision" tone={submissions.length > 0 ? "warning" : "neutral"} />
-        <StatCard label="Missing logo" value={String(logoMissing)} detail="Logo currently marked missing" tone={logoMissing > 0 ? "danger" : "neutral"} />
         <StatCard label="Revision needed" value={String(revisions)} detail="Creator should revise before approval" tone={revisions > 0 ? "warning" : "neutral"} />
         <StatCard label="Flagged" value={String(flagged)} detail="Risk or tracking issue" tone={flagged > 0 ? "danger" : "neutral"} />
       </div>
@@ -84,7 +49,7 @@ export default async function ReviewPage() {
       <section>
         <SectionHeader
           title="Review queue"
-          description={`Approve, reject, or send revision after checking: ${SCORECARD.join(", ")}.`}
+          description="Open the post, then make the final call."
         />
         {submissions.length === 0 ? (
           <EmptyState
@@ -95,107 +60,44 @@ export default async function ReviewPage() {
           />
         ) : (
           <div className="space-y-4">
-            {reviewRows.map(({ submission, thumbnailUrl }) => {
-              const latestReview = submission.qcReviews[0] ?? null;
-              const canApprove = submission.logoStatus === "PRESENT";
-              return (
-                <article key={submission.id} className="rounded-2xl border border-neutral-200 bg-white p-5">
-                  <header className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
-                    <div>
-                      <Link href={`/admin/campaigns/${submission.campaign.id}`} className="text-base font-semibold text-neutral-950 underline-offset-2 hover:underline">
-                        {submission.campaign.name}
-                      </Link>
+            {submissions.map((submission) => (
+              <article key={submission.id} className="rounded-2xl border border-neutral-200 bg-white p-5">
+                <header className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+                  <div>
+                    <Link href={`/admin/campaigns/${submission.campaign.id}`} className="text-base font-semibold text-neutral-950 underline-offset-2 hover:underline">
+                      {submission.campaign.name}
+                    </Link>
+                    <p className="mt-1 text-xs text-neutral-500">
+                      {submission.campaign.brand?.name || "Unlinked brand"} - {submission.creator.email} - submitted {formatDate(submission.createdAt)}
+                    </p>
+                    {submission.productionAssignment ? (
                       <p className="mt-1 text-xs text-neutral-500">
-                        {submission.campaign.brand?.name || "Unlinked brand"} · {submission.creator.email} · submitted {formatDate(submission.createdAt)}
+                        Assignment: {submission.productionAssignment.contentAngle || "No angle"} - due {formatDate(submission.productionAssignment.dueAt)}
                       </p>
-                      {submission.productionAssignment ? (
-                        <p className="mt-1 text-xs text-neutral-500">
-                          Assignment: {submission.productionAssignment.contentAngle || "No angle"} · due {formatDate(submission.productionAssignment.dueAt)}
-                        </p>
-                      ) : null}
-                    </div>
-                    <div className="flex flex-wrap items-center gap-2">
-                      <Badge variant={submission.status === "FLAGGED" ? "failed" : submission.status === "NEEDS_REVISION" ? "pending" : "neutral"}>
-                        {titleCaseEnum(submission.status)}
-                      </Badge>
-                      <Badge variant={submission.logoStatus === "PRESENT" ? "verified" : submission.logoStatus === "MISSING" ? "failed" : "pending"}>
-                        Logo {titleCaseEnum(submission.logoStatus ?? "PENDING")}
-                      </Badge>
-                    </div>
-                  </header>
-
-                  {submission.submissionSignals.length > 0 ? (
-                    <div className="mt-4 flex flex-wrap gap-2">
-                      {submission.submissionSignals.map((signal) => (
-                        <Badge key={signal.id} variant={signal.severity === "CRITICAL" ? "failed" : "pending"}>
-                          {titleCaseEnum(signal.type)}
-                        </Badge>
-                      ))}
-                    </div>
-                  ) : null}
-
-                  <div className="mt-5 grid grid-cols-1 gap-4 xl:grid-cols-[1.3fr_1fr]">
-                    <LogoReviewWidget
-                      submissionId={submission.id}
-                      thumbnailUrl={thumbnailUrl}
-                      postUrl={submission.postUrl}
-                      initialStatus={(submission.logoStatus ?? "PENDING") as "PENDING" | "PRESENT" | "MISSING"}
-                      initialVerifiedAt={submission.logoVerifiedAt?.toISOString() ?? null}
-                      initialVerifiedBy={submission.logoVerifiedBy}
-                    />
-
-                    <div className="rounded-2xl border border-neutral-200 bg-neutral-50 p-4">
-                      <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-neutral-400">Latest scorecard</p>
-                      {latestReview ? (
-                        <div className="mt-3 grid grid-cols-2 gap-2 text-sm text-neutral-600">
-                          <Score label="Hook" value={latestReview.hookScore} />
-                          <Score label="Pacing" value={latestReview.pacingScore} />
-                          <Score label="Captions" value={latestReview.captionsScore} />
-                          <Score label="Brand fit" value={latestReview.brandFitScore} />
-                          <Score label="Logo" value={latestReview.logoPresent ? "Present" : "Missing"} />
-                          <Score label="Decision" value={titleCaseEnum(latestReview.decision)} />
-                        </div>
-                      ) : (
-                        <p className="mt-3 text-sm leading-6 text-neutral-500">
-                          No review recorded yet. Save a scorecard below before the final decision.
-                        </p>
-                      )}
-
-                      <ClipReviewForm submissionId={submission.id} />
-
-                      <div className="mt-4 flex flex-wrap items-center gap-2">
-                        <a
-                          href={submission.postUrl}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-neutral-200 bg-white px-4 text-sm font-semibold text-neutral-950 hover:bg-neutral-100"
-                        >
-                          <ExternalLink className="h-4 w-4" animateOnHover />
-                          Open post
-                        </a>
-                        {canApprove ? (
-                          <SubmissionActions id={submission.id} status={submission.status} postUrl={submission.postUrl} />
-                        ) : (
-                          <p className="text-xs text-neutral-500">Approval unlocks after logo is marked present.</p>
-                        )}
-                      </div>
-                    </div>
+                    ) : null}
                   </div>
-                </article>
-              );
-            })}
+                  <Badge variant={submission.status === "FLAGGED" ? "failed" : submission.status === "NEEDS_REVISION" ? "pending" : "neutral"}>
+                    {titleCaseEnum(submission.status)}
+                  </Badge>
+                </header>
+
+                <div className="mt-5 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                  <a
+                    href={submission.postUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-neutral-200 bg-white px-4 text-sm font-semibold text-neutral-950 transition hover:bg-neutral-50"
+                  >
+                    <ExternalLink className="h-4 w-4" animateOnHover />
+                    Open post
+                  </a>
+                  <SubmissionActions id={submission.id} status={submission.status} />
+                </div>
+              </article>
+            ))}
           </div>
         )}
       </section>
-    </div>
-  );
-}
-
-function Score({ label, value }: { label: string; value: number | string | null }) {
-  return (
-    <div className="rounded-xl border border-neutral-200 bg-white p-3">
-      <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-neutral-400">{label}</p>
-      <p className="mt-1 font-semibold text-neutral-950">{value ?? "-"}</p>
     </div>
   );
 }

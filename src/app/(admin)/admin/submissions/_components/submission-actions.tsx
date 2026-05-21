@@ -1,136 +1,107 @@
-'use client';
+"use client";
 
-import { useOptimistic, useState, useTransition } from 'react';
-import { useRouter } from 'next/navigation';
-import { toast } from 'sonner';
+import { useOptimistic, useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
+import { toast } from "sonner";
+import { Button } from "@/components/ui/button";
 
 interface SubmissionActionsProps {
   id: string;
   status: string;
-  postUrl: string | null;
 }
 
-export default function SubmissionActions({ id, status, postUrl }: SubmissionActionsProps) {
+export default function SubmissionActions({ id, status }: SubmissionActionsProps) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [optimisticStatus, setOptimisticStatus] = useOptimistic(status);
-  const [showApproveForm, setShowApproveForm] = useState(false);
-  const [baselineViews, setBaselineViews] = useState('');
-  const [viewCount, setViewCount] = useState('');
+  const [showRejectNote, setShowRejectNote] = useState(false);
+  const [rejectionNote, setRejectionNote] = useState("");
 
   function approve() {
     if (isPending) return;
-    const baseline = parseInt(baselineViews, 10);
-    const views = parseInt(viewCount, 10);
-    if (isNaN(baseline) || isNaN(views) || baseline < 0 || views < 0) return;
-
-    startTransition(async () => {
-      setOptimisticStatus('APPROVED');
-
-      try {
-        const res = await fetch('/api/submissions/' + id + '/review', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ status: 'APPROVED', baselineViews: baseline, viewCount: views })
-        });
-        if (!res.ok) {
-          toast.error('Failed to approve submission — reverting');
-          return;
-        }
-        toast.success('Submission approved');
-        router.refresh();
-      } catch (err) {
-        console.error(err);
-        toast.error('Network error — reverting');
-      }
-    });
+    submitReview("APPROVED");
   }
 
   function reject() {
     if (isPending) return;
 
+    const note = rejectionNote.trim();
+    if (!note) {
+      toast.error("Add a rejection note before rejecting");
+      return;
+    }
+
+    submitReview("REJECTED", note);
+  }
+
+  function submitReview(nextStatus: "APPROVED" | "REJECTED", note?: string) {
     startTransition(async () => {
-      setOptimisticStatus('REJECTED');
+      setOptimisticStatus(nextStatus);
 
       try {
-        const res = await fetch('/api/submissions/' + id + '/review', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ status: 'REJECTED', rejectionNote: 'Rejected by admin' })
+        const res = await fetch(`/api/submissions/${id}/review`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ status: nextStatus, rejectionNote: note }),
         });
+
         if (!res.ok) {
-          toast.error('Failed to reject submission — reverting');
+          const body = await res.json().catch(() => ({}));
+          setOptimisticStatus(status);
+          toast.error(body.error ?? "Failed to update submission");
           return;
         }
-        toast.success('Submission rejected');
+
+        toast.success(nextStatus === "APPROVED" ? "Submission approved" : "Submission rejected");
+        setShowRejectNote(false);
+        setRejectionNote("");
         router.refresh();
       } catch (err) {
         console.error(err);
-        toast.error('Network error — reverting');
+        setOptimisticStatus(status);
+        toast.error("Network error. Submission was not updated.");
       }
     });
   }
 
-  if (optimisticStatus !== 'PENDING') return <span style={{ color: 'var(--text-secondary)' }}>-</span>;
+  if (optimisticStatus === "APPROVED" || optimisticStatus === "REJECTED") {
+    return <span className="text-sm font-semibold text-neutral-500">{toTitleCase(optimisticStatus)}</span>;
+  }
 
   return (
-    <div className="space-y-2">
-      {postUrl && (
-        <a
-          href={postUrl}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="text-xs underline block"
-          style={{ color: 'var(--primary)' }}
-        >
-          View Post
-        </a>
-      )}
+    <div className="w-full space-y-3 sm:max-w-md">
+      <div className="flex flex-wrap gap-2 sm:justify-end">
+        <Button type="button" size="sm" onClick={approve} isPending={isPending}>
+          Approve
+        </Button>
+        <Button type="button" variant="destructive" size="sm" onClick={() => setShowRejectNote(true)} disabled={isPending}>
+          Reject
+        </Button>
+      </div>
 
-      {showApproveForm ? (
-        <div className="space-y-2">
-          <div className="flex gap-2">
-            <input
-              type="number"
-              placeholder="Baseline views"
-              value={baselineViews}
-              onChange={(e) => setBaselineViews(e.target.value)}
-              min="0"
-              style={{ fontSize: '11px', padding: '3px 6px', width: '100px', background: 'var(--bg-primary)', border: '1px solid var(--border)', borderRadius: '4px', color: 'var(--text-primary)' }}
-            />
-            <input
-              type="number"
-              placeholder="Current views"
-              value={viewCount}
-              onChange={(e) => setViewCount(e.target.value)}
-              min="0"
-              style={{ fontSize: '11px', padding: '3px 6px', width: '100px', background: 'var(--bg-primary)', border: '1px solid var(--border)', borderRadius: '4px', color: 'var(--text-primary)' }}
-            />
-          </div>
-          {baselineViews && viewCount && (
-            <p style={{ fontSize: '10px', color: 'var(--text-secondary)' }}>
-              Eligible: {Math.max(0, parseInt(viewCount, 10) - parseInt(baselineViews, 10)).toLocaleString()} views
-            </p>
-          )}
-          <div className="flex gap-2">
-            <button onClick={approve} disabled={isPending || !baselineViews || !viewCount} style={{ fontSize: '12px', padding: '4px 8px', background: 'var(--success-bg)', color: 'var(--success-text)', border: 'none', borderRadius: '4px', cursor: 'pointer', opacity: isPending || !baselineViews || !viewCount ? 0.5 : 1 }}>
-              {isPending ? '...' : 'Confirm'}
-            </button>
-            <button onClick={() => setShowApproveForm(false)} style={{ fontSize: '12px', padding: '4px 8px', background: 'var(--bg-primary)', color: 'var(--text-secondary)', border: '1px solid var(--border)', borderRadius: '4px', cursor: 'pointer' }}>
+      {showRejectNote ? (
+        <div className="space-y-2 rounded-xl border border-neutral-200 bg-neutral-50 p-3">
+          <textarea
+            value={rejectionNote}
+            onChange={(event) => setRejectionNote(event.target.value)}
+            placeholder="Rejection note"
+            rows={3}
+            className="w-full resize-none rounded-lg border border-neutral-200 bg-white px-3 py-2 text-sm outline-none transition focus:border-neutral-500"
+          />
+          <div className="flex flex-wrap gap-2">
+            <Button type="button" variant="destructive" size="sm" onClick={reject} isPending={isPending} disabled={!rejectionNote.trim()}>
+              Confirm reject
+            </Button>
+            <Button type="button" variant="ghost" size="sm" onClick={() => setShowRejectNote(false)} disabled={isPending}>
               Cancel
-            </button>
+            </Button>
           </div>
         </div>
-      ) : (
-        <div className="flex gap-2">
-          <button onClick={() => setShowApproveForm(true)} disabled={isPending} style={{ fontSize: '12px', padding: '4px 8px', background: 'var(--success-bg)', color: 'var(--success-text)', border: 'none', borderRadius: '4px', cursor: 'pointer' }}>
-            Approve
-          </button>
-          <button onClick={reject} disabled={isPending} style={{ fontSize: '12px', padding: '4px 8px', background: 'var(--error-bg)', color: 'var(--error-text)', border: 'none', borderRadius: '4px', cursor: 'pointer' }}>
-            {isPending ? '...' : 'Reject'}
-          </button>
-        </div>
-      )}
+      ) : null}
     </div>
   );
+}
+
+function toTitleCase(value: string) {
+  return value.charAt(0) + value.slice(1).toLowerCase();
 }
