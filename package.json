@@ -72,5 +72,11 @@
     "tailwindcss": "^4",
     "typescript": "^5",
     "vitest": "^4.1.0"
+  },
+  "overrides": {
+    "@hono/node-server": "1.19.13",
+    "next": {
+      "postcss": "8.5.15"
+    }
   }
 }
