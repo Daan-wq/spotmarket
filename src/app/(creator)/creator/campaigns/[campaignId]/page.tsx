@@ -28,7 +28,7 @@ import { ChevronLeft } from "@/components/animate-ui/icons/chevron-left";
 import { evaluateCampaignJoinEligibility } from "@/lib/campaign-eligibility";
 import { isCampaignClosedForSubmissions } from "@/lib/campaign-submission-state";
 import { buildCreatorCampaignConfigSections } from "@/lib/creator-campaign-display";
-import { resolveCreatorLeaderboardName } from "@/lib/creator-leaderboard-name";
+import { buildCampaignLeaderboardRows } from "@/lib/campaign-leaderboard";
 import {
   SubmittedClipsList,
   type SubmittedClipData,
@@ -132,30 +132,41 @@ export default async function CampaignDetailPage({
     },
   });
 
-  const topEarners = await prisma.campaignSubmission.groupBy({
-    by: ["creatorId"],
+  const topEarnerSubmissions = await prisma.campaignSubmission.findMany({
     where: { campaignId, status: "APPROVED" },
-    _sum: { earnedAmount: true },
-    orderBy: { _sum: { earnedAmount: "desc" } },
-    take: 5,
-  });
-  const topEarnerUsers = topEarners.length
-    ? await prisma.user.findMany({
-        where: { id: { in: topEarners.map((earner) => earner.creatorId) } },
+    select: {
+      postUrl: true,
+      creatorId: true,
+      viewCount: true,
+      claimedViews: true,
+      eligibleViews: true,
+      baselineViews: true,
+      earnedAmount: true,
+      campaign: {
         select: {
-          id: true,
+          creatorCpv: true,
+          minimumPaidViews: true,
+          maximumPaidViews: true,
+        },
+      },
+      creator: {
+        select: {
           email: true,
           discordUsername: true,
-          creatorProfile: { select: { username: true } },
+          creatorProfile: {
+            select: {
+              id: true,
+              username: true,
+              avatarUrl: true,
+            },
+          },
         },
-      })
-    : [];
-  const topEarnerNameMap = new Map(
-    topEarnerUsers.map((earner) => [
-      earner.id,
-      resolveCreatorLeaderboardName(earner) ?? earner.email,
-    ]),
-  );
+      },
+    },
+  });
+  const topEarners = buildCampaignLeaderboardRows(topEarnerSubmissions)
+    .sort((a, b) => b.totalEarned - a.totalEarned || b.totalViews - a.totalViews)
+    .slice(0, 5);
 
   const totalPaid = campaign.campaignSubmissions.reduce(
     (sum, s) => sum + Number(s.earnedAmount),
@@ -441,15 +452,17 @@ export default async function CampaignDetailPage({
                 <span className="w-8 text-center text-sm font-bold text-neutral-400">
                   #{index + 1}
                 </span>
-                <span className="flex-1 text-sm font-medium text-neutral-950">
-                  {topEarnerNameMap.get(earner.creatorId) ?? ""}
-                </span>
+                <div className="min-w-0 flex-1">
+                  <span className="block truncate text-sm font-medium text-neutral-950">
+                    {earner.displayName}
+                  </span>
+                  <span className="mt-0.5 block text-xs text-neutral-500">
+                    {formatNumber(earner.totalViews, locale)}{" "}
+                    {sharedT("units.views")}
+                  </span>
+                </div>
                 <span className="text-sm font-semibold text-emerald-600">
-                  +
-                  {formatCurrency(
-                    Number(earner._sum.earnedAmount ?? 0),
-                    locale,
-                  )}
+                  +{formatCurrency(earner.totalEarned, locale)}
                 </span>
               </div>
             ))}

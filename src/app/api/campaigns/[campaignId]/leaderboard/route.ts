@@ -14,8 +14,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAuth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { resolveCreatorLeaderboardName } from "@/lib/creator-leaderboard-name";
-import { calculatePaidViews } from "@/lib/paid-views";
+import { buildCampaignLeaderboardRows } from "@/lib/campaign-leaderboard";
 
 export const dynamic = "force-dynamic";
 
@@ -110,64 +109,14 @@ export async function GET(
     : [];
   const scoreByProfile = new Map(scores.map((r) => [r.creatorProfileId, r]));
 
-  // Aggregate per creator.
-  const byCreator = new Map<
-    string,
-    {
-      creatorId: string;
-      creatorProfileId: string | null;
-      displayName: string;
-      avatarUrl: string | null;
-      submissionCount: number;
-      totalViews: number;
-      totalEarned: number;
-      bestPostUrl: string | null;
-      bestPostViews: number;
-      score: number | null;
-    }
-  >();
-
-  for (const s of submissions) {
-    const profile = s.creator.creatorProfile;
-    const key = s.creatorId;
-    const views =
-      s.eligibleViews ??
-      calculatePaidViews({
-        rawViews: s.viewCount ?? s.claimedViews ?? 0,
-        baselineViews: s.baselineViews,
-        minimumPaidViews: campaign.minimumPaidViews,
-        maximumPaidViews: campaign.maximumPaidViews,
-      }).payableViews;
-    const earned = Number(s.earnedAmount ?? 0);
-
-    const existing = byCreator.get(key);
-    if (!existing) {
-      byCreator.set(key, {
-        creatorId: s.creatorId,
-        creatorProfileId: profile?.id ?? null,
-        displayName: resolveCreatorLeaderboardName(s.creator) ?? s.creator.email,
-        avatarUrl: profile?.avatarUrl ?? null,
-        submissionCount: 1,
-        totalViews: views,
-        totalEarned: earned,
-        bestPostUrl: s.postUrl,
-        bestPostViews: views,
-        score: profile?.id
-          ? scoreByProfile.get(profile.id)?.score ?? null
-          : null,
-      });
-    } else {
-      existing.submissionCount += 1;
-      existing.totalViews += views;
-      existing.totalEarned += earned;
-      if (views > existing.bestPostViews) {
-        existing.bestPostViews = views;
-        existing.bestPostUrl = s.postUrl;
-      }
-    }
-  }
-
-  const rows = Array.from(byCreator.values());
+  const rows = buildCampaignLeaderboardRows(
+    submissions.map((submission) => ({ ...submission, campaign })),
+  ).map((row) => ({
+    ...row,
+    score: row.creatorProfileId
+      ? scoreByProfile.get(row.creatorProfileId)?.score ?? null
+      : null,
+  }));
 
   rows.sort((a, b) => {
     if (sort === "earnings") return b.totalEarned - a.totalEarned;
