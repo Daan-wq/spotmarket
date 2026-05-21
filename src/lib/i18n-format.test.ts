@@ -17,6 +17,10 @@ describe("locale formatting", () => {
     expect(formatCurrency(1234.5, "nl")).toBe("€\u00a01.234,50");
   });
 
+  it("keeps currency overrides valid when a caller opts out of cents", () => {
+    expect(formatCurrency(1234.5, "en", { maximumFractionDigits: 0 })).toBe("€1,235");
+  });
+
   it("formats numbers and compact numbers for English and Dutch", () => {
     expect(formatNumber(1234567, "en")).toBe("1,234,567");
     expect(formatNumber(1234567, "nl")).toBe("1.234.567");

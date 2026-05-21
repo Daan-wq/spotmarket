@@ -744,7 +744,7 @@
         "creators": "creators",
         "lessons": "lessons",
         "businessDays": "business days",
-        "perThousandViews": "per 1M views",
+        "perThousandViews": "per 1K views",
         "perOneKViews": "/1K views"
       },
       "statuses": {
@@ -889,7 +889,7 @@
         "back": "Back to campaigns",
         "contact": "Contact",
         "info": "Campaign info",
-        "payoutPer1K": "Payout per 1M",
+        "payoutPer1K": "Payout per 1K",
         "baseRate": "Base campaign rate",
         "startDate": "Start date",
         "campaignStart": "Campaign start",
@@ -1048,7 +1048,7 @@
         "uploaded": "Uploaded",
         "viewCampaign": "View Campaign",
         "viewOriginalPost": "View Original Post",
-        "rate": "{amount} per 1M views",
+        "rate": "{amount} per 1K views",
         "metrics": {
           "views": "Views",
           "likes": "Likes",

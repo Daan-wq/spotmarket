@@ -1,4 +1,4 @@
-const MILLION = 1_000_000;
+const THOUSAND = 1_000;
 
 export interface CampaignEditFormState {
   name: string;
@@ -31,21 +31,21 @@ export interface CampaignEditFormState {
   linkInBioRequired: string;
   totalBudget: string;
   goalViews: string;
-  creatorCpmPerM: string;
-  adminMarginPerM: string;
+  creatorRatePerK: string;
+  adminMarginPerK: string;
   deadline: string;
   startsAt: string;
   maxSlots: string;
   requiresApproval: boolean;
 }
 
-export function cpmPerMToCpv(value: number): number {
-  return value / MILLION;
+export function ratePerKToCpv(value: number): number {
+  return value / THOUSAND;
 }
 
-export function cpvToCpmPerM(value: number | string | null | undefined): number {
+export function cpvToRatePerK(value: number | string | null | undefined): number {
   const parsed = Number(value ?? 0);
-  return Number.isFinite(parsed) ? parsed * MILLION : 0;
+  return Number.isFinite(parsed) ? parsed * THOUSAND : 0;
 }
 
 export function parseLines(value: string): string[] {
@@ -76,8 +76,8 @@ function dateOrNull(value: string): string | null {
 }
 
 export function buildCampaignEditPayload(state: CampaignEditFormState) {
-  const creatorCpmPerM = numberOrZero(state.creatorCpmPerM);
-  const adminMarginPerM = numberOrZero(state.adminMarginPerM);
+  const creatorRatePerK = numberOrZero(state.creatorRatePerK);
+  const adminMarginPerK = numberOrZero(state.adminMarginPerK);
 
   return {
     name: state.name.trim(),
@@ -110,8 +110,8 @@ export function buildCampaignEditPayload(state: CampaignEditFormState) {
     linkInBioRequired: emptyToNull(state.linkInBioRequired),
     totalBudget: numberOrZero(state.totalBudget),
     goalViews: numberOrNull(state.goalViews),
-    creatorCpmPerM,
-    adminMarginPerM,
+    creatorRatePerK,
+    adminMarginPerK,
     deadline: dateOrNull(state.deadline),
     startsAt: dateOrNull(state.startsAt),
     maxSlots: numberOrNull(state.maxSlots),

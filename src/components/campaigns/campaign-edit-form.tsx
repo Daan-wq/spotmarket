@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { CampaignImageUploadField } from "@/components/campaigns/campaign-image-upload-field";
 import {
   buildCampaignEditPayload,
-  cpvToCpmPerM,
+  cpvToRatePerK,
   type CampaignEditFormState,
 } from "@/lib/campaign-edit";
 
@@ -191,17 +191,17 @@ export function CampaignEditForm({
     linkInBioRequired: campaign.linkInBioRequired ?? "",
     totalBudget: toInputValue(campaign.totalBudget),
     goalViews: toInputValue(campaign.goalViews),
-    creatorCpmPerM: toInputValue(cpvToCpmPerM(campaign.creatorCpv)),
-    adminMarginPerM: toInputValue(cpvToCpmPerM(campaign.adminMargin)),
+    creatorRatePerK: toInputValue(cpvToRatePerK(campaign.creatorCpv)),
+    adminMarginPerK: toInputValue(cpvToRatePerK(campaign.adminMargin)),
     deadline: toDateInput(campaign.deadline),
     startsAt: toDateInput(campaign.startsAt),
     maxSlots: toInputValue(campaign.maxSlots),
     requiresApproval: campaign.requiresApproval ?? false,
   }));
 
-  const creatorCpm = numberValue(form.creatorCpmPerM);
-  const adminMargin = numberValue(form.adminMarginPerM);
-  const businessCpm = creatorCpm + adminMargin;
+  const creatorRate = numberValue(form.creatorRatePerK);
+  const adminMargin = numberValue(form.adminMarginPerK);
+  const businessRate = creatorRate + adminMargin;
 
   function setField<K extends keyof CampaignEditFormState>(
     field: K,
@@ -604,7 +604,7 @@ export function CampaignEditForm({
           </div>
         </Section>
 
-        <Section title="Budget, CPM, Timeline">
+        <Section title="Budget, Payout, Timeline">
           <div className="grid gap-4 md:grid-cols-2">
             <Field label="Total budget (EUR) *">
               <NumberInput
@@ -624,19 +624,19 @@ export function CampaignEditForm({
               />
             </Field>
 
-            <Field label="Creator CPM / 1M views">
+            <Field label="Creator payout / 1K views">
               <NumberInput
-                value={form.creatorCpmPerM}
-                onChange={(value) => setField("creatorCpmPerM", value)}
+                value={form.creatorRatePerK}
+                onChange={(value) => setField("creatorRatePerK", value)}
                 min={0}
                 step={0.01}
               />
             </Field>
 
-            <Field label="Admin margin / 1M views">
+            <Field label="Admin margin / 1K views">
               <NumberInput
-                value={form.adminMarginPerM}
-                onChange={(value) => setField("adminMarginPerM", value)}
+                value={form.adminMarginPerK}
+                onChange={(value) => setField("adminMarginPerK", value)}
                 min={0}
                 step={0.01}
               />
@@ -648,9 +648,9 @@ export function CampaignEditForm({
             style={{ background: "var(--bg-secondary, var(--bg-primary))", border: "1px solid var(--border)" }}
           >
             <div className="flex flex-wrap items-center justify-between gap-2">
-              <span style={{ color: "var(--text-secondary)" }}>Client / business CPM</span>
+              <span style={{ color: "var(--text-secondary)" }}>Client / business rate</span>
               <span className="font-semibold tabular-nums" style={{ color: "var(--text-primary)" }}>
-                €{businessCpm.toFixed(2)} per 1M views
+                €{businessRate.toFixed(2)} per 1K views
               </span>
             </div>
           </div>
@@ -798,8 +798,8 @@ function validateForm(state: CampaignEditFormState): string | null {
 
   const nonNegativeChecks: Array<[string, string]> = [
     ["Minimum followers", state.minFollowers],
-    ["Creator CPM", state.creatorCpmPerM],
-    ["Admin margin", state.adminMarginPerM],
+    ["Creator payout", state.creatorRatePerK],
+    ["Admin margin", state.adminMarginPerK],
   ];
   for (const [label, value] of nonNegativeChecks) {
     if (!value.trim()) continue;

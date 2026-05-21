@@ -479,7 +479,7 @@ function CampaignCard({ campaign }: { campaign: CampaignData }) {
       <p className="mt-5 text-xs font-medium text-neutral-500">{t("payout")}</p>
       <div className="mt-1 flex items-baseline gap-1">
         <span className="text-2xl font-semibold tracking-normal text-neutral-950 md:text-3xl">
-          {formatCurrency(campaign.rewardRate, locale, { minimumFractionDigits: 1, maximumFractionDigits: 1 })}
+          {formatCurrency(campaign.rewardRate, locale)}
         </span>
         <span className="text-sm text-neutral-500">{sharedT("units.perOneKViews")}</span>
       </div>

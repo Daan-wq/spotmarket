@@ -227,10 +227,7 @@ export default async function VideoDetailPage({
             style={{ border: "1px solid var(--border-default)", color: "var(--text-secondary)" }}
           >
             {t("rate", {
-              amount: formatCurrency(rewardRate, locale, {
-                minimumFractionDigits: 1,
-                maximumFractionDigits: 1,
-              }),
+              amount: formatCurrency(rewardRate, locale),
             })}
           </span>
         </div>

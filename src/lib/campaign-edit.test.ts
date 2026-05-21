@@ -1,10 +1,10 @@
 import { describe, expect, it } from "vitest";
 import {
   buildCampaignEditPayload,
-  cpmPerMToCpv,
-  cpvToCpmPerM,
+  cpvToRatePerK,
   emptyToNull,
   parseLines,
+  ratePerKToCpv,
   type CampaignEditFormState,
 } from "./campaign-edit";
 
@@ -39,8 +39,8 @@ const baseState: CampaignEditFormState = {
   linkInBioRequired: "Required during campaign",
   totalBudget: "10000",
   goalViews: "5000000",
-  creatorCpmPerM: "35",
-  adminMarginPerM: "10",
+  creatorRatePerK: "0.35",
+  adminMarginPerK: "0.10",
   deadline: "2026-06-01",
   startsAt: "",
   maxSlots: "",
@@ -48,9 +48,9 @@ const baseState: CampaignEditFormState = {
 };
 
 describe("campaign edit helpers", () => {
-  it("converts CPM per million views to CPV and back", () => {
-    expect(cpmPerMToCpv(35)).toBe(0.000035);
-    expect(cpvToCpmPerM("0.000035")).toBe(35);
+  it("converts rate per thousand views to CPV and back", () => {
+    expect(ratePerKToCpv(0.35)).toBe(0.00035);
+    expect(cpvToRatePerK("0.00035")).toBe(0.35);
   });
 
   it("parses newline-delimited arrays", () => {
@@ -78,8 +78,8 @@ describe("campaign edit helpers", () => {
       minEngagementRate: 2.5,
       totalBudget: 10000,
       goalViews: 5000000,
-      creatorCpmPerM: 35,
-      adminMarginPerM: 10,
+      creatorRatePerK: 0.35,
+      adminMarginPerK: 0.1,
       startsAt: null,
       maxSlots: null,
     });

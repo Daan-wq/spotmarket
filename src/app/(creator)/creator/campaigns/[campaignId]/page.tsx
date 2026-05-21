@@ -331,10 +331,7 @@ export default async function CampaignDetailPage({
         <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
           <InfoCard
             label={t("payoutPer1K")}
-            value={formatCurrency(rewardRate, locale, {
-              minimumFractionDigits: 1,
-              maximumFractionDigits: 1,
-            })}
+            value={formatCurrency(rewardRate, locale)}
             detail={t("baseRate")}
           />
           <InfoCard

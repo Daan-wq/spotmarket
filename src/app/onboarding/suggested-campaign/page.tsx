@@ -143,9 +143,9 @@ export default async function SuggestedCampaignPage() {
             {/* Pay rate + Duration */}
             <div className="grid grid-cols-2 gap-3 mb-4">
               <div className="p-3 rounded-xl" style={{ background: "var(--bg-primary)" }}>
-                <p className="text-xs mb-1" style={{ color: "var(--text-muted)" }}>Pay per 1M views</p>
+                <p className="text-xs mb-1" style={{ color: "var(--text-muted)" }}>Pay per 1K views</p>
                 <p className="text-lg font-bold" style={{ color: "var(--text-primary)" }}>
-                  €{(Number(campaign.creatorCpv) * 1_000_000).toFixed(0)}
+                  €{(Number(campaign.creatorCpv) * 1_000).toFixed(2)}
                 </p>
               </div>
               <div className="p-3 rounded-xl" style={{ background: "var(--bg-primary)" }}>

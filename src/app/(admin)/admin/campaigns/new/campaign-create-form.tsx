@@ -156,7 +156,7 @@ export function CampaignCreateForm() {
 
   // — Full details (revealed after approval) —
   const [goalViewsRaw, setGoalViewsRaw] = useState("");
-  const [adminMarginPerM, setAdminMarginPerM] = useState("25");
+  const [adminMarginPerK, setAdminMarginPerK] = useState("0.03");
   const [referralLink, setReferralLink] = useState("");
   const [contentGuidelines, setContentGuidelines] = useState("");
   const [bannerVideoUrl, setBannerVideoUrl] = useState("");
@@ -177,9 +177,9 @@ export function CampaignCreateForm() {
 
   const budget = parseFloat(totalBudget) || 0;
   const goalViews = parseViews(goalViewsRaw);
-  const margin = parseFloat(adminMarginPerM) || 0;
-  const businessPerM = goalViews && budget > 0 ? (budget / goalViews) * 1_000_000 : null;
-  const creatorPerM = businessPerM !== null ? businessPerM - margin : null;
+  const margin = parseFloat(adminMarginPerK) || 0;
+  const businessPerK = goalViews && budget > 0 ? (budget / goalViews) * 1_000 : null;
+  const creatorPerK = businessPerK !== null ? businessPerK - margin : null;
 
   function toggleContentType(ct: string) {
     setSelectedContentTypes((prev) =>
@@ -225,7 +225,7 @@ export function CampaignCreateForm() {
     if (!name.trim()) { setError("Campaign name is required"); return; }
     if (!budget || budget <= 0) { setError("Budget must be a positive number"); return; }
     if (!deadline) { setError("Deadline is required"); return; }
-    if (creatorPerM !== null && creatorPerM < 0) { setError("Margin too high — creator rate would be negative"); return; }
+    if (creatorPerK !== null && creatorPerK < 0) { setError("Margin too high - creator rate would be negative"); return; }
 
     setLoading(true);
     try {
@@ -273,7 +273,7 @@ export function CampaignCreateForm() {
         linkInBioRequired: linkInBioRequired || undefined,
         totalBudget: budget,
         goalViews: goalViews ?? undefined,
-        adminMarginPerM: margin,
+        adminMarginPerK: margin,
         deadline: new Date(deadline).toISOString(),
         startsAt: startsAt ? new Date(startsAt).toISOString() : undefined,
         maxSlots: numberOrUndefined(maxSlots),
@@ -571,36 +571,36 @@ export function CampaignCreateForm() {
             ) : null}
           </div>
           <div>
-            <label style={labelStyle}>Your margin (€/1M views)</label>
+            <label style={labelStyle}>Your margin (€/1K views)</label>
             <input
               style={inputStyle}
               type="number"
-              step="1"
-              value={adminMarginPerM}
-              onChange={(e) => setAdminMarginPerM(e.target.value)}
-              placeholder="25"
+              step="0.01"
+              value={adminMarginPerK}
+              onChange={(e) => setAdminMarginPerK(e.target.value)}
+              placeholder="0.03"
             />
           </div>
         </div>
 
         {/* Economics preview */}
-        {businessPerM !== null && creatorPerM !== null && goalViews && (
+        {businessPerK !== null && creatorPerK !== null && goalViews && (
           <div style={{ borderRadius: "8px", padding: "12px 14px", background: "var(--bg-secondary, var(--bg-primary))", border: "1px solid var(--border)", fontSize: "13px", display: "flex", flexDirection: "column", gap: "6px" }}>
             <div style={{ display: "flex", justifyContent: "space-between", color: "var(--text-secondary)" }}>
-              <span>Client pays (per 1M views)</span>
-              <span style={{ fontWeight: 500, color: "var(--text-primary)" }}>€{businessPerM.toFixed(2)}</span>
+              <span>Client pays (per 1K views)</span>
+              <span style={{ fontWeight: 500, color: "var(--text-primary)" }}>€{businessPerK.toFixed(2)}</span>
             </div>
             <div style={{ display: "flex", justifyContent: "space-between", color: "var(--error, #dc2626)" }}>
               <span>Your margin</span>
               <span>−€{margin.toFixed(2)}</span>
             </div>
             <div style={{ display: "flex", justifyContent: "space-between", borderTop: "1px solid var(--border)", paddingTop: "6px" }}>
-              <span style={{ color: "var(--text-secondary)" }}>Creator earns (per 1M views)</span>
-              <span style={{ fontWeight: 600, color: "var(--text-primary)" }}>€{creatorPerM.toFixed(2)}</span>
+              <span style={{ color: "var(--text-secondary)" }}>Creator earns (per 1K views)</span>
+              <span style={{ fontWeight: 600, color: "var(--text-primary)" }}>€{creatorPerK.toFixed(2)}</span>
             </div>
             <div style={{ display: "flex", justifyContent: "space-between", fontWeight: 600, color: "var(--accent, #534AB7)" }}>
               <span>Your revenue</span>
-              <span>€{((margin / 1_000_000) * goalViews).toFixed(2)}</span>
+              <span>€{((margin / 1_000) * goalViews).toFixed(2)}</span>
             </div>
           </div>
         )}
