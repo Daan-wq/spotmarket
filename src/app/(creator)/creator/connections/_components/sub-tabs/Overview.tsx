@@ -3,7 +3,7 @@ import { getLocale, getTranslations } from "next-intl/server";
 import { KpiCard } from "@/components/admin/kpi-card";
 import { DailyViewsChart } from "@/components/stats/DailyViewsChart";
 import type { Locale } from "@/i18n/routing";
-import { formatCurrency, formatNumber, formatShortDate } from "@/lib/i18n-format";
+import { formatCurrency, formatNumber } from "@/lib/i18n-format";
 import {
   type CreatorTopStats,
   type CreatorPlatformStats,
@@ -26,7 +26,6 @@ type ConnectionRow = {
   id: string;
   label: string;
   followerCount: number | null;
-  lastSyncedAt: string | null;
   platform: PlatformSlug;
   accountRefreshStatus?: string;
   lastRefreshErrorMessage?: string | null;
@@ -85,25 +84,18 @@ function AllScopeView({
         <KpiCard
           label={t("totalViews")}
           value={formatNumber(stats.totalViews.value, locale)}
-          trend={stats.totalViews.delta}
-          hint={range.label}
         />
         <KpiCard
           label={t("totalFollowers")}
           value={formatNumber(stats.totalFollowers.value, locale)}
-          hint={sharedT("labels.latestSnapshot")}
         />
         <KpiCard
           label={t("engagement")}
           value={formatNumber(stats.totalEngagement.value, locale)}
-          trend={stats.totalEngagement.delta}
-          hint={sharedT("labels.likesCommentsShares")}
         />
         <KpiCard
           label={t("earnings")}
           value={formatCurrency(stats.totalEarnings.value, locale)}
-          trend={stats.totalEarnings.delta}
-          hint={range.label}
         />
       </div>
 
@@ -135,13 +127,12 @@ function PlatformScopeView({
   return (
     <div className="space-y-5">
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        <KpiCard label={t("followers")} value={formatNumber(stats.followerCount, locale)} hint={sharedT("labels.latestSnapshot")} />
-        <KpiCard label={t("views")} value={formatNumber(stats.windowViews, locale)} trend={stats.viewsDelta} hint={range.label} />
-        <KpiCard label={t("engagement")} value={formatNumber(stats.windowEngagement, locale)} trend={stats.engagementDelta} hint={sharedT("labels.likesCommentsShares")} />
+        <KpiCard label={t("followers")} value={formatNumber(stats.followerCount, locale)} />
+        <KpiCard label={t("views")} value={formatNumber(stats.windowViews, locale)} />
+        <KpiCard label={t("engagement")} value={formatNumber(stats.windowEngagement, locale)} />
         <KpiCard
           label={t("topPost")}
           value={stats.topPost ? formatNumber(stats.topPost.views, locale) : sharedT("emptyValue")}
-          hint={stats.topPost ? truncate(stats.topPost.title, 26) : range.label}
         />
       </div>
       <ConnectionsList
@@ -149,7 +140,6 @@ function PlatformScopeView({
           id: c.id,
           label: c.label,
           followerCount: c.followerCount,
-          lastSyncedAt: c.lastSyncedAt ? c.lastSyncedAt.toISOString() : null,
           platform,
           accountRefreshStatus: c.accountRefreshStatus,
           lastRefreshErrorMessage: c.lastRefreshErrorMessage,
@@ -169,7 +159,6 @@ function PlatformScopeView({
 function AccountScopeView({
   stats,
   daily,
-  range,
   locale,
   t,
   sharedT,
@@ -180,14 +169,12 @@ function AccountScopeView({
         <KpiCard
           label={t("followers")}
           value={stats.followerCount != null ? formatNumber(stats.followerCount, locale) : sharedT("emptyValue")}
-          hint={sharedT("labels.latestSnapshot")}
         />
-        <KpiCard label={t("views")} value={formatNumber(stats.windowViews, locale)} hint={range.label} />
-        <KpiCard label={t("engagement")} value={formatNumber(stats.windowEngagement, locale)} hint={sharedT("labels.likesCommentsShares")} />
+        <KpiCard label={t("views")} value={formatNumber(stats.windowViews, locale)} />
+        <KpiCard label={t("engagement")} value={formatNumber(stats.windowEngagement, locale)} />
         <KpiCard
           label={t("topPost")}
           value={stats.topPost ? formatNumber(stats.topPost.views, locale) : sharedT("emptyValue")}
-          hint={stats.topPost ? truncate(stats.topPost.title, 24) : range.label}
         />
       </div>
       <DailyViewsChart data={daily} />
@@ -259,11 +246,6 @@ function ConnectionsList({
                   </span>
                 )}
               </div>
-              {c.lastSyncedAt && (
-                <p className="text-xs mt-0.5" style={{ color: "var(--text-muted)" }}>
-                  {sharedT("labels.lastSynced", { date: formatShortDate(c.lastSyncedAt, locale) })}
-                </p>
-              )}
               {c.accountRefreshStatus === "FAILED" && (
                 <p className="text-xs mt-0.5 text-red-600">
                   Refresh failed{c.lastRefreshErrorMessage ? `: ${c.lastRefreshErrorMessage}` : ""}
@@ -283,8 +265,4 @@ function ConnectionsList({
       </ul>
     </div>
   );
-}
-
-function truncate(s: string, n: number) {
-  return s.length <= n ? s : `${s.slice(0, n - 1)}...`;
 }
