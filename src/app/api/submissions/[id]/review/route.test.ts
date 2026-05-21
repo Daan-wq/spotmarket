@@ -1,0 +1,232 @@
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import { POST } from "./route";
+
+const routeMocks = vi.hoisted(() => {
+  const tx = {
+    user: { findUnique: vi.fn(), update: vi.fn() },
+    referralPayout: {
+      aggregate: vi.fn(),
+      create: vi.fn(),
+      deleteMany: vi.fn(),
+      findFirst: vi.fn(),
+    },
+    campaignSubmission: { update: vi.fn() },
+    campaignApplication: { update: vi.fn() },
+    notification: { create: vi.fn() },
+    auditLog: { create: vi.fn() },
+  };
+
+  return {
+    requireAuth: vi.fn(),
+    submissionFindUnique: vi.fn(),
+    transaction: vi.fn(async (callback: (tx: typeof tx) => unknown) => callback(tx)),
+    tx,
+  };
+});
+
+vi.mock("@/lib/auth", () => ({
+  requireAuth: routeMocks.requireAuth,
+}));
+
+vi.mock("@/lib/prisma", () => ({
+  prisma: {
+    $transaction: routeMocks.transaction,
+    campaignSubmission: {
+      findUnique: routeMocks.submissionFindUnique,
+    },
+  },
+}));
+
+const params = { params: Promise.resolve({ id: "submission-1" }) };
+
+function reviewRequest(body: unknown) {
+  return new Request("https://app.test/api/submissions/submission-1/review", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  }) as never;
+}
+
+function submission(overrides: Record<string, unknown> = {}) {
+  return {
+    id: "submission-1",
+    status: "PENDING",
+    creatorId: "creator-user-1",
+    applicationId: "application-1",
+    earnedAmount: 0,
+    logoStatus: "PRESENT",
+    settledAt: null,
+    payoutRunItems: [],
+    campaign: {
+      id: "campaign-1",
+      name: "Spring Campaign",
+      creatorCpv: 0.01,
+    },
+    application: {
+      id: "application-1",
+    },
+    ...overrides,
+  };
+}
+
+describe("POST /api/submissions/[id]/review", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    routeMocks.requireAuth.mockResolvedValue({ userId: "admin-user-1" });
+    routeMocks.tx.user.findUnique.mockResolvedValue({
+      referredBy: null,
+      createdAt: new Date("2026-01-01T00:00:00.000Z"),
+    });
+    routeMocks.tx.referralPayout.aggregate.mockResolvedValue({ _sum: { amount: 0 } });
+    routeMocks.tx.referralPayout.findFirst.mockResolvedValue(null);
+    routeMocks.tx.referralPayout.deleteMany.mockResolvedValue({ count: 0 });
+    routeMocks.tx.campaignSubmission.update.mockResolvedValue({
+      id: "submission-1",
+      status: "REJECTED",
+    });
+  });
+
+  it("requires a rejection reason and note", async () => {
+    routeMocks.submissionFindUnique.mockResolvedValue(submission());
+
+    const response = await POST(
+      reviewRequest({ status: "REJECTED", rejectionNote: "" }),
+      params,
+    );
+
+    expect(response.status).toBe(400);
+    expect(routeMocks.tx.campaignSubmission.update).not.toHaveBeenCalled();
+  });
+
+  it("rejects a pending submission when a reason is supplied", async () => {
+    routeMocks.submissionFindUnique.mockResolvedValue(submission());
+
+    const response = await POST(
+      reviewRequest({
+        status: "REJECTED",
+        rejectionReason: "INVALID_POST",
+        rejectionNote: "The post URL no longer resolves.",
+      }),
+      params,
+    );
+
+    expect(response.status).toBe(200);
+    expect(routeMocks.tx.campaignSubmission.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { id: "submission-1" },
+        data: expect.objectContaining({
+          status: "REJECTED",
+          earnedAmount: 0,
+          eligibleViews: 0,
+          rejectionNote: "The post URL no longer resolves.",
+        }),
+      }),
+    );
+    expect(routeMocks.tx.auditLog.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        action: "submission.reject",
+        entityType: "CampaignSubmission",
+        entityId: "submission-1",
+        metadata: expect.objectContaining({
+          rejectionReason: "INVALID_POST",
+          previousStatus: "PENDING",
+        }),
+      }),
+    });
+  });
+
+  it("reverses unpaid approved earnings when rejecting an approved submission", async () => {
+    routeMocks.submissionFindUnique.mockResolvedValue(
+      submission({
+        status: "APPROVED",
+        earnedAmount: 42.75,
+        eligibleViews: 4275,
+        viewCount: 5000,
+        baselineViews: 725,
+      }),
+    );
+    routeMocks.tx.referralPayout.findFirst.mockResolvedValue({
+      id: "referral-payout-1",
+      amount: 4.28,
+      status: "pending",
+      referrerId: "referrer-user-1",
+    });
+
+    const response = await POST(
+      reviewRequest({
+        status: "REJECTED",
+        rejectionReason: "BOT_TRAFFIC",
+        rejectionNote: "Traffic spike came from suspected bot traffic.",
+      }),
+      params,
+    );
+
+    expect(response.status).toBe(200);
+    expect(routeMocks.tx.campaignSubmission.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          status: "REJECTED",
+          earnedAmount: 0,
+          eligibleViews: 0,
+          rejectionNote: "Traffic spike came from suspected bot traffic.",
+        }),
+      }),
+    );
+    expect(routeMocks.tx.campaignApplication.update).toHaveBeenCalledWith({
+      where: { id: "application-1" },
+      data: { earnedAmount: { decrement: 43 } },
+    });
+    expect(routeMocks.tx.referralPayout.deleteMany).toHaveBeenCalledWith({
+      where: {
+        id: "referral-payout-1",
+        status: "pending",
+      },
+    });
+    expect(routeMocks.tx.user.update).toHaveBeenCalledWith({
+      where: { id: "referrer-user-1" },
+      data: { referralEarnings: { decrement: 4.28 } },
+    });
+  });
+
+  it("blocks rejecting approved submissions that are already paid or locked in a payout run", async () => {
+    routeMocks.submissionFindUnique.mockResolvedValue(
+      submission({
+        status: "APPROVED",
+        settledAt: new Date("2026-05-20T12:00:00.000Z"),
+        payoutRunItems: [{ id: "payout-run-item-1" }],
+      }),
+    );
+
+    const response = await POST(
+      reviewRequest({
+        status: "REJECTED",
+        rejectionReason: "BOT_TRAFFIC",
+        rejectionNote: "Botted traffic found after approval.",
+      }),
+      params,
+    );
+
+    expect(response.status).toBe(409);
+    await expect(response.json()).resolves.toEqual({
+      error: "This approved submission is already paid or locked in a payout run. Use a financial adjustment workflow instead.",
+    });
+    expect(routeMocks.tx.campaignSubmission.update).not.toHaveBeenCalled();
+  });
+
+  it("still requires logo verification and view counts before approval", async () => {
+    routeMocks.submissionFindUnique.mockResolvedValue(
+      submission({ logoStatus: "PENDING" }),
+    );
+
+    const response = await POST(
+      reviewRequest({ status: "APPROVED", baselineViews: 0, viewCount: 1000 }),
+      params,
+    );
+
+    expect(response.status).toBe(400);
+    await expect(response.json()).resolves.toEqual({
+      error: "Logo verification is pending - review the submission's logo before approving.",
+    });
+    expect(routeMocks.tx.campaignSubmission.update).not.toHaveBeenCalled();
+  });
+});

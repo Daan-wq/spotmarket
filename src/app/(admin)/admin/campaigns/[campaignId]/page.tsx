@@ -1,6 +1,5 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { prisma } from "@/lib/prisma";
 import { KpiCard } from "@/components/admin/kpi-card";
 import {
   CampaignAvatar,
@@ -9,6 +8,8 @@ import {
   CampaignPlatformRow,
   CampaignStatusBadge,
 } from "@/components/campaigns/campaign-display";
+import { prisma } from "@/lib/prisma";
+import { CampaignSubmissionsOverview } from "./campaign-submissions-overview";
 
 export const dynamic = "force-dynamic";
 
@@ -27,10 +28,24 @@ export default async function CampaignHealthPage({ params }: PageProps) {
           id: true,
           creatorId: true,
           status: true,
+          postUrl: true,
+          sourcePlatform: true,
+          claimedViews: true,
+          viewCount: true,
           eligibleViews: true,
           earnedAmount: true,
+          rejectionNote: true,
+          reviewedAt: true,
+          settledAt: true,
           createdAt: true,
-          creator: { select: { id: true, email: true } },
+          creator: {
+            select: {
+              id: true,
+              email: true,
+              creatorProfile: { select: { id: true, displayName: true } },
+            },
+          },
+          payoutRunItems: { select: { id: true } },
           submissionSignals: {
             where: {
               resolvedAt: null,
@@ -61,14 +76,26 @@ export default async function CampaignHealthPage({ params }: PageProps) {
 
   const byCreator = new Map<
     string,
-    { creatorId: string; email: string; submissions: number; views: number; earned: number; flagged: number }
+    {
+      creatorId: string;
+      email: string;
+      displayName: string | null;
+      profileId: string | null;
+      submissions: number;
+      views: number;
+      earned: number;
+      flagged: number;
+    }
   >();
+
   for (const submission of campaign.campaignSubmissions) {
     const current =
       byCreator.get(submission.creatorId) ??
       {
         creatorId: submission.creatorId,
         email: submission.creator.email,
+        displayName: submission.creator.creatorProfile?.displayName ?? null,
+        profileId: submission.creator.creatorProfile?.id ?? null,
         submissions: 0,
         views: 0,
         earned: 0,
@@ -80,15 +107,39 @@ export default async function CampaignHealthPage({ params }: PageProps) {
     current.flagged += submission.submissionSignals.length > 0 ? 1 : 0;
     byCreator.set(submission.creatorId, current);
   }
+
   const leaderboard = Array.from(byCreator.values())
     .sort((a, b) => b.views - a.views)
     .slice(0, 20);
 
-  const creatorProfiles = await prisma.creatorProfile.findMany({
-    where: { userId: { in: leaderboard.map((item) => item.creatorId) } },
-    select: { id: true, userId: true },
-  });
-  const profileByUserId = new Map(creatorProfiles.map((profile) => [profile.userId, profile.id]));
+  const creatorOptions = Array.from(byCreator.values())
+    .sort((a, b) => (a.displayName || a.email).localeCompare(b.displayName || b.email))
+    .map((creator) => ({
+      id: creator.creatorId,
+      label: creator.displayName || creator.email,
+      email: creator.email,
+    }));
+
+  const overviewSubmissions = campaign.campaignSubmissions.map((submission) => ({
+    id: submission.id,
+    creatorId: submission.creatorId,
+    creatorEmail: submission.creator.email,
+    creatorDisplayName: submission.creator.creatorProfile?.displayName ?? null,
+    creatorProfileId: submission.creator.creatorProfile?.id ?? null,
+    postUrl: submission.postUrl,
+    status: submission.status,
+    sourcePlatform: submission.sourcePlatform,
+    createdAt: submission.createdAt.toISOString(),
+    reviewedAt: submission.reviewedAt?.toISOString() ?? null,
+    eligibleViews: submission.eligibleViews,
+    viewCount: submission.viewCount,
+    claimedViews: submission.claimedViews,
+    earnedAmount: Number(submission.earnedAmount ?? 0),
+    rejectionNote: submission.rejectionNote,
+    settledAt: submission.settledAt?.toISOString() ?? null,
+    payoutRunItemCount: submission.payoutRunItems.length,
+    signals: submission.submissionSignals,
+  }));
 
   return (
     <div className="w-full p-8">
@@ -111,8 +162,8 @@ export default async function CampaignHealthPage({ params }: PageProps) {
             </div>
           </div>
           <p className="hidden" style={{ color: "var(--text-secondary)" }}>
-            {campaign.status} · deadline {campaign.deadline.toLocaleDateString()} ·{" "}
-            {campaign.platforms.map((p) => p.toLowerCase()).join(" · ")}
+            {campaign.status} deadline {campaign.deadline.toLocaleDateString()}{" "}
+            {campaign.platforms.map((p) => p.toLowerCase()).join(" / ")}
           </p>
           <div className="mt-5 max-w-xl">
             <CampaignBudgetProgress totalPaid={totalEarned} totalBudget={totalBudget} />
@@ -131,8 +182,8 @@ export default async function CampaignHealthPage({ params }: PageProps) {
         <div className="w-full sm:w-[220px] xl:w-[240px]">
           <KpiCard
             label="Budget burn"
-            value={`€${totalEarned.toFixed(2)}`}
-            hint={`of €${totalBudget.toFixed(2)} (${Math.round(burnPct * 100)}%)`}
+            value={`EUR ${totalEarned.toFixed(2)}`}
+            hint={`of EUR ${totalBudget.toFixed(2)} (${Math.round(burnPct * 100)}%)`}
             tone={burnPct > 0.9 ? "warning" : "default"}
           />
         </div>
@@ -156,84 +207,11 @@ export default async function CampaignHealthPage({ params }: PageProps) {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
-        <section
-          className="overflow-hidden rounded-xl"
-          style={{ background: "var(--bg-card)", border: "1px solid var(--border)" }}
-        >
-          <div className="px-5 py-4" style={{ borderBottom: "1px solid var(--border)" }}>
-            <h2 className="text-base font-semibold" style={{ color: "var(--text-primary)" }}>
-              Submission feed
-            </h2>
-          </div>
-          {campaign.campaignSubmissions.length === 0 ? (
-            <p className="px-5 py-8 text-sm" style={{ color: "var(--text-secondary)" }}>
-              No submissions yet.
-            </p>
-          ) : (
-            <ul>
-              {campaign.campaignSubmissions.slice(0, 30).map((submission) => (
-                <li
-                  key={submission.id}
-                  className="flex items-center justify-between gap-3 px-5 py-3"
-                  style={{ borderBottom: "1px solid var(--border)" }}
-                >
-                  <div className="min-w-0">
-                    <p className="truncate text-sm" style={{ color: "var(--text-primary)" }}>
-                      <span className="font-medium">{submission.creator.email}</span>
-                    </p>
-                    <p className="mt-0.5 text-[11px]" style={{ color: "var(--text-secondary)" }}>
-                      {submission.createdAt.toLocaleString()}
-                    </p>
-                    {submission.submissionSignals.length > 0 && (
-                      <div className="mt-1 flex flex-wrap gap-1">
-                        {submission.submissionSignals.map((signal) => (
-                          <span
-                            key={signal.id}
-                            className="rounded px-1.5 py-0.5 text-[10px] font-medium uppercase"
-                            style={{
-                              background: signal.severity === "CRITICAL" ? "var(--error-bg)" : "var(--warning-bg)",
-                              color: signal.severity === "CRITICAL" ? "var(--error-text)" : "var(--warning-text)",
-                            }}
-                          >
-                            {signal.type.replaceAll("_", " ").toLowerCase()}
-                          </span>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                  <div className="flex shrink-0 items-center gap-3">
-                    <span className="text-xs tabular-nums" style={{ color: "var(--text-secondary)" }}>
-                      {(submission.eligibleViews ?? 0).toLocaleString()} v
-                    </span>
-                    <span className="text-xs tabular-nums" style={{ color: "var(--text-secondary)" }}>
-                      €{Number(submission.earnedAmount ?? 0).toFixed(2)}
-                    </span>
-                    <span
-                      className="rounded px-2 py-0.5 text-[10px] font-semibold"
-                      style={{
-                        background:
-                          submission.status === "APPROVED"
-                            ? "var(--success-bg)"
-                            : submission.status === "REJECTED"
-                              ? "var(--error-bg)"
-                              : "var(--warning-bg)",
-                        color:
-                          submission.status === "APPROVED"
-                            ? "var(--success-text)"
-                            : submission.status === "REJECTED"
-                              ? "var(--error-text)"
-                              : "var(--warning-text)",
-                      }}
-                    >
-                      {submission.status}
-                    </span>
-                  </div>
-                </li>
-              ))}
-            </ul>
-          )}
-        </section>
+      <div className="space-y-6">
+        <CampaignSubmissionsOverview
+          submissions={overviewSubmissions}
+          creators={creatorOptions}
+        />
 
         <section
           className="overflow-hidden rounded-xl"
@@ -271,37 +249,37 @@ export default async function CampaignHealthPage({ params }: PageProps) {
                   </tr>
                 </thead>
                 <tbody>
-                  {leaderboard.map((creator) => {
-                    const profileId = profileByUserId.get(creator.creatorId);
-                    return (
-                      <tr key={creator.creatorId} style={{ borderBottom: "1px solid var(--border)" }}>
-                        <td className="max-w-[220px] px-5 py-3 text-sm" style={{ color: "var(--text-primary)" }}>
-                          {profileId ? (
-                            <Link href={`/admin/creators/${profileId}`} className="block truncate underline">
-                              {creator.email}
-                            </Link>
-                          ) : (
-                            <span className="block truncate">{creator.email}</span>
-                          )}
-                        </td>
-                        <td className="px-5 py-3 text-right text-sm tabular-nums" style={{ color: "var(--text-primary)" }}>
-                          {creator.submissions}
-                        </td>
-                        <td className="px-5 py-3 text-right text-sm tabular-nums" style={{ color: "var(--text-primary)" }}>
-                          {creator.views.toLocaleString()}
-                        </td>
-                        <td className="px-5 py-3 text-right text-sm tabular-nums" style={{ color: "var(--text-primary)" }}>
-                          €{creator.earned.toFixed(2)}
-                        </td>
-                        <td
-                          className="px-5 py-3 text-right text-sm tabular-nums"
-                          style={{ color: creator.flagged > 0 ? "var(--warning-text)" : "var(--text-secondary)" }}
-                        >
-                          {creator.flagged}
-                        </td>
-                      </tr>
-                    );
-                  })}
+                  {leaderboard.map((creator) => (
+                    <tr key={creator.creatorId} style={{ borderBottom: "1px solid var(--border)" }}>
+                      <td className="max-w-[260px] px-5 py-3 text-sm" style={{ color: "var(--text-primary)" }}>
+                        {creator.profileId ? (
+                          <Link href={`/admin/creators/${creator.profileId}`} className="block truncate underline">
+                            {creator.displayName || creator.email}
+                          </Link>
+                        ) : (
+                          <span className="block truncate">{creator.displayName || creator.email}</span>
+                        )}
+                        <span className="mt-1 block truncate text-xs" style={{ color: "var(--text-secondary)" }}>
+                          {creator.email}
+                        </span>
+                      </td>
+                      <td className="px-5 py-3 text-right text-sm tabular-nums" style={{ color: "var(--text-primary)" }}>
+                        {creator.submissions}
+                      </td>
+                      <td className="px-5 py-3 text-right text-sm tabular-nums" style={{ color: "var(--text-primary)" }}>
+                        {creator.views.toLocaleString()}
+                      </td>
+                      <td className="px-5 py-3 text-right text-sm tabular-nums" style={{ color: "var(--text-primary)" }}>
+                        EUR {creator.earned.toFixed(2)}
+                      </td>
+                      <td
+                        className="px-5 py-3 text-right text-sm tabular-nums"
+                        style={{ color: creator.flagged > 0 ? "var(--warning-text)" : "var(--text-secondary)" }}
+                      >
+                        {creator.flagged}
+                      </td>
+                    </tr>
+                  ))}
                 </tbody>
               </table>
             </div>
