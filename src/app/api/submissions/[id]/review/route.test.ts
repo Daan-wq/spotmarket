@@ -57,9 +57,13 @@ function submission(overrides: Record<string, unknown> = {}) {
     creatorId: "creator-user-1",
     applicationId: "application-1",
     earnedAmount: 0,
+    eligibleViews: null,
+    viewCount: null,
+    baselineViews: null,
     logoStatus: "PRESENT",
     settledAt: null,
     payoutRunItems: [],
+    metricSnapshots: [],
     campaign: {
       id: "campaign-1",
       name: "Spring Campaign",
@@ -220,13 +224,13 @@ describe("POST /api/submissions/[id]/review", () => {
     expect(routeMocks.tx.campaignSubmission.update).not.toHaveBeenCalled();
   });
 
-  it("still requires logo verification and view counts before approval", async () => {
+  it("still requires logo verification before approval", async () => {
     routeMocks.submissionFindUnique.mockResolvedValue(
       submission({ logoStatus: "PENDING" }),
     );
 
     const response = await POST(
-      reviewRequest({ status: "APPROVED", baselineViews: 0, viewCount: 1000 }),
+      reviewRequest({ status: "APPROVED" }),
       params,
     );
 
@@ -237,9 +241,11 @@ describe("POST /api/submissions/[id]/review", () => {
     expect(routeMocks.tx.campaignSubmission.update).not.toHaveBeenCalled();
   });
 
-  it("stores earned amount for an approved clip that meets the campaign threshold", async () => {
+  it("approves without manual views and stores earnings from tracked metrics", async () => {
     routeMocks.submissionFindUnique.mockResolvedValue(
       submission({
+        baselineViews: 0,
+        metricSnapshots: [{ viewCount: BigInt(5000) }],
         campaign: {
           id: "campaign-1",
           name: "Spring Campaign",
@@ -251,7 +257,7 @@ describe("POST /api/submissions/[id]/review", () => {
     );
 
     const response = await POST(
-      reviewRequest({ status: "APPROVED", baselineViews: 0, viewCount: 5000 }),
+      reviewRequest({ status: "APPROVED" }),
       params,
     );
 
@@ -260,7 +266,6 @@ describe("POST /api/submissions/[id]/review", () => {
       expect.objectContaining({
         data: expect.objectContaining({
           status: "APPROVED",
-          baselineViews: 0,
           viewCount: 5000,
           eligibleViews: 5000,
           earnedAmount: 50,
@@ -269,9 +274,38 @@ describe("POST /api/submissions/[id]/review", () => {
     );
   });
 
-  it("stores zero earnings for an approved clip below the campaign threshold", async () => {
+  it("approves without manual views and leaves earnings at zero until metrics exist", async () => {
+    routeMocks.submissionFindUnique.mockResolvedValue(submission());
+
+    const response = await POST(
+      reviewRequest({ status: "APPROVED" }),
+      params,
+    );
+
+    expect(response.status).toBe(200);
+    expect(routeMocks.tx.campaignSubmission.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          status: "APPROVED",
+          earnedAmount: 0,
+        }),
+      }),
+    );
+    expect(routeMocks.tx.campaignSubmission.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.not.objectContaining({
+          viewCount: expect.any(Number),
+          eligibleViews: expect.any(Number),
+        }),
+      }),
+    );
+  });
+
+  it("stores zero earnings for an automatically tracked clip below the campaign threshold", async () => {
     routeMocks.submissionFindUnique.mockResolvedValue(
       submission({
+        baselineViews: 0,
+        metricSnapshots: [{ viewCount: BigInt(200) }],
         campaign: {
           id: "campaign-1",
           name: "Spring Campaign",
@@ -283,7 +317,7 @@ describe("POST /api/submissions/[id]/review", () => {
     );
 
     const response = await POST(
-      reviewRequest({ status: "APPROVED", baselineViews: 0, viewCount: 200 }),
+      reviewRequest({ status: "APPROVED" }),
       params,
     );
 
@@ -292,7 +326,6 @@ describe("POST /api/submissions/[id]/review", () => {
       expect.objectContaining({
         data: expect.objectContaining({
           status: "APPROVED",
-          baselineViews: 0,
           viewCount: 200,
           eligibleViews: 0,
           earnedAmount: 0,

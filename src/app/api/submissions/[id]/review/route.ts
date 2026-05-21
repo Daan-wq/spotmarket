@@ -17,8 +17,6 @@ const reviewSchema = z.object({
   status: z.enum(["APPROVED", "REJECTED"]),
   rejectionReason: rejectionReasonSchema.optional(),
   rejectionNote: z.string().trim().optional(),
-  baselineViews: z.number().int().min(0).optional(),
-  viewCount: z.number().int().min(0).optional(),
 }).superRefine((data, ctx) => {
   if (data.status !== "REJECTED") return;
 
@@ -51,8 +49,7 @@ export async function POST(
     const { id } = await params;
 
     const body = await req.json();
-    const { status, rejectionReason, rejectionNote, baselineViews, viewCount } =
-      reviewSchema.parse(body);
+    const { status, rejectionReason, rejectionNote } = reviewSchema.parse(body);
 
     const submission = await prisma.campaignSubmission.findUnique({
       where: { id },
@@ -60,6 +57,11 @@ export async function POST(
         campaign: true,
         application: true,
         payoutRunItems: { select: { id: true } },
+        metricSnapshots: {
+          orderBy: { capturedAt: "desc" },
+          take: 1,
+          select: { viewCount: true },
+        },
       },
     });
 
@@ -87,7 +89,8 @@ export async function POST(
     }
 
     let earnedAmount = Number(submission.earnedAmount);
-    let eligibleViews: number | null = null;
+    let eligibleViews: number | null = submission.eligibleViews;
+    let trackedViewCount: number | null = null;
 
     if (status === "APPROVED") {
       if (submission.logoStatus == null || submission.logoStatus === "PENDING") {
@@ -104,22 +107,18 @@ export async function POST(
         );
       }
 
-      if (baselineViews == null || viewCount == null) {
-        return NextResponse.json(
-          { error: "baselineViews and viewCount are required for approval" },
-          { status: 400 },
-        );
+      trackedViewCount = getTrackedViewCount(submission);
+      if (trackedViewCount !== null) {
+        const paidViews = calculatePaidViews({
+          rawViews: trackedViewCount,
+          baselineViews: submission.baselineViews,
+          minimumPaidViews: submission.campaign.minimumPaidViews,
+          maximumPaidViews: submission.campaign.maximumPaidViews,
+          creatorCpv: submission.campaign.creatorCpv,
+        });
+        eligibleViews = paidViews.payableViews;
+        earnedAmount = paidViews.earnedAmount;
       }
-
-      const paidViews = calculatePaidViews({
-        rawViews: viewCount,
-        baselineViews,
-        minimumPaidViews: submission.campaign.minimumPaidViews,
-        maximumPaidViews: submission.campaign.maximumPaidViews,
-        creatorCpv: submission.campaign.creatorCpv,
-      });
-      eligibleViews = paidViews.payableViews;
-      earnedAmount = paidViews.earnedAmount;
     } else {
       earnedAmount = 0;
       eligibleViews = 0;
@@ -202,8 +201,7 @@ export async function POST(
         data: {
           status,
           earnedAmount,
-          baselineViews: baselineViews ?? undefined,
-          viewCount: viewCount ?? undefined,
+          viewCount: trackedViewCount ?? undefined,
           eligibleViews: eligibleViews ?? undefined,
           rejectionNote: status === "REJECTED" ? rejectionNote : null,
           reviewedAt: new Date(),
@@ -312,4 +310,17 @@ export async function POST(
     }
     return NextResponse.json({ error: err instanceof Error ? err.message : "Internal error" }, { status: 500 });
   }
+}
+
+function getTrackedViewCount(submission: {
+  viewCount: number | null;
+  metricSnapshots: Array<{ viewCount: bigint | number | string | { toString(): string } }>;
+}) {
+  const latestSnapshotViews = submission.metricSnapshots[0]?.viewCount;
+  const value = latestSnapshotViews ?? submission.viewCount;
+  if (value === null || value === undefined) return null;
+
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed) || parsed < 0) return null;
+  return Math.min(Math.trunc(parsed), 2_147_483_647);
 }
