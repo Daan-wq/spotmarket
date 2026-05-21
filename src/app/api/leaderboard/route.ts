@@ -1,10 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { resolveCreatorLeaderboardName } from "@/lib/creator-leaderboard-name";
 
 export async function GET(req: NextRequest) {
   const { searchParams } = req.nextUrl;
   const period = searchParams.get("period") ?? "7d";
-  const limit = Math.min(parseInt(searchParams.get("limit") ?? "10", 10), 50);
+  const requestedLimit = parseInt(searchParams.get("limit") ?? "5", 10);
+  const limit = Number.isFinite(requestedLimit)
+    ? Math.min(Math.max(requestedLimit, 1), 5)
+    : 5;
   const campaignId = searchParams.get("campaignId");
 
   // Calculate date range
@@ -44,9 +48,10 @@ export async function GET(req: NextRequest) {
     where: { id: { in: profileIds } },
     select: {
       id: true,
-      displayName: true,
+      username: true,
       avatarUrl: true,
       userId: true,
+      user: { select: { email: true, discordUsername: true } },
     },
   });
 
@@ -57,7 +62,13 @@ export async function GET(req: NextRequest) {
     return {
       rank: i + 1,
       creatorProfileId: g.creatorProfileId,
-      displayName: profile?.displayName ?? "Unknown",
+      displayName: profile
+        ? resolveCreatorLeaderboardName({
+            email: profile.user.email,
+            discordUsername: profile.user.discordUsername,
+            creatorProfile: { username: profile.username },
+          }) ?? profile.user.email
+        : "",
       avatarUrl: profile?.avatarUrl ?? null,
       userId: profile?.userId ?? null,
       totalEarned: parseFloat(g._sum.amount?.toString() ?? "0"),

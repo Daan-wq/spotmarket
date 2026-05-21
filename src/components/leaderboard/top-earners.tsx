@@ -40,12 +40,15 @@ const TROPHY_ICONS: Record<number, string> = {
 
 export function TopEarners({
   campaignId,
-  limit = 10,
+  limit = 5,
   variant = "sidebar",
   showPeriodSelector = true,
   defaultPeriod = "7d",
   title,
 }: TopEarnersProps) {
+  const leaderboardLimit = Number.isFinite(limit)
+    ? Math.min(Math.max(Math.trunc(limit), 1), 5)
+    : 5;
   const [period, setPeriod] = useState<string>(defaultPeriod);
   const [data, setData] = useState<LeaderboardData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -53,14 +56,14 @@ export function TopEarners({
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setLoading(true);
-    const params = new URLSearchParams({ period, limit: String(limit) });
+    const params = new URLSearchParams({ period, limit: String(leaderboardLimit) });
     if (campaignId) params.set("campaignId", campaignId);
 
     fetch(`/api/leaderboard?${params}`)
       .then((r) => r.json())
       .then((d) => setData(d))
       .finally(() => setLoading(false));
-  }, [period, limit, campaignId]);
+  }, [period, leaderboardLimit, campaignId]);
 
   const periodLabel = period === "7d" ? "Last 7 Days" : period === "30d" ? "Last 30 Days" : "All Time";
 
@@ -115,7 +118,7 @@ export function TopEarners({
         </div>
         <div style={{ background: "var(--bg-elevated)" }}>
           {loading ? (
-            <div className="p-5"><LoadingSkeleton count={limit} /></div>
+            <div className="p-5"><LoadingSkeleton count={leaderboardLimit} /></div>
           ) : data?.leaderboard.length === 0 ? (
             <div className="p-5"><EmptyState /></div>
           ) : (
@@ -161,7 +164,7 @@ export function TopEarners({
 
       <div className="px-3 py-2">
         {loading ? (
-          <LoadingSkeleton count={limit} />
+          <LoadingSkeleton count={leaderboardLimit} />
         ) : data?.leaderboard.length === 0 ? (
           <EmptyState />
         ) : (

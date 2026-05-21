@@ -28,6 +28,7 @@ import { ChevronLeft } from "@/components/animate-ui/icons/chevron-left";
 import { evaluateCampaignJoinEligibility } from "@/lib/campaign-eligibility";
 import { isCampaignClosedForSubmissions } from "@/lib/campaign-submission-state";
 import { buildCreatorCampaignConfigSections } from "@/lib/creator-campaign-display";
+import { resolveCreatorLeaderboardName } from "@/lib/creator-leaderboard-name";
 import {
   SubmittedClipsList,
   type SubmittedClipData,
@@ -135,6 +136,23 @@ export default async function CampaignDetailPage({
     orderBy: { _sum: { earnedAmount: "desc" } },
     take: 5,
   });
+  const topEarnerUsers = topEarners.length
+    ? await prisma.user.findMany({
+        where: { id: { in: topEarners.map((earner) => earner.creatorId) } },
+        select: {
+          id: true,
+          email: true,
+          discordUsername: true,
+          creatorProfile: { select: { username: true } },
+        },
+      })
+    : [];
+  const topEarnerNameMap = new Map(
+    topEarnerUsers.map((earner) => [
+      earner.id,
+      resolveCreatorLeaderboardName(earner) ?? earner.email,
+    ]),
+  );
 
   const totalPaid = campaign.campaignSubmissions.reduce(
     (sum, s) => sum + Number(s.earnedAmount),
@@ -418,7 +436,7 @@ export default async function CampaignDetailPage({
                   #{index + 1}
                 </span>
                 <span className="flex-1 text-sm font-medium text-neutral-950">
-                  {sharedT("fallbackCreator")}
+                  {topEarnerNameMap.get(earner.creatorId) ?? ""}
                 </span>
                 <span className="text-sm font-semibold text-emerald-600">
                   +

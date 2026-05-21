@@ -10,6 +10,7 @@ import { getLocale, getTranslations } from "next-intl/server";
 import { buildAppUrl, getAppUrlForLocale } from "@/lib/app-url";
 import { formatCurrency, formatNumber } from "@/lib/i18n-format";
 import type { Locale } from "@/i18n/routing";
+import { resolveCreatorLeaderboardName } from "@/lib/creator-leaderboard-name";
 
 export default async function ReferralPage() {
   const { userId } = await requireAuth("creator");
@@ -68,11 +69,13 @@ export default async function ReferralPage() {
       where: { referralEarnings: { gt: 0 }, role: "creator" },
       select: {
         id: true,
+        email: true,
+        discordUsername: true,
         referralEarnings: true,
-        creatorProfile: { select: { displayName: true } },
+        creatorProfile: { select: { username: true } },
       },
       orderBy: { referralEarnings: "desc" },
-      take: 10,
+      take: 5,
     }),
   ]);
 
@@ -111,7 +114,7 @@ export default async function ReferralPage() {
 
   const leaderboardEntries = topReferrers.map((r, i) => ({
     rank: i + 1,
-    displayName: r.creatorProfile?.displayName ?? t("anonymous"),
+    displayName: resolveCreatorLeaderboardName(r) ?? r.email,
     totalEarnings: parseFloat(r.referralEarnings.toString()),
     referralCount: countMap.get(r.id) ?? 0,
     isCurrentUser: r.id === user.id,

@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { getLocale, getTranslations } from "next-intl/server";
 import type { Locale } from "@/i18n/routing";
 import { formatCurrency, formatNumber, formatTime } from "@/lib/i18n-format";
+import { resolveCreatorLeaderboardName } from "@/lib/creator-leaderboard-name";
 
 interface LeaderboardEntry {
   rank: number;
@@ -12,10 +13,7 @@ interface LeaderboardEntry {
   views: number;
 }
 
-async function getLeaderboard(
-  periodDays: number | null,
-  fallbackCreator: string,
-): Promise<LeaderboardEntry[]> {
+async function getLeaderboard(periodDays: number | null): Promise<LeaderboardEntry[]> {
   const whereClause: Record<string, unknown> = { status: "APPROVED" };
   if (periodDays !== null) {
     const since = new Date();
@@ -28,20 +26,27 @@ async function getLeaderboard(
     where: whereClause,
     _sum: { earnedAmount: true, claimedViews: true },
     orderBy: { _sum: { earnedAmount: "desc" } },
-    take: 10,
+    take: 5,
   });
 
   const creatorIds = results.map((r) => r.creatorId);
   const users = await prisma.user.findMany({
     where: { id: { in: creatorIds } },
-    select: { id: true, creatorProfile: { select: { displayName: true } } },
+    select: {
+      id: true,
+      email: true,
+      discordUsername: true,
+      creatorProfile: { select: { username: true } },
+    },
   });
-  const nameMap = new Map(users.map((u) => [u.id, u.creatorProfile?.displayName ?? fallbackCreator]));
+  const nameMap = new Map(
+    users.map((u) => [u.id, resolveCreatorLeaderboardName(u) ?? u.email]),
+  );
 
   return results.map((r, i) => ({
     rank: i + 1,
     creatorId: r.creatorId,
-    displayName: nameMap.get(r.creatorId) ?? fallbackCreator,
+    displayName: nameMap.get(r.creatorId) ?? "",
     earnings: Number(r._sum.earnedAmount ?? 0),
     views: Number(r._sum.claimedViews ?? 0),
   }));
@@ -55,17 +60,22 @@ export default async function LeaderboardPage() {
 
   const user = await prisma.user.findUnique({
     where: { supabaseId: userId },
-    select: { id: true, creatorProfile: { select: { displayName: true } } },
+    select: {
+      id: true,
+      email: true,
+      discordUsername: true,
+      creatorProfile: { select: { username: true } },
+    },
   });
 
   const [today, week, allTime] = await Promise.all([
-    getLeaderboard(1, sharedT("fallbackCreator")),
-    getLeaderboard(7, sharedT("fallbackCreator")),
-    getLeaderboard(null, sharedT("fallbackCreator")),
+    getLeaderboard(1),
+    getLeaderboard(7),
+    getLeaderboard(null),
   ]);
 
-  const userName = user?.creatorProfile?.displayName ?? sharedT("fallbackCreator");
-  const userInitial = userName.charAt(0).toUpperCase();
+  const userName = resolveCreatorLeaderboardName(user) ?? user?.email ?? "";
+  const userInitial = userName.charAt(0).toUpperCase() || "?";
 
   // Get personal stats
   const personalRank = (list: LeaderboardEntry[]) => {

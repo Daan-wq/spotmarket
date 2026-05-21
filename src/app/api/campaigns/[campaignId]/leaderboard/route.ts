@@ -14,6 +14,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAuth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { resolveCreatorLeaderboardName } from "@/lib/creator-leaderboard-name";
 
 export const dynamic = "force-dynamic";
 
@@ -36,10 +37,10 @@ export async function GET(
 
   const { campaignId } = await params;
   const sort = parseSort(req.nextUrl.searchParams.get("sort"));
-  const limit = Math.min(
-    100,
-    Math.max(1, Number(req.nextUrl.searchParams.get("limit") ?? "50"))
-  );
+  const requestedLimit = Number(req.nextUrl.searchParams.get("limit") ?? "5");
+  const limit = Number.isFinite(requestedLimit)
+    ? Math.min(5, Math.max(1, Math.trunc(requestedLimit)))
+    : 5;
 
   const campaign = await prisma.campaign.findUnique({
     where: { id: campaignId },
@@ -65,10 +66,12 @@ export async function GET(
       creator: {
         select: {
           id: true,
+          email: true,
+          discordUsername: true,
           creatorProfile: {
             select: {
               id: true,
-              displayName: true,
+              username: true,
               avatarUrl: true,
             },
           },
@@ -128,7 +131,7 @@ export async function GET(
       byCreator.set(key, {
         creatorId: s.creatorId,
         creatorProfileId: profile?.id ?? null,
-        displayName: profile?.displayName ?? "Anonymous clipper",
+        displayName: resolveCreatorLeaderboardName(s.creator) ?? s.creator.email,
         avatarUrl: profile?.avatarUrl ?? null,
         submissionCount: 1,
         totalViews: views,

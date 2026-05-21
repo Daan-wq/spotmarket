@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireAuth } from "@/lib/auth";
+import { resolveCreatorLeaderboardName } from "@/lib/creator-leaderboard-name";
 
 export async function GET(req: NextRequest) {
   try {
@@ -17,7 +18,10 @@ export async function GET(req: NextRequest) {
     });
     if (!currentUser) return NextResponse.json({ error: "User not found" }, { status: 404 });
 
-    const limit = Math.min(parseInt(req.nextUrl.searchParams.get("limit") ?? "10"), 50);
+    const requestedLimit = parseInt(req.nextUrl.searchParams.get("limit") ?? "5", 10);
+    const limit = Number.isFinite(requestedLimit)
+      ? Math.min(Math.max(requestedLimit, 1), 5)
+      : 5;
 
     // Get top referrers by earnings
     const topReferrers = await prisma.user.findMany({
@@ -27,8 +31,10 @@ export async function GET(req: NextRequest) {
       },
       select: {
         id: true,
+        email: true,
+        discordUsername: true,
         referralEarnings: true,
-        creatorProfile: { select: { displayName: true, avatarUrl: true } },
+        creatorProfile: { select: { username: true, avatarUrl: true } },
       },
       orderBy: { referralEarnings: "desc" },
       take: limit,
@@ -48,7 +54,7 @@ export async function GET(req: NextRequest) {
     const leaderboard = topReferrers.map((r, i) => ({
       rank: i + 1,
       userId: r.id,
-      displayName: r.creatorProfile?.displayName ?? "Anonymous",
+      displayName: resolveCreatorLeaderboardName(r) ?? r.email,
       avatarUrl: r.creatorProfile?.avatarUrl ?? null,
       totalEarnings: parseFloat(r.referralEarnings.toString()),
       referralCount: countMap.get(r.id) ?? 0,
