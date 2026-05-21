@@ -30,6 +30,7 @@ interface NavItem {
   labelKey: string;
   icon: NavIcon;
   description?: string;
+  hiddenFromSidebar?: boolean;
 }
 
 const NAV: Array<{ labelKey: string; items: NavItem[] }> = [
@@ -39,7 +40,7 @@ const NAV: Array<{ labelKey: string; items: NavItem[] }> = [
       { href: "/admin", labelKey: "commandCenter", icon: LayoutDashboard },
       { href: "/admin/campaigns", labelKey: "campaigns", icon: Send },
       { href: "/admin/clippers", labelKey: "clippers", icon: Users },
-      { href: "/admin/production", labelKey: "production", icon: GitPullRequestArrow },
+      { href: "/admin/production", labelKey: "production", icon: GitPullRequestArrow, hiddenFromSidebar: true },
       { href: "/admin/review", labelKey: "clipReview", icon: ClipboardCheck },
     ],
   },
@@ -47,20 +48,20 @@ const NAV: Array<{ labelKey: string; items: NavItem[] }> = [
     labelKey: "delivery",
     items: [
       { href: "/admin/crm", labelKey: "leads", icon: BriefcaseBusiness },
-      { href: "/admin/recruitment", labelKey: "recruitment", icon: Sparkles },
+      { href: "/admin/recruitment", labelKey: "recruitment", icon: Sparkles, hiddenFromSidebar: true },
       { href: "/admin/brands", labelKey: "brands", icon: FileText },
-      { href: "/admin/onboarding", labelKey: "onboarding", icon: ListChecks },
+      { href: "/admin/onboarding", labelKey: "onboarding", icon: ListChecks, hiddenFromSidebar: true },
     ],
   },
   {
     labelKey: "control",
     items: [
       { href: "/admin/payouts", labelKey: "payouts", icon: Banknote },
-      { href: "/admin/pricing", labelKey: "pricing", icon: FileText },
-      { href: "/admin/documents", labelKey: "documents", icon: ClipboardCheck },
+      { href: "/admin/pricing", labelKey: "pricing", icon: FileText, hiddenFromSidebar: true },
+      { href: "/admin/documents", labelKey: "documents", icon: ClipboardCheck, hiddenFromSidebar: true },
       { href: "/admin/reports", labelKey: "reports", icon: Gauge },
       { href: "/admin/site-analytics", labelKey: "siteAnalytics", icon: BarChart3 },
-      { href: "/admin/sops", labelKey: "guides", icon: BookOpen },
+      { href: "/admin/sops", labelKey: "guides", icon: BookOpen, hiddenFromSidebar: true },
       { href: "/admin/signals", labelKey: "signals", icon: ShieldCheck },
     ],
   },
@@ -113,7 +114,7 @@ export function AdminSidebar({ initials, email }: AdminSidebarProps) {
               {t(section.labelKey)}
             </p>
             <div className="space-y-1">
-              {section.items.map((item) => {
+              {section.items.filter((item) => !item.hiddenFromSidebar).map((item) => {
                 const active = isActive(item.href);
                 const Icon = item.icon;
                 return (
