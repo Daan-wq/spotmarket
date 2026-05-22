@@ -682,6 +682,8 @@ model CampaignSubmission {
   sourcePlatform BioPlatform?
   sourceMethod   SubmissionMethod @default(UNKNOWN)
   authorHandle   String?
+  sourceConnectionType ConnectionType?
+  sourceConnectionId   String?
   lastMetricsRefreshAt    DateTime?
   metricsRefreshFailures  Int              @default(0)
 
@@ -713,6 +715,7 @@ model CampaignSubmission {
   @@index([campaignId])
   @@index([status])
   @@index([settledAt])
+  @@index([sourceConnectionType, sourceConnectionId])
   @@index([logoStatus])
   @@index([productionAssignmentId])
 }

@@ -58,7 +58,7 @@ describe("POST /api/submissions", () => {
       id: "creator-user-1",
       creatorProfile: {
         id: "creator-profile-1",
-        igConnections: [{ igUsername: "creator", accessToken: "token" }],
+        igConnections: [{ id: "ig-conn-1", igUsername: "creator", accessToken: "token" }],
         ttConnections: [],
         fbConnections: [],
         ytConnections: [],
@@ -127,7 +127,7 @@ describe("POST /api/submissions", () => {
       creatorProfile: {
         id: "creator-profile-1",
         igConnections: [],
-        ttConnections: [{ username: "creator", accessToken: "token" }],
+        ttConnections: [{ id: "tt-conn-1", username: "creator", accessToken: "token" }],
         fbConnections: [],
         ytConnections: [],
       },
@@ -182,6 +182,130 @@ describe("POST /api/submissions", () => {
           thumbnailUrl:
             "https://project.supabase.co/storage/v1/object/public/creator-media-cache/tt/tt-conn-1/7123456789012345678.jpg",
           mediaType: "video",
+        }),
+      }),
+    );
+  });
+
+  test("stores the selected source connection for handle-less Instagram submissions", async () => {
+    routeMocks.userFindUnique.mockResolvedValue({
+      id: "creator-user-1",
+      creatorProfile: {
+        id: "creator-profile-1",
+        igConnections: [
+          { id: "ig-conn-a", igUsername: "account_a", accessToken: "token-a" },
+          { id: "ig-conn-b", igUsername: "account_b", accessToken: "token-b" },
+        ],
+        ttConnections: [],
+        fbConnections: [],
+        ytConnections: [],
+      },
+    });
+    routeMocks.applicationFindUnique.mockResolvedValue({
+      id: "application-1",
+      creatorProfileId: "creator-profile-1",
+      campaignId: "campaign-1",
+      campaign: {
+        status: "active",
+        deadline: new Date("2026-06-17T00:00:00.000Z"),
+      },
+    });
+    routeMocks.submissionCreate.mockResolvedValue({
+      id: "submission-1",
+      postUrl: "https://www.instagram.com/reel/ABC123/",
+      status: "PENDING",
+      createdAt: new Date("2026-05-20T10:00:00.000Z"),
+      applicationId: "application-1",
+      campaignId: "campaign-1",
+      sourcePlatform: "INSTAGRAM",
+      sourceMethod: "OAUTH",
+      logoStatus: "PENDING",
+    });
+
+    const response = await POST(
+      request({
+        applicationId: "application-1",
+        postUrl: "https://www.instagram.com/reel/ABC123/",
+        connectionId: "ig-conn-b",
+      }),
+    );
+
+    expect(response.status).toBe(201);
+    expect(routeMocks.submissionCreate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          sourceConnectionType: "IG",
+          sourceConnectionId: "ig-conn-b",
+        }),
+      }),
+    );
+  });
+
+  test("rejects ambiguous handle-less submissions when multiple platform connections exist and no connection is selected", async () => {
+    routeMocks.userFindUnique.mockResolvedValue({
+      id: "creator-user-1",
+      creatorProfile: {
+        id: "creator-profile-1",
+        igConnections: [
+          { id: "ig-conn-a", igUsername: "account_a", accessToken: "token-a" },
+          { id: "ig-conn-b", igUsername: "account_b", accessToken: "token-b" },
+        ],
+        ttConnections: [],
+        fbConnections: [],
+        ytConnections: [],
+      },
+    });
+
+    const response = await POST(
+      request({
+        applicationId: "application-1",
+        postUrl: "https://www.instagram.com/reel/ABC123/",
+      }),
+    );
+
+    expect(response.status).toBe(400);
+    await expect(response.json()).resolves.toEqual({
+      error: "Select the source Instagram account before submitting this clip.",
+    });
+    expect(routeMocks.applicationFindUnique).not.toHaveBeenCalled();
+    expect(routeMocks.submissionCreate).not.toHaveBeenCalled();
+  });
+
+  test("stores the sole matching platform connection when no explicit connection is provided", async () => {
+    routeMocks.applicationFindUnique.mockResolvedValue({
+      id: "application-1",
+      creatorProfileId: "creator-profile-1",
+      campaignId: "campaign-1",
+      campaign: {
+        status: "active",
+        deadline: new Date("2026-06-17T00:00:00.000Z"),
+      },
+    });
+    routeMocks.submissionCreate.mockResolvedValue({
+      id: "submission-1",
+      postUrl: "https://www.instagram.com/reel/ABC123/",
+      status: "PENDING",
+      createdAt: new Date("2026-05-20T10:00:00.000Z"),
+      applicationId: "application-1",
+      campaignId: "campaign-1",
+      sourcePlatform: "INSTAGRAM",
+      sourceMethod: "OAUTH",
+      logoStatus: "PENDING",
+    });
+
+    const response = await POST(
+      request({
+        applicationId: "application-1",
+        postUrl: "https://www.instagram.com/reel/ABC123/",
+      }),
+    );
+
+    expect(response.status).toBe(201);
+    expect(routeMocks.submissionCreate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          sourceConnectionType: "IG",
+          sourceConnectionId: "ig-conn-1",
         }),
       }),
     );

@@ -72,6 +72,8 @@ export async function pollSubmissions(opts: RunOptions): Promise<PollResult> {
       creatorId: true,
       campaignId: true,
       status: true,
+      sourceConnectionType: true,
+      sourceConnectionId: true,
       baselineViews: true,
       settledAt: true,
       payoutRunItems: { select: { id: true }, take: 1 },
