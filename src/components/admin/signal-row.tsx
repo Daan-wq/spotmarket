@@ -217,6 +217,14 @@ export function SignalActions({ signal }: { signal: SignalRowData }) {
       >
         View
       </Link>
+      {signal.type === "BOT_SUSPECTED" ? (
+        <Link
+          href={`/admin/signals/${signal.id}`}
+          className="rounded-xl border border-orange-200 bg-orange-50 px-3 py-2 text-xs font-semibold text-orange-700 hover:bg-orange-100"
+        >
+          Review bot
+        </Link>
+      ) : null}
       {signal.creatorProfileId ? (
         <Link
           href={`/admin/creators/${signal.creatorProfileId}`}

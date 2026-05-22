@@ -21,6 +21,7 @@ interface SubmissionActionsProps {
   status: string;
   postUrl: string | null;
   canRejectApproved?: boolean;
+  compact?: boolean;
 }
 
 export default function SubmissionActions({
@@ -28,6 +29,7 @@ export default function SubmissionActions({
   status,
   postUrl,
   canRejectApproved = false,
+  compact = false,
 }: SubmissionActionsProps) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
@@ -110,7 +112,7 @@ export default function SubmissionActions({
   }
 
   return (
-    <div className="min-w-[220px] space-y-2">
+    <div className={compact ? "w-[104px] space-y-2" : "min-w-[220px] space-y-2"}>
       {postUrl ? (
         <a
           href={postUrl}
@@ -176,7 +178,7 @@ export default function SubmissionActions({
               className="h-8 rounded-md px-3 text-xs font-semibold disabled:opacity-50"
               style={{ background: "var(--error-bg)", color: "var(--error-text)" }}
             >
-              {optimisticStatus === "APPROVED" ? "Reject approved" : "Reject"}
+              {optimisticStatus === "APPROVED" && !compact ? "Reject approved" : "Reject"}
             </button>
           ) : null}
         </div>

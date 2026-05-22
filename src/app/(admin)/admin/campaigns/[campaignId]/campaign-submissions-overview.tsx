@@ -102,22 +102,27 @@ export function CampaignSubmissionsOverview({
           {
             key: "creator",
             header: "Creator",
-            className: "min-w-[220px]",
+            className: "w-[160px] max-w-[160px] px-3",
             cell: (submission) => {
               const name = submission.creatorDisplayName || submission.creatorEmail;
               return (
-                <div>
+                <div className="min-w-0">
                   {submission.creatorProfileId ? (
                     <Link
                       href={`/admin/creators/${submission.creatorProfileId}`}
-                      className="font-semibold text-neutral-950 underline-offset-2 hover:underline"
+                      className="block truncate font-semibold text-neutral-950 underline-offset-2 hover:underline"
+                      title={name}
                     >
                       {name}
                     </Link>
                   ) : (
-                    <p className="font-semibold text-neutral-950">{name}</p>
+                    <p className="truncate font-semibold text-neutral-950" title={name}>
+                      {name}
+                    </p>
                   )}
-                  <p className="mt-1 text-xs text-neutral-500">{submission.creatorEmail}</p>
+                  <p className="mt-1 truncate text-xs text-neutral-500" title={submission.creatorEmail}>
+                    {submission.creatorEmail}
+                  </p>
                 </div>
               );
             },
@@ -125,6 +130,7 @@ export function CampaignSubmissionsOverview({
           {
             key: "post",
             header: "Post",
+            className: "w-[92px] px-3",
             cell: (submission) => (
               <div className="space-y-1">
                 <a
@@ -144,6 +150,7 @@ export function CampaignSubmissionsOverview({
           {
             key: "status",
             header: "Status",
+            className: "w-[86px] px-2",
             cell: (submission) => (
               <div className="flex flex-col items-start gap-2">
                 <Badge variant={submissionStatusVariant(submission.status)}>
@@ -158,17 +165,10 @@ export function CampaignSubmissionsOverview({
             key: "views",
             header: "Total views",
             align: "right",
+            className: "w-[88px] px-2",
             cell: (submission) => (
               <div className="tabular-nums text-neutral-950">
                 <p className="font-semibold">{formatNumber(displayTotalViews(submission))}</p>
-                <p className="mt-1 text-xs text-neutral-500">
-                  {submission.viewCount == null ? "Claimed total" : "Tracked total"}
-                </p>
-                {submission.eligibleViews == null ? null : (
-                  <p className="mt-0.5 text-[11px] text-neutral-400">
-                    Eligible/payable: {formatNumber(submission.eligibleViews)}
-                  </p>
-                )}
               </div>
             ),
           },
@@ -176,6 +176,7 @@ export function CampaignSubmissionsOverview({
             key: "earned",
             header: "Earned",
             align: "right",
+            className: "w-[76px] px-2",
             cell: (submission) => (
               <span className="font-semibold tabular-nums text-neutral-950">
                 {submission.earnedAmount > 0 ? formatCurrencyPrecise(submission.earnedAmount, "EUR") : "-"}
@@ -185,28 +186,36 @@ export function CampaignSubmissionsOverview({
           {
             key: "submitted",
             header: "Submitted",
-            cell: (submission) => (
-              <div className="text-xs text-neutral-500">
-                <p>{formatDate(submission.createdAt)}</p>
-                {submission.reviewedAt ? <p className="mt-1">Reviewed {formatDate(submission.reviewedAt)}</p> : null}
-              </div>
-            ),
+            className: "w-[98px] px-2",
+            cell: (submission) => <span className="text-xs text-neutral-500">{formatDate(submission.createdAt)}</span>,
           },
           {
             key: "signals",
             header: "Signals",
-            className: "min-w-[160px]",
+            className: "w-[84px] max-w-[84px] px-2",
             cell: (submission) =>
               submission.signals.length > 0 ? (
                 <div className="flex flex-wrap gap-1.5">
-                  {submission.signals.map((signal) => (
-                    <Badge
-                      key={signal.id}
-                      variant={signal.severity === "CRITICAL" ? "failed" : "pending"}
-                    >
-                      {titleCaseEnum(signal.type)}
-                    </Badge>
-                  ))}
+                  {submission.signals.map((signal) =>
+                    signal.type === "BOT_SUSPECTED" ? (
+                      <Link
+                        key={signal.id}
+                        href={`/admin/signals/${signal.id}`}
+                        className="inline-flex h-6 items-center rounded-full border border-orange-200 bg-orange-50 px-2 text-[11px] font-semibold text-orange-700 transition hover:bg-orange-100"
+                        title="Review bot suspicion details"
+                      >
+                        Bot
+                      </Link>
+                    ) : (
+                      <Badge
+                        key={signal.id}
+                        variant={signal.severity === "CRITICAL" ? "failed" : "pending"}
+                        title={titleCaseEnum(signal.type)}
+                      >
+                        {compactSignalLabel(signal.type)}
+                      </Badge>
+                    ),
+                  )}
                 </div>
               ) : (
                 <span className="text-xs text-neutral-400">-</span>
@@ -215,9 +224,9 @@ export function CampaignSubmissionsOverview({
           {
             key: "reason",
             header: "Reason",
-            className: "min-w-[220px] max-w-[280px]",
+            className: "w-[96px] max-w-[96px] px-2",
             cell: (submission) => (
-              <p className="line-clamp-3 text-xs leading-5 text-neutral-500">
+              <p className="line-clamp-2 text-xs leading-5 text-neutral-500" title={submission.rejectionNote ?? undefined}>
                 {submission.rejectionNote || "-"}
               </p>
             ),
@@ -225,12 +234,14 @@ export function CampaignSubmissionsOverview({
           {
             key: "actions",
             header: "Actions",
+            className: "w-[118px] px-2",
             cell: (submission) => (
               <SubmissionActions
                 id={submission.id}
                 status={submission.status}
                 postUrl={submission.postUrl}
                 canRejectApproved={canRejectApproved(submission)}
+                compact
               />
             ),
           },
@@ -242,6 +253,15 @@ export function CampaignSubmissionsOverview({
 
 export function displayTotalViews(submission: Pick<CampaignSubmissionOverviewRow, "viewCount" | "claimedViews">) {
   return submission.viewCount ?? submission.claimedViews;
+}
+
+function compactSignalLabel(type: string) {
+  if (type === "RATIO_ANOMALY") return "Ratio";
+  if (type === "VELOCITY_DROP") return "Drop";
+  if (type === "LOGO_MISSING") return "Logo";
+  if (type === "TOKEN_BROKEN") return "Token";
+  if (type === "DUPLICATE") return "Dup";
+  return titleCaseEnum(type);
 }
 
 function canRejectApproved(submission: CampaignSubmissionOverviewRow) {
