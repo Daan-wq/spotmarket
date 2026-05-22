@@ -45,9 +45,10 @@ describe("scoreVelocity", () => {
     expect(out.velocity!.viewsPerHour).toBeCloseTo(1000, 0);
   });
 
-  it("flags VELOCITY_SPIKE when last delta is >10× the rolling mean", () => {
+  it("routes suspicious view spikes through BOT_SUSPECTED instead of legacy VELOCITY_SPIKE", () => {
     // 6 days of steady growth at ~50 views/hr (1200 views/day), then a sudden
-    // 50,000-view jump in the last hour — should fire VELOCITY_SPIKE.
+    // 50,000-view jump in the last hour. Velocity is now anti-bot evidence,
+    // not its own admin signal.
     const snapshots = [
       snap(144, 0),
       snap(120, 1200),
@@ -59,7 +60,8 @@ describe("scoreVelocity", () => {
       snap(0, 56050),
     ];
     const out = scoreVelocity({ snapshots });
-    expect(out.flags.some((f) => f.type === "VELOCITY_SPIKE")).toBe(true);
+    expect(out.flags.some((f) => f.type === "VELOCITY_SPIKE")).toBe(false);
+    expect(out.flags.some((f) => f.type === "BOT_SUSPECTED")).toBe(true);
   });
 
   it("flags BOT_SUSPECTED when comments+shares collapse against view spike", () => {
@@ -82,7 +84,7 @@ describe("scoreVelocity", () => {
     expect(out.flags.some((f) => f.type === "BOT_SUSPECTED")).toBe(false);
   });
 
-  it("scores fake-view risk as critical when a velocity spike has collapsed engagement", () => {
+  it("scores fake-view risk as critical when a view-growth anomaly has collapsed engagement", () => {
     const out = scoreVelocity({
       snapshots: [
         snap(144, 0, 0, 0, 0),

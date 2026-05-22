@@ -8,9 +8,9 @@ describe("SignalEvidence", () => {
       reason: "Anti-bot risk 78/100",
       riskScore: 78,
       confidence: "HIGH",
-      reasons: ["Velocity spike with collapsed engagement", "Views exceed account audience"],
+      reasons: ["Verdachte viewgroei met lage engagement", "Views exceed account audience"],
       evidence: [
-        { kind: "VELOCITY_ANOMALY", label: "Velocity anomaly", points: 35 },
+        { kind: "VELOCITY_ANOMALY", label: "View growth anomaly", points: 35 },
         { kind: "ENGAGEMENT_COLLAPSE", label: "Engagement collapse", points: 45 },
       ],
       evaluatedAt: "2026-05-12T10:00:00.000Z",
@@ -20,9 +20,9 @@ describe("SignalEvidence", () => {
     const html = renderToStaticMarkup(<SignalEvidence payload={payload} />);
 
     expect(getSignalRiskScore(payload)).toBe(78);
-    expect(getSignalTopReason(payload)).toBe("Velocity spike with collapsed engagement");
+    expect(getSignalTopReason(payload)).toBe("Verdachte viewgroei met lage engagement");
     expect(html).toContain("Risk 78");
-    expect(html).toContain("Velocity spike with collapsed engagement");
+    expect(html).toContain("Verdachte viewgroei met lage engagement");
     expect(html).toContain("2 signals");
   });
 

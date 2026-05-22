@@ -111,18 +111,7 @@ export function scoreVelocity(input: ScorerInput): ScorerOutput {
   const flags: FlagDraft[] = [];
 
   if (rolling7dMean != null && spikeMultiplier != null) {
-    if (spikeMultiplier > 10) {
-      flags.push({
-        type: "VELOCITY_SPIKE",
-        severity: spikeMultiplier > 25 ? "CRITICAL" : "WARN",
-        payload: {
-          reason: `viewsPerHour ${viewsPerHour.toFixed(0)} vs 7d mean ${rolling7dMean.toFixed(0)} (x${spikeMultiplier.toFixed(1)})`,
-          viewsPerHour,
-          rolling7dMean,
-          spikeMultiplier,
-        },
-      });
-    } else if (spikeMultiplier < 0.1 && rolling7dMean > 1) {
+    if (spikeMultiplier < 0.1 && rolling7dMean > 1) {
       flags.push({
         type: "VELOCITY_DROP",
         severity: "INFO",
@@ -213,8 +202,8 @@ function evaluateAntiBot(input: AntiBotInput): AntiBotPayload {
       kind: "VELOCITY_ANOMALY",
       label:
         input.spikeMultiplier > 25
-          ? "Extreme velocity spike against submission history"
-          : "Velocity spike against submission history",
+          ? "Extreme view growth anomaly against submission history"
+          : "View growth anomaly against submission history",
       points: input.spikeMultiplier > 25 ? 15 : 10,
       metrics: {
         viewsPerHour: round(input.viewsPerHour),
@@ -229,7 +218,7 @@ function evaluateAntiBot(input: AntiBotInput): AntiBotPayload {
     if (campaignRatio > 2.5) {
       evidence.push({
         kind: "VELOCITY_ANOMALY",
-        label: "Velocity above campaign benchmark",
+        label: "View growth above campaign benchmark",
         points: campaignRatio > 6 ? 10 : 5,
         metrics: {
           viewsPerHour: round(input.viewsPerHour),

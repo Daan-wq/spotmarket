@@ -28,10 +28,10 @@ const SEVERITY_STYLE: Record<SignalSeverity, { bg: string; color: string; label:
 };
 
 const TYPE_LABEL: Record<SignalType, string> = {
-  VELOCITY_SPIKE: "Velocity spike",
+  VELOCITY_SPIKE: "Legacy signal",
   VELOCITY_DROP: "Velocity drop",
   RATIO_ANOMALY: "Ratio anomaly",
-  BOT_SUSPECTED: "Bot suspected",
+  BOT_SUSPECTED: "Bot detectie waarschuwing",
   LOGO_MISSING: "Logo missing",
   DUPLICATE: "Duplicate",
   TOKEN_BROKEN: "Token broken",

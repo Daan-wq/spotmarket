@@ -15,7 +15,6 @@ import { formatDate, titleCaseEnum } from "@/lib/admin/agency-format";
 export const dynamic = "force-dynamic";
 
 const SIGNAL_TYPES: SignalType[] = [
-  "VELOCITY_SPIKE",
   "VELOCITY_DROP",
   "RATIO_ANOMALY",
   "BOT_SUSPECTED",
@@ -39,6 +38,7 @@ export default async function SignalsPage({ searchParams }: PageProps) {
 
   const where: Prisma.SubmissionSignalWhereInput = {
     severity: { in: ["WARN", "CRITICAL"] },
+    NOT: { type: "VELOCITY_SPIKE" },
   };
   if (typeFilter) where.type = typeFilter;
   if (severityFilter) where.severity = severityFilter;
@@ -104,7 +104,7 @@ export default async function SignalsPage({ searchParams }: PageProps) {
       <div className="grid grid-cols-1 gap-4 md:grid-cols-5">
         <StatCard label="Matching signals" value={String(rows.length)} detail="Current filter view" tone={rows.length > 0 ? "warning" : "neutral"} />
         <StatCard label="Critical" value={String(critical)} detail="Needs fastest action" tone={critical > 0 ? "danger" : "neutral"} />
-        <StatCard label="Bot suspected" value={String(botSignals)} detail="Fake-view review queue" tone={botSignals > 0 ? "danger" : "neutral"} />
+        <StatCard label="Bot detectie waarschuwing" value={String(botSignals)} detail="Review queue voor verdachte views" tone={botSignals > 0 ? "danger" : "neutral"} />
         <StatCard label="Token broken" value={String(tokenSignals)} detail="Reconnect nudges available" tone={tokenSignals > 0 ? "warning" : "neutral"} />
         <StatCard label="Resolved" value={String(resolved)} detail="In this view" />
       </div>
@@ -151,7 +151,7 @@ export default async function SignalsPage({ searchParams }: PageProps) {
           emptyState={<EmptyState title="No signals match these filters" description="Try another filter set, or return to open signals." />}
           columns={[
             { key: "severity", header: "Severity", cell: (row) => <Badge variant={row.severity === "CRITICAL" ? "failed" : "pending"}>{titleCaseEnum(row.severity)}</Badge> },
-            { key: "type", header: "Type", cell: (row) => titleCaseEnum(row.type) },
+            { key: "type", header: "Type", cell: (row) => signalTypeLabel(row.type) },
             {
               key: "source",
               header: "Campaign / Creator",
@@ -170,6 +170,11 @@ export default async function SignalsPage({ searchParams }: PageProps) {
       </section>
     </div>
   );
+}
+
+function signalTypeLabel(type: SignalType): string {
+  if (type === "BOT_SUSPECTED") return "Bot detectie waarschuwing";
+  return titleCaseEnum(type);
 }
 
 function FilterGroup({ label, children }: { label: string; children: ReactNode }) {
