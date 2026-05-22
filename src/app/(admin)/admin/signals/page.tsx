@@ -7,6 +7,7 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { PageHeader, SectionHeader, StatCard } from "@/components/ui/page";
 import { ProgressiveActionDrawer } from "@/components/ui/progressive-action-drawer";
 import { SignalActions, type SignalRowData } from "@/components/admin/signal-row";
+import { SignalEvidence } from "@/components/admin/signal-evidence";
 import { prisma } from "@/lib/prisma";
 import type { SignalSeverity, SignalType } from "@/lib/contracts/signals";
 import { formatDate, titleCaseEnum } from "@/lib/admin/agency-format";
@@ -28,7 +29,6 @@ const SEVERITY_OPTIONS: SignalSeverity[] = ["WARN", "CRITICAL"];
 interface PageProps {
   searchParams: Promise<{ type?: string; severity?: string; status?: string }>;
 }
-
 export default async function SignalsPage({ searchParams }: PageProps) {
   const sp = await searchParams;
   const typeFilter = SIGNAL_TYPES.includes(sp.type as SignalType) ? (sp.type as SignalType) : null;
@@ -55,7 +55,7 @@ export default async function SignalsPage({ searchParams }: PageProps) {
           postUrl: true,
           creatorId: true,
           campaign: { select: { name: true } },
-          creator: { select: { email: true } },
+          creator: { select: { email: true, creatorProfile: { select: { id: true } } } },
         },
       },
     },
@@ -73,9 +73,11 @@ export default async function SignalsPage({ searchParams }: PageProps) {
     creatorEmail: s.submission?.creator?.email ?? null,
     postUrl: s.submission?.postUrl ?? null,
     creatorId: s.submission?.creatorId ?? null,
+    creatorProfileId: s.submission?.creator?.creatorProfile?.id ?? null,
   }));
 
   const critical = rows.filter((row) => row.severity === "CRITICAL").length;
+  const botSignals = rows.filter((row) => row.type === "BOT_SUSPECTED").length;
   const tokenSignals = rows.filter((row) => row.type === "TOKEN_BROKEN").length;
   const resolved = rows.filter((row) => row.resolvedAt).length;
 
@@ -99,9 +101,10 @@ export default async function SignalsPage({ searchParams }: PageProps) {
         description="WARN+ submission signals. Resolve each signal once action has been taken."
       />
 
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-5">
         <StatCard label="Matching signals" value={String(rows.length)} detail="Current filter view" tone={rows.length > 0 ? "warning" : "neutral"} />
         <StatCard label="Critical" value={String(critical)} detail="Needs fastest action" tone={critical > 0 ? "danger" : "neutral"} />
+        <StatCard label="Bot suspected" value={String(botSignals)} detail="Fake-view review queue" tone={botSignals > 0 ? "danger" : "neutral"} />
         <StatCard label="Token broken" value={String(tokenSignals)} detail="Reconnect nudges available" tone={tokenSignals > 0 ? "warning" : "neutral"} />
         <StatCard label="Resolved" value={String(resolved)} detail="In this view" />
       </div>
@@ -159,7 +162,7 @@ export default async function SignalsPage({ searchParams }: PageProps) {
                 </div>
               ),
             },
-            { key: "reason", header: "Reason", cell: (row) => <span className="text-xs text-neutral-500">{getReason(row.payload) || "-"}</span> },
+            { key: "reason", header: "Reason", cell: (row) => <SignalEvidence payload={row.payload} /> },
             { key: "when", header: "When", cell: (row) => formatDate(row.createdAt) },
             { key: "actions", header: "Actions", cell: (row) => <SignalActions signal={row} /> },
           ]}
@@ -191,10 +194,4 @@ function FilterChip({ label, active, href }: { label: string; active: boolean; h
       {label}
     </Link>
   );
-}
-
-function getReason(payload: Record<string, unknown> | null): string {
-  if (!payload) return "";
-  const reason = payload.reason;
-  return typeof reason === "string" ? reason : "";
 }

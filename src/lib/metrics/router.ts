@@ -25,6 +25,10 @@ import { fetchFacebookMetric } from "./facebook";
 export interface MetricFetcherSuccess {
   ok: true;
   source: Exclude<MetricSource, "OAUTH_FAILED">;
+  connection?: {
+    type: "IG" | "TT" | "YT" | "FB";
+    id: string;
+  } | null;
   viewCount: bigint;
   likeCount: number;
   commentCount: number;

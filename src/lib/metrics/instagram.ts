@@ -182,6 +182,7 @@ export async function fetchInstagramMetric(
   return {
     ok: true,
     source: "OAUTH_IG",
+    connection: { type: "IG", id: conn.id },
     viewCount: BigInt(viewCount),
     likeCount,
     commentCount,

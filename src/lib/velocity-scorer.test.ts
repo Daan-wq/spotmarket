@@ -1,6 +1,15 @@
 import { describe, expect, it } from "vitest";
 import { scoreVelocity } from "./velocity-scorer";
 
+type AntiBotTestOutput = {
+  antiBot: {
+    riskScore: number;
+    confidence: "LOW" | "MEDIUM" | "HIGH";
+    reasons: string[];
+    evidence: Array<{ kind: string; points: number }>;
+  } | null;
+};
+
 function snap(
   hoursAgo: number,
   views: number,
@@ -15,6 +24,10 @@ function snap(
     commentCount: comments,
     shareCount: shares,
   };
+}
+
+function antiBotOf(output: ReturnType<typeof scoreVelocity>) {
+  return (output as ReturnType<typeof scoreVelocity> & AntiBotTestOutput).antiBot;
 }
 
 describe("scoreVelocity", () => {
@@ -67,6 +80,79 @@ describe("scoreVelocity", () => {
       ],
     });
     expect(out.flags.some((f) => f.type === "BOT_SUSPECTED")).toBe(false);
+  });
+
+  it("scores fake-view risk as critical when a velocity spike has collapsed engagement", () => {
+    const out = scoreVelocity({
+      snapshots: [
+        snap(144, 0, 0, 0, 0),
+        snap(120, 1200, 120, 24, 10),
+        snap(96, 2400, 240, 48, 20),
+        snap(72, 3600, 360, 72, 30),
+        snap(48, 4800, 480, 96, 40),
+        snap(24, 6000, 600, 120, 50),
+        snap(1, 6050, 610, 122, 51),
+        snap(0, 56050, 630, 122, 51),
+      ],
+      campaignBenchmark: { velocityP90: 5000 },
+    } as Parameters<typeof scoreVelocity>[0] & { campaignBenchmark: { velocityP90: number } });
+
+    const antiBot = antiBotOf(out);
+    expect(antiBot?.riskScore).toBeGreaterThanOrEqual(70);
+    expect(antiBot?.confidence).toBe("HIGH");
+    expect(antiBot?.evidence.map((item) => item.kind)).toContain("ENGAGEMENT_COLLAPSE");
+    expect(out.flags).toContainEqual(
+      expect.objectContaining({ type: "BOT_SUSPECTED", severity: "CRITICAL" }),
+    );
+  });
+
+  it("keeps healthy viral growth out of the bot queue", () => {
+    const out = scoreVelocity({
+      snapshots: [
+        snap(144, 0, 0, 0, 0),
+        snap(120, 1200, 100, 20, 8),
+        snap(96, 2400, 220, 44, 16),
+        snap(72, 3600, 340, 70, 24),
+        snap(48, 4800, 480, 96, 32),
+        snap(24, 6000, 620, 120, 40),
+        snap(1, 6050, 630, 124, 42),
+        snap(0, 56050, 6000, 1200, 350),
+      ],
+      campaignBenchmark: { velocityP90: 5000 },
+    } as Parameters<typeof scoreVelocity>[0] & { campaignBenchmark: { velocityP90: number } });
+
+    expect(antiBotOf(out)?.riskScore).toBeLessThan(40);
+    expect(out.flags.some((flag) => flag.type === "BOT_SUSPECTED")).toBe(false);
+  });
+
+  it("warns when like ratio is implausibly high", () => {
+    const out = scoreVelocity({
+      snapshots: [snap(1, 1000, 100, 10, 2), snap(0, 9000, 7000, 20, 5)],
+    });
+
+    const antiBot = antiBotOf(out);
+    expect(antiBot?.riskScore).toBeGreaterThanOrEqual(40);
+    expect(antiBot?.evidence.map((item) => item.kind)).toContain("RATIO_ANOMALY");
+    expect(out.flags).toContainEqual(
+      expect.objectContaining({ type: "BOT_SUSPECTED", severity: "WARN" }),
+    );
+  });
+
+  it("uses account plausibility only when an audience snapshot is available", () => {
+    const withoutAudience = scoreVelocity({
+      snapshots: [snap(1, 1000, 80, 10, 5), snap(0, 25000, 1800, 250, 90)],
+    });
+    expect(antiBotOf(withoutAudience)?.evidence.map((item) => item.kind)).not.toContain(
+      "ACCOUNT_PLAUSIBILITY",
+    );
+
+    const withAudience = scoreVelocity({
+      snapshots: [snap(1, 1000, 80, 10, 5), snap(0, 25000, 1800, 250, 90)],
+      accountSnapshot: { audienceCount: 500 },
+    } as Parameters<typeof scoreVelocity>[0] & { accountSnapshot: { audienceCount: number } });
+    expect(antiBotOf(withAudience)?.evidence.map((item) => item.kind)).toContain(
+      "ACCOUNT_PLAUSIBILITY",
+    );
   });
 
   it("computes velocityScore as a 0..100 score", () => {

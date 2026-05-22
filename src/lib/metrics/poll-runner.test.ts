@@ -2,10 +2,13 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const findFirstSignalMock = vi.fn();
 const createSignalMock = vi.fn();
+const updateSignalMock = vi.fn();
 const findManySubmissionMock = vi.fn();
 const updateSubmissionMock = vi.fn();
 const createMetricSnapshotMock = vi.fn();
 const findManyMetricSnapshotMock = vi.fn();
+const findFirstCampaignBenchmarkMock = vi.fn();
+const findFirstPlatformAccountSnapshotMock = vi.fn();
 const publishEventMock = vi.fn();
 const routeMetricMock = vi.fn();
 const scoreVelocityMock = vi.fn();
@@ -23,6 +26,13 @@ vi.mock("@/lib/prisma", () => ({
     submissionSignal: {
       findFirst: (...args: unknown[]) => findFirstSignalMock(...args),
       create: (...args: unknown[]) => createSignalMock(...args),
+      update: (...args: unknown[]) => updateSignalMock(...args),
+    },
+    campaignBenchmark: {
+      findFirst: (...args: unknown[]) => findFirstCampaignBenchmarkMock(...args),
+    },
+    platformAccountSnapshot: {
+      findFirst: (...args: unknown[]) => findFirstPlatformAccountSnapshotMock(...args),
     },
   },
 }));
@@ -44,10 +54,13 @@ import { emitFlag, pollSubmissions } from "./poll-runner";
 beforeEach(() => {
   findFirstSignalMock.mockReset();
   createSignalMock.mockReset();
+  updateSignalMock.mockReset();
   findManySubmissionMock.mockReset();
   updateSubmissionMock.mockReset();
   createMetricSnapshotMock.mockReset();
   findManyMetricSnapshotMock.mockReset();
+  findFirstCampaignBenchmarkMock.mockReset();
+  findFirstPlatformAccountSnapshotMock.mockReset();
   publishEventMock.mockReset();
   routeMetricMock.mockReset();
   scoreVelocityMock.mockReset();
@@ -57,6 +70,9 @@ beforeEach(() => {
     id: "sig_1",
     createdAt: new Date("2026-05-12T10:00:00.000Z"),
   });
+  updateSignalMock.mockResolvedValue({ id: "sig_existing" });
+  findFirstCampaignBenchmarkMock.mockResolvedValue(null);
+  findFirstPlatformAccountSnapshotMock.mockResolvedValue(null);
   findManySubmissionMock.mockResolvedValue([]);
   updateSubmissionMock.mockResolvedValue({});
   createMetricSnapshotMock.mockResolvedValue({
@@ -87,7 +103,7 @@ describe("emitFlag", () => {
         type: "BOT_SUSPECTED",
         resolvedAt: null,
       },
-      select: { id: true },
+      select: { id: true, severity: true, payload: true },
     });
     expect(createSignalMock).toHaveBeenCalledTimes(1);
     expect(publishEventMock).toHaveBeenCalledWith({
@@ -110,7 +126,31 @@ describe("emitFlag", () => {
     });
 
     expect(createSignalMock).not.toHaveBeenCalled();
+    expect(updateSignalMock).not.toHaveBeenCalled();
     expect(publishEventMock).not.toHaveBeenCalled();
+  });
+
+  it("updates an open BOT_SUSPECTED signal when new evidence is stronger", async () => {
+    findFirstSignalMock.mockResolvedValueOnce({
+      id: "sig_existing",
+      severity: "WARN",
+      payload: { riskScore: 42, reason: "old evidence" },
+    });
+
+    await emitFlag("sub_1", {
+      type: "BOT_SUSPECTED",
+      severity: "CRITICAL",
+      payload: { reason: "new evidence", riskScore: 78 },
+    });
+
+    expect(createSignalMock).not.toHaveBeenCalled();
+    expect(updateSignalMock).toHaveBeenCalledWith({
+      where: { id: "sig_existing" },
+      data: {
+        severity: "CRITICAL",
+        payload: { reason: "new evidence", riskScore: 78 },
+      },
+    });
   });
 });
 
@@ -122,6 +162,7 @@ describe("pollSubmissions earnings refresh", () => {
         id: "sub_1",
         postUrl: "https://www.instagram.com/reel/test",
         creatorId: "creator_1",
+        campaignId: "campaign_1",
         status: "APPROVED",
         baselineViews: 0,
         settledAt: null,
@@ -144,6 +185,7 @@ describe("pollSubmissions earnings refresh", () => {
       watchTimeSec: null,
       reachCount: null,
       raw: null,
+      connection: { type: "IG", id: "conn_1" },
     });
     createMetricSnapshotMock.mockResolvedValueOnce({
       id: "snap_1",
@@ -173,5 +215,70 @@ describe("pollSubmissions earnings refresh", () => {
         }),
       }),
     );
+  });
+
+  it("passes campaign benchmark and account snapshot context into the velocity scorer", async () => {
+    const capturedAt = new Date("2026-05-12T10:00:00.000Z");
+    const snapshots = [
+      {
+        capturedAt,
+        viewCount: BigInt(5000),
+        likeCount: 100,
+        commentCount: 10,
+        shareCount: 5,
+      },
+    ];
+    findManySubmissionMock.mockResolvedValueOnce([
+      {
+        id: "sub_1",
+        postUrl: "https://www.instagram.com/reel/test",
+        creatorId: "creator_1",
+        campaignId: "campaign_1",
+        status: "PENDING",
+        baselineViews: 0,
+        settledAt: null,
+        payoutRunItems: [],
+        campaign: {
+          creatorCpv: 0.01,
+          minimumPaidViews: 0,
+          maximumPaidViews: null,
+        },
+      },
+    ]);
+    routeMetricMock.mockResolvedValueOnce({
+      ok: true,
+      source: "OAUTH_IG",
+      viewCount: BigInt(5000),
+      likeCount: 100,
+      commentCount: 10,
+      shareCount: 5,
+      saveCount: null,
+      watchTimeSec: null,
+      reachCount: null,
+      raw: null,
+      connection: { type: "IG", id: "conn_1" },
+    });
+    createMetricSnapshotMock.mockResolvedValueOnce({
+      id: "snap_1",
+      viewCount: BigInt(5000),
+      capturedAt,
+    });
+    findManyMetricSnapshotMock.mockResolvedValueOnce(snapshots);
+    findFirstCampaignBenchmarkMock.mockResolvedValueOnce({
+      velocityP50: 1000,
+      velocityP90: 3000,
+    });
+    findFirstPlatformAccountSnapshotMock.mockResolvedValueOnce({
+      audienceCount: 750,
+    });
+
+    await pollSubmissions({ tier: "hot", limit: 1 });
+
+    expect(scoreVelocityMock).toHaveBeenCalledWith({
+      snapshots,
+      campaignBenchmark: { velocityP50: 1000, velocityP90: 3000 },
+      accountSnapshot: { audienceCount: 750 },
+      now: capturedAt,
+    });
   });
 });

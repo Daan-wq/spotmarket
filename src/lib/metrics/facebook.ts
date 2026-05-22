@@ -183,6 +183,7 @@ export async function fetchFacebookMetric(
     return {
       ok: true,
       source: "OAUTH_FB",
+      connection: { type: "FB", id: conn.id },
       viewCount: BigInt(views ?? reelPlays ?? 0),
       likeCount,
       commentCount: comments,

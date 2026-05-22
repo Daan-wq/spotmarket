@@ -93,6 +93,7 @@ export async function fetchYoutubeMetric(
   return {
     ok: true,
     source: "OAUTH_YT",
+    connection: { type: "YT", id: conn.id },
     viewCount: BigInt(item.statistics?.viewCount ?? "0"),
     likeCount: parseInt(item.statistics?.likeCount ?? "0") || 0,
     commentCount: parseInt(item.statistics?.commentCount ?? "0") || 0,

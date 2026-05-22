@@ -78,7 +78,7 @@ export async function fetchTikTokMetric(
     );
 
     if (match) {
-      return buildSuccess(match);
+      return buildSuccess(match, conn.id);
     }
 
     if (!chunk.hasMore || chunk.nextCursor == null) break;
@@ -91,10 +91,11 @@ export async function fetchTikTokMetric(
   });
 }
 
-function buildSuccess(match: TikTokVideo): MetricFetcherResult {
+function buildSuccess(match: TikTokVideo, connectionId: string): MetricFetcherResult {
   return {
     ok: true,
     source: "OAUTH_TT",
+    connection: { type: "TT", id: connectionId },
     viewCount: BigInt(match.viewCount ?? 0),
     likeCount: match.likeCount ?? 0,
     commentCount: match.commentCount ?? 0,

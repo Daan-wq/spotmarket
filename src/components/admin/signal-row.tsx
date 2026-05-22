@@ -18,6 +18,7 @@ export interface SignalRowData {
   creatorEmail: string | null;
   postUrl: string | null;
   creatorId: string | null;
+  creatorProfileId: string | null;
 }
 
 const SEVERITY_STYLE: Record<SignalSeverity, { bg: string; color: string; label: string }> = {
@@ -216,6 +217,14 @@ export function SignalActions({ signal }: { signal: SignalRowData }) {
       >
         View
       </Link>
+      {signal.creatorProfileId ? (
+        <Link
+          href={`/admin/creators/${signal.creatorProfileId}`}
+          className="rounded-xl border border-neutral-200 bg-white px-3 py-2 text-xs font-semibold text-neutral-950 hover:bg-neutral-50"
+        >
+          Creator
+        </Link>
+      ) : null}
       {signal.type === "TOKEN_BROKEN" && !resolved ? (
         <button
           onClick={nudge}

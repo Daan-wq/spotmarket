@@ -43,11 +43,36 @@ export interface TokenBrokenPayload extends SignalPayloadBase {
   connectionId: string;
 }
 
+export type AntiBotConfidence = "LOW" | "MEDIUM" | "HIGH";
+
+export type AntiBotEvidenceKind =
+  | "VELOCITY_ANOMALY"
+  | "ENGAGEMENT_COLLAPSE"
+  | "RATIO_ANOMALY"
+  | "ACCOUNT_PLAUSIBILITY";
+
+export interface AntiBotEvidence {
+  kind: AntiBotEvidenceKind;
+  label: string;
+  points: number;
+  metrics?: Record<string, number | string | null>;
+}
+
+export interface AntiBotPayload extends SignalPayloadBase {
+  riskScore: number;
+  confidence: AntiBotConfidence;
+  reasons: string[];
+  evidence: AntiBotEvidence[];
+  evaluatedAt: string;
+  version: "anti-bot-v1";
+}
+
 export type SignalPayload =
   | VelocityPayload
   | RatioPayload
   | DuplicatePayload
   | TokenBrokenPayload
+  | AntiBotPayload
   | SignalPayloadBase;
 
 export interface SubmissionSignal {

@@ -70,6 +70,7 @@ export async function pollSubmissions(opts: RunOptions): Promise<PollResult> {
       id: true,
       postUrl: true,
       creatorId: true,
+      campaignId: true,
       status: true,
       baselineViews: true,
       settledAt: true,
@@ -133,7 +134,30 @@ export async function pollSubmissions(opts: RunOptions): Promise<PollResult> {
           },
         });
 
-        const scored = scoreVelocity({ snapshots: recent });
+        const [campaignBenchmark, accountSnapshot] = await Promise.all([
+          prisma.campaignBenchmark.findFirst({
+            where: { campaignId: sub.campaignId },
+            orderBy: { computedAt: "desc" },
+            select: { velocityP50: true, velocityP90: true },
+          }),
+          fetched.connection
+            ? prisma.platformAccountSnapshot.findFirst({
+                where: {
+                  connectionType: fetched.connection.type,
+                  connectionId: fetched.connection.id,
+                },
+                orderBy: { capturedAt: "desc" },
+                select: { audienceCount: true },
+              })
+            : Promise.resolve(null),
+        ]);
+
+        const scored = scoreVelocity({
+          snapshots: recent,
+          campaignBenchmark,
+          accountSnapshot,
+          now: snap.capturedAt,
+        });
 
         const prev = recent.length >= 2 ? recent[recent.length - 2] : null;
         const deltaViews = prev ? Number(snap.viewCount) - Number(prev.viewCount) : Number(snap.viewCount);
@@ -249,9 +273,20 @@ export async function emitFlag(submissionId: string, flag: FlagDraft): Promise<v
       type: flag.type,
       resolvedAt: null,
     },
-    select: { id: true },
+    select: { id: true, severity: true, payload: true },
   });
-  if (existingOpenSignal) return;
+  if (existingOpenSignal) {
+    if (shouldStrengthenSignal(existingOpenSignal, flag)) {
+      await prisma.submissionSignal.update({
+        where: { id: existingOpenSignal.id },
+        data: {
+          severity: flag.severity,
+          payload: flag.payload as Prisma.InputJsonValue,
+        },
+      });
+    }
+    return;
+  }
 
   const signal = await prisma.submissionSignal.create({
     data: {
@@ -270,6 +305,34 @@ export async function emitFlag(submissionId: string, flag: FlagDraft): Promise<v
     severity: flag.severity,
     occurredAt: signal.createdAt.toISOString(),
   });
+}
+
+function shouldStrengthenSignal(
+  existing: { severity?: string; payload?: unknown },
+  flag: FlagDraft,
+): boolean {
+  const existingRank = severityRank(existing.severity);
+  const nextRank = severityRank(flag.severity);
+  if (existingRank == null || nextRank == null) return false;
+  if (nextRank > existingRank) return true;
+  if (flag.type !== "BOT_SUSPECTED") return false;
+
+  const existingRisk = payloadRisk(existing.payload);
+  const nextRisk = payloadRisk(flag.payload);
+  return nextRisk != null && (existingRisk == null || nextRisk > existingRisk);
+}
+
+function severityRank(severity: string | undefined): number | null {
+  if (severity === "INFO") return 0;
+  if (severity === "WARN") return 1;
+  if (severity === "CRITICAL") return 2;
+  return null;
+}
+
+function payloadRisk(payload: unknown): number | null {
+  if (!payload || typeof payload !== "object") return null;
+  const risk = (payload as { riskScore?: unknown }).riskScore;
+  return typeof risk === "number" && Number.isFinite(risk) ? risk : null;
 }
 
 function ageWindow(tier: Tier): { minCreatedAt: Date; maxCreatedAt: Date; staleMs: number } {

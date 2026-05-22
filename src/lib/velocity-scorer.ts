@@ -2,19 +2,11 @@
  * Velocity scorer + anomaly flagger.
  *
  * Owner: A. Consumes MetricSnapshot rows for a submission and computes:
- *   - viewsPerHour over the last window
- *   - rolling 7-day mean
- *   - spike multiplier (vs rolling mean)
- *   - engagement ratios (like/comment/share over views)
- *
- * Flags:
- *   - VELOCITY_SPIKE  when spikeMultiplier > 10  (CRITICAL > 25, WARN otherwise)
- *   - VELOCITY_DROP   when current viewsPerHour < 0.1 * rolling mean (and prior data exists)
- *   - RATIO_ANOMALY   when likeRatio falls outside [P5, P95] of campaign baseline
- *   - BOT_SUSPECTED   when comment+share ratios collapse against high view delta
- *
- * The scorer never throws — pure compute. Persisting + event emission happens
- * in the cron route so flag IO is colocated with metric IO.
+ * - viewsPerHour over the last window
+ * - rolling 7-day mean
+ * - spike multiplier against that rolling mean
+ * - engagement ratios
+ * - explainable anti-bot risk for admin review
  */
 
 import type {
@@ -23,6 +15,8 @@ import type {
   VelocityWindow,
 } from "@/lib/contracts/metrics";
 import type {
+  AntiBotEvidence,
+  AntiBotPayload,
   RatioPayload,
   SignalSeverity,
   SignalType,
@@ -36,12 +30,20 @@ export interface ScorerInput {
     MetricSnapshot,
     "capturedAt" | "viewCount" | "likeCount" | "commentCount" | "shareCount"
   >[];
+  campaignBenchmark?: {
+    velocityP50?: number | null;
+    velocityP90?: number | null;
+  } | null;
+  accountSnapshot?: {
+    audienceCount?: number | null;
+  } | null;
+  now?: Date;
 }
 
 export interface FlagDraft {
   type: SignalType;
   severity: SignalSeverity;
-  payload: VelocityPayload | RatioPayload | TokenBrokenPayload | { reason: string };
+  payload: VelocityPayload | RatioPayload | TokenBrokenPayload | AntiBotPayload | { reason: string };
 }
 
 export interface ScorerOutput {
@@ -49,6 +51,7 @@ export interface ScorerOutput {
   ratios: EngagementRatios | null;
   flags: FlagDraft[];
   velocityScore: number | null;
+  antiBot: AntiBotPayload | null;
 }
 
 const HOUR_MS = 60 * 60 * 1000;
@@ -61,7 +64,7 @@ const SEVEN_DAYS_MS = 7 * 24 * HOUR_MS;
 export function scoreVelocity(input: ScorerInput): ScorerOutput {
   const { snapshots } = input;
   if (snapshots.length < 2) {
-    return { velocity: null, ratios: null, flags: [], velocityScore: null };
+    return { velocity: null, ratios: null, flags: [], velocityScore: null, antiBot: null };
   }
 
   const last = snapshots[snapshots.length - 1];
@@ -69,15 +72,14 @@ export function scoreVelocity(input: ScorerInput): ScorerOutput {
 
   const elapsedMs = last.capturedAt.getTime() - prev.capturedAt.getTime();
   if (elapsedMs <= 0) {
-    return { velocity: null, ratios: null, flags: [], velocityScore: null };
+    return { velocity: null, ratios: null, flags: [], velocityScore: null, antiBot: null };
   }
 
   const deltaViews = Number(last.viewCount) - Number(prev.viewCount);
+  const deltaComments = Math.max(0, last.commentCount - prev.commentCount);
+  const deltaShares = Math.max(0, last.shareCount - prev.shareCount);
   const viewsPerHour = (deltaViews / elapsedMs) * HOUR_MS;
 
-  // Rolling 7d mean of viewsPerHour across consecutive pairs.
-  // We *exclude* the final pair (which IS the value being scored) so the spike
-  // doesn't contaminate the baseline it's compared against.
   const cutoff = last.capturedAt.getTime() - SEVEN_DAYS_MS;
   const baseline = snapshots
     .slice(0, -1)
@@ -114,7 +116,7 @@ export function scoreVelocity(input: ScorerInput): ScorerOutput {
         type: "VELOCITY_SPIKE",
         severity: spikeMultiplier > 25 ? "CRITICAL" : "WARN",
         payload: {
-          reason: `viewsPerHour ${viewsPerHour.toFixed(0)} vs 7d mean ${rolling7dMean.toFixed(0)} (×${spikeMultiplier.toFixed(1)})`,
+          reason: `viewsPerHour ${viewsPerHour.toFixed(0)} vs 7d mean ${rolling7dMean.toFixed(0)} (x${spikeMultiplier.toFixed(1)})`,
           viewsPerHour,
           rolling7dMean,
           spikeMultiplier,
@@ -134,21 +136,6 @@ export function scoreVelocity(input: ScorerInput): ScorerOutput {
     }
   }
 
-  // Bot heuristic: very high view delta but near-zero comments AND shares.
-  // (Likes alone aren't enough — many platforms inflate likes via botnets.)
-  if (deltaViews > 1000) {
-    if (ratios.commentRatio < 0.0005 && ratios.shareRatio < 0.0001) {
-      flags.push({
-        type: "BOT_SUSPECTED",
-        severity: "WARN",
-        payload: {
-          reason: `commentRatio=${ratios.commentRatio.toFixed(5)} shareRatio=${ratios.shareRatio.toFixed(5)} on Δ${deltaViews.toLocaleString()} views`,
-        },
-      });
-    }
-  }
-
-  // Ratio anomaly — extreme like ratios usually indicate engagement farms.
   if (lastViews > 5000 && ratios.likeRatio > 0.5) {
     flags.push({
       type: "RATIO_ANOMALY",
@@ -162,10 +149,31 @@ export function scoreVelocity(input: ScorerInput): ScorerOutput {
     });
   }
 
-  // velocityScore: 0..100. >50 == accelerating, <50 == decelerating, ~50 == steady.
   let velocityScore: number | null = null;
   if (spikeMultiplier != null) {
     velocityScore = Math.max(0, Math.min(100, 50 + Math.log10(Math.max(spikeMultiplier, 1e-3)) * 25));
+  }
+
+  const antiBot = evaluateAntiBot({
+    deltaViews,
+    deltaComments,
+    deltaShares,
+    viewsPerHour,
+    rolling7dMean,
+    spikeMultiplier,
+    ratios,
+    lastViews,
+    campaignVelocityP90: input.campaignBenchmark?.velocityP90 ?? null,
+    accountAudienceCount: input.accountSnapshot?.audienceCount ?? null,
+    evaluatedAt: input.now ?? last.capturedAt,
+  });
+
+  if (antiBot.riskScore >= 40) {
+    flags.push({
+      type: "BOT_SUSPECTED",
+      severity: antiBot.riskScore >= 70 ? "CRITICAL" : "WARN",
+      payload: antiBot,
+    });
   }
 
   return {
@@ -179,5 +187,125 @@ export function scoreVelocity(input: ScorerInput): ScorerOutput {
     ratios,
     flags,
     velocityScore,
+    antiBot,
   };
+}
+
+interface AntiBotInput {
+  deltaViews: number;
+  deltaComments: number;
+  deltaShares: number;
+  viewsPerHour: number;
+  rolling7dMean: number | null;
+  spikeMultiplier: number | null;
+  ratios: EngagementRatios;
+  lastViews: number;
+  campaignVelocityP90: number | null;
+  accountAudienceCount: number | null;
+  evaluatedAt: Date;
+}
+
+function evaluateAntiBot(input: AntiBotInput): AntiBotPayload {
+  const evidence: AntiBotEvidence[] = [];
+
+  if (input.spikeMultiplier != null && input.spikeMultiplier > 10) {
+    evidence.push({
+      kind: "VELOCITY_ANOMALY",
+      label:
+        input.spikeMultiplier > 25
+          ? "Extreme velocity spike against submission history"
+          : "Velocity spike against submission history",
+      points: input.spikeMultiplier > 25 ? 15 : 10,
+      metrics: {
+        viewsPerHour: round(input.viewsPerHour),
+        rolling7dMean: input.rolling7dMean == null ? null : round(input.rolling7dMean),
+        spikeMultiplier: round(input.spikeMultiplier, 1),
+      },
+    });
+  }
+
+  if (input.campaignVelocityP90 != null && input.campaignVelocityP90 > 0) {
+    const campaignRatio = input.viewsPerHour / input.campaignVelocityP90;
+    if (campaignRatio > 2.5) {
+      evidence.push({
+        kind: "VELOCITY_ANOMALY",
+        label: "Velocity above campaign benchmark",
+        points: campaignRatio > 6 ? 10 : 5,
+        metrics: {
+          viewsPerHour: round(input.viewsPerHour),
+          campaignVelocityP90: round(input.campaignVelocityP90),
+          campaignRatio: round(campaignRatio, 1),
+        },
+      });
+    }
+  }
+
+  if (
+    input.deltaViews > 1000 &&
+    input.deltaComments / input.deltaViews < 0.0005 &&
+    input.deltaShares / input.deltaViews < 0.0001
+  ) {
+    evidence.push({
+      kind: "ENGAGEMENT_COLLAPSE",
+      label: "High view growth with near-zero comments and shares",
+      points: input.deltaViews > 10_000 ? 45 : 40,
+      metrics: {
+        deltaViews: input.deltaViews,
+        deltaCommentRatio: round(input.deltaComments / input.deltaViews, 5),
+        deltaShareRatio: round(input.deltaShares / input.deltaViews, 5),
+      },
+    });
+  }
+
+  if (input.lastViews > 5000 && input.ratios.likeRatio > 0.5) {
+    evidence.push({
+      kind: "RATIO_ANOMALY",
+      label: "Like ratio is unusually high for the view count",
+      points: 45,
+      metrics: {
+        likeRatio: round(input.ratios.likeRatio, 3),
+        views: input.lastViews,
+      },
+    });
+  }
+
+  if (input.accountAudienceCount != null && input.accountAudienceCount > 0 && input.lastViews > 5000) {
+    const audienceMultiple = input.lastViews / input.accountAudienceCount;
+    if (audienceMultiple > 10) {
+      evidence.push({
+        kind: "ACCOUNT_PLAUSIBILITY",
+        label: "Views are high relative to the tracked account audience",
+        points: audienceMultiple > 20 ? 40 : 25,
+        metrics: {
+          views: input.lastViews,
+          audienceCount: input.accountAudienceCount,
+          audienceMultiple: round(audienceMultiple, 1),
+        },
+      });
+    }
+  }
+
+  const riskScore = Math.min(100, evidence.reduce((sum, item) => sum + item.points, 0));
+  const orderedEvidence = [...evidence].sort((a, b) => b.points - a.points);
+  const reasons = orderedEvidence.map((item) => item.label);
+  const confidence: AntiBotPayload["confidence"] =
+    riskScore >= 70 && evidence.length >= 2 ? "HIGH" : riskScore >= 40 ? "MEDIUM" : "LOW";
+
+  return {
+    reason:
+      riskScore > 0
+        ? `Anti-bot risk ${riskScore}/100: ${reasons[0]}`
+        : "Anti-bot risk 0/100",
+    riskScore,
+    confidence,
+    reasons,
+    evidence: orderedEvidence,
+    evaluatedAt: input.evaluatedAt.toISOString(),
+    version: "anti-bot-v1",
+  };
+}
+
+function round(value: number, digits = 0): number {
+  const factor = 10 ** digits;
+  return Math.round(value * factor) / factor;
 }
