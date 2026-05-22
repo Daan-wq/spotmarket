@@ -156,15 +156,18 @@ export function CampaignSubmissionsOverview({
           },
           {
             key: "views",
-            header: "Views",
+            header: "Total views",
             align: "right",
             cell: (submission) => (
               <div className="tabular-nums text-neutral-950">
-                <p className="font-semibold">{formatNumber(displayViews(submission))}</p>
-                {submission.eligibleViews == null ? (
-                  <p className="mt-1 text-xs text-neutral-500">Claimed/current</p>
-                ) : (
-                  <p className="mt-1 text-xs text-neutral-500">Eligible</p>
+                <p className="font-semibold">{formatNumber(displayTotalViews(submission))}</p>
+                <p className="mt-1 text-xs text-neutral-500">
+                  {submission.viewCount == null ? "Claimed total" : "Tracked total"}
+                </p>
+                {submission.eligibleViews == null ? null : (
+                  <p className="mt-0.5 text-[11px] text-neutral-400">
+                    Eligible/payable: {formatNumber(submission.eligibleViews)}
+                  </p>
                 )}
               </div>
             ),
@@ -237,8 +240,8 @@ export function CampaignSubmissionsOverview({
   );
 }
 
-function displayViews(submission: CampaignSubmissionOverviewRow) {
-  return submission.eligibleViews ?? submission.viewCount ?? submission.claimedViews;
+export function displayTotalViews(submission: Pick<CampaignSubmissionOverviewRow, "viewCount" | "claimedViews">) {
+  return submission.viewCount ?? submission.claimedViews;
 }
 
 function canRejectApproved(submission: CampaignSubmissionOverviewRow) {
