@@ -15,6 +15,7 @@
  */
 
 import { prisma } from "@/lib/prisma";
+import type { ConnectionType } from "@prisma/client";
 import { parseClipUrl, type ClipPlatform } from "@/lib/parse-clip-url";
 import type { MetricSource } from "@/lib/contracts/metrics";
 import { fetchInstagramMetric } from "./instagram";
@@ -73,6 +74,8 @@ export interface RouterSubmissionInput {
   id: string;
   postUrl: string;
   creatorId: string;
+  sourceConnectionType?: ConnectionType | null;
+  sourceConnectionId?: string | null;
 }
 
 /**
@@ -97,36 +100,103 @@ export async function routeMetric(
 
   switch (parsed.platform) {
     case "INSTAGRAM": {
-      const conn = await pickConnection(parsed, async () =>
-        prisma.creatorIgConnection.findMany({
+      if (hasStoredSource(submission, "IG")) {
+        const conn = await prisma.creatorIgConnection.findFirst({
           where: {
+            id: submission.sourceConnectionId,
             creatorProfileId: profile.id,
             isVerified: true,
             accessToken: { not: null },
           },
-          orderBy: { updatedAt: "desc" },
-        }),
-        (c) => (c.igUsername ?? "").toLowerCase(),
+        });
+        if (!conn) {
+          return failure("NO_CONNECTION", "Stored IG account connection is no longer available", {
+            type: "IG",
+            id: submission.sourceConnectionId,
+          });
+        }
+        return await fetchInstagramMetric(conn, parsed, submission.id);
+      }
+      if (hasMismatchedStoredSource(submission, "IG")) {
+        return storedPlatformMismatch(submission, parsed.platform);
+      }
+
+      const conns = await prisma.creatorIgConnection.findMany({
+        where: {
+          creatorProfileId: profile.id,
+          isVerified: true,
+          accessToken: { not: null },
+        },
+        orderBy: { updatedAt: "desc" },
+      });
+      const byHandle = pickConnectionByHandle(parsed, conns, (c) => c.igUsername ?? "");
+      if (parsed.authorHandle && !byHandle) {
+        return failure("NO_CONNECTION", "No verified IG account connection", null);
+      }
+      return await tryConnections(byHandle ? [byHandle] : conns, (conn) =>
+        fetchInstagramMetric(conn, parsed, submission.id),
       );
-      if (!conn) return failure("NO_CONNECTION", "No verified IG account connection", null);
-      return await fetchInstagramMetric(conn, parsed, submission.id);
     }
     case "TIKTOK": {
-      const conn = await pickConnection(parsed, async () =>
-        prisma.creatorTikTokConnection.findMany({
+      if (hasStoredSource(submission, "TT")) {
+        const conn = await prisma.creatorTikTokConnection.findFirst({
           where: {
+            id: submission.sourceConnectionId,
             creatorProfileId: profile.id,
             isVerified: true,
             accessToken: { not: null },
           },
-          orderBy: { updatedAt: "desc" },
-        }),
-        (c) => (c.username ?? "").toLowerCase(),
+        });
+        if (!conn) {
+          return failure("NO_CONNECTION", "Stored TT account connection is no longer available", {
+            type: "TT",
+            id: submission.sourceConnectionId,
+          });
+        }
+        return await fetchTikTokMetric(conn, parsed, submission.id);
+      }
+      if (hasMismatchedStoredSource(submission, "TT")) {
+        return storedPlatformMismatch(submission, parsed.platform);
+      }
+
+      const conns = await prisma.creatorTikTokConnection.findMany({
+        where: {
+          creatorProfileId: profile.id,
+          isVerified: true,
+          accessToken: { not: null },
+        },
+        orderBy: { updatedAt: "desc" },
+      });
+      const byHandle = pickConnectionByHandle(parsed, conns, (c) => c.username ?? "");
+      if (parsed.authorHandle && !byHandle) {
+        return failure("NO_CONNECTION", "No verified TT account connection", null);
+      }
+      return await tryConnections(byHandle ? [byHandle] : conns, (conn) =>
+        fetchTikTokMetric(conn, parsed, submission.id),
       );
-      if (!conn) return failure("NO_CONNECTION", "No verified TT account connection", null);
-      return await fetchTikTokMetric(conn, parsed, submission.id);
     }
     case "YOUTUBE": {
+      if (hasStoredSource(submission, "YT")) {
+        const conn = await prisma.creatorYtConnection.findFirst({
+          where: {
+            id: submission.sourceConnectionId,
+            creatorProfileId: profile.id,
+            isVerified: true,
+            accessToken: { not: null },
+          },
+        });
+        if (!conn) {
+          return failure("NO_CONNECTION", "Stored YT account connection is no longer available", {
+            type: "YT",
+            id: submission.sourceConnectionId,
+          });
+        }
+        return await fetchYoutubeMetric(conn, parsed);
+      }
+      if (hasMismatchedStoredSource(submission, "YT")) {
+        return storedPlatformMismatch(submission, parsed.platform);
+      }
+
       const conns = await prisma.creatorYtConnection.findMany({
         where: {
           creatorProfileId: profile.id,
@@ -138,41 +208,115 @@ export async function routeMetric(
       if (conns.length === 0) {
         return failure("NO_CONNECTION", "No verified YT account connection", null);
       }
-      // YouTube post URLs don't carry the channel handle reliably; use first connection.
-      // The fetcher itself can verify ownership via videos.list (channelId match).
-      return await fetchYoutubeMetric(conns[0], parsed);
+      return await tryConnections(conns, (conn) => fetchYoutubeMetric(conn, parsed));
     }
     case "FACEBOOK": {
-      const conn = await pickConnection(parsed, async () =>
-        prisma.creatorFbConnection.findMany({
+      if (hasStoredSource(submission, "FB")) {
+        const conn = await prisma.creatorFbConnection.findFirst({
           where: {
+            id: submission.sourceConnectionId,
             creatorProfileId: profile.id,
             isVerified: true,
             accessToken: { not: null },
           },
-          orderBy: { updatedAt: "desc" },
-        }),
-        (c) => [(c.pageHandle ?? "").toLowerCase(), (c.pageName ?? "").toLowerCase()].filter(Boolean).join("|"),
+        });
+        if (!conn) {
+          return failure("NO_CONNECTION", "Stored FB account connection is no longer available", {
+            type: "FB",
+            id: submission.sourceConnectionId,
+          });
+        }
+        return await fetchFacebookMetric(conn, parsed, submission.id);
+      }
+      if (hasMismatchedStoredSource(submission, "FB")) {
+        return storedPlatformMismatch(submission, parsed.platform);
+      }
+
+      const conns = await prisma.creatorFbConnection.findMany({
+        where: {
+          creatorProfileId: profile.id,
+          isVerified: true,
+          accessToken: { not: null },
+        },
+        orderBy: { updatedAt: "desc" },
+      });
+      const byHandle = pickConnectionByHandle(parsed, conns, (c) =>
+        [(c.pageHandle ?? "").toLowerCase(), (c.pageName ?? "").toLowerCase()]
+          .filter(Boolean)
+          .join("|"),
       );
-      if (!conn) return failure("NO_CONNECTION", "No verified FB account connection", null);
-      return await fetchFacebookMetric(conn, parsed, submission.id);
+      if (parsed.authorHandle && !byHandle) {
+        return failure("NO_CONNECTION", "No verified FB account connection", null);
+      }
+      return await tryConnections(byHandle ? [byHandle] : conns, (conn) =>
+        fetchFacebookMetric(conn, parsed, submission.id),
+      );
     }
   }
 }
 
-async function pickConnection<T>(
+function pickConnectionByHandle<T>(
   parsed: { platform: ClipPlatform; authorHandle: string | null },
-  loader: () => Promise<T[]>,
+  all: T[],
   handleOf: (c: T) => string,
-): Promise<T | null> {
-  const all = await loader();
-  if (all.length === 0) return null;
+): T | null {
   if (parsed.authorHandle) {
     const h = parsed.authorHandle.toLowerCase();
     const match = all.find((c) => handleOf(c).split("|").includes(h));
     if (match) return match;
   }
-  return all[0];
+  return null;
+}
+
+async function tryConnections<T>(
+  conns: T[],
+  fetcher: (conn: T) => Promise<MetricFetcherResult>,
+): Promise<MetricFetcherResult> {
+  if (conns.length === 0) {
+    return failure("NO_CONNECTION", "No verified account connection", null);
+  }
+
+  let lastPostNotFound: MetricFetcherResult | null = null;
+  for (const conn of conns) {
+    const result = await fetcher(conn);
+    if (result.ok) return result;
+    if (result.reason !== "POST_NOT_FOUND") return result;
+    lastPostNotFound = result;
+  }
+
+  return lastPostNotFound ?? failure("POST_NOT_FOUND", "Post not found", null);
+}
+
+function hasStoredSource(
+  submission: RouterSubmissionInput,
+  expected: ConnectionType,
+): submission is RouterSubmissionInput & {
+  sourceConnectionType: ConnectionType;
+  sourceConnectionId: string;
+} {
+  return submission.sourceConnectionType === expected && Boolean(submission.sourceConnectionId);
+}
+
+function hasMismatchedStoredSource(
+  submission: RouterSubmissionInput,
+  expected: ConnectionType,
+): submission is RouterSubmissionInput & {
+  sourceConnectionType: ConnectionType;
+  sourceConnectionId: string;
+} {
+  return Boolean(submission.sourceConnectionType && submission.sourceConnectionId) &&
+    submission.sourceConnectionType !== expected;
+}
+
+function storedPlatformMismatch(
+  submission: RouterSubmissionInput & { sourceConnectionType: ConnectionType; sourceConnectionId: string },
+  platform: ClipPlatform,
+): MetricFetcherFailure {
+  return failure(
+    "NO_CONNECTION",
+    `Stored ${submission.sourceConnectionType} account connection does not match ${platform} URL`,
+    { type: submission.sourceConnectionType, id: submission.sourceConnectionId },
+  );
 }
 
 export function failure(

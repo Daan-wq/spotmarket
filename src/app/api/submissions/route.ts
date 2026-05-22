@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import type { ConnectionType } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { requireAuth } from "@/lib/auth";
 import { z } from "zod";
@@ -17,6 +18,7 @@ const createSubmissionSchema = z.object({
   screenshotUrl: z.string().url().optional(),
   thumbnailUrl: z.string().url().optional(),
   mediaType: z.enum(["video", "image", "carousel"]).optional(),
+  connectionId: z.string().min(1).optional(),
 });
 
 const PLATFORM_TO_BIO: Record<ClipPlatform, "INSTAGRAM" | "TIKTOK" | "FACEBOOK" | null> = {
@@ -34,6 +36,35 @@ const PLATFORM_TO_EVENT: Record<ClipPlatform, "INSTAGRAM" | "TIKTOK" | "YOUTUBE_
   YOUTUBE: "YOUTUBE_SHORTS",
   UNKNOWN: null,
 };
+
+const PLATFORM_TO_CONNECTION: Record<ClipPlatform, ConnectionType | null> = {
+  INSTAGRAM: "IG",
+  TIKTOK: "TT",
+  FACEBOOK: "FB",
+  YOUTUBE: "YT",
+  UNKNOWN: null,
+};
+
+const PLATFORM_LABEL: Record<Exclude<ClipPlatform, "UNKNOWN">, string> = {
+  INSTAGRAM: "Instagram",
+  TIKTOK: "TikTok",
+  FACEBOOK: "Facebook",
+  YOUTUBE: "YouTube",
+};
+
+interface SourceConnectionOption {
+  id: string;
+  type: ConnectionType;
+  label: string;
+  handles: string[];
+}
+
+interface ProfileConnections {
+  igConnections: Array<{ id: string; igUsername: string }>;
+  ttConnections: Array<{ id: string; username: string }>;
+  fbConnections: Array<{ id: string; pageHandle: string | null; pageName: string }>;
+  ytConnections: Array<{ id: string; channelId: string; channelName: string }>;
+}
 
 export async function GET(req: NextRequest) {
   try {
@@ -74,7 +105,7 @@ export async function POST(req: NextRequest) {
     const { userId } = await requireAuth("creator");
 
     const body = await req.json();
-    const { applicationId, postUrl, screenshotUrl, thumbnailUrl, mediaType } =
+    const { applicationId, postUrl, screenshotUrl, thumbnailUrl, mediaType, connectionId } =
       createSubmissionSchema.parse(body);
 
     const creator = await prisma.user.findUnique({
@@ -118,18 +149,8 @@ export async function POST(req: NextRequest) {
     // OAuth-only gate — reject if creator has no verified OAuth connection
     // on the submission platform. Direct creator to /creator/connections.
     // ───────────────────────────────────────────────────────────────────
-    const hasOAuthForPlatform =
-      parsed.platform === "INSTAGRAM"
-        ? profile.igConnections.length > 0
-        : parsed.platform === "TIKTOK"
-          ? profile.ttConnections.length > 0
-          : parsed.platform === "FACEBOOK"
-            ? profile.fbConnections.length > 0
-            : parsed.platform === "YOUTUBE"
-              ? profile.ytConnections.length > 0
-              : false;
-
-    if (!hasOAuthForPlatform) {
+    const platformConnections = sourceConnectionsForPlatform(profile, parsed.platform);
+    if (platformConnections.length === 0) {
       return NextResponse.json(
         {
           error: `Connect your ${parsed.platform.toLowerCase()} account before submitting clips.`,
@@ -139,28 +160,16 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Anti-fraud: confirm the URL author is one of the creator's verified handles
-    // for that platform when extractable.
-    if (parsed.authorHandle) {
-      const author = normalizeHandle(parsed.authorHandle);
-      let match: string[] = [];
-      if (parsed.platform === "INSTAGRAM") {
-        match = profile.igConnections.map((c) => c.igUsername.toLowerCase());
-      } else if (parsed.platform === "TIKTOK") {
-        match = profile.ttConnections.map((c) => c.username.toLowerCase());
-      } else if (parsed.platform === "FACEBOOK") {
-        match = [
-          ...profile.fbConnections.map((c) => (c.pageHandle ?? "").toLowerCase()),
-          ...profile.fbConnections.map((c) => c.pageName.toLowerCase()),
-        ].filter(Boolean);
-      }
-
-      if (author && match.length > 0 && !match.includes(author)) {
-        return NextResponse.json(
-          { error: `URL author @${author} does not match any of your verified ${parsed.platform.toLowerCase()} accounts` },
-          { status: 400 },
-        );
-      }
+    const sourceConnection = resolveSourceConnection({
+      connections: platformConnections,
+      connectionId,
+      authorHandle: parsed.authorHandle,
+    });
+    if (sourceConnection.error || !sourceConnection.connection) {
+      return NextResponse.json(
+        { error: sourceConnection.error ?? "No matching source account found." },
+        { status: 400 },
+      );
     }
 
     const app = await prisma.campaignApplication.findUnique({
@@ -230,6 +239,8 @@ export async function POST(req: NextRequest) {
         sourcePlatform,
         sourceMethod: "OAUTH",
         authorHandle: parsed.authorHandle,
+        sourceConnectionType: sourceConnection.connection.type,
+        sourceConnectionId: sourceConnection.connection.id,
         logoStatus: "PENDING",
       },
       select: {
@@ -241,6 +252,8 @@ export async function POST(req: NextRequest) {
         campaignId: true,
         sourcePlatform: true,
         sourceMethod: true,
+        sourceConnectionType: true,
+        sourceConnectionId: true,
         logoStatus: true,
       },
     });
@@ -266,4 +279,104 @@ export async function POST(req: NextRequest) {
     console.error("[submissions POST]", err);
     return NextResponse.json({ error: message }, { status: 500 });
   }
+}
+
+function sourceConnectionsForPlatform(
+  profile: ProfileConnections,
+  platform: ClipPlatform,
+): SourceConnectionOption[] {
+  const type = PLATFORM_TO_CONNECTION[platform];
+  if (!type || platform === "UNKNOWN") return [];
+  const label = PLATFORM_LABEL[platform];
+
+  if (platform === "INSTAGRAM") {
+    return profile.igConnections.map((c) => ({
+      id: c.id,
+      type,
+      label,
+      handles: [c.igUsername].map(normalizeHandle).filter(isNonNull),
+    }));
+  }
+
+  if (platform === "TIKTOK") {
+    return profile.ttConnections.map((c) => ({
+      id: c.id,
+      type,
+      label,
+      handles: [c.username].map(normalizeHandle).filter(isNonNull),
+    }));
+  }
+
+  if (platform === "FACEBOOK") {
+    return profile.fbConnections.map((c) => ({
+      id: c.id,
+      type,
+      label,
+      handles: [c.pageHandle, c.pageName].map(normalizeHandle).filter(isNonNull),
+    }));
+  }
+
+  return profile.ytConnections.map((c) => ({
+    id: c.id,
+    type,
+    label,
+    handles: [c.channelId, c.channelName].map(normalizeHandle).filter(isNonNull),
+  }));
+}
+
+function resolveSourceConnection({
+  connections,
+  connectionId,
+  authorHandle,
+}: {
+  connections: SourceConnectionOption[];
+  connectionId?: string;
+  authorHandle: string | null;
+}): { connection: SourceConnectionOption | null; error: string | null } {
+  const label = connections[0]?.label ?? "platform";
+  const normalizedAuthor = normalizeHandle(authorHandle);
+
+  if (connectionId) {
+    const selected = connections.find((c) => c.id === connectionId);
+    if (!selected) {
+      return {
+        connection: null,
+        error: `Selected ${label} account is not connected.`,
+      };
+    }
+
+    if (normalizedAuthor && !selected.handles.includes(normalizedAuthor)) {
+      return {
+        connection: null,
+        error: `URL author @${normalizedAuthor} does not match the selected ${label} account.`,
+      };
+    }
+
+    return { connection: selected, error: null };
+  }
+
+  if (normalizedAuthor) {
+    const matched = connections.find((c) => c.handles.includes(normalizedAuthor));
+    if (!matched) {
+      return {
+        connection: null,
+        error: `URL author @${normalizedAuthor} does not match any of your verified ${label.toLowerCase()} accounts`,
+      };
+    }
+
+    return { connection: matched, error: null };
+  }
+
+  if (connections.length === 1) {
+    return { connection: connections[0], error: null };
+  }
+
+  return {
+    connection: null,
+    error: `Select the source ${label} account before submitting this clip.`,
+  };
+}
+
+function isNonNull<T>(value: T | null): value is T {
+  return value !== null;
 }

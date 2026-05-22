@@ -164,6 +164,8 @@ describe("pollSubmissions earnings refresh", () => {
         creatorId: "creator_1",
         campaignId: "campaign_1",
         status: "APPROVED",
+        sourceConnectionType: "IG",
+        sourceConnectionId: "ig-conn-1",
         baselineViews: 0,
         settledAt: null,
         payoutRunItems: [],
@@ -235,6 +237,8 @@ describe("pollSubmissions earnings refresh", () => {
         creatorId: "creator_1",
         campaignId: "campaign_1",
         status: "PENDING",
+        sourceConnectionType: null,
+        sourceConnectionId: null,
         baselineViews: 0,
         settledAt: null,
         payoutRunItems: [],
@@ -280,5 +284,44 @@ describe("pollSubmissions earnings refresh", () => {
       accountSnapshot: { audienceCount: 750 },
       now: capturedAt,
     });
+  });
+
+  it("passes stored source connection fields into the metric router", async () => {
+    findManySubmissionMock.mockResolvedValueOnce([
+      {
+        id: "sub_1",
+        postUrl: "https://www.instagram.com/reel/test",
+        creatorId: "creator_1",
+        campaignId: "campaign_1",
+        status: "PENDING",
+        sourceConnectionType: "IG",
+        sourceConnectionId: "ig-conn-1",
+        baselineViews: 0,
+        settledAt: null,
+        payoutRunItems: [],
+        campaign: {
+          creatorCpv: 0.01,
+          minimumPaidViews: 0,
+          maximumPaidViews: null,
+        },
+      },
+    ]);
+    routeMetricMock.mockResolvedValueOnce({
+      ok: false,
+      source: "OAUTH_FAILED",
+      reason: "POST_NOT_FOUND",
+      message: "missing",
+      connection: { type: "IG", id: "ig-conn-1" },
+    });
+
+    await pollSubmissions({ tier: "hot", limit: 1 });
+
+    expect(routeMetricMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        id: "sub_1",
+        sourceConnectionType: "IG",
+        sourceConnectionId: "ig-conn-1",
+      }),
+    );
   });
 });
