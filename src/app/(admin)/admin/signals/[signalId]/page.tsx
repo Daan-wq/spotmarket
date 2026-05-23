@@ -1,6 +1,7 @@
 import type { BioPlatform, ConnectionType, Prisma } from "@prisma/client";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { SignalResolveButton } from "@/components/admin/signal-resolve-button";
 import { Badge } from "@/components/ui/badge";
 import { PageHeader, SectionHeader, StatCard } from "@/components/ui/page";
 import { formatDate, formatNumber, titleCaseEnum } from "@/lib/admin/agency-format";
@@ -84,7 +85,9 @@ export default async function SignalDetailPage({ params }: PageProps) {
   const evidence = getEvidence(payload);
   const riskScore = getRiskScore(payload);
   const confidence = getString(payload, "confidence");
-  const topReason = getReasons(payload)[0] ?? getString(payload, "reason") ?? "Review this signal before deciding.";
+  const topReason = translateSignalText(
+    getReasons(payload)[0] ?? getString(payload, "reason") ?? "Bekijk deze waarschuwing voordat je beslist.",
+  );
 
   const comparisonRows = await loadComparisonRows(submission);
   const comparisonViews = comparisonRows.map((row) => row.latestViews).filter((value) => value > 0);
@@ -98,45 +101,57 @@ export default async function SignalDetailPage({ params }: PageProps) {
   return (
     <div className="space-y-8">
       <PageHeader
-        eyebrow="Signal review"
-        title="Bot suspicion details"
-        description="This is evidence for review, not an automatic fraud verdict. Compare the flagged post with the creator's other tracked posts before rejecting."
+        eyebrow="Signaalbeoordeling"
+        title="Botverdenking details"
+        description="Dit is beoordelingsbewijs, geen automatisch fraude-oordeel. Vergelijk de post met andere gemeten posts van dezelfde maker voordat je afwijst."
         actions={[
-          { label: "Back to campaign", href: `/admin/campaigns/${submission.campaignId}` },
-          { label: "Open post", href: submission.postUrl },
+          { label: "Terug naar campagne", href: `/admin/campaigns/${submission.campaignId}` },
+          { label: "Post openen", href: submission.postUrl },
         ]}
       />
 
+      <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-neutral-200 bg-white p-4">
+        <div>
+          <p className="text-sm font-semibold text-neutral-950">
+            {signal.resolvedAt ? "Deze waarschuwing is opgelost" : "Open waarschuwing"}
+          </p>
+          <p className="mt-1 text-xs leading-5 text-neutral-500">
+            Oplossen verbergt dit signaal uit de open lijst. Als dezelfde maker later opnieuw verdacht gedrag vertoont, maakt de poller weer een nieuw signaal aan.
+          </p>
+        </div>
+        <SignalResolveButton signalId={signal.id} resolved={Boolean(signal.resolvedAt)} />
+      </div>
+
       <div className="grid grid-cols-1 gap-4 md:grid-cols-5">
-        <StatCard label="Risk score" value={riskScore == null ? "-" : `${riskScore}/100`} detail={confidence ? `${confidence} confidence` : "No confidence saved"} tone={riskScore != null && riskScore >= 70 ? "danger" : "warning"} />
-        <StatCard label="Total views" value={formatNumber(currentViews)} detail="Latest tracked total" />
+        <StatCard label="Risicoscore" value={riskScore == null ? "-" : `${riskScore}/100`} detail={confidence ? `${confidenceLabel(confidence)} vertrouwen` : "Geen vertrouwen opgeslagen"} tone={riskScore != null && riskScore >= 70 ? "danger" : "warning"} />
+        <StatCard label="Totale views" value={formatNumber(currentViews)} detail="Laatste meting" />
         <StatCard label="Engagement" value={formatNumber(currentEngagements)} detail={formatRate(engagementRate(currentEngagements, currentViews))} />
-        <StatCard label="Recent velocity" value={currentVelocity == null ? "-" : `${formatNumber(Math.round(currentVelocity))}/h`} detail="Between last two polls" />
-        <StatCard label="Account median" value={medianViews == null ? "-" : formatNumber(Math.round(medianViews))} detail="Comparable videos" />
+        <StatCard label="Recente snelheid" value={currentVelocity == null ? "-" : `${formatNumber(Math.round(currentVelocity))}/u`} detail="Tussen laatste twee metingen" />
+        <StatCard label="Accountmediaan" value={medianViews == null ? "-" : formatNumber(Math.round(medianViews))} detail="Vergelijkbare videos" />
       </div>
 
       <section className="grid grid-cols-1 gap-5 xl:grid-cols-[minmax(0,1.4fr)_minmax(320px,0.8fr)]">
         <div className="rounded-2xl border border-neutral-200 bg-white p-5">
           <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
             <div>
-              <h2 className="text-base font-semibold text-neutral-950">View spike timeline</h2>
+              <h2 className="text-base font-semibold text-neutral-950">Viewgroei per poll</h2>
               <p className="mt-1 text-sm text-neutral-500">
-                View gain per poll for this submission. Large isolated bars are the spikes to inspect.
+                Elke balk toont de viewgroei tussen twee opeenvolgende metingen.
               </p>
             </div>
-            <Badge variant={signal.severity === "CRITICAL" ? "failed" : "pending"}>{titleCaseEnum(signal.severity)}</Badge>
+            <Badge variant={signal.severity === "CRITICAL" ? "failed" : "pending"}>{severityLabel(signal.severity)}</Badge>
           </div>
           <DeltaBarChart snapshots={snapshots} />
         </div>
 
         <div className="rounded-2xl border border-neutral-200 bg-white p-5">
-          <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-neutral-400">Why it was flagged</p>
+          <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-neutral-400">Waarom gemarkeerd</p>
           <h2 className="mt-2 text-lg font-semibold text-neutral-950">{topReason}</h2>
           <div className="mt-5 space-y-3">
             {evidence.length > 0 ? (
               evidence.map((item) => <EvidenceCard key={`${item.kind}-${item.label}`} item={item} />)
             ) : (
-              <p className="text-sm leading-6 text-neutral-500">No structured anti-bot evidence was saved for this signal.</p>
+              <p className="text-sm leading-6 text-neutral-500">Er is geen gestructureerd anti-bot bewijs opgeslagen voor dit signaal.</p>
             )}
           </div>
         </div>
@@ -144,19 +159,19 @@ export default async function SignalDetailPage({ params }: PageProps) {
 
       <section>
         <SectionHeader
-          title="Comparable videos"
-          description={`Same creator${submission.sourcePlatform ? `, same platform (${titleCaseEnum(submission.sourcePlatform)})` : ""}. Use this to judge whether the spike is unusual for ${creatorName}.`}
+          title="Vergelijkbare videos"
+          description={`Dezelfde maker${submission.sourcePlatform ? `, hetzelfde platform (${titleCaseEnum(submission.sourcePlatform)})` : ""}. Gebruik dit om te beoordelen of de groei ongewoon is voor ${creatorName}.`}
         />
         <div className="overflow-hidden rounded-2xl border border-neutral-200 bg-white">
           <div className="grid grid-cols-[1.3fr_0.7fr_0.7fr_0.7fr_0.7fr] gap-3 border-b border-neutral-100 bg-neutral-50 px-4 py-3 text-[11px] font-semibold uppercase tracking-[0.14em] text-neutral-500">
             <span>Video</span>
             <span className="text-right">Views</span>
             <span className="text-right">Eng.</span>
-            <span className="text-right">Velocity</span>
-            <span className="text-right">Vs median</span>
+            <span className="text-right">Snelheid</span>
+            <span className="text-right">T.o.v. mediaan</span>
           </div>
           <ComparisonLine
-            label="Flagged video"
+            label="Gemarkeerde video"
             href={submission.postUrl}
             views={currentViews}
             engagements={currentEngagements}
@@ -168,7 +183,7 @@ export default async function SignalDetailPage({ params }: PageProps) {
             comparisonRows.map((row) => (
               <ComparisonLine
                 key={row.id}
-                label={formatDate(row.createdAt)}
+                label={formatDate(row.createdAt, "nl")}
                 href={row.postUrl}
                 views={row.latestViews}
                 engagements={row.latestEngagements}
@@ -177,11 +192,11 @@ export default async function SignalDetailPage({ params }: PageProps) {
               />
             ))
           ) : (
-            <p className="px-4 py-6 text-sm text-neutral-500">No comparable tracked videos are available yet.</p>
+            <p className="px-4 py-6 text-sm text-neutral-500">Er zijn nog geen vergelijkbare gemeten videos beschikbaar.</p>
           )}
         </div>
         <p className="mt-3 text-xs text-neutral-500">
-          Median velocity for comparable videos: {medianVelocity == null ? "-" : `${formatNumber(Math.round(medianVelocity))}/h`}.
+          Mediaansnelheid voor vergelijkbare videos: {medianVelocity == null ? "-" : `${formatNumber(Math.round(medianVelocity))}/u`}.
         </p>
       </section>
     </div>
@@ -263,7 +278,7 @@ function DeltaBarChart({ snapshots }: { snapshots: SnapshotPoint[] }) {
   const maxDelta = Math.max(1, ...deltas.map((point) => point.delta));
 
   if (deltas.length === 0) {
-    return <div className="flex h-56 items-center justify-center rounded-xl bg-neutral-50 text-sm text-neutral-500">Need at least two snapshots to show spikes.</div>;
+    return <div className="flex h-56 items-center justify-center rounded-xl bg-neutral-50 text-sm text-neutral-500">Er zijn minstens twee metingen nodig om groei te tonen.</div>;
   }
 
   return (
@@ -276,14 +291,14 @@ function DeltaBarChart({ snapshots }: { snapshots: SnapshotPoint[] }) {
               key={point.capturedAt.toISOString()}
               className="min-w-1 flex-1 rounded-t bg-neutral-950"
               style={{ height: `${height}%`, opacity: point.delta === maxDelta ? 1 : 0.45 }}
-              title={`${formatDateTime(point.capturedAt)}: +${formatNumber(point.delta)} views (${formatNumber(point.views)} total)`}
+              title={`${formatDateTime(point.capturedAt)}: +${formatNumber(point.delta)} views (${formatNumber(point.views)} totaal)`}
             />
           );
         })}
       </div>
       <div className="mt-3 flex justify-between text-xs text-neutral-500">
         <span>{formatDateTime(deltas[0].capturedAt)}</span>
-        <span>Largest gain: +{formatNumber(maxDelta)}</span>
+        <span>Grootste groei: +{formatNumber(maxDelta)}</span>
         <span>{formatDateTime(deltas[deltas.length - 1].capturedAt)}</span>
       </div>
     </div>
@@ -295,16 +310,16 @@ function EvidenceCard({ item }: { item: EvidenceItem }) {
     <div className="rounded-xl border border-neutral-200 bg-neutral-50 p-3">
       <div className="flex items-start justify-between gap-3">
         <div>
-          <p className="text-sm font-semibold text-neutral-950">{item.label}</p>
-          <p className="mt-1 text-[11px] uppercase tracking-[0.14em] text-neutral-400">{titleCaseEnum(item.kind)}</p>
+          <p className="text-sm font-semibold text-neutral-950">{translateSignalText(item.label)}</p>
+          <p className="mt-1 text-[11px] uppercase tracking-[0.14em] text-neutral-400">{evidenceKindLabel(item.kind)}</p>
         </div>
-        <span className="rounded-full bg-white px-2 py-1 text-[11px] font-semibold text-neutral-700">{item.points} pts</span>
+        <span className="rounded-full bg-white px-2 py-1 text-[11px] font-semibold text-neutral-700">{item.points} ptn</span>
       </div>
       {Object.keys(item.metrics).length > 0 ? (
         <dl className="mt-3 grid grid-cols-2 gap-2">
           {Object.entries(item.metrics).map(([key, value]) => (
             <div key={key}>
-              <dt className="text-[11px] text-neutral-400">{titleCaseEnum(key)}</dt>
+              <dt className="text-[11px] text-neutral-400">{metricLabel(key)}</dt>
               <dd className="text-xs font-semibold text-neutral-800">{formatMetricValue(value)}</dd>
             </div>
           ))}
@@ -339,7 +354,7 @@ function ComparisonLine({
       </Link>
       <span className="text-right font-semibold tabular-nums text-neutral-950">{formatNumber(views)}</span>
       <span className="text-right tabular-nums text-neutral-600">{formatNumber(engagements)}</span>
-      <span className="text-right tabular-nums text-neutral-600">{velocity == null ? "-" : `${formatNumber(Math.round(velocity))}/h`}</span>
+      <span className="text-right tabular-nums text-neutral-600">{velocity == null ? "-" : `${formatNumber(Math.round(velocity))}/u`}</span>
       <span className="text-right tabular-nums text-neutral-600">{vsMedian == null ? "-" : `${vsMedian.toFixed(1)}x`}</span>
     </div>
   );
@@ -411,18 +426,79 @@ function sanitizeMetrics(metrics: PayloadRecord) {
   );
 }
 
+function translateSignalText(value: string) {
+  const translations: Record<string, string> = {
+    "High view growth with near-zero comments and shares": "Hoge viewgroei met bijna geen reacties en shares",
+    "Views are high relative to the tracked account audience": "Views zijn hoog ten opzichte van de gemeten accountgrootte",
+    "View growth above campaign benchmark": "Viewgroei boven de campagnebenchmark",
+    "View growth anomaly against submission history": "Ongebruikelijke viewgroei ten opzichte van eerdere metingen",
+    "Extreme view growth anomaly against submission history": "Extreme viewgroei ten opzichte van eerdere metingen",
+    "Like ratio is unusually high for the view count": "Like-ratio is ongewoon hoog voor dit aantal views",
+    "low engagement on high view delta": "Lage engagement bij hoge viewgroei",
+  };
+  if (translations[value]) return translations[value];
+  return value
+    .replace("Anti-bot risk", "Anti-bot risico")
+    .replace("View growth anomaly", "Ongebruikelijke viewgroei")
+    .replace("Engagement collapse", "Engagementdaling")
+    .replace("Views exceed account audience", "Views liggen boven de accountgrootte")
+    .replace("Token expired", "Token verlopen");
+}
+
+function severityLabel(severity: string) {
+  if (severity === "CRITICAL") return "Kritiek";
+  if (severity === "WARN") return "Waarschuwing";
+  if (severity === "INFO") return "Info";
+  return titleCaseEnum(severity);
+}
+
+function confidenceLabel(confidence: string) {
+  if (confidence === "HIGH") return "hoog";
+  if (confidence === "MEDIUM") return "gemiddeld";
+  if (confidence === "LOW") return "laag";
+  return confidence.toLowerCase();
+}
+
+function evidenceKindLabel(kind: string) {
+  const labels: Record<string, string> = {
+    VELOCITY_ANOMALY: "Snelheidsafwijking",
+    ENGAGEMENT_COLLAPSE: "Engagementdaling",
+    AUDIENCE_MISMATCH: "Publieksafwijking",
+    CAMPAIGN_BENCHMARK: "Campagnebenchmark",
+    LIKE_RATIO: "Like-ratio",
+  };
+  return labels[kind] ?? titleCaseEnum(kind);
+}
+
+function metricLabel(key: string) {
+  const labels: Record<string, string> = {
+    viewsPerHour: "Views per uur",
+    rolling7dMean: "7d gemiddelde",
+    spikeMultiplier: "Spikefactor",
+    campaignVelocityP90: "Campagne p90",
+    campaignRatio: "Campagneratio",
+    deltaViews: "Viewgroei",
+    deltaCommentRatio: "Reactieratio",
+    deltaShareRatio: "Shareratio",
+    likeRatio: "Like-ratio",
+    audienceCount: "Accountgrootte",
+    audienceMultiple: "Publieksfactor",
+  };
+  return labels[key] ?? titleCaseEnum(key);
+}
+
 function formatMetricValue(value: number | string | null) {
   if (value == null) return "-";
-  if (typeof value === "number") return Number.isInteger(value) ? formatNumber(value) : value.toLocaleString("en-US", { maximumFractionDigits: 3 });
+  if (typeof value === "number") return Number.isInteger(value) ? formatNumber(value) : value.toLocaleString("nl-NL", { maximumFractionDigits: 3 });
   return value;
 }
 
 function formatRate(value: number | null) {
-  return value == null ? "-" : `${value.toFixed(2)}% engagement rate`;
+  return value == null ? "-" : `${value.toLocaleString("nl-NL", { maximumFractionDigits: 2 })}% engagement`;
 }
 
 function formatDateTime(value: Date) {
-  return value.toLocaleString("en-US", {
+  return value.toLocaleString("nl-NL", {
     month: "short",
     day: "numeric",
     hour: "2-digit",

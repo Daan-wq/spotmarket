@@ -18,7 +18,7 @@ export default async function AdminEditCampaignPage({ params: paramsPromise }: E
   if (!campaign) {
     return (
       <div className="p-8">
-        <p style={{ color: "var(--error)" }}>Campaign not found.</p>
+        <p style={{ color: "var(--error)" }}>Campagne niet gevonden.</p>
       </div>
     );
   }
@@ -56,10 +56,10 @@ export default async function AdminEditCampaignPage({ params: paramsPromise }: E
         className="text-sm mb-6 inline-block transition-opacity hover:opacity-70"
         style={{ color: "var(--accent)" }}
       >
-        ← Back to Campaigns
+        Terug naar campagnes
       </Link>
       <h1 className="text-2xl font-bold mb-6" style={{ color: "var(--text-primary)" }}>
-        Edit Campaign
+        Campagne bewerken
       </h1>
       <CampaignEditForm
         campaign={serialized}

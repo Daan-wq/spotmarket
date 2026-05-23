@@ -7,11 +7,11 @@ import { toast } from "sonner";
 const REVIEWABLE_STATUSES = new Set(["PENDING", "FLAGGED", "NEEDS_REVISION"]);
 
 const REJECTION_REASONS = [
-  { value: "BOT_TRAFFIC", label: "Botted traffic" },
-  { value: "INVALID_POST", label: "Invalid post" },
-  { value: "RULE_VIOLATION", label: "Rule violation" },
-  { value: "DUPLICATE", label: "Duplicate" },
-  { value: "OTHER", label: "Other" },
+  { value: "BOT_TRAFFIC", label: "Botverkeer" },
+  { value: "INVALID_POST", label: "Ongeldige post" },
+  { value: "RULE_VIOLATION", label: "Regelovertreding" },
+  { value: "DUPLICATE", label: "Dubbel" },
+  { value: "OTHER", label: "Anders" },
 ] as const;
 
 type RejectionReason = (typeof REJECTION_REASONS)[number]["value"];
@@ -55,15 +55,15 @@ export default function SubmissionActions({
         });
         if (!res.ok) {
           setOptimisticStatus(status);
-          toast.error(await responseError(res, "Failed to approve submission - reverting"));
+          toast.error(await responseError(res, "Goedkeuren mislukt - teruggedraaid"));
           return;
         }
-        toast.success("Submission approved");
+        toast.success("Inzending goedgekeurd");
         router.refresh();
       } catch (err) {
         console.error(err);
         setOptimisticStatus(status);
-        toast.error("Network error - reverting");
+        toast.error("Netwerkfout - teruggedraaid");
       }
     });
   }
@@ -71,7 +71,7 @@ export default function SubmissionActions({
   function reject() {
     if (isPending) return;
     if (!rejectionReason) {
-      toast.error("Choose a reason before rejecting.");
+      toast.error("Kies eerst een reden.");
       return;
     }
 
@@ -89,16 +89,16 @@ export default function SubmissionActions({
         });
         if (!res.ok) {
           setOptimisticStatus(status);
-          toast.error(await responseError(res, "Failed to reject submission - reverting"));
+          toast.error(await responseError(res, "Afwijzen mislukt - teruggedraaid"));
           return;
         }
-        toast.success("Submission rejected");
+        toast.success("Inzending afgewezen");
         setShowRejectForm(false);
         router.refresh();
       } catch (err) {
         console.error(err);
         setOptimisticStatus(status);
-        toast.error("Network error - reverting");
+        toast.error("Netwerkfout - teruggedraaid");
       }
     });
   }
@@ -108,7 +108,7 @@ export default function SubmissionActions({
   }
 
   if (optimisticStatus === "APPROVED" && !canRejectApproved) {
-    return <span className="text-xs text-neutral-500">Paid/locked</span>;
+    return <span className="text-xs text-neutral-500">Betaald/vergrendeld</span>;
   }
 
   return (
@@ -121,7 +121,7 @@ export default function SubmissionActions({
           className="block text-xs font-medium underline"
           style={{ color: "var(--primary)" }}
         >
-          View post
+          Post bekijken
         </a>
       ) : null}
 
@@ -146,14 +146,14 @@ export default function SubmissionActions({
               className="h-8 rounded-md px-3 text-xs font-semibold disabled:opacity-50"
               style={{ background: "var(--error-bg)", color: "var(--error-text)" }}
             >
-              {isPending ? "..." : "Confirm reject"}
+              {isPending ? "..." : "Afwijzen"}
             </button>
             <button
               type="button"
               onClick={() => setShowRejectForm(false)}
               className="h-8 rounded-md border border-neutral-200 bg-white px-3 text-xs font-semibold text-neutral-600"
             >
-              Cancel
+              Annuleren
             </button>
           </div>
         </div>
@@ -167,7 +167,7 @@ export default function SubmissionActions({
               className="h-8 rounded-md px-3 text-xs font-semibold disabled:opacity-50"
               style={{ background: "var(--success-bg)", color: "var(--success-text)" }}
             >
-              {isPending ? "..." : "Approve"}
+              {isPending ? "..." : "Goedkeuren"}
             </button>
           ) : null}
           {canRejectCurrent ? (
@@ -178,7 +178,7 @@ export default function SubmissionActions({
               className="h-8 rounded-md px-3 text-xs font-semibold disabled:opacity-50"
               style={{ background: "var(--error-bg)", color: "var(--error-text)" }}
             >
-              {optimisticStatus === "APPROVED" && !compact ? "Reject approved" : "Reject"}
+              {optimisticStatus === "APPROVED" && !compact ? "Goedgekeurde afwijzen" : "Afwijzen"}
             </button>
           ) : null}
         </div>

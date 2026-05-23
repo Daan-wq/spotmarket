@@ -63,22 +63,22 @@ export function CampaignSubmissionsOverview({
   return (
     <section>
       <SectionHeader
-        title="Campaign submissions"
+        title="Campagne-inzendingen"
         description={
           selectedCreator
-            ? `${filtered.length} submissions from ${selectedCreator.label}.`
-            : `${submissions.length} submissions across ${creators.length} creators.`
+            ? `${filtered.length} inzendingen van ${selectedCreator.label}.`
+            : `${submissions.length} inzendingen van ${creators.length} makers.`
         }
         action={
           creators.length > 0 ? (
             <label className="flex items-center gap-2 text-xs font-medium text-neutral-500">
-              Creator
+              Maker
               <select
                 value={creatorId}
                 onChange={(event) => setCreatorId(event.target.value)}
                 className="h-10 min-w-[220px] rounded-xl border border-neutral-200 bg-white px-3 text-sm font-semibold text-neutral-950 outline-none transition focus:border-neutral-500"
               >
-                <option value="all">All creators</option>
+                <option value="all">Alle makers</option>
                 {creators.map((creator) => (
                   <option key={creator.id} value={creator.id}>
                     {creator.label}
@@ -94,14 +94,14 @@ export function CampaignSubmissionsOverview({
         rowKey={(submission) => submission.id}
         emptyState={
           <EmptyState
-            title="No submissions match this filter"
-            description="Choose another creator or wait for campaign work to arrive."
+            title="Geen inzendingen voor dit filter"
+            description="Kies een andere maker of wacht tot er campagnewerk binnenkomt."
           />
         }
         columns={[
           {
             key: "creator",
-            header: "Creator",
+            header: "Maker",
             className: "w-[160px] max-w-[160px] px-3",
             cell: (submission) => {
               const name = submission.creatorDisplayName || submission.creatorEmail;
@@ -139,10 +139,10 @@ export function CampaignSubmissionsOverview({
                   rel="noreferrer"
                   className="font-semibold text-neutral-950 underline-offset-2 hover:underline"
                 >
-                  Open post
+                  Post openen
                 </a>
                 <p className="text-xs text-neutral-500">
-                  {submission.sourcePlatform ? titleCaseEnum(submission.sourcePlatform) : "Unknown source"}
+                  {submission.sourcePlatform ? titleCaseEnum(submission.sourcePlatform) : "Onbekende bron"}
                 </p>
               </div>
             ),
@@ -154,16 +154,16 @@ export function CampaignSubmissionsOverview({
             cell: (submission) => (
               <div className="flex flex-col items-start gap-2">
                 <Badge variant={submissionStatusVariant(submission.status)}>
-                  {titleCaseEnum(submission.status)}
+                  {submissionStatusLabel(submission.status)}
                 </Badge>
-                {submission.settledAt ? <Badge variant="paid">Settled</Badge> : null}
-                {submission.payoutRunItemCount > 0 ? <Badge variant="pending">In payout run</Badge> : null}
+                {submission.settledAt ? <Badge variant="paid">Uitbetaald</Badge> : null}
+                {submission.payoutRunItemCount > 0 ? <Badge variant="pending">In uitbetaling</Badge> : null}
               </div>
             ),
           },
           {
             key: "views",
-            header: "Total views",
+            header: "Totale views",
             align: "right",
             className: "w-[88px] px-2",
             cell: (submission) => (
@@ -174,7 +174,7 @@ export function CampaignSubmissionsOverview({
           },
           {
             key: "earned",
-            header: "Earned",
+            header: "Verdiend",
             align: "right",
             className: "w-[76px] px-2",
             cell: (submission) => (
@@ -185,13 +185,13 @@ export function CampaignSubmissionsOverview({
           },
           {
             key: "submitted",
-            header: "Submitted",
+            header: "Ingediend",
             className: "w-[98px] px-2",
-            cell: (submission) => <span className="text-xs text-neutral-500">{formatDate(submission.createdAt)}</span>,
+            cell: (submission) => <span className="text-xs text-neutral-500">{formatDate(submission.createdAt, "nl")}</span>,
           },
           {
             key: "signals",
-            header: "Signals",
+            header: "Signalen",
             className: "w-[84px] max-w-[84px] px-2",
             cell: (submission) =>
               submission.signals.length > 0 ? (
@@ -202,7 +202,7 @@ export function CampaignSubmissionsOverview({
                         key={signal.id}
                         href={`/admin/signals/${signal.id}`}
                         className="inline-flex h-6 items-center rounded-full border border-orange-200 bg-orange-50 px-2 text-[11px] font-semibold text-orange-700 transition hover:bg-orange-100"
-                        title="Review bot suspicion details"
+                        title="Bekijk botverdenking"
                       >
                         Bot
                       </Link>
@@ -223,7 +223,7 @@ export function CampaignSubmissionsOverview({
           },
           {
             key: "reason",
-            header: "Reason",
+            header: "Reden",
             className: "w-[96px] max-w-[96px] px-2",
             cell: (submission) => (
               <p className="line-clamp-2 text-xs leading-5 text-neutral-500" title={submission.rejectionNote ?? undefined}>
@@ -233,7 +233,7 @@ export function CampaignSubmissionsOverview({
           },
           {
             key: "actions",
-            header: "Actions",
+            header: "Acties",
             className: "w-[118px] px-2",
             cell: (submission) => (
               <SubmissionActions
@@ -257,11 +257,20 @@ export function displayTotalViews(submission: Pick<CampaignSubmissionOverviewRow
 
 function compactSignalLabel(type: string) {
   if (type === "RATIO_ANOMALY") return "Ratio";
-  if (type === "VELOCITY_DROP") return "Drop";
+  if (type === "VELOCITY_DROP") return "Daling";
   if (type === "LOGO_MISSING") return "Logo";
   if (type === "TOKEN_BROKEN") return "Token";
-  if (type === "DUPLICATE") return "Dup";
+  if (type === "DUPLICATE") return "Dubbel";
   return titleCaseEnum(type);
+}
+
+function submissionStatusLabel(status: string) {
+  if (status === "APPROVED") return "Goedgekeurd";
+  if (status === "PENDING") return "In beoordeling";
+  if (status === "FLAGGED") return "Gemarkeerd";
+  if (status === "NEEDS_REVISION") return "Aanpassing nodig";
+  if (status === "REJECTED") return "Afgewezen";
+  return titleCaseEnum(status);
 }
 
 function canRejectApproved(submission: CampaignSubmissionOverviewRow) {
