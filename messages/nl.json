@@ -1502,6 +1502,7 @@
         "submissionFailed": "Indienen mislukt. Probeer het opnieuw.",
         "submittedSuccess": "{submitted} van {total} posts succesvol ingediend.",
         "campaignEnded": "Deze campagne is afgelopen en accepteert geen inzendingen meer.",
+        "campaignPaused": "Deze campagne is gepauzeerd en accepteert tijdelijk geen inzendingen.",
         "rateLimited": "Instagram heeft rate limiting. Probeer het over ongeveer 1 minuut opnieuw.",
         "prefillNotFound": "We konden die post niet automatisch selecteren op deze pagina. Wissel van platformtab of blader terug om hem te vinden.",
         "connectPromptClose": "Koppelscherm sluiten",

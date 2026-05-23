@@ -6,7 +6,7 @@ import {
   evaluateCampaignJoinEligibility,
 } from "@/lib/campaign-eligibility";
 import {
-  CAMPAIGN_CLOSED_FOR_SUBMISSIONS_MESSAGE,
+  getCampaignClosedForSubmissionsMessage,
   isCampaignClosedForSubmissions,
 } from "@/lib/campaign-submission-state";
 import { getSocialAccountSummariesForProfile } from "@/lib/social-account-summary";
@@ -65,7 +65,7 @@ export async function POST(
       })
     ) {
       return NextResponse.json(
-        { error: CAMPAIGN_CLOSED_FOR_SUBMISSIONS_MESSAGE },
+        { error: getCampaignClosedForSubmissionsMessage({ status: campaign.status }) },
         { status: 400 },
       );
     }

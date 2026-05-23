@@ -8,7 +8,7 @@ import { findDuplicate } from "@/lib/duplicate-detector";
 import { publishEvent } from "@/lib/event-bus";
 import { resolveStableSubmissionThumbnail } from "@/lib/clip-thumbnail";
 import {
-  CAMPAIGN_CLOSED_FOR_SUBMISSIONS_MESSAGE,
+  getCampaignClosedForSubmissionsMessage,
   isCampaignClosedForSubmissions,
 } from "@/lib/campaign-submission-state";
 
@@ -188,7 +188,7 @@ export async function POST(req: NextRequest) {
       })
     ) {
       return NextResponse.json(
-        { error: CAMPAIGN_CLOSED_FOR_SUBMISSIONS_MESSAGE },
+        { error: getCampaignClosedForSubmissionsMessage({ status: app.campaign.status }) },
         { status: 400 },
       );
     }

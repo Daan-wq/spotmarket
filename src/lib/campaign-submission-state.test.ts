@@ -1,5 +1,6 @@
 import { describe, expect, test } from "vitest";
 import {
+  getCampaignClosedForSubmissionsMessage,
   getCampaignDeadlineState,
   isCampaignClosedForSubmissions,
 } from "./campaign-submission-state";
@@ -42,4 +43,10 @@ describe("campaign submission state", () => {
       ).toBe(true);
     },
   );
+
+  test("returns a pause-specific closed message for paused campaigns", () => {
+    expect(getCampaignClosedForSubmissionsMessage({ status: "paused" })).toBe(
+      "This campaign is paused and temporarily does not accept submissions.",
+    );
+  });
 });

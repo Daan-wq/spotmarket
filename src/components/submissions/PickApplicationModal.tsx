@@ -9,6 +9,7 @@ export interface ApplicationOption {
   campaignName: string;
   status: string;
   closedForSubmissions?: boolean;
+  closedForSubmissionsReason?: "paused" | "ended";
 }
 
 interface Props {
@@ -95,7 +96,7 @@ export function PickApplicationModal({
           <div className="mt-5 rounded-lg border border-neutral-200 bg-neutral-50 p-4 text-sm text-neutral-700">
             <p className="font-medium">No campaigns are accepting submissions.</p>
             <p className="mt-1 text-neutral-500">
-              Your applied campaigns have ended.
+              Your applied campaigns are paused or have ended.
             </p>
             <div className="mt-3 flex justify-end">
               <button
@@ -141,7 +142,11 @@ export function PickApplicationModal({
                       </span>
                     </span>
                     <span className="text-xs uppercase tracking-wide text-neutral-500">
-                      {isClosed ? "Ended" : app.status}
+                      {isClosed
+                        ? app.closedForSubmissionsReason === "paused"
+                          ? "Paused"
+                          : "Ended"
+                        : app.status}
                     </span>
                   </label>
                 );

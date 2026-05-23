@@ -72,7 +72,7 @@ export function SubmitContentModal({
 
   const handleSubmit = async () => {
     if (isClosedForSubmissions) {
-      setError("This campaign has ended and no longer accepts submissions.");
+      setError("This campaign is currently not accepting submissions.");
       return;
     }
 

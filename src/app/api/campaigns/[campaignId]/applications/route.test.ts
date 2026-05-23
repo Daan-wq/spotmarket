@@ -264,4 +264,28 @@ describe("POST /api/campaigns/[campaignId]/applications", () => {
     expect(routeMocks.userFindUnique).not.toHaveBeenCalled();
     expect(routeMocks.applicationCreate).not.toHaveBeenCalled();
   });
+
+  it("returns a paused message for paused campaigns", async () => {
+    routeMocks.campaignFindUnique.mockResolvedValueOnce({
+      id: "campaign-1",
+      createdByUserId: "admin-user-1",
+      platforms: ["TIKTOK"],
+      status: "paused",
+      deadline: new Date("2026-06-17T00:00:00.000Z"),
+    });
+
+    const response = await POST(
+      new Request("https://app.test/api/campaigns/campaign-1/applications", {
+        method: "POST",
+      }) as never,
+      params,
+    );
+
+    expect(response.status).toBe(400);
+    await expect(response.json()).resolves.toEqual({
+      error: "This campaign is paused and temporarily does not accept submissions.",
+    });
+    expect(routeMocks.userFindUnique).not.toHaveBeenCalled();
+    expect(routeMocks.applicationCreate).not.toHaveBeenCalled();
+  });
 });

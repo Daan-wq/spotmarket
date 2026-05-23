@@ -15,7 +15,12 @@ interface VideoItem {
 
 interface ActiveApplication {
   id: string;
-  campaign: { id: string; name: string; closedForSubmissions?: boolean };
+  campaign: {
+    id: string;
+    name: string;
+    closedForSubmissions?: boolean;
+    closedForSubmissionsReason?: "paused" | "ended";
+  };
 }
 
 interface VideoGridProps {
@@ -233,7 +238,9 @@ export function VideoGrid({ videos, platform, username, activeApplications = [] 
                           className="flex cursor-not-allowed items-center justify-between gap-3 px-3 py-2 text-xs text-neutral-400"
                         >
                           {app.campaign.name}
-                          <span className="uppercase tracking-wide">Ended</span>
+                          <span className="uppercase tracking-wide">
+                            {app.campaign.closedForSubmissionsReason === "paused" ? "Paused" : "Ended"}
+                          </span>
                         </span>
                       ) : (
                         <a

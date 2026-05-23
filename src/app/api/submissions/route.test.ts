@@ -121,6 +121,32 @@ describe("POST /api/submissions", () => {
     expect(routeMocks.submissionCreate).not.toHaveBeenCalled();
   });
 
+  test("returns a paused message for paused campaigns", async () => {
+    routeMocks.applicationFindUnique.mockResolvedValue({
+      id: "application-1",
+      creatorProfileId: "creator-profile-1",
+      campaignId: "campaign-1",
+      campaign: {
+        status: "paused",
+        deadline: new Date("2026-06-17T00:00:00.000Z"),
+      },
+    });
+
+    const response = await POST(
+      request({
+        applicationId: "application-1",
+        postUrl: "https://www.instagram.com/p/ABC123/",
+      }),
+    );
+
+    expect(response.status).toBe(400);
+    await expect(response.json()).resolves.toEqual({
+      error: "This campaign is paused and temporarily does not accept submissions.",
+    });
+    expect(routeMocks.findDuplicate).not.toHaveBeenCalled();
+    expect(routeMocks.submissionCreate).not.toHaveBeenCalled();
+  });
+
   test("stores a stable cached thumbnail instead of a client-supplied TikTok CDN URL", async () => {
     routeMocks.userFindUnique.mockResolvedValue({
       id: "creator-user-1",

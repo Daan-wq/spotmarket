@@ -1502,6 +1502,7 @@
         "submissionFailed": "Submission failed. Please try again.",
         "submittedSuccess": "{submitted} of {total} posts submitted successfully.",
         "campaignEnded": "This campaign has ended and no longer accepts submissions.",
+        "campaignPaused": "This campaign is paused and temporarily does not accept submissions.",
         "rateLimited": "Instagram is rate-limited. Try again in about 1 minute.",
         "prefillNotFound": "We could not auto-select that post on this page. Try switching the platform tab or paging back to find it.",
         "connectPromptClose": "Close connect prompt",

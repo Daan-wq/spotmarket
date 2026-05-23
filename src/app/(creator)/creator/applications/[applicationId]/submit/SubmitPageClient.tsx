@@ -32,6 +32,7 @@ interface Props {
   campaign: Campaign;
   initialSubmittedUrls: string[];
   isClosedForSubmissions: boolean;
+  closedForSubmissionsReason: "paused" | "ended";
   /** When set, the client tries to find this post in the grid and pre-select it. */
   prefillUrl?: string | null;
   prefillPlatform?: Platform | null;
@@ -63,6 +64,7 @@ export default function SubmitPageClient({
   campaign,
   initialSubmittedUrls,
   isClosedForSubmissions,
+  closedForSubmissionsReason,
   prefillUrl,
   prefillPlatform,
 }: Props) {
@@ -480,7 +482,7 @@ export default function SubmitPageClient({
 
       {isClosedForSubmissions && (
         <div className="mb-4 rounded-lg border border-neutral-200 bg-neutral-50 p-3 text-sm text-neutral-600">
-          {t("campaignEnded")}
+          {closedForSubmissionsReason === "paused" ? t("campaignPaused") : t("campaignEnded")}
         </div>
       )}
 

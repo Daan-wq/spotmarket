@@ -1,5 +1,8 @@
 import { prisma } from "@/lib/prisma";
-import { isCampaignClosedForSubmissions } from "@/lib/campaign-submission-state";
+import {
+  campaignClosedForSubmissionsReason,
+  isCampaignClosedForSubmissions,
+} from "@/lib/campaign-submission-state";
 
 export interface CreatorApplicationOption {
   applicationId: string;
@@ -8,6 +11,7 @@ export interface CreatorApplicationOption {
   status: string;
   appliedAt: Date;
   closedForSubmissions: boolean;
+  closedForSubmissionsReason: "paused" | "ended";
 }
 
 /**
@@ -32,6 +36,9 @@ export async function listCreatorApplications(
     closedForSubmissions: isCampaignClosedForSubmissions({
       status: r.campaign.status,
       deadline: r.campaign.deadline,
+    }),
+    closedForSubmissionsReason: campaignClosedForSubmissionsReason({
+      status: r.campaign.status,
     }),
   }));
 }
