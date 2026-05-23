@@ -96,48 +96,48 @@ export default async function SignalsPage({ searchParams }: PageProps) {
   return (
     <div className="space-y-9">
       <PageHeader
-        eyebrow="Risk"
-        title="Signals inbox"
-        description="WARN+ submission signals. Resolve each signal once action has been taken."
+        eyebrow="Risico"
+        title="Signalen"
+        description="Open waarschuwingen voor inzendingen. Los een signaal op zodra je het hebt beoordeeld of opgevolgd."
       />
 
       <div className="grid grid-cols-1 gap-4 md:grid-cols-5">
-        <StatCard label="Matching signals" value={String(rows.length)} detail="Current filter view" tone={rows.length > 0 ? "warning" : "neutral"} />
-        <StatCard label="Critical" value={String(critical)} detail="Needs fastest action" tone={critical > 0 ? "danger" : "neutral"} />
-        <StatCard label="Bot detectie waarschuwing" value={String(botSignals)} detail="Review queue voor verdachte views" tone={botSignals > 0 ? "danger" : "neutral"} />
-        <StatCard label="Token broken" value={String(tokenSignals)} detail="Reconnect nudges available" tone={tokenSignals > 0 ? "warning" : "neutral"} />
-        <StatCard label="Resolved" value={String(resolved)} detail="In this view" />
+        <StatCard label="Signalen" value={String(rows.length)} detail="Huidige filterweergave" tone={rows.length > 0 ? "warning" : "neutral"} />
+        <StatCard label="Kritiek" value={String(critical)} detail="Snelste actie nodig" tone={critical > 0 ? "danger" : "neutral"} />
+        <StatCard label="Botverdenking" value={String(botSignals)} detail="Beoordelingsrij voor verdachte views" tone={botSignals > 0 ? "danger" : "neutral"} />
+        <StatCard label="Token stuk" value={String(tokenSignals)} detail="Herinnering voor opnieuw koppelen mogelijk" tone={tokenSignals > 0 ? "warning" : "neutral"} />
+        <StatCard label="Opgelost" value={String(resolved)} detail="In deze weergave" />
       </div>
 
       <section>
         <SectionHeader
-          title="Signal Table"
-          description="Filters stay behind the drawer so the inbox opens to the work itself."
+          title="Signaaltabel"
+          description="Filters staan in het paneel zodat de inbox direct op het werk opent."
           action={
             <ProgressiveActionDrawer
               triggerLabel="Filters"
-              title="Signal filters"
-              description="Narrow by status, severity, or signal type."
+              title="Signaalfilters"
+              description="Filter op status, ernst of type signaal."
               variant="outline"
               width="lg"
-              badgeLabel={typeFilter || severityFilter || statusFilter !== "open" ? "On" : undefined}
+              badgeLabel={typeFilter || severityFilter || statusFilter !== "open" ? "Aan" : undefined}
             >
               <div className="space-y-5">
                 <FilterGroup label="Status">
                   <FilterChip label="Open" active={statusFilter === "open"} href={buildHref({ status: "open" })} />
-                  <FilterChip label="Resolved" active={statusFilter === "resolved"} href={buildHref({ status: "resolved" })} />
-                  <FilterChip label="All" active={statusFilter === "all"} href={buildHref({ status: "all" })} />
+                  <FilterChip label="Opgelost" active={statusFilter === "resolved"} href={buildHref({ status: "resolved" })} />
+                  <FilterChip label="Alles" active={statusFilter === "all"} href={buildHref({ status: "all" })} />
                 </FilterGroup>
-                <FilterGroup label="Severity">
-                  <FilterChip label="Any" active={severityFilter === null} href={buildHref({ severity: null })} />
+                <FilterGroup label="Ernst">
+                  <FilterChip label="Alles" active={severityFilter === null} href={buildHref({ severity: null })} />
                   {SEVERITY_OPTIONS.map((severity) => (
-                    <FilterChip key={severity} label={titleCaseEnum(severity)} active={severityFilter === severity} href={buildHref({ severity })} />
+                    <FilterChip key={severity} label={severityLabel(severity)} active={severityFilter === severity} href={buildHref({ severity })} />
                   ))}
                 </FilterGroup>
                 <FilterGroup label="Type">
-                  <FilterChip label="Any" active={typeFilter === null} href={buildHref({ type: null })} />
+                  <FilterChip label="Alles" active={typeFilter === null} href={buildHref({ type: null })} />
                   {SIGNAL_TYPES.map((type) => (
-                    <FilterChip key={type} label={titleCaseEnum(type)} active={typeFilter === type} href={buildHref({ type })} />
+                    <FilterChip key={type} label={signalTypeLabel(type)} active={typeFilter === type} href={buildHref({ type })} />
                   ))}
                 </FilterGroup>
               </div>
@@ -148,13 +148,13 @@ export default async function SignalsPage({ searchParams }: PageProps) {
         <DataTable
           rows={rows}
           rowKey={(row) => row.id}
-          emptyState={<EmptyState title="No signals match these filters" description="Try another filter set, or return to open signals." />}
+          emptyState={<EmptyState title="Geen signalen voor deze filters" description="Probeer andere filters of ga terug naar open signalen." />}
           columns={[
-            { key: "severity", header: "Severity", cell: (row) => <Badge variant={row.severity === "CRITICAL" ? "failed" : "pending"}>{titleCaseEnum(row.severity)}</Badge> },
+            { key: "severity", header: "Ernst", cell: (row) => <Badge variant={row.severity === "CRITICAL" ? "failed" : "pending"}>{severityLabel(row.severity)}</Badge> },
             { key: "type", header: "Type", cell: (row) => signalTypeLabel(row.type) },
             {
               key: "source",
-              header: "Campaign / Creator",
+              header: "Campagne / maker",
               cell: (row) => (
                 <div>
                   <p className="font-medium text-neutral-950">{row.campaignName ?? "-"}</p>
@@ -162,9 +162,9 @@ export default async function SignalsPage({ searchParams }: PageProps) {
                 </div>
               ),
             },
-            { key: "reason", header: "Reason", cell: (row) => <SignalEvidence payload={row.payload} /> },
-            { key: "when", header: "When", cell: (row) => formatDate(row.createdAt) },
-            { key: "actions", header: "Actions", cell: (row) => <SignalActions signal={row} /> },
+            { key: "reason", header: "Reden", cell: (row) => <SignalEvidence payload={row.payload} /> },
+            { key: "when", header: "Wanneer", cell: (row) => formatDate(row.createdAt, "nl") },
+            { key: "actions", header: "Acties", cell: (row) => <SignalActions signal={row} /> },
           ]}
         />
       </section>
@@ -173,8 +173,20 @@ export default async function SignalsPage({ searchParams }: PageProps) {
 }
 
 function signalTypeLabel(type: SignalType): string {
-  if (type === "BOT_SUSPECTED") return "Bot detectie waarschuwing";
+  if (type === "BOT_SUSPECTED") return "Botverdenking";
+  if (type === "VELOCITY_DROP") return "Snelheidsdaling";
+  if (type === "RATIO_ANOMALY") return "Ratio-afwijking";
+  if (type === "LOGO_MISSING") return "Logo ontbreekt";
+  if (type === "DUPLICATE") return "Dubbel";
+  if (type === "TOKEN_BROKEN") return "Token stuk";
+  if (type === "VELOCITY_SPIKE") return "Oud signaal";
   return titleCaseEnum(type);
+}
+
+function severityLabel(severity: SignalSeverity): string {
+  if (severity === "CRITICAL") return "Kritiek";
+  if (severity === "WARN") return "Waarschuwing";
+  return "Info";
 }
 
 function FilterGroup({ label, children }: { label: string; children: ReactNode }) {

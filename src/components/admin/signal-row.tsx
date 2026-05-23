@@ -23,24 +23,24 @@ export interface SignalRowData {
 
 const SEVERITY_STYLE: Record<SignalSeverity, { bg: string; color: string; label: string }> = {
   INFO: { bg: "var(--bg-primary)", color: "var(--text-secondary)", label: "Info" },
-  WARN: { bg: "var(--warning-bg)", color: "var(--warning-text)", label: "Warn" },
-  CRITICAL: { bg: "var(--error-bg)", color: "var(--error-text)", label: "Critical" },
+  WARN: { bg: "var(--warning-bg)", color: "var(--warning-text)", label: "Waarschuwing" },
+  CRITICAL: { bg: "var(--error-bg)", color: "var(--error-text)", label: "Kritiek" },
 };
 
 const TYPE_LABEL: Record<SignalType, string> = {
-  VELOCITY_SPIKE: "Legacy signal",
-  VELOCITY_DROP: "Velocity drop",
-  RATIO_ANOMALY: "Ratio anomaly",
-  BOT_SUSPECTED: "Bot detectie waarschuwing",
-  LOGO_MISSING: "Logo missing",
-  DUPLICATE: "Duplicate",
-  TOKEN_BROKEN: "Token broken",
+  VELOCITY_SPIKE: "Oud signaal",
+  VELOCITY_DROP: "Snelheidsdaling",
+  RATIO_ANOMALY: "Ratio-afwijking",
+  BOT_SUSPECTED: "Botverdenking",
+  LOGO_MISSING: "Logo ontbreekt",
+  DUPLICATE: "Dubbel",
+  TOKEN_BROKEN: "Token stuk",
 };
 
 function getReason(payload: Record<string, unknown> | null): string {
   if (!payload) return "";
   const reason = payload.reason;
-  return typeof reason === "string" ? reason : "";
+  return typeof reason === "string" ? translateSignalReason(reason) : "";
 }
 
 export function SignalRow({ signal }: { signal: SignalRowData }) {
@@ -56,14 +56,14 @@ export function SignalRow({ signal }: { signal: SignalRowData }) {
     try {
       const res = await fetch(`/api/admin/signals/${signal.id}/resolve`, { method: "POST" });
       if (!res.ok) {
-        toast.error("Failed to resolve");
+        toast.error("Oplossen mislukt");
         return;
       }
       setResolved(true);
-      toast.success("Signal resolved");
+      toast.success("Signaal opgelost");
       start(() => router.refresh());
     } catch {
-      toast.error("Network error");
+      toast.error("Netwerkfout");
     }
   }
 
@@ -73,12 +73,12 @@ export function SignalRow({ signal }: { signal: SignalRowData }) {
     try {
       const res = await fetch(`/api/admin/signals/${signal.id}/nudge`, { method: "POST" });
       if (!res.ok) {
-        toast.error("Failed to nudge creator");
+        toast.error("Herinnering sturen mislukt");
       } else {
-        toast.success("Reconnect nudge queued");
+        toast.success("Herinnering voor opnieuw koppelen klaargezet");
       }
     } catch {
-      toast.error("Network error");
+      toast.error("Netwerkfout");
     } finally {
       setNudging(false);
     }
@@ -98,17 +98,17 @@ export function SignalRow({ signal }: { signal: SignalRowData }) {
         {TYPE_LABEL[signal.type]}
       </td>
       <td className="px-4 py-3 text-xs" style={{ color: "var(--text-secondary)" }}>
-        {signal.campaignName ?? "—"}
+        {signal.campaignName ?? "-"}
         <br />
         <span className="text-[11px]" style={{ color: "var(--text-muted, var(--text-secondary))" }}>
-          {signal.creatorEmail ?? "—"}
+          {signal.creatorEmail ?? "-"}
         </span>
       </td>
       <td className="px-4 py-3 text-xs" style={{ color: "var(--text-secondary)", maxWidth: 320 }}>
-        {getReason(signal.payload) || "—"}
+        {getReason(signal.payload) || "-"}
       </td>
       <td className="px-4 py-3 text-xs" style={{ color: "var(--text-secondary)" }}>
-        {new Date(signal.createdAt).toLocaleString()}
+        {new Date(signal.createdAt).toLocaleString("nl-NL")}
       </td>
       <td className="px-4 py-3 text-xs">
         <div className="flex items-center gap-2 flex-wrap">
@@ -128,7 +128,7 @@ export function SignalRow({ signal }: { signal: SignalRowData }) {
             className="underline"
             style={{ color: "var(--primary, var(--accent))" }}
           >
-            View
+            Bekijken
           </Link>
           {signal.type === "TOKEN_BROKEN" && !resolved && (
             <button
@@ -137,7 +137,7 @@ export function SignalRow({ signal }: { signal: SignalRowData }) {
               className="px-2 py-1 rounded text-[11px] font-medium"
               style={{ background: "var(--warning-bg)", color: "var(--warning-text)", border: "none", cursor: "pointer" }}
             >
-              {nudging ? "..." : "Nudge"}
+              {nudging ? "..." : "Herinneren"}
             </button>
           )}
           {!resolved ? (
@@ -147,11 +147,11 @@ export function SignalRow({ signal }: { signal: SignalRowData }) {
               className="px-2 py-1 rounded text-[11px] font-medium"
               style={{ background: "var(--success-bg)", color: "var(--success-text)", border: "none", cursor: "pointer" }}
             >
-              {pending ? "..." : "Resolve"}
+              {pending ? "..." : "Oplossen"}
             </button>
           ) : (
             <span className="text-[11px]" style={{ color: "var(--success-text)" }}>
-              Resolved
+              Opgelost
             </span>
           )}
         </div>
@@ -171,14 +171,14 @@ export function SignalActions({ signal }: { signal: SignalRowData }) {
     try {
       const res = await fetch(`/api/admin/signals/${signal.id}/resolve`, { method: "POST" });
       if (!res.ok) {
-        toast.error("Failed to resolve");
+        toast.error("Oplossen mislukt");
         return;
       }
       setResolved(true);
-      toast.success("Signal resolved");
+      toast.success("Signaal opgelost");
       start(() => router.refresh());
     } catch {
-      toast.error("Network error");
+      toast.error("Netwerkfout");
     }
   }
 
@@ -188,12 +188,12 @@ export function SignalActions({ signal }: { signal: SignalRowData }) {
     try {
       const res = await fetch(`/api/admin/signals/${signal.id}/nudge`, { method: "POST" });
       if (!res.ok) {
-        toast.error("Failed to nudge creator");
+        toast.error("Herinnering sturen mislukt");
       } else {
-        toast.success("Reconnect nudge queued");
+        toast.success("Herinnering voor opnieuw koppelen klaargezet");
       }
     } catch {
-      toast.error("Network error");
+      toast.error("Netwerkfout");
     } finally {
       setNudging(false);
     }
@@ -215,14 +215,22 @@ export function SignalActions({ signal }: { signal: SignalRowData }) {
         href={`/admin/submissions?focus=${signal.submissionId}`}
         className="rounded-xl border border-neutral-200 bg-white px-3 py-2 text-xs font-semibold text-neutral-950 hover:bg-neutral-50"
       >
-        View
+        Bekijken
       </Link>
+      {signal.type === "BOT_SUSPECTED" ? (
+        <Link
+          href={`/admin/signals/${signal.id}`}
+          className="rounded-xl border border-orange-200 bg-orange-50 px-3 py-2 text-xs font-semibold text-orange-700 hover:bg-orange-100"
+        >
+          Bot beoordelen
+        </Link>
+      ) : null}
       {signal.creatorProfileId ? (
         <Link
           href={`/admin/creators/${signal.creatorProfileId}`}
           className="rounded-xl border border-neutral-200 bg-white px-3 py-2 text-xs font-semibold text-neutral-950 hover:bg-neutral-50"
         >
-          Creator
+          Maker
         </Link>
       ) : null}
       {signal.type === "TOKEN_BROKEN" && !resolved ? (
@@ -231,7 +239,7 @@ export function SignalActions({ signal }: { signal: SignalRowData }) {
           disabled={nudging}
           className="rounded-xl border border-orange-200 bg-orange-50 px-3 py-2 text-xs font-semibold text-orange-700 disabled:opacity-60"
         >
-          {nudging ? "..." : "Nudge"}
+          {nudging ? "..." : "Herinneren"}
         </button>
       ) : null}
       {!resolved ? (
@@ -240,13 +248,21 @@ export function SignalActions({ signal }: { signal: SignalRowData }) {
           disabled={pending}
           className="rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs font-semibold text-emerald-700 disabled:opacity-60"
         >
-          {pending ? "..." : "Resolve"}
+          {pending ? "..." : "Oplossen"}
         </button>
       ) : (
         <span className="rounded-full bg-emerald-50 px-2.5 py-1 text-[11px] font-medium text-emerald-700">
-          Resolved
+          Opgelost
         </span>
       )}
     </div>
   );
+}
+
+function translateSignalReason(reason: string) {
+  return reason
+    .replace("Anti-bot risk", "Anti-bot risico")
+    .replace("Token expired", "Token verlopen")
+    .replace("Token broken", "Token stuk")
+    .replace("low engagement on high view delta", "lage engagement bij hoge viewgroei");
 }

@@ -21,9 +21,9 @@ describe("SignalEvidence", () => {
 
     expect(getSignalRiskScore(payload)).toBe(78);
     expect(getSignalTopReason(payload)).toBe("Verdachte viewgroei met lage engagement");
-    expect(html).toContain("Risk 78");
+    expect(html).toContain("Risico 78");
     expect(html).toContain("Verdachte viewgroei met lage engagement");
-    expect(html).toContain("2 signals");
+    expect(html).toContain("2 signalen");
   });
 
   it("falls back to the plain reason for non anti-bot payloads", () => {
@@ -31,7 +31,7 @@ describe("SignalEvidence", () => {
     const html = renderToStaticMarkup(<SignalEvidence payload={payload} />);
 
     expect(getSignalRiskScore(payload)).toBeNull();
-    expect(getSignalTopReason(payload)).toBe("Token expired");
-    expect(html).toContain("Token expired");
+    expect(getSignalTopReason(payload)).toBe("Token verlopen");
+    expect(html).toContain("Token verlopen");
   });
 });

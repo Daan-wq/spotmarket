@@ -130,6 +130,24 @@ describe("emitFlag", () => {
     expect(publishEventMock).not.toHaveBeenCalled();
   });
 
+  it("allows a new signal after an older one was resolved", async () => {
+    await emitFlag("sub_1", {
+      type: "BOT_SUSPECTED",
+      severity: "WARN",
+      payload: { reason: "new suspicious traffic after previous resolution" },
+    });
+
+    expect(findFirstSignalMock).toHaveBeenCalledWith({
+      where: {
+        submissionId: "sub_1",
+        type: "BOT_SUSPECTED",
+        resolvedAt: null,
+      },
+      select: { id: true, severity: true, payload: true },
+    });
+    expect(createSignalMock).toHaveBeenCalledTimes(1);
+  });
+
   it("updates an open BOT_SUSPECTED signal when new evidence is stronger", async () => {
     findFirstSignalMock.mockResolvedValueOnce({
       id: "sig_existing",

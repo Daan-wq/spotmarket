@@ -148,7 +148,7 @@ export default async function CampaignHealthPage({ params }: PageProps) {
       <div className="mb-6 flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0 flex-1">
           <Link href="/admin/campaigns" className="text-xs underline" style={{ color: "var(--text-secondary)" }}>
-            Back to all campaigns
+            Terug naar alle campagnes
           </Link>
           <div className="mt-3 flex items-start gap-4">
             <CampaignAvatar name={campaign.name} imageUrl={campaign.bannerUrl} size="lg" />
@@ -176,49 +176,49 @@ export default async function CampaignHealthPage({ params }: PageProps) {
           className="rounded-md px-3 py-1.5 text-xs font-medium"
           style={{ background: "var(--bg-card)", color: "var(--text-primary)", border: "1px solid var(--border)" }}
         >
-          Edit campaign
+          Campagne bewerken
         </Link>
       </div>
 
       <div className="mb-6 flex flex-wrap gap-3">
         <div className="w-full sm:w-[220px] xl:w-[240px]">
           <KpiCard
-            label="Budget burn"
+            label="Budgetverbruik"
             value={`EUR ${totalEarned.toFixed(2)}`}
-            hint={`of EUR ${totalBudget.toFixed(2)} (${Math.round(burnPct * 100)}%)`}
+            hint={`van EUR ${totalBudget.toFixed(2)} (${Math.round(burnPct * 100)}%)`}
             tone={burnPct > 0.9 ? "warning" : "default"}
           />
         </div>
         <div className="w-full sm:w-[220px] xl:w-[240px]">
           <KpiCard
-            label="Goal views"
+            label="Doelviews"
             value={totalEligibleViews.toLocaleString()}
-            hint={goalViews > 0 ? `of ${goalViews.toLocaleString()} (${Math.round(goalPct * 100)}%)` : "no goal set"}
+            hint={goalViews > 0 ? `van ${goalViews.toLocaleString()} (${Math.round(goalPct * 100)}%)` : "geen doel ingesteld"}
             tone={goalViews > 0 && goalPct < 0.5 ? "warning" : "default"}
           />
         </div>
         <div className="w-full sm:w-[190px] xl:w-[210px]">
-          <KpiCard label="Submissions" value={campaign.campaignSubmissions.length} hint="all statuses" />
+          <KpiCard label="Inzendingen" value={campaign.campaignSubmissions.length} hint="alle statussen" />
         </div>
         <div className="w-full sm:w-[220px] xl:w-[250px]">
           <KpiCard
-            label="Active creators"
+            label="Actieve makers"
             value={byCreator.size}
-            hint="unique creators with submissions"
+            hint="unieke makers met inzendingen"
           />
         </div>
         <div className="w-full sm:w-[220px] xl:w-[240px]">
           <KpiCard
-            label="Minimum paid views"
+            label="Minimum betaalde views"
             value={minimumPaidViews.toLocaleString()}
-            hint="per submitted video"
+            hint="per ingezonden video"
           />
         </div>
         <div className="w-full sm:w-[220px] xl:w-[240px]">
           <KpiCard
-            label="Maximum paid views"
-            value={maximumPaidViews === null ? "Unlimited" : maximumPaidViews.toLocaleString()}
-            hint="per submitted video"
+            label="Maximum betaalde views"
+            value={maximumPaidViews === null ? "Onbeperkt" : maximumPaidViews.toLocaleString()}
+            hint="per ingezonden video"
           />
         </div>
       </div>
@@ -235,12 +235,12 @@ export default async function CampaignHealthPage({ params }: PageProps) {
         >
           <div className="px-5 py-4" style={{ borderBottom: "1px solid var(--border)" }}>
             <h2 className="text-base font-semibold" style={{ color: "var(--text-primary)" }}>
-              Creator leaderboard
+              Makerklassement
             </h2>
           </div>
           {leaderboard.length === 0 ? (
             <p className="px-5 py-8 text-sm" style={{ color: "var(--text-secondary)" }}>
-              No submissions yet.
+              Nog geen inzendingen.
             </p>
           ) : (
             <div className="overflow-x-auto">
@@ -248,19 +248,19 @@ export default async function CampaignHealthPage({ params }: PageProps) {
                 <thead>
                   <tr style={{ borderBottom: "1px solid var(--border)" }}>
                     <th className="px-5 py-3 text-left text-xs font-semibold" style={{ color: "var(--text-secondary)" }}>
-                      Creator
+                      Maker
                     </th>
                     <th className="px-5 py-3 text-right text-xs font-semibold" style={{ color: "var(--text-secondary)" }}>
-                      Submissions
+                      Inzendingen
                     </th>
                     <th className="px-5 py-3 text-right text-xs font-semibold" style={{ color: "var(--text-secondary)" }}>
                       Views
                     </th>
                     <th className="px-5 py-3 text-right text-xs font-semibold" style={{ color: "var(--text-secondary)" }}>
-                      Earned
+                      Verdiend
                     </th>
                     <th className="px-5 py-3 text-right text-xs font-semibold" style={{ color: "var(--text-secondary)" }}>
-                      Flagged
+                      Gemarkeerd
                     </th>
                   </tr>
                 </thead>
