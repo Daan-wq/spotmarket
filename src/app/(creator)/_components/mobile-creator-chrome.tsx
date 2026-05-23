@@ -71,10 +71,10 @@ export function MobileCreatorChrome({
           <button
             type="button"
             aria-label={t("closeMenu")}
-            className="absolute inset-0 h-full w-full cursor-default"
+            className="absolute inset-0 z-0 h-full w-full cursor-default"
             onClick={() => setOpen(false)}
           />
-          <aside className="absolute inset-y-0 right-0 flex w-full max-w-[420px] flex-col border-l border-neutral-200 bg-white shadow-[0_24px_80px_rgba(0,0,0,0.24)]">
+          <aside className="absolute inset-y-0 right-0 z-10 flex w-full max-w-[420px] flex-col border-l border-neutral-200 bg-white shadow-[0_24px_80px_rgba(0,0,0,0.24)]">
             <div className="flex items-center justify-between border-b border-neutral-200 px-4 py-4">
               <Link
                 href="/creator/dashboard"
