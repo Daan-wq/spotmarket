@@ -318,9 +318,12 @@ function evaluateAntiBot(input: AntiBotInput): AntiBotPayload {
     }
   }
 
-  const rawRiskScore = Math.min(100, evidence.reduce((sum, item) => sum + item.points, 0));
-  const riskScore = adjustedRiskScore(rawRiskScore, evidence, input.ratios.engagementRate);
-  const orderedEvidence = [...evidence].sort((a, b) => b.points - a.points);
+  const adjustedEvidence = withEngagementRiskAdjustment(evidence, input.ratios.engagementRate);
+  const riskScore = Math.max(
+    0,
+    Math.min(100, adjustedEvidence.reduce((sum, item) => sum + item.points, 0)),
+  );
+  const orderedEvidence = [...adjustedEvidence].sort((a, b) => b.points - a.points);
   const reasons = orderedEvidence.map((item) => item.label);
   const confidence: AntiBotPayload["confidence"] =
     riskScore >= 70 && evidence.length >= 2 ? "HIGH" : riskScore >= 40 ? "MEDIUM" : "LOW";
@@ -339,18 +342,26 @@ function evaluateAntiBot(input: AntiBotInput): AntiBotPayload {
   };
 }
 
-function adjustedRiskScore(
-  rawRiskScore: number,
+function withEngagementRiskAdjustment(
   evidence: AntiBotEvidence[],
   engagementRate: number | null,
 ) {
+  const rawRiskScore = Math.min(100, evidence.reduce((sum, item) => sum + item.points, 0));
   const hasDirectEngagementRisk = evidence.some(
     (item) => item.kind === "ENGAGEMENT_COLLAPSE" || item.kind === "RATIO_ANOMALY",
   );
-  if (engagementRate != null && engagementRate >= 0.03 && !hasDirectEngagementRisk) {
-    return Math.min(rawRiskScore, 35);
+  if (engagementRate != null && engagementRate >= 0.03 && !hasDirectEngagementRisk && rawRiskScore > 35) {
+    return [
+      ...evidence,
+      {
+        kind: "HEALTHY_ENGAGEMENT",
+        label: "Good cumulative engagement lowers bot risk",
+        points: 35 - rawRiskScore,
+        metrics: { engagementRate: round(engagementRate, 4) },
+      } satisfies AntiBotEvidence,
+    ];
   }
-  return rawRiskScore;
+  return evidence;
 }
 
 type EngagementField = "likeCount" | "commentCount" | "shareCount" | "saveCount";

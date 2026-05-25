@@ -485,6 +485,7 @@ function translateSignalText(value: string) {
     "View growth anomaly against submission history": "Ongebruikelijke viewgroei ten opzichte van eerdere metingen",
     "Extreme view growth anomaly against submission history": "Extreme viewgroei ten opzichte van eerdere metingen",
     "Like ratio is unusually high for the view count": "Like-ratio is ongewoon hoog voor dit aantal views",
+    "Good cumulative engagement lowers bot risk": "Gezonde engagement verlaagt het botrisico",
     "low engagement on high view delta": "Lage engagement bij hoge viewgroei",
   };
   if (translations[value]) return translations[value];
@@ -517,6 +518,7 @@ function evidenceKindLabel(kind: string) {
     AUDIENCE_MISMATCH: "Publieksafwijking",
     CAMPAIGN_BENCHMARK: "Campagnebenchmark",
     LIKE_RATIO: "Like-ratio",
+    HEALTHY_ENGAGEMENT: "Gezonde engagement",
   };
   return labels[kind] ?? titleCaseEnum(kind);
 }

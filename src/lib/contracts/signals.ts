@@ -49,7 +49,8 @@ export type AntiBotEvidenceKind =
   | "VELOCITY_ANOMALY"
   | "ENGAGEMENT_COLLAPSE"
   | "RATIO_ANOMALY"
-  | "ACCOUNT_PLAUSIBILITY";
+  | "ACCOUNT_PLAUSIBILITY"
+  | "HEALTHY_ENGAGEMENT";
 
 export interface AntiBotEvidence {
   kind: AntiBotEvidenceKind;

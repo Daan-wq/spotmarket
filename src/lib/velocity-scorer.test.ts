@@ -114,6 +114,7 @@ describe("scoreVelocity", () => {
     expect(antiBot?.riskScore).toBeLessThan(40);
     expect(antiBot?.evidence.map((item) => item.kind)).toContain("ACCOUNT_PLAUSIBILITY");
     expect(antiBot?.evidence.map((item) => item.kind)).toContain("VELOCITY_ANOMALY");
+    expect(antiBot?.evidence.map((item) => item.kind)).toContain("HEALTHY_ENGAGEMENT");
     expect(out.ratios?.engagementRate).toBeGreaterThanOrEqual(0.03);
     expect(out.flags.some((f) => f.type === "BOT_SUSPECTED")).toBe(false);
   });
