@@ -28,7 +28,8 @@ export function WithdrawTab() {
 
   const [balance, setBalance] = useState(0);
   const [pendingBalance, setPendingBalance] = useState(0);
-  const [profit, setProfit] = useState(0);
+  const [pendingReviewBalance, setPendingReviewBalance] = useState(0);
+  const [paidBalance, setPaidBalance] = useState(0);
   const [loading, setLoading] = useState(true);
 
   const [method, setMethod] = useState<WithdrawalMethod>("BANK_TRANSFER");
@@ -69,7 +70,8 @@ export function WithdrawTab() {
         const availableBalance = data.availableBalance ?? data.balance ?? 0;
         setBalance(availableBalance);
         setPendingBalance(data.pendingBalance ?? 0);
-        setProfit(data.profit ?? 0);
+        setPendingReviewBalance(data.pendingReviewBalance ?? 0);
+        setPaidBalance(data.paidBalance ?? data.settledEarnings ?? 0);
         setSavedIban(data.payoutIban ?? null);
         setSavedAccountName(data.payoutAccountName ?? null);
         setSavedSolanaAddress(data.payoutSolanaAddress ?? null);
@@ -316,10 +318,11 @@ export function WithdrawTab() {
       {error ? <AlertBanner tone="error" title={error} /> : null}
       {success ? <AlertBanner tone="success" title={success} /> : null}
 
-      <div className="grid grid-cols-3 gap-2 md:gap-3">
+      <div className="grid grid-cols-2 gap-2 md:grid-cols-4 md:gap-3">
         <BalanceCard label={t("balance")} value={formatCurrency(balance, locale)} />
+        <BalanceCard label={t("pendingReviewBalance")} value={formatCurrency(pendingReviewBalance, locale)} />
         <BalanceCard label={t("pendingBalance")} value={formatCurrency(pendingBalance, locale)} />
-        <BalanceCard label={t("profit")} value={formatCurrency(profit, locale)} />
+        <BalanceCard label={t("paidBalance")} value={formatCurrency(paidBalance, locale)} />
       </div>
 
       <section className="rounded-2xl border border-neutral-200 bg-white p-4 md:p-5">

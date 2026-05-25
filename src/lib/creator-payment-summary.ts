@@ -1,4 +1,9 @@
 import { calculatePaidViews } from "@/lib/paid-views";
+import {
+  getSubmissionFinancialState,
+  isOpenPayoutStatus,
+  isPaidPayoutStatus,
+} from "@/lib/financial-eligibility";
 
 type NumericLike = number | string | { toString(): string } | null | undefined;
 
@@ -13,6 +18,16 @@ export interface CreatorPaymentSubmission {
   minimumPaidViews?: number | null;
   maximumPaidViews?: number | null;
   creatorCpv?: NumericLike;
+  status?: string | null;
+  settledAt?: Date | string | null;
+  payoutRunItems?: Array<{
+    id?: string;
+    payout?: { status?: string | null } | null;
+  }>;
+  submissionSignals?: Array<{
+    severity: string;
+    resolvedAt?: Date | string | null;
+  }>;
 }
 
 export interface CreatorPaymentPayout {
@@ -33,12 +48,12 @@ export interface CreatorPaymentSummary {
   totalPaid: number;
   profit: number;
   pendingPayout: number;
+  pendingReviewBalance: number;
+  paidBalance: number;
+  lockedPayoutBalance: number;
   availableBalance: number;
   earningsByCampaign: CreatorCampaignEarningsRow[];
 }
-
-const PAID_PAYOUT_STATUSES = new Set(["sent", "confirmed"]);
-const PENDING_PAYOUT_STATUSES = new Set(["pending", "processing"]);
 
 function toNumber(value: NumericLike): number {
   if (value == null) return 0;
@@ -49,10 +64,6 @@ function toNumber(value: NumericLike): number {
 
 function roundMoney(value: number): number {
   return Math.round((value + Number.EPSILON) * 100) / 100;
-}
-
-function normalizedStatus(status: string): string {
-  return status.toLowerCase();
 }
 
 function campaignViews(submission: CreatorPaymentSubmission): number {
@@ -79,14 +90,18 @@ export function buildCreatorPaymentSummary({
   );
   const totalPaid = roundMoney(
     payouts
-      .filter((payout) => PAID_PAYOUT_STATUSES.has(normalizedStatus(payout.status)))
+      .filter((payout) => isPaidPayoutStatus(payout.status))
       .reduce((sum, payout) => sum + toNumber(payout.amount), 0),
   );
-  const pendingPayout = roundMoney(
+  const requestedPayout = roundMoney(
     payouts
-      .filter((payout) => PENDING_PAYOUT_STATUSES.has(normalizedStatus(payout.status)))
+      .filter((payout) => isOpenPayoutStatus(payout.status))
       .reduce((sum, payout) => sum + toNumber(payout.amount), 0),
   );
+  const pendingReviewBalance = roundMoney(sumSubmissionsByState(submissions, "pending_review"));
+  const lockedPayoutBalance = roundMoney(sumSubmissionsByState(submissions, "pending_payout"));
+  const settledSubmissionBalance = roundMoney(sumSubmissionsByState(submissions, "paid"));
+  const pendingPayout = roundMoney(requestedPayout + lockedPayoutBalance);
 
   const byCampaign = new Map<string, CreatorCampaignEarningsRow>();
   for (const submission of submissions) {
@@ -107,13 +122,39 @@ export function buildCreatorPaymentSummary({
   return {
     totalEarned,
     totalPaid,
-    profit: totalPaid,
+    profit: roundMoney(totalPaid + settledSubmissionBalance),
     pendingPayout,
-    availableBalance: roundMoney(Math.max(totalEarned - totalPaid - pendingPayout, 0)),
+    pendingReviewBalance,
+    paidBalance: roundMoney(totalPaid + settledSubmissionBalance),
+    lockedPayoutBalance,
+    availableBalance: roundMoney(
+      Math.max(
+        totalEarned -
+          totalPaid -
+          requestedPayout -
+          pendingReviewBalance -
+          lockedPayoutBalance -
+          settledSubmissionBalance,
+        0,
+      ),
+    ),
     earningsByCampaign: Array.from(byCampaign.values()).sort(
       (a, b) => b.totalEarned - a.totalEarned,
     ),
   };
+}
+
+function sumSubmissionsByState(
+  submissions: ReadonlyArray<CreatorPaymentSubmission>,
+  state: ReturnType<typeof getSubmissionFinancialState>,
+) {
+  return submissions.reduce(
+    (sum, submission) =>
+      getSubmissionFinancialState(submission) === state
+        ? sum + toNumber(submission.earnedAmount)
+        : sum,
+    0,
+  );
 }
 
 export async function getCreatorPaymentSummary(
@@ -131,6 +172,21 @@ export async function getCreatorPaymentSummary(
         viewCount: true,
         claimedViews: true,
         baselineViews: true,
+        status: true,
+        settledAt: true,
+        payoutRunItems: {
+          select: {
+            id: true,
+            payout: { select: { status: true } },
+          },
+        },
+        submissionSignals: {
+          where: {
+            resolvedAt: null,
+            severity: { in: ["WARN", "CRITICAL"] },
+          },
+          select: { severity: true, resolvedAt: true },
+        },
         campaign: {
           select: {
             name: true,
@@ -156,6 +212,10 @@ export async function getCreatorPaymentSummary(
       viewCount: submission.viewCount,
       claimedViews: submission.claimedViews,
       baselineViews: submission.baselineViews,
+      status: submission.status,
+      settledAt: submission.settledAt,
+      payoutRunItems: submission.payoutRunItems,
+      submissionSignals: submission.submissionSignals,
       minimumPaidViews: submission.campaign.minimumPaidViews,
       maximumPaidViews: submission.campaign.maximumPaidViews,
     })),

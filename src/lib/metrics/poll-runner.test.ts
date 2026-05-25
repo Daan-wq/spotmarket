@@ -13,6 +13,7 @@ const publishEventMock = vi.fn();
 const routeMetricMock = vi.fn();
 const scoreVelocityMock = vi.fn();
 const syncAntiBotSignalMock = vi.fn();
+const reconcileReferralPayoutForSubmissionMock = vi.fn();
 const availableCoreMetrics = {
   views: true,
   likes: true,
@@ -67,6 +68,11 @@ vi.mock("./anti-bot-signal", () => ({
   syncAntiBotSignal: (...args: unknown[]) => syncAntiBotSignalMock(...args),
 }));
 
+vi.mock("@/lib/referral-reconciliation", () => ({
+  reconcileReferralPayoutForSubmission: (...args: unknown[]) =>
+    reconcileReferralPayoutForSubmissionMock(...args),
+}));
+
 import { emitFlag, pollSubmissions } from "./poll-runner";
 
 beforeEach(() => {
@@ -83,6 +89,7 @@ beforeEach(() => {
   routeMetricMock.mockReset();
   scoreVelocityMock.mockReset();
   syncAntiBotSignalMock.mockReset();
+  reconcileReferralPayoutForSubmissionMock.mockReset();
 
   findFirstSignalMock.mockResolvedValue(null);
   createSignalMock.mockResolvedValue({
@@ -108,6 +115,7 @@ beforeEach(() => {
     antiBot: null,
   });
   syncAntiBotSignalMock.mockResolvedValue({ action: "unchanged" });
+  reconcileReferralPayoutForSubmissionMock.mockResolvedValue({ action: "unchanged" });
 });
 
 describe("emitFlag", () => {
@@ -256,6 +264,10 @@ describe("pollSubmissions earnings refresh", () => {
           earnedAmount: 50,
         }),
       }),
+    );
+    expect(reconcileReferralPayoutForSubmissionMock).toHaveBeenCalledWith(
+      expect.any(Object),
+      "sub_1",
     );
   });
 

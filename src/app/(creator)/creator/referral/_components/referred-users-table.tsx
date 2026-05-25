@@ -11,6 +11,7 @@ export interface ReferredUserRow {
   displayName: string;
   joinedAt: string;
   commissionEarned: number;
+  pendingCommission: number;
 }
 
 interface ReferredUsersTableProps {
@@ -68,8 +69,17 @@ export async function ReferredUsersTable({ rows }: ReferredUsersTableProps) {
                   <td className="px-5 py-3 min-w-[180px]">
                     <ProgressBar amount={row.commissionEarned} locale={locale} />
                   </td>
-                  <td className="px-5 py-3 text-right font-semibold" style={{ color: "var(--success-text)" }}>
-                    {formatCurrency(row.commissionEarned, locale)}
+                  <td className="px-5 py-3 text-right">
+                    <p className="font-semibold" style={{ color: "var(--success-text)" }}>
+                      {formatCurrency(row.commissionEarned, locale)}
+                    </p>
+                    {row.pendingCommission > 0 ? (
+                      <p className="mt-1 text-xs" style={{ color: "var(--text-muted)" }}>
+                        {t("pendingReviewAmount", {
+                          amount: formatCurrency(row.pendingCommission, locale),
+                        })}
+                      </p>
+                    ) : null}
                   </td>
                 </tr>
               );
@@ -104,6 +114,13 @@ export async function ReferredUsersTable({ rows }: ReferredUsersTableProps) {
               <p className="mt-3 text-sm font-semibold" style={{ color: "var(--success-text)" }}>
                 {t("commissionAmount", { amount: formatCurrency(row.commissionEarned, locale) })}
               </p>
+              {row.pendingCommission > 0 ? (
+                <p className="mt-1 text-xs" style={{ color: "var(--text-muted)" }}>
+                  {t("pendingReviewAmount", {
+                    amount: formatCurrency(row.pendingCommission, locale),
+                  })}
+                </p>
+              ) : null}
             </article>
           );
         })}

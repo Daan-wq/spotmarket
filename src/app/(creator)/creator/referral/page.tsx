@@ -46,7 +46,8 @@ export default async function ReferralPage() {
 
   const [
     totalInvited,
-    pendingResult,
+    earnedResult,
+    pendingReviewResult,
     thisMonthResult,
     payouts,
     signups,
@@ -58,11 +59,19 @@ export default async function ReferralPage() {
       _sum: { amount: true },
     }),
     prisma.referralPayout.aggregate({
-      where: { referrerId: user.id, createdAt: { gte: monthStart } },
+      where: { referrerId: user.id, status: "pending_review" },
+      _sum: { amount: true },
+    }),
+    prisma.referralPayout.aggregate({
+      where: { referrerId: user.id, status: "pending", createdAt: { gte: monthStart } },
       _sum: { amount: true },
     }),
     prisma.referralPayout.findMany({
-      where: { referrerId: user.id, createdAt: { gte: sixMonthsAgo } },
+      where: {
+        referrerId: user.id,
+        status: { in: ["pending", "pending_review"] },
+        createdAt: { gte: sixMonthsAgo },
+      },
       select: { amount: true, createdAt: true, referredUserId: true, status: true },
       orderBy: { createdAt: "desc" },
     }),
@@ -94,8 +103,8 @@ export default async function ReferralPage() {
     .slice(0, 5);
 
   // Stats
-  const totalEarnings = parseFloat(user.referralEarnings.toString());
-  const pendingEarnings = parseFloat(pendingResult._sum.amount?.toString() ?? "0");
+  const totalEarnings = parseFloat(earnedResult._sum.amount?.toString() ?? "0");
+  const pendingReviewCommission = parseFloat(pendingReviewResult._sum.amount?.toString() ?? "0");
   const thisMonthEarnings = parseFloat(thisMonthResult._sum.amount?.toString() ?? "0");
 
   // Earnings chart data (monthly)
@@ -107,6 +116,7 @@ export default async function ReferralPage() {
     monthlyMap.set(key, 0);
   }
   for (const p of payouts) {
+    if (p.status !== "pending") continue;
     const key = `${p.createdAt.getFullYear()}-${String(p.createdAt.getMonth() + 1).padStart(2, "0")}`;
     monthlyMap.set(key, (monthlyMap.get(key) ?? 0) + parseFloat(p.amount.toString()));
   }
@@ -186,26 +196,35 @@ export default async function ReferralPage() {
   const stats = [
     { label: t("peopleInvited"), value: formatNumber(totalInvited, locale), color: "#6366f1" },
     { label: t("totalEarned"), value: formatCurrency(totalEarnings, locale), color: "#22c55e" },
-    { label: t("pending"), value: formatCurrency(pendingEarnings, locale), color: "#f59e0b" },
+    { label: t("pendingReview"), value: formatCurrency(pendingReviewCommission, locale), color: "#f59e0b" },
     { label: t("thisMonth"), value: formatCurrency(thisMonthEarnings, locale), color: "#3b82f6" },
   ];
 
   // Per-referred-user commission breakdown.
-  const commissionByReferred = new Map<string, number>();
+  const earnedCommissionByReferred = new Map<string, number>();
+  const pendingCommissionByReferred = new Map<string, number>();
   for (const p of payouts) {
-    commissionByReferred.set(
+    const targetMap =
+      p.status === "pending_review"
+        ? pendingCommissionByReferred
+        : earnedCommissionByReferred;
+    targetMap.set(
       p.referredUserId,
-      (commissionByReferred.get(p.referredUserId) ?? 0) +
-        parseFloat(p.amount.toString()),
+      (targetMap.get(p.referredUserId) ?? 0) + parseFloat(p.amount.toString()),
     );
   }
   const referredUserRows: ReferredUserRow[] = signups.map((s) => ({
     userId: s.id,
     displayName: s.creatorProfile?.displayName ?? s.email.split("@")[0],
     joinedAt: s.createdAt.toISOString(),
-    commissionEarned: commissionByReferred.get(s.id) ?? 0,
+    commissionEarned: earnedCommissionByReferred.get(s.id) ?? 0,
+    pendingCommission: pendingCommissionByReferred.get(s.id) ?? 0,
   }));
-  referredUserRows.sort((a, b) => b.commissionEarned - a.commissionEarned);
+  referredUserRows.sort(
+    (a, b) =>
+      b.commissionEarned + b.pendingCommission -
+      (a.commissionEarned + a.pendingCommission),
+  );
 
   const isEmpty = totalInvited === 0;
 

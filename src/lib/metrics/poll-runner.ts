@@ -20,6 +20,7 @@ import { scoreVelocity, type FlagDraft } from "@/lib/velocity-scorer";
 import { calculatePaidViews } from "@/lib/paid-views";
 import { UNAVAILABLE_METRICS } from "@/lib/contracts/metrics";
 import { syncAntiBotSignal } from "./anti-bot-signal";
+import { reconcileReferralPayoutForSubmission } from "@/lib/referral-reconciliation";
 
 export type Tier = "hot" | "warm" | "cold";
 
@@ -203,6 +204,9 @@ export async function pollSubmissions(opts: RunOptions): Promise<PollResult> {
               : {}),
           },
         });
+        if (paidViews) {
+          await reconcileReferralPayoutForSubmission(prisma, sub.id);
+        }
 
         await publishEvent({
           type: "submission.metrics.updated",

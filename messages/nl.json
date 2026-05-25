@@ -1093,8 +1093,12 @@
       "overview": {
         "availableBalance": "Beschikbaar saldo",
         "readyUnlocks": "Klaar zodra opnemen vrij is",
+        "pendingReview": "In review",
+        "pendingReviewDetail": "Goedgekeurde clips die wachten op fraudcheck",
         "pending": "In behandeling",
         "requestsProgress": "Verzoeken in verwerking",
+        "paid": "Betaald",
+        "paidDetail": "Bevestigd, verzonden of gesetteld",
         "profit": "Profit",
         "profitDetail": "Succesvol uitbetaald",
         "totalPaid": "Totaal betaald",
@@ -1113,7 +1117,9 @@
       "withdraw": {
         "loading": "Laden...",
         "balance": "Saldo",
+        "pendingReviewBalance": "In review",
         "pendingBalance": "In behandeling",
+        "paidBalance": "Betaald",
         "profit": "Profit",
         "methodTitle": "Bankgegevens",
         "panelTitle": "Opname aanvragen",
@@ -1184,6 +1190,7 @@
         "peopleInvited": "Mensen uitgenodigd",
         "totalEarned": "Totaal verdiend",
         "pending": "In behandeling",
+        "pendingReview": "In review",
         "thisMonth": "Deze maand",
         "earningsOverTime": "Inkomsten door de tijd",
         "topReferrers": "Top referrers",
@@ -1239,7 +1246,8 @@
         "yourCommission": "Jouw commissie",
         "maxed": "Max bereikt",
         "joinedDate": "Aangemeld {date}",
-        "commissionAmount": "{amount} commissie"
+        "commissionAmount": "{amount} commissie",
+        "pendingReviewAmount": "{amount} in review"
       },
       "activity": {
         "signup": "{name} heeft zich aangemeld",
@@ -1247,7 +1255,10 @@
         "empty": "Nog geen referralactiviteit.",
         "emptyStart": "Nog geen activiteit. Deel je referrallink om te starten.",
         "signupWithLink": "{name} meldde zich aan via jouw link",
-        "earnedFrom": "{amount} verdiend via {name}"
+        "earnedFrom": "{amount} verdiend via {name}",
+        "pendingReviewFrom": "{amount} via {name} is in review",
+        "earnedStatus": "Verdiend",
+        "pendingReviewStatus": "In review"
       },
       "leaderboard": {
         "referrals": "Referrals",

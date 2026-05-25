@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireAuth } from "@/lib/auth";
+import { isSubmissionPayoutEligible } from "@/lib/financial-eligibility";
+import { reconcileReferralPayoutForSubmission } from "@/lib/referral-reconciliation";
 
 export async function POST(
   req: NextRequest,
@@ -24,11 +26,36 @@ export async function POST(
         campaignId,
         status: "APPROVED",
         settledAt: null,
+        earnedAmount: { gt: 0 },
+        payoutRunItems: { none: {} },
+        submissionSignals: {
+          none: {
+            resolvedAt: null,
+            severity: { in: ["WARN", "CRITICAL"] },
+          },
+        },
       },
-      include: { creator: true },
+      include: {
+        creator: true,
+        payoutRunItems: {
+          select: {
+            id: true,
+            payout: { select: { status: true } },
+          },
+        },
+        submissionSignals: {
+          where: {
+            resolvedAt: null,
+            severity: { in: ["WARN", "CRITICAL"] },
+          },
+          select: { severity: true, resolvedAt: true },
+        },
+      },
     });
 
-    if (submissions.length === 0) {
+    const eligibleSubmissions = submissions.filter(isSubmissionPayoutEligible);
+
+    if (eligibleSubmissions.length === 0) {
       return NextResponse.json({ error: "No unsettled approved submissions" }, { status: 400 });
     }
 
@@ -36,9 +63,10 @@ export async function POST(
       let totalSettled = 0;
       const settledCreators: string[] = [];
 
-      for (const sub of submissions) {
+      for (const sub of eligibleSubmissions) {
         const amount = Number(sub.earnedAmount);
         if (amount <= 0) continue;
+        await reconcileReferralPayoutForSubmission(tx, sub.id);
 
         // Upsert wallet for creator
         const wallet = await tx.wallet.upsert({
@@ -72,7 +100,11 @@ export async function POST(
         }
       }
 
-      return { totalSettled, creatorsCount: settledCreators.length, submissionsCount: submissions.length };
+      return {
+        totalSettled,
+        creatorsCount: settledCreators.length,
+        submissionsCount: eligibleSubmissions.length,
+      };
     });
 
     return NextResponse.json({

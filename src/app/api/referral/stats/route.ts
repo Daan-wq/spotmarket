@@ -18,15 +18,20 @@ export async function GET(req: Request) {
     });
     if (!user) return NextResponse.json({ error: "User not found" }, { status: 404 });
 
-    const [totalInvited, pendingResult, thisMonthResult] = await Promise.all([
+    const [totalInvited, earnedResult, pendingReviewResult, thisMonthResult] = await Promise.all([
       prisma.user.count({ where: { referredBy: user.id } }),
       prisma.referralPayout.aggregate({
         where: { referrerId: user.id, status: "pending" },
         _sum: { amount: true },
       }),
       prisma.referralPayout.aggregate({
+        where: { referrerId: user.id, status: "pending_review" },
+        _sum: { amount: true },
+      }),
+      prisma.referralPayout.aggregate({
         where: {
           referrerId: user.id,
+          status: "pending",
           createdAt: {
             gte: new Date(new Date().getFullYear(), new Date().getMonth(), 1),
           },
@@ -37,8 +42,11 @@ export async function GET(req: Request) {
 
     return NextResponse.json({
       totalInvited,
-      totalEarnings: parseFloat(user.referralEarnings.toString()),
-      pendingEarnings: parseFloat(pendingResult._sum.amount?.toString() ?? "0"),
+      totalEarnings: parseFloat(earnedResult._sum.amount?.toString() ?? "0"),
+      earnedCommission: parseFloat(earnedResult._sum.amount?.toString() ?? "0"),
+      pendingEarnings: parseFloat(earnedResult._sum.amount?.toString() ?? "0"),
+      pendingCommission: parseFloat(pendingReviewResult._sum.amount?.toString() ?? "0"),
+      pendingReviewCommission: parseFloat(pendingReviewResult._sum.amount?.toString() ?? "0"),
       thisMonthEarnings: parseFloat(thisMonthResult._sum.amount?.toString() ?? "0"),
       referralCode: user.referralCode,
       referralUrl: buildAppUrl(`/sign-up?ref=${user.referralCode}`, getAppUrlFromRequest(req)),

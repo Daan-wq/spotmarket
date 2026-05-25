@@ -1093,8 +1093,12 @@
       "overview": {
         "availableBalance": "Available balance",
         "readyUnlocks": "Ready when withdrawal unlocks",
+        "pendingReview": "Under review",
+        "pendingReviewDetail": "Approved clips waiting on fraud checks",
         "pending": "Pending",
         "requestsProgress": "Requests in progress",
+        "paid": "Paid",
+        "paidDetail": "Confirmed, sent, or settled",
         "profit": "Profit",
         "profitDetail": "Successfully paid out",
         "totalPaid": "Total paid",
@@ -1113,7 +1117,9 @@
       "withdraw": {
         "loading": "Loading...",
         "balance": "Balance",
+        "pendingReviewBalance": "Under review",
         "pendingBalance": "In progress",
+        "paidBalance": "Paid",
         "profit": "Profit",
         "methodTitle": "Bank details",
         "panelTitle": "Request withdrawal",
@@ -1184,6 +1190,7 @@
         "peopleInvited": "People Invited",
         "totalEarned": "Total Earned",
         "pending": "Pending",
+        "pendingReview": "Under review",
         "thisMonth": "This Month",
         "earningsOverTime": "Earnings Over Time",
         "topReferrers": "Top Referrers",
@@ -1239,7 +1246,8 @@
         "yourCommission": "Your commission",
         "maxed": "Maxed",
         "joinedDate": "Joined {date}",
-        "commissionAmount": "{amount} commission"
+        "commissionAmount": "{amount} commission",
+        "pendingReviewAmount": "{amount} in review"
       },
       "activity": {
         "signup": "{name} signed up",
@@ -1247,7 +1255,10 @@
         "empty": "No referral activity yet.",
         "emptyStart": "No activity yet. Share your referral link to get started.",
         "signupWithLink": "{name} signed up with your link",
-        "earnedFrom": "Earned {amount} from {name}"
+        "earnedFrom": "Earned {amount} from {name}",
+        "pendingReviewFrom": "{amount} from {name} is in review",
+        "earnedStatus": "Earned",
+        "pendingReviewStatus": "In review"
       },
       "leaderboard": {
         "referrals": "Referrals",
