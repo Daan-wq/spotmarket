@@ -25,6 +25,7 @@ const ERROR_TO_PROVIDER: Record<string, ProviderKey> = {
   ig_missing_scopes: "instagram",
   fb_missing_scopes: "facebook",
   discord_missing_scopes: "discord",
+  discord_guild_join_failed: "discord",
 };
 
 export function ScopeErrorDialog() {

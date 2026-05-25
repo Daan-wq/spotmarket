@@ -232,6 +232,14 @@ function getJoinErrorMessage(
       t,
     );
   }
+  if (
+    payload.code === "DISCORD_REQUIRED" ||
+    payload.code === "DISCORD_GUILD_MEMBER_REQUIRED" ||
+    payload.code === "DISCORD_ROLE_ASSIGN_FAILED" ||
+    payload.code === "DISCORD_ROLE_SYNC_FAILED"
+  ) {
+    return payload.error ?? t("error");
+  }
 
   if (payload.error === "Already applied") return t("alreadyApplied");
   if (payload.error === "Creator profile not found") return t("profileMissing");

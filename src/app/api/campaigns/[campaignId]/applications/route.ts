@@ -10,6 +10,25 @@ import {
   isCampaignClosedForSubmissions,
 } from "@/lib/campaign-submission-state";
 import { getSocialAccountSummariesForProfile } from "@/lib/social-account-summary";
+import {
+  addDiscordCampaignRole,
+  DiscordCampaignRoleError,
+  removeDiscordCampaignRole,
+} from "@/lib/discord-campaign-roles";
+
+function discordRoleErrorResponse(err: unknown) {
+  if (err instanceof DiscordCampaignRoleError) {
+    return NextResponse.json(
+      { code: err.code, error: err.message },
+      { status: err.status },
+    );
+  }
+
+  return NextResponse.json(
+    { code: "DISCORD_ROLE_SYNC_FAILED", error: "Discord role sync failed." },
+    { status: 502 },
+  );
+}
 
 export async function GET(
   req: NextRequest,
@@ -88,6 +107,16 @@ export async function POST(
       return NextResponse.json({ error: "Creator profile not found" }, { status: 404 });
     }
 
+    if (!user.discordId) {
+      return NextResponse.json(
+        {
+          code: "DISCORD_REQUIRED",
+          error: "Connect Discord before joining this campaign.",
+        },
+        { status: 400 },
+      );
+    }
+
     const socialAccounts = await getSocialAccountSummariesForProfile(user.creatorProfile.id);
     const eligibility = evaluateCampaignJoinEligibility(campaign.platforms, {
       instagram: socialAccounts.ig.some((c) => c.isVerified),
@@ -126,6 +155,12 @@ export async function POST(
       return NextResponse.json({ error: "Already applied" }, { status: 409 });
     }
 
+    try {
+      await addDiscordCampaignRole(campaign, user.discordId);
+    } catch (err) {
+      return discordRoleErrorResponse(err);
+    }
+
     const application = await prisma.campaignApplication.create({
       data: {
         campaignId,
@@ -151,6 +186,62 @@ export async function POST(
     return NextResponse.json({ id: application.id, application }, { status: 201 });
   } catch (err: unknown) {
     console.error("[campaigns applications POST]", err);
+    return NextResponse.json({ error: err instanceof Error ? err.message : "Internal error" }, { status: 500 });
+  }
+}
+
+export async function DELETE(
+  req: NextRequest,
+  { params }: { params: Promise<{ campaignId: string }> }
+) {
+  try {
+    const { userId } = await requireAuth("creator");
+    const { campaignId } = await params;
+
+    const user = await prisma.user.findUnique({
+      where: { supabaseId: userId },
+      select: {
+        discordId: true,
+        creatorProfile: { select: { id: true } },
+      },
+    });
+
+    if (!user?.creatorProfile) {
+      return NextResponse.json({ error: "Creator profile not found" }, { status: 404 });
+    }
+
+    const application = await prisma.campaignApplication.findFirst({
+      where: { campaignId, creatorProfileId: user.creatorProfile.id },
+      include: {
+        campaign: true,
+        submissions: { select: { id: true }, take: 1 },
+      },
+    });
+
+    if (!application) {
+      return NextResponse.json({ error: "Application not found" }, { status: 404 });
+    }
+
+    if (application.submissions.length > 0) {
+      return NextResponse.json(
+        { error: "Campaigns with submitted clips cannot be left from this endpoint." },
+        { status: 409 },
+      );
+    }
+
+    if (user.discordId) {
+      try {
+        await removeDiscordCampaignRole(application.campaign, user.discordId);
+      } catch (err) {
+        return discordRoleErrorResponse(err);
+      }
+    }
+
+    await prisma.campaignApplication.delete({ where: { id: application.id } });
+
+    return new NextResponse(null, { status: 204 });
+  } catch (err: unknown) {
+    console.error("[campaigns applications DELETE]", err);
     return NextResponse.json({ error: err instanceof Error ? err.message : "Internal error" }, { status: 500 });
   }
 }

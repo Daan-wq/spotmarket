@@ -2,40 +2,7 @@ import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { prisma } from "@/lib/prisma";
 import { NextResponse } from "next/server";
 import { safeRedirectPath } from "@/lib/safe-redirect";
-
-const DISCORD_GUILD_ID = process.env.DISCORD_GUILD_ID ?? "1486482870272000102";
-
-async function joinDiscordGuild(discordUserId: string, accessToken: string) {
-  const botToken = process.env.DISCORD_BOT_TOKEN;
-  if (!botToken) {
-    console.warn("[auth/callback] DISCORD_BOT_TOKEN not set, skipping guild join");
-    return;
-  }
-
-  try {
-    const res = await fetch(
-      `https://discord.com/api/v10/guilds/${DISCORD_GUILD_ID}/members/${discordUserId}`,
-      {
-        method: "PUT",
-        headers: {
-          Authorization: `Bot ${botToken}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ access_token: accessToken }),
-      }
-    );
-
-    if (res.status === 201) {
-      console.log(`[auth/callback] Added user ${discordUserId} to guild`);
-    } else if (res.status === 204) {
-      console.log(`[auth/callback] User ${discordUserId} already in guild`);
-    } else {
-      console.error("[auth/callback] Guild join failed:", res.status, await res.text());
-    }
-  } catch (err) {
-    console.error("[auth/callback] Guild join error:", err);
-  }
-}
+import { joinDiscordGuildWithOAuthToken } from "@/lib/discord-campaign-roles";
 
 export async function GET(request: Request) {
   const { searchParams, origin } = new URL(request.url);
@@ -62,7 +29,14 @@ export async function GET(request: Request) {
   if (provider === "discord" && session.provider_token) {
     const discordId = user.user_metadata?.provider_id ?? user.user_metadata?.sub;
     if (discordId) {
-      await joinDiscordGuild(discordId, session.provider_token);
+      try {
+        const joined = await joinDiscordGuildWithOAuthToken(discordId, session.provider_token);
+        if (!joined.ok) {
+          console.error("[auth/callback] Guild join failed:", joined.status, joined.body);
+        }
+      } catch (err) {
+        console.error("[auth/callback] Guild join error:", err);
+      }
     }
   }
 

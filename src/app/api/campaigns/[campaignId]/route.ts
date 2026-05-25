@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { Platform, Niche } from "@prisma/client";
 import { z } from "zod";
 import { ratePerKToCpv } from "@/lib/campaign-edit";
+import { removeDiscordCampaignRole } from "@/lib/discord-campaign-roles";
 
 function serialize<T>(data: T): T {
   return JSON.parse(
@@ -160,6 +161,20 @@ export async function PATCH(
     adminMarginPerK,
     ...rest
   } = parsed.data;
+  const shouldRemoveDiscordRoles =
+    rest.status === "completed" || rest.status === "cancelled";
+  const discordMembers = shouldRemoveDiscordRoles
+    ? await prisma.campaignApplication.findMany({
+        where: { campaignId },
+        select: {
+          creatorProfile: {
+            select: {
+              user: { select: { discordId: true } },
+            },
+          },
+        },
+      })
+    : [];
 
   const nextMinimumPaidViews =
     rest.minimumPaidViews ?? authorized.campaign.minimumPaidViews;
@@ -203,7 +218,28 @@ export async function PATCH(
       data,
     });
 
-    return NextResponse.json(serialize(updated));
+    let discordRoleSync:
+      | { attempted: number; failed: number }
+      | undefined;
+    if (shouldRemoveDiscordRoles) {
+      const discordIds = discordMembers
+        .map((member) => member.creatorProfile?.user.discordId)
+        .filter((discordId): discordId is string => !!discordId);
+      let failed = 0;
+
+      for (const discordId of discordIds) {
+        try {
+          await removeDiscordCampaignRole(updated, discordId);
+        } catch (err) {
+          failed += 1;
+          console.error("[PATCH /api/campaigns] Discord role removal failed", err);
+        }
+      }
+
+      discordRoleSync = { attempted: discordIds.length, failed };
+    }
+
+    return NextResponse.json(serialize({ ...updated, discordRoleSync }));
   } catch (err) {
     console.error("[PATCH /api/campaigns]", err);
     const message = err instanceof Error ? err.message : "Database error";
