@@ -4,7 +4,10 @@ import { prisma } from "@/lib/prisma";
 import { Platform, Niche } from "@prisma/client";
 import { z } from "zod";
 import { ratePerKToCpv } from "@/lib/campaign-edit";
-import { removeDiscordCampaignRole } from "@/lib/discord-campaign-roles";
+import {
+  ensureDiscordCampaignResources,
+  removeDiscordCampaignRole,
+} from "@/lib/discord-campaign-roles";
 
 function serialize<T>(data: T): T {
   return JSON.parse(
@@ -163,6 +166,7 @@ export async function PATCH(
   } = parsed.data;
   const shouldRemoveDiscordRoles =
     rest.status === "completed" || rest.status === "cancelled";
+  const shouldProvisionDiscordResources = rest.status === "active";
   const discordMembers = shouldRemoveDiscordRoles
     ? await prisma.campaignApplication.findMany({
         where: { campaignId },
@@ -213,6 +217,26 @@ export async function PATCH(
   }
 
   try {
+    let discordProvisioning:
+      | {
+          roleId: string;
+          channelId: string;
+          roleCreated: boolean;
+          channelCreated: boolean;
+        }
+      | undefined;
+
+    if (shouldProvisionDiscordResources) {
+      discordProvisioning = await ensureDiscordCampaignResources({
+        ...authorized.campaign,
+        name: typeof data.name === "string" ? data.name : authorized.campaign.name,
+        discordRoleId: authorized.campaign.discordRoleId,
+        discordChannelId: authorized.campaign.discordChannelId,
+      });
+      data.discordRoleId = discordProvisioning.roleId;
+      data.discordChannelId = discordProvisioning.channelId;
+    }
+
     const updated = await prisma.campaign.update({
       where: { id: campaignId },
       data,
@@ -239,7 +263,7 @@ export async function PATCH(
       discordRoleSync = { attempted: discordIds.length, failed };
     }
 
-    return NextResponse.json(serialize({ ...updated, discordRoleSync }));
+    return NextResponse.json(serialize({ ...updated, discordRoleSync, discordProvisioning }));
   } catch (err) {
     console.error("[PATCH /api/campaigns]", err);
     const message = err instanceof Error ? err.message : "Database error";

@@ -10,6 +10,7 @@ const routeMocks = vi.hoisted(() => ({
   applicationDelete: vi.fn(),
   notificationCreate: vi.fn(),
   getSocialAccountSummariesForProfile: vi.fn(),
+  ensureDiscordCampaignProvisioning: vi.fn(),
   addDiscordCampaignRole: vi.fn(),
   removeDiscordCampaignRole: vi.fn(),
 }));
@@ -48,6 +49,10 @@ vi.mock("@/lib/discord-campaign-roles", () => {
     removeDiscordCampaignRole: routeMocks.removeDiscordCampaignRole,
   };
 });
+
+vi.mock("@/lib/discord-campaign-provisioning", () => ({
+  ensureDiscordCampaignProvisioning: routeMocks.ensureDiscordCampaignProvisioning,
+}));
 
 vi.mock("@/lib/social-account-summary", () => ({
   getSocialAccountSummariesForProfile: routeMocks.getSocialAccountSummariesForProfile,
@@ -108,6 +113,15 @@ describe("POST /api/campaigns/[campaignId]/applications", () => {
     });
     routeMocks.applicationDelete.mockResolvedValue({});
     routeMocks.notificationCreate.mockResolvedValue({});
+    routeMocks.ensureDiscordCampaignProvisioning.mockImplementation(async (campaign) => ({
+      campaign,
+      resources: {
+        roleId: "discord-role-1",
+        channelId: "discord-channel-1",
+        roleCreated: false,
+        channelCreated: false,
+      },
+    }));
     routeMocks.addDiscordCampaignRole.mockResolvedValue({ skipped: false });
     routeMocks.removeDiscordCampaignRole.mockResolvedValue({ skipped: false });
     routeMocks.getSocialAccountSummariesForProfile.mockResolvedValue(
@@ -147,6 +161,9 @@ describe("POST /api/campaigns/[campaignId]/applications", () => {
     expect(routeMocks.addDiscordCampaignRole).toHaveBeenCalledWith(
       expect.objectContaining({ id: "campaign-1" }),
       "discord-user-1",
+    );
+    expect(routeMocks.ensureDiscordCampaignProvisioning).toHaveBeenCalledWith(
+      expect.objectContaining({ id: "campaign-1" }),
     );
   });
 
