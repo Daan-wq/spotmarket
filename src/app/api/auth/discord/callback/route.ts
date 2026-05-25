@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { prisma } from "@/lib/prisma";
 import { REQUIRED_DISCORD_SCOPES } from "@/lib/discord";
+import { joinDiscordGuildWithOAuthToken } from "@/lib/discord-campaign-roles";
 
 export async function GET(req: NextRequest) {
   const code = req.nextUrl.searchParams.get("code");
@@ -78,6 +79,11 @@ export async function GET(req: NextRequest) {
     }
 
     const discordUser = await userRes.json();
+    const joined = await joinDiscordGuildWithOAuthToken(discordUser.id, access_token);
+    if (!joined.ok) {
+      console.error("[discord connection] guild join failed:", joined.status, joined.body);
+      return NextResponse.redirect(new URL(`${returnTo}?error=discord_guild_join_failed`, req.url));
+    }
 
     // Save Discord ID to user record
     await prisma.user.update({

@@ -1,4 +1,4 @@
-export const REQUIRED_DISCORD_SCOPES = ["identify"] as const;
+export const REQUIRED_DISCORD_SCOPES = ["identify", "guilds.join"] as const;
 
 interface DiscordAuthUrlParams {
   clientId: string;

@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { POST } from "./route";
+import { DELETE, POST } from "./route";
 
 const routeMocks = vi.hoisted(() => ({
   requireAuth: vi.fn(),
@@ -7,8 +7,11 @@ const routeMocks = vi.hoisted(() => ({
   userFindUnique: vi.fn(),
   applicationFindFirst: vi.fn(),
   applicationCreate: vi.fn(),
+  applicationDelete: vi.fn(),
   notificationCreate: vi.fn(),
   getSocialAccountSummariesForProfile: vi.fn(),
+  addDiscordCampaignRole: vi.fn(),
+  removeDiscordCampaignRole: vi.fn(),
 }));
 
 vi.mock("@/lib/auth", () => ({
@@ -22,10 +25,29 @@ vi.mock("@/lib/prisma", () => ({
     campaignApplication: {
       findFirst: routeMocks.applicationFindFirst,
       create: routeMocks.applicationCreate,
+      delete: routeMocks.applicationDelete,
     },
     notification: { create: routeMocks.notificationCreate },
   },
 }));
+
+vi.mock("@/lib/discord-campaign-roles", () => {
+  class DiscordCampaignRoleError extends Error {
+    constructor(
+      readonly code: string,
+      message: string,
+      readonly status = 502,
+    ) {
+      super(message);
+    }
+  }
+
+  return {
+    DiscordCampaignRoleError,
+    addDiscordCampaignRole: routeMocks.addDiscordCampaignRole,
+    removeDiscordCampaignRole: routeMocks.removeDiscordCampaignRole,
+  };
+});
 
 vi.mock("@/lib/social-account-summary", () => ({
   getSocialAccountSummariesForProfile: routeMocks.getSocialAccountSummariesForProfile,
@@ -66,6 +88,7 @@ describe("POST /api/campaigns/[campaignId]/applications", () => {
     });
     routeMocks.userFindUnique.mockResolvedValue({
       id: "creator-user-1",
+      discordId: "discord-user-1",
       creatorProfile: {
         id: "creator-profile-1",
         isVerified: false,
@@ -83,7 +106,10 @@ describe("POST /api/campaigns/[campaignId]/applications", () => {
       id: "application-1",
       status: "pending",
     });
+    routeMocks.applicationDelete.mockResolvedValue({});
     routeMocks.notificationCreate.mockResolvedValue({});
+    routeMocks.addDiscordCampaignRole.mockResolvedValue({ skipped: false });
+    routeMocks.removeDiscordCampaignRole.mockResolvedValue({ skipped: false });
     routeMocks.getSocialAccountSummariesForProfile.mockResolvedValue(
       socialAccounts({
         igConnections: [],
@@ -118,6 +144,43 @@ describe("POST /api/campaigns/[campaignId]/applications", () => {
         }),
       }),
     );
+    expect(routeMocks.addDiscordCampaignRole).toHaveBeenCalledWith(
+      expect.objectContaining({ id: "campaign-1" }),
+      "discord-user-1",
+    );
+  });
+
+  it("rejects direct joins when Discord is not connected", async () => {
+    routeMocks.userFindUnique.mockResolvedValueOnce({
+      id: "creator-user-1",
+      discordId: null,
+      creatorProfile: {
+        id: "creator-profile-1",
+        isVerified: false,
+        displayName: "Creator",
+        totalFollowers: 1200,
+        engagementRate: 3.2,
+        igConnections: [],
+        ttConnections: [{ isVerified: true }],
+        ytConnections: [],
+        fbConnections: [],
+      },
+    });
+
+    const response = await POST(
+      new Request("https://app.test/api/campaigns/campaign-1/applications", {
+        method: "POST",
+      }) as never,
+      params,
+    );
+
+    expect(response.status).toBe(400);
+    await expect(response.json()).resolves.toEqual({
+      code: "DISCORD_REQUIRED",
+      error: "Connect Discord before joining this campaign.",
+    });
+    expect(routeMocks.addDiscordCampaignRole).not.toHaveBeenCalled();
+    expect(routeMocks.applicationCreate).not.toHaveBeenCalled();
   });
 
   it.each([
@@ -173,6 +236,7 @@ describe("POST /api/campaigns/[campaignId]/applications", () => {
       });
       routeMocks.userFindUnique.mockResolvedValueOnce({
         id: "creator-user-1",
+        discordId: "discord-user-1",
         creatorProfile: {
           id: "creator-profile-1",
           isVerified: false,
@@ -287,5 +351,33 @@ describe("POST /api/campaigns/[campaignId]/applications", () => {
     });
     expect(routeMocks.userFindUnique).not.toHaveBeenCalled();
     expect(routeMocks.applicationCreate).not.toHaveBeenCalled();
+  });
+
+  it("removes the Discord role when a creator leaves before submitting clips", async () => {
+    routeMocks.userFindUnique.mockResolvedValueOnce({
+      discordId: "discord-user-1",
+      creatorProfile: { id: "creator-profile-1" },
+    });
+    routeMocks.applicationFindFirst.mockResolvedValueOnce({
+      id: "application-1",
+      campaign: { id: "campaign-1", name: "ClipProfit" },
+      submissions: [],
+    });
+
+    const response = await DELETE(
+      new Request("https://app.test/api/campaigns/campaign-1/applications", {
+        method: "DELETE",
+      }) as never,
+      params,
+    );
+
+    expect(response.status).toBe(204);
+    expect(routeMocks.removeDiscordCampaignRole).toHaveBeenCalledWith(
+      { id: "campaign-1", name: "ClipProfit" },
+      "discord-user-1",
+    );
+    expect(routeMocks.applicationDelete).toHaveBeenCalledWith({
+      where: { id: "application-1" },
+    });
   });
 });
