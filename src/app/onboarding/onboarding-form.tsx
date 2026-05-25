@@ -47,6 +47,8 @@ export function OnboardingForm() {
   const nicheLabels = t.raw("niches") as string[];
   const experienceLevels = t.raw("experienceLevels") as ExperienceLevelCopy[];
   const referralCode = searchParams.get("ref") ?? undefined;
+  const campaignSlug = searchParams.get("campaign") ?? undefined;
+  const campaignClickId = searchParams.get("click") ?? undefined;
 
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
@@ -85,6 +87,8 @@ export function OnboardingForm() {
         body: JSON.stringify({
           displayName: form.displayName.trim(),
           referralCode,
+          campaignSlug,
+          campaignClickId,
           role: "creator",
           niches,
           attributionSource: attribution || undefined,

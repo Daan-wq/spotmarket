@@ -950,6 +950,12 @@
         "noClipsDescription": "Dien een clip in vanaf je gekoppelde social accounts en hij verschijnt hier.",
         "biggestEarners": "Grootste verdieners",
         "noEarners": "Nog geen goedgekeurde verdieners.",
+        "referralLink": {
+          "title": "Persoonlijke bio-link",
+          "description": "Plaats deze ClipProfit-link in je bio zodat invites en actieve clippers voor deze campagne worden gemeten.",
+          "copy": "Link kopieren",
+          "copied": "Gekopieerd"
+        },
         "contactSupport": {
           "title": "Hulp nodig met deze campagne?",
           "description": "Support loopt via Discord zodat het team elk verzoek op een plek kan opvolgen.",

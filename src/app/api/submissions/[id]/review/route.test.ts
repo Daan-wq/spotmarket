@@ -11,6 +11,7 @@ const routeMocks = vi.hoisted(() => {
       findFirst: vi.fn(),
     },
     campaignSubmission: { update: vi.fn() },
+    campaignReferralAttribution: { updateMany: vi.fn() },
     campaignApplication: { update: vi.fn() },
     notification: { create: vi.fn() },
     auditLog: { create: vi.fn() },
@@ -60,6 +61,7 @@ function submission(overrides: Record<string, unknown> = {}) {
     id: "submission-1",
     status: "PENDING",
     creatorId: "creator-user-1",
+    campaignId: "campaign-1",
     applicationId: "application-1",
     earnedAmount: 0,
     eligibleViews: null,
@@ -69,6 +71,7 @@ function submission(overrides: Record<string, unknown> = {}) {
     settledAt: null,
     payoutRunItems: [],
     metricSnapshots: [],
+    createdAt: new Date("2026-05-20T10:00:00.000Z"),
     campaign: {
       id: "campaign-1",
       name: "Spring Campaign",

@@ -102,11 +102,20 @@ export async function POST(request: Request) {
     },
   });
 
+  if (ticket.clickId) {
+    await prisma.campaignReferralAttribution.updateMany({
+      where: { clickId: ticket.clickId, signedUpAt: null },
+      data: { signedUpAt: new Date() },
+    });
+  }
+
   return NextResponse.json({
     session: {
       access_token: sessionData.session.access_token,
       refresh_token: sessionData.session.refresh_token,
     },
     ref: ticket.ref,
+    campaign: ticket.campaignSlug,
+    click: ticket.clickId,
   });
 }

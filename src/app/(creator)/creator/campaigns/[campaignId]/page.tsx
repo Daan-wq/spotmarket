@@ -3,6 +3,8 @@ import { getLocale, getTranslations } from "next-intl/server";
 import { notFound } from "next/navigation";
 import { requireAuth } from "@/lib/auth";
 import type { Locale } from "@/i18n/routing";
+import { getAppUrlForLocale } from "@/lib/app-url";
+import { buildCampaignReferralUrl } from "@/lib/campaign-referrals";
 import {
   formatCurrency,
   formatNumber,
@@ -36,6 +38,7 @@ import {
 } from "@/components/submissions/submitted-clips-list";
 import { CampaignDetailClient } from "./_components/campaign-detail-client";
 import { ContactSupportButton } from "./_components/contact-support-button";
+import { CampaignReferralLinkCard } from "./_components/campaign-referral-link-card";
 
 const CLIP_TO_PLATFORM_ICON: Record<ClipPlatform, string | null> = {
   INSTAGRAM: "INSTAGRAM",
@@ -73,7 +76,7 @@ export default async function CampaignDetailPage({
 
   const user = await prisma.user.findUnique({
     where: { supabaseId: userId },
-    select: { id: true, discordId: true },
+    select: { id: true, discordId: true, referralCode: true },
   });
   if (!user) throw new Error("User not found");
 
@@ -299,6 +302,14 @@ export default async function CampaignDetailPage({
   };
   const myViews = videos.reduce((sum, video) => sum + video.views, 0);
   const projectedEarned = videos.reduce((sum, video) => sum + video.earned, 0);
+  const campaignReferralUrl =
+    campaign.slug && user.referralCode
+      ? buildCampaignReferralUrl(
+          campaign.slug,
+          user.referralCode,
+          getAppUrlForLocale(locale),
+        )
+      : null;
 
   return (
     <div className="w-full space-y-6 md:space-y-8 md:px-6 md:py-8">
@@ -357,6 +368,10 @@ export default async function CampaignDetailPage({
         hasDiscord={hasDiscord}
         isClosedForSubmissions={isClosedForSubmissions}
       />
+
+      {campaignReferralUrl ? (
+        <CampaignReferralLinkCard referralUrl={campaignReferralUrl} />
+      ) : null}
 
       <section>
         <SectionTitle title={t("info")} />

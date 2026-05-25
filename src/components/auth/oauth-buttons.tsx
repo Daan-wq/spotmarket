@@ -40,11 +40,19 @@ export function OAuthButtons({ mode, providers = ["google", "discord"] }: OAuthB
     const supabase = createSupabaseBrowserClient();
     const params = new URLSearchParams(window.location.search);
     const ref = params.get("ref");
-    const signupFallback = mode === "signup"
-      ? ref
-        ? `/onboarding?ref=${encodeURIComponent(ref)}`
-        : "/onboarding"
-      : "/";
+    const campaign = params.get("campaign");
+    const click = params.get("click");
+    const onboardingParams = new URLSearchParams();
+    if (ref) onboardingParams.set("ref", ref);
+    if (campaign) onboardingParams.set("campaign", campaign);
+    if (click) onboardingParams.set("click", click);
+    const onboardingQuery = onboardingParams.toString();
+    const signupFallback =
+      mode === "signup"
+        ? onboardingQuery
+          ? `/onboarding?${onboardingQuery}`
+          : "/onboarding"
+        : "/";
     const next = safeRedirectPath(params.get("redirect_url"), signupFallback);
 
     const options: { redirectTo: string; scopes?: string } = {

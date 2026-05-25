@@ -57,12 +57,27 @@ export async function GET(request: Request) {
   const { session } = data;
   const user = session.user;
   const provider = user.app_metadata?.provider;
+  const nextUrl = new URL(next, origin);
+  const clickId = nextUrl.searchParams.get("click");
+
+  if (clickId) {
+    await prisma.campaignReferralAttribution.updateMany({
+      where: { clickId, signedUpAt: null },
+      data: { signedUpAt: new Date() },
+    });
+  }
 
   // Discord account connection: auto-join guild while provider_token is available.
   if (provider === "discord" && session.provider_token) {
     const discordId = user.user_metadata?.provider_id ?? user.user_metadata?.sub;
     if (discordId) {
       await joinDiscordGuild(discordId, session.provider_token);
+      if (clickId) {
+        await prisma.campaignReferralAttribution.updateMany({
+          where: { clickId, discordLinkedAt: null },
+          data: { discordLinkedAt: new Date() },
+        });
+      }
     }
   }
 

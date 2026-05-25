@@ -136,6 +136,31 @@ export async function POST(
       });
       await reconcileReferralPayoutForSubmission(tx, submission.id);
 
+      if (status === "APPROVED") {
+        await tx.campaignReferralAttribution.updateMany({
+          where: {
+            campaignId: submission.campaignId,
+            referredUserId: submission.creatorId,
+            firstSubmissionAt: null,
+          },
+          data: { firstSubmissionAt: submission.createdAt },
+        });
+      }
+
+      if (status === "APPROVED" && earnedAmount > 0) {
+        await tx.campaignReferralAttribution.updateMany({
+          where: {
+            campaignId: submission.campaignId,
+            referredUserId: submission.creatorId,
+            activeAt: null,
+          },
+          data: {
+            activeAt: new Date(),
+            firstEarnedAmount: earnedAmount,
+          },
+        });
+      }
+
       if (isFirstApproval && submission.application) {
         await tx.campaignApplication.update({
           where: { id: submission.application.id },

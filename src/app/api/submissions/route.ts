@@ -259,6 +259,18 @@ export async function POST(req: NextRequest) {
     });
 
     const eventPlatform = PLATFORM_TO_EVENT[parsed.platform];
+    await prisma.campaignReferralAttribution.updateMany({
+      where: {
+        campaignId: app.campaignId,
+        referredUserId: creator.id,
+        firstSubmissionAt: null,
+      },
+      data: {
+        firstSubmissionAt: submission.createdAt,
+        socialConnectedAt: submission.createdAt,
+      },
+    });
+
     if (eventPlatform) {
       await publishEvent({
         type: "submission.created",

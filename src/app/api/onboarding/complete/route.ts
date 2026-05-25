@@ -4,6 +4,10 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { nanoid } from "nanoid";
 import { isValidTronAddress } from "@/lib/validation/tron";
+import {
+  CLIPPROFIT_CAMPAIGN_SLUG,
+  normalizeCampaignSlug,
+} from "@/lib/campaign-referrals";
 import { normalizeReferralCode } from "@/lib/referral";
 import { createUniqueUsername } from "@/lib/username";
 
@@ -34,6 +38,8 @@ export async function POST(req: Request) {
   const body = await req.json();
   const displayName = (body.displayName as string)?.trim();
   const refCode = normalizeReferralCode(body.referralCode as string | undefined);
+  const campaignSlug = normalizeCampaignSlug(body.campaignSlug as string | undefined);
+  const campaignClickId = (body.campaignClickId as string | undefined)?.trim();
   const tronsAddress = (body.tronsAddress as string | undefined)?.trim();
   const role = body.role as string | undefined;
   const attributionSource = (body.attributionSource as string | undefined)?.trim();
@@ -52,9 +58,38 @@ export async function POST(req: Request) {
     ? (role as typeof VALID_ROLES[number])
     : "creator";
 
-  // Resolve referrer (only creators can be referrers)
+  const campaignAttribution =
+    campaignSlug && campaignClickId && refCode
+      ? await prisma.campaignReferralAttribution.findUnique({
+          where: { clickId: campaignClickId },
+          select: {
+            id: true,
+            campaignId: true,
+            referrerId: true,
+            referralCode: true,
+            referredUserId: true,
+            campaign: { select: { slug: true, name: true } },
+            referrer: {
+              select: { role: true, email: true, supabaseId: true },
+            },
+          },
+        })
+      : null;
+  const validCampaignAttribution =
+    campaignAttribution &&
+    campaignAttribution.referralCode === refCode &&
+    campaignAttribution.referrer.role === "creator" &&
+    campaignAttribution.referrer.supabaseId !== authUser.id &&
+    campaignAttribution.referrer.email !== authUser.email &&
+    (campaignAttribution.campaign.slug === campaignSlug ||
+      (campaignSlug === CLIPPROFIT_CAMPAIGN_SLUG &&
+        campaignAttribution.campaign.name.toLowerCase() === "clipprofit"))
+      ? campaignAttribution
+      : null;
+
+  // Resolve generic cash referrer only when this is not a campaign attribution.
   let referredById: string | undefined;
-  if (refCode) {
+  if (refCode && !campaignSlug && !validCampaignAttribution) {
     const referrer = await prisma.user.findUnique({
       where: { referralCode: refCode },
       select: { id: true, role: true, email: true, supabaseId: true },
@@ -100,6 +135,44 @@ export async function POST(req: Request) {
     },
     include: { creatorProfile: true },
   });
+
+  if (
+    validCampaignAttribution &&
+    (!validCampaignAttribution.referredUserId ||
+      validCampaignAttribution.referredUserId === user.id)
+  ) {
+    const existingAttribution = await prisma.campaignReferralAttribution.findFirst({
+      where: {
+        campaignId: validCampaignAttribution.campaignId,
+        referredUserId: user.id,
+      },
+      select: { id: true },
+    });
+    const attributionId = existingAttribution?.id ?? validCampaignAttribution.id;
+    const now = new Date();
+
+    if (!existingAttribution) {
+      await prisma.campaignReferralAttribution.update({
+        where: { id: attributionId },
+        data: { referredUserId: user.id },
+      });
+    }
+
+    await prisma.campaignReferralAttribution.updateMany({
+      where: { id: attributionId, signedUpAt: null },
+      data: { signedUpAt: now },
+    });
+    await prisma.campaignReferralAttribution.updateMany({
+      where: { id: attributionId, onboardedAt: null },
+      data: { onboardedAt: now },
+    });
+    if (discordId) {
+      await prisma.campaignReferralAttribution.updateMany({
+        where: { id: attributionId, discordLinkedAt: null },
+        data: { discordLinkedAt: now },
+      });
+    }
+  }
 
   const username = await createUniqueUsername(displayName, async (candidate) => {
     const existing = await prisma.creatorProfile.findUnique({

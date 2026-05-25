@@ -6,6 +6,7 @@ const routeMocks = vi.hoisted(() => ({
   userFindUnique: vi.fn(),
   applicationFindUnique: vi.fn(),
   submissionCreate: vi.fn(),
+  attributionUpdateMany: vi.fn(),
   findDuplicate: vi.fn(),
   publishEvent: vi.fn(),
   resolveInstagramThumbnail: vi.fn(),
@@ -22,6 +23,9 @@ vi.mock("@/lib/prisma", () => ({
     campaignSubmission: {
       findMany: vi.fn(),
       create: routeMocks.submissionCreate,
+    },
+    campaignReferralAttribution: {
+      updateMany: routeMocks.attributionUpdateMany,
     },
     campaignApplication: {
       findUnique: routeMocks.applicationFindUnique,

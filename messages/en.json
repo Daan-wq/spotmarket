@@ -950,6 +950,12 @@
         "noClipsDescription": "Submit a clip from your connected social accounts and it will appear here.",
         "biggestEarners": "Biggest earners",
         "noEarners": "No approved earners yet.",
+        "referralLink": {
+          "title": "Personal bio link",
+          "description": "Place this ClipProfit link in your bio so invites and active clippers are tracked for this campaign.",
+          "copy": "Copy link",
+          "copied": "Copied"
+        },
         "contactSupport": {
           "title": "Need help with this campaign?",
           "description": "Support now runs through Discord so the team can keep every request in one place.",

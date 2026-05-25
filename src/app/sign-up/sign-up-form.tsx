@@ -24,6 +24,19 @@ export function SignUpForm() {
   const [ticketId, setTicketId] = useState<string | null>(null);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
+  function buildOnboardingPath(data: {
+    ref?: string | null;
+    campaign?: string | null;
+    click?: string | null;
+  }) {
+    const params = new URLSearchParams();
+    if (data.ref) params.set("ref", data.ref);
+    if (data.campaign) params.set("campaign", data.campaign);
+    if (data.click) params.set("click", data.click);
+    const query = params.toString();
+    return query ? `/onboarding?${query}` : "/onboarding";
+  }
+
   useEffect(() => {
     if (!ticketId) return;
 
@@ -45,8 +58,7 @@ export function SignUpForm() {
           refresh_token: data.session.refresh_token,
         });
 
-        const redirectTo = data.ref ? `/onboarding?ref=${data.ref}` : "/onboarding";
-        router.push(redirectTo);
+        router.push(buildOnboardingPath(data));
         router.refresh();
       } catch {
         // Network error - keep polling.
@@ -70,11 +82,19 @@ export function SignUpForm() {
     setLoading(true);
 
     const ref = searchParams.get("ref");
+    const campaign = searchParams.get("campaign");
+    const click = searchParams.get("click");
 
     const res = await fetch("/api/auth/signup", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email, password, ref: ref || undefined }),
+      body: JSON.stringify({
+        email,
+        password,
+        ref: ref || undefined,
+        campaign: campaign || undefined,
+        click: click || undefined,
+      }),
     });
 
     const data = await res.json();
