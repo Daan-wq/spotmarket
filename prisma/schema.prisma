@@ -61,6 +61,7 @@ model CreatorProfile {
   tronsAddress       String?
   payoutIban         String?
   payoutAccountName  String?
+  payoutSolanaAddress String?
   stripeAccountId    String?
   primaryGeo         String   @default("US")
   totalFollowers     Int      @default(0)

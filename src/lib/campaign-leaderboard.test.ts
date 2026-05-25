@@ -118,4 +118,21 @@ describe("campaign leaderboard helpers", () => {
       }),
     ]);
   });
+
+  it("omits excluded test accounts", () => {
+    const rows = buildCampaignLeaderboardRows([
+      submission({
+        creatorId: "test_user",
+        creator: {
+          email: "daan0529@icloud.com",
+          discordUsername: "daans03",
+          creatorProfile: { id: "test_profile", username: null, avatarUrl: null },
+        },
+      }),
+      submission({ creatorId: "real_user" }),
+    ]);
+
+    expect(rows).toHaveLength(1);
+    expect(rows[0]?.creatorId).toBe("real_user");
+  });
 });

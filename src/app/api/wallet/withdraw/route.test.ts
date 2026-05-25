@@ -47,6 +47,7 @@ describe("POST /api/wallet/withdraw", () => {
         id: "creator-profile-1",
         payoutIban: "NL91ABNA0417164300",
         payoutAccountName: "Clipper Name",
+        payoutSolanaAddress: "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
       },
     });
     routeMocks.payoutFindFirst.mockResolvedValue(null);
@@ -77,6 +78,7 @@ describe("POST /api/wallet/withdraw", () => {
         id: "creator-profile-1",
         payoutIban: null,
         payoutAccountName: null,
+        payoutSolanaAddress: null,
       },
     });
 
@@ -194,6 +196,63 @@ describe("POST /api/wallet/withdraw", () => {
         paymentMethod: "BANK_TRANSFER",
         bankIbanSnapshot: "NL91ABNA0417164300",
         bankAccountNameSnapshot: "Clipper Name",
+        applicationIds: [],
+      }),
+    });
+  });
+
+  it("requires a saved Solana address before requesting a USDC-Solana payout", async () => {
+    routeMocks.userFindUnique.mockResolvedValueOnce({
+      id: "creator-user-1",
+      creatorProfile: {
+        id: "creator-profile-1",
+        payoutIban: "NL91ABNA0417164300",
+        payoutAccountName: "Clipper Name",
+        payoutSolanaAddress: null,
+      },
+    });
+
+    const response = await postWithdraw({ amount: 20, method: "USDC_SOLANA" });
+
+    expect(response.status).toBe(400);
+    await expect(response.json()).resolves.toEqual({
+      error: "Add your Solana wallet address before requesting a USDC payout.",
+    });
+    expect(routeMocks.payoutCreate).not.toHaveBeenCalled();
+  });
+
+  it("creates a pending crypto payout request with a Solana wallet snapshot", async () => {
+    routeMocks.payoutCreate.mockResolvedValueOnce({
+      id: "payout-crypto-1",
+      amount: 25.5,
+      status: "pending",
+      currency: "EUR",
+      paymentMethod: "CRYPTO",
+      walletAddress: "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+      requestedAt: new Date("2026-05-19T12:00:00.000Z"),
+    });
+
+    const response = await postWithdraw({ amount: 25.5, method: "USDC_SOLANA" });
+
+    expect(response.status).toBe(201);
+    await expect(response.json()).resolves.toEqual({
+      withdrawal: expect.objectContaining({
+        id: "payout-crypto-1",
+        amount: 25.5,
+        status: "pending",
+        currency: "EUR",
+        paymentMethod: "CRYPTO",
+        walletAddress: "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+        network: "SOLANA",
+      }),
+    });
+    expect(routeMocks.payoutCreate).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        creatorProfileId: "creator-profile-1",
+        amount: 25.5,
+        status: "pending",
+        paymentMethod: "CRYPTO",
+        walletAddress: "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
         applicationIds: [],
       }),
     });

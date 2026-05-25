@@ -2,6 +2,10 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireAuth } from "@/lib/auth";
 import { resolveCreatorLeaderboardName } from "@/lib/creator-leaderboard-name";
+import {
+  isExcludedFromLeaderboards,
+  LEADERBOARD_OVERSCAN_LIMIT,
+} from "@/lib/leaderboard-exclusions";
 
 export async function GET(req: NextRequest) {
   try {
@@ -14,7 +18,13 @@ export async function GET(req: NextRequest) {
 
     const currentUser = await prisma.user.findUnique({
       where: { supabaseId: authUser.id },
-      select: { id: true },
+      select: {
+        id: true,
+        email: true,
+        discordUsername: true,
+        referralEarnings: true,
+        creatorProfile: { select: { username: true } },
+      },
     });
     if (!currentUser) return NextResponse.json({ error: "User not found" }, { status: 404 });
 
@@ -24,7 +34,7 @@ export async function GET(req: NextRequest) {
       : 5;
 
     // Get top referrers by earnings
-    const topReferrers = await prisma.user.findMany({
+    const topReferrersRaw = await prisma.user.findMany({
       where: {
         referralEarnings: { gt: 0 },
         role: "creator",
@@ -37,8 +47,11 @@ export async function GET(req: NextRequest) {
         creatorProfile: { select: { username: true, avatarUrl: true } },
       },
       orderBy: { referralEarnings: "desc" },
-      take: limit,
+      take: LEADERBOARD_OVERSCAN_LIMIT,
     });
+    const topReferrers = topReferrersRaw
+      .filter((referrer) => !isExcludedFromLeaderboards(referrer))
+      .slice(0, limit);
 
     // Get referral counts for these users
     const referrerIds = topReferrers.map((r) => r.id);
@@ -64,26 +77,24 @@ export async function GET(req: NextRequest) {
     // Find current user's rank if not in top list
     let currentUserRank: number | null = null;
     const inList = leaderboard.find((l) => l.isCurrentUser);
-    if (!inList) {
-      const higherCount = await prisma.user.count({
+    if (!inList && !isExcludedFromLeaderboards(currentUser)) {
+      const rankedReferrers = await prisma.user.findMany({
         where: {
           referralEarnings: { gt: 0 },
           role: "creator",
-          OR: [
-            {
-              referralEarnings: {
-                gt: (
-                  await prisma.user.findUnique({
-                    where: { id: currentUser.id },
-                    select: { referralEarnings: true },
-                  })
-                )?.referralEarnings ?? 0,
-              },
-            },
-          ],
         },
+        select: {
+          id: true,
+          email: true,
+          discordUsername: true,
+          creatorProfile: { select: { username: true } },
+        },
+        orderBy: { referralEarnings: "desc" },
       });
-      currentUserRank = higherCount + 1;
+      const visibleIndex = rankedReferrers
+        .filter((referrer) => !isExcludedFromLeaderboards(referrer))
+        .findIndex((referrer) => referrer.id === currentUser.id);
+      currentUserRank = visibleIndex >= 0 ? visibleIndex + 1 : null;
     }
 
     return NextResponse.json({ leaderboard, currentUserRank });

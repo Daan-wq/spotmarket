@@ -98,6 +98,67 @@ describe("PATCH /api/payouts/[payoutId]", () => {
     });
   });
 
+  it("requires a transaction hash before confirming a crypto payout", async () => {
+    routeMocks.payoutFindUnique.mockResolvedValueOnce({
+      id: "payout-1",
+      status: "pending",
+      paymentMethod: "CRYPTO",
+      txHash: null,
+      bankReference: null,
+    });
+
+    const response = await PATCH(patchRequest({ status: "confirmed" }), params);
+
+    expect(response.status).toBe(400);
+    await expect(response.json()).resolves.toEqual({
+      error: "Transaction hash is required to mark this crypto payout as paid.",
+    });
+    expect(routeMocks.payoutUpdate).not.toHaveBeenCalled();
+  });
+
+  it("marks a crypto payout as confirmed with a transaction hash", async () => {
+    routeMocks.payoutFindUnique.mockResolvedValueOnce({
+      id: "payout-1",
+      status: "pending",
+      paymentMethod: "CRYPTO",
+      txHash: null,
+      bankReference: null,
+    });
+
+    const response = await PATCH(
+      patchRequest({ status: "confirmed", txHash: "5YTxHashForSolanaManualPayout" }),
+      params,
+    );
+
+    expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toEqual(
+      expect.objectContaining({
+        id: "payout-1",
+        status: "confirmed",
+        txHash: "5YTxHashForSolanaManualPayout",
+      }),
+    );
+    expect(routeMocks.payoutUpdate).toHaveBeenCalledWith({
+      where: { id: "payout-1" },
+      data: expect.objectContaining({
+        status: "confirmed",
+        txHash: "5YTxHashForSolanaManualPayout",
+        confirmedAt: expect.any(Date),
+        processedAt: expect.any(Date),
+      }),
+    });
+    expect(routeMocks.auditLogCreate).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        action: "payout.confirmed",
+        entityId: "payout-1",
+        metadata: expect.objectContaining({
+          txHash: "5YTxHashForSolanaManualPayout",
+          paymentMethod: "CRYPTO",
+        }),
+      }),
+    });
+  });
+
   it("marks a rejected payout request as failed without mutating balance directly", async () => {
     const response = await PATCH(patchRequest({ status: "failed" }), params);
 

@@ -11,13 +11,24 @@ import { buildAppUrl, getAppUrlForLocale } from "@/lib/app-url";
 import { formatCurrency, formatNumber } from "@/lib/i18n-format";
 import type { Locale } from "@/i18n/routing";
 import { resolveCreatorLeaderboardName } from "@/lib/creator-leaderboard-name";
+import {
+  isExcludedFromLeaderboards,
+  LEADERBOARD_OVERSCAN_LIMIT,
+} from "@/lib/leaderboard-exclusions";
 
 export default async function ReferralPage() {
   const { userId } = await requireAuth("creator");
 
   const user = await prisma.user.findUnique({
     where: { supabaseId: userId },
-    select: { id: true, referralCode: true, referralEarnings: true },
+    select: {
+      id: true,
+      email: true,
+      discordUsername: true,
+      referralCode: true,
+      referralEarnings: true,
+      creatorProfile: { select: { username: true } },
+    },
   });
   if (!user) throw new Error("User not found");
 
@@ -39,7 +50,7 @@ export default async function ReferralPage() {
     thisMonthResult,
     payouts,
     signups,
-    topReferrers,
+    topReferrersRaw,
   ] = await Promise.all([
     prisma.user.count({ where: { referredBy: user.id } }),
     prisma.referralPayout.aggregate({
@@ -75,9 +86,12 @@ export default async function ReferralPage() {
         creatorProfile: { select: { username: true } },
       },
       orderBy: { referralEarnings: "desc" },
-      take: 5,
+      take: LEADERBOARD_OVERSCAN_LIMIT,
     }),
   ]);
+  const topReferrers = topReferrersRaw
+    .filter((referrer) => !isExcludedFromLeaderboards(referrer))
+    .slice(0, 5);
 
   // Stats
   const totalEarnings = parseFloat(user.referralEarnings.toString());
@@ -121,14 +135,28 @@ export default async function ReferralPage() {
   }));
 
   let currentUserRank: number | null = null;
-  if (!leaderboardEntries.some((e) => e.isCurrentUser) && totalEarnings > 0) {
-    const higherCount = await prisma.user.count({
+  if (
+    !leaderboardEntries.some((e) => e.isCurrentUser) &&
+    totalEarnings > 0 &&
+    !isExcludedFromLeaderboards(user)
+  ) {
+    const rankedReferrers = await prisma.user.findMany({
       where: {
-        referralEarnings: { gt: user.referralEarnings },
+        referralEarnings: { gt: 0 },
         role: "creator",
       },
+      select: {
+        id: true,
+        email: true,
+        discordUsername: true,
+        creatorProfile: { select: { username: true } },
+      },
+      orderBy: { referralEarnings: "desc" },
     });
-    currentUserRank = higherCount + 1;
+    const visibleIndex = rankedReferrers
+      .filter((referrer) => !isExcludedFromLeaderboards(referrer))
+      .findIndex((referrer) => referrer.id === user.id);
+    currentUserRank = visibleIndex >= 0 ? visibleIndex + 1 : null;
   }
 
   // Activity feed (merged signups + earnings, sorted by date)

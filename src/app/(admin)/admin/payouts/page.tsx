@@ -15,7 +15,7 @@ export default async function PayoutsPage() {
   const [paymentRequests, runs, payouts, approvedUnpaid] = await Promise.all([
     prisma.payout.findMany({
       where: {
-        paymentMethod: "BANK_TRANSFER",
+        paymentMethod: { in: ["BANK_TRANSFER", "CRYPTO"] },
         status: { in: ["pending", "processing"] },
       },
       include: {
@@ -67,14 +67,14 @@ export default async function PayoutsPage() {
       />
 
       <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
-        <StatCard label="Payment requests" value={String(paymentRequests.length)} detail="Manual bank transfers waiting" tone={paymentRequests.length > 0 ? "warning" : "neutral"} />
+        <StatCard label="Payment requests" value={String(paymentRequests.length)} detail="Manual transfers waiting" tone={paymentRequests.length > 0 ? "warning" : "neutral"} />
         <StatCard label="Open runs" value={String(openRuns.length)} detail="Draft, finalized, or processing" />
         <StatCard label="Run net total" value={formatCurrencyPrecise(runNet)} detail="All payout run net amounts" />
         <StatCard label="Approved unpaid" value={formatCurrencyPrecise(owed)} detail={`${approvedUnpaid.length} submissions not in a run`} tone={approvedUnpaid.length > 0 ? "warning" : "neutral"} />
       </div>
 
       <section>
-        <SectionHeader title="Payment requests" description="Manual IBAN payout requests submitted by clippers." />
+        <SectionHeader title="Payment requests" description="Manual bank and USDC-Solana payout requests submitted by clippers." />
         <DataTable
           rows={paymentRequests}
           rowKey={(payout) => payout.id}
@@ -95,6 +95,15 @@ export default async function PayoutsPage() {
               ),
             },
             {
+              key: "method",
+              header: "Method",
+              cell: (payout) => (
+                <Badge variant={payout.paymentMethod === "CRYPTO" ? "pending" : "neutral"}>
+                  {payout.paymentMethod === "CRYPTO" ? "USDC (Solana)" : "Bank transfer"}
+                </Badge>
+              ),
+            },
+            {
               key: "amount",
               header: "Amount",
               align: "right",
@@ -105,15 +114,19 @@ export default async function PayoutsPage() {
               ),
             },
             {
-              key: "bank",
-              header: "IBAN",
+              key: "destination",
+              header: "Destination",
               cell: (payout) => (
                 <div className="min-w-[220px]">
                   <p className="font-mono text-xs text-neutral-950">
-                    {payout.bankIbanSnapshot || "-"}
+                    {payout.paymentMethod === "CRYPTO"
+                      ? payout.walletAddress || "-"
+                      : payout.bankIbanSnapshot || "-"}
                   </p>
                   <p className="mt-1 text-xs text-neutral-500">
-                    {payout.bankAccountNameSnapshot || "-"}
+                    {payout.paymentMethod === "CRYPTO"
+                      ? "USDC on Solana"
+                      : payout.bankAccountNameSnapshot || "-"}
                   </p>
                 </div>
               ),
@@ -138,8 +151,10 @@ export default async function PayoutsPage() {
               cell: (payout) => (
                 <PaymentRequestActions
                   id={payout.id}
+                  method={payout.paymentMethod}
                   iban={payout.bankIbanSnapshot}
                   accountName={payout.bankAccountNameSnapshot}
+                  walletAddress={payout.walletAddress}
                 />
               ),
             },

@@ -10,6 +10,8 @@ import {
   SoftStat,
 } from "../_components/creator-journey";
 import { formatCurrency, formatNumber, formatShortDate } from "@/lib/i18n-format";
+import { maskIban } from "@/lib/validation/iban";
+import { maskSolanaAddress } from "@/lib/validation/solana";
 import { getLocale, getTranslations } from "next-intl/server";
 import type { Locale } from "@/i18n/routing";
 
@@ -37,6 +39,7 @@ export default async function PaymentsPage() {
       id: true,
       payoutIban: true,
       payoutAccountName: true,
+      payoutSolanaAddress: true,
     },
   });
   if (!profile) throw new Error("Creator profile not found");
@@ -57,7 +60,10 @@ export default async function PaymentsPage() {
     availableBalance: balance,
     earningsByCampaign,
   } = paymentSummary;
-  const hasPaymentMethod = Boolean(profile.payoutIban && profile.payoutAccountName);
+  const hasPaymentMethod = Boolean(
+    (profile.payoutIban && profile.payoutAccountName) ||
+      profile.payoutSolanaAddress,
+  );
   const overviewSlot = await OverviewTab({
     locale,
     profit,
@@ -210,12 +216,16 @@ async function HistoryTab({
     type: string;
     status: string;
     paymentMethod: string | null;
+    walletAddress: string | null;
+    bankIbanSnapshot: string | null;
+    txHash: string | null;
     createdAt: Date;
   }>;
 }) {
   const t = await getTranslations("creator.payouts.history");
   const sharedT = await getTranslations("creator.shared");
   const statusT = await getTranslations("creator.shared.statuses.payout");
+  const withdrawT = await getTranslations("creator.payouts.withdraw");
   if (payouts.length === 0) {
     return (
       <EmptyState
@@ -229,7 +239,14 @@ async function HistoryTab({
     <div className="overflow-hidden rounded-2xl border border-neutral-200 bg-white">
       <div className="space-y-3 p-4 md:hidden">
         {payouts.map((p) => (
-          <PayoutHistoryCard key={p.id} locale={locale} payout={p} sharedT={sharedT} statusT={statusT} />
+          <PayoutHistoryCard
+            key={p.id}
+            locale={locale}
+            payout={p}
+            sharedT={sharedT}
+            statusT={statusT}
+            withdrawT={withdrawT}
+          />
         ))}
       </div>
       <table className="hidden w-full text-sm md:table">
@@ -240,6 +257,7 @@ async function HistoryTab({
             <th className="px-5 py-2 text-left text-[11px] font-medium uppercase tracking-wide">{sharedT("labels.type")}</th>
             <th className="px-5 py-2 text-left text-[11px] font-medium uppercase tracking-wide">{sharedT("labels.status")}</th>
             <th className="px-5 py-2 text-left text-[11px] font-medium uppercase tracking-wide">{sharedT("labels.method")}</th>
+            <th className="px-5 py-2 text-left text-[11px] font-medium uppercase tracking-wide">{sharedT("labels.destination")}</th>
           </tr>
         </thead>
         <tbody>
@@ -258,7 +276,10 @@ async function HistoryTab({
                 <Badge variant={payoutBadge(p.status)}>{statusT(p.status.toLowerCase())}</Badge>
               </td>
               <td className="px-5 py-3 text-neutral-600">
-                {p.paymentMethod || "-"}
+                {payoutMethodLabel(p.paymentMethod, withdrawT)}
+              </td>
+              <td className="px-5 py-3 text-neutral-600">
+                <PayoutDestination payout={p} withdrawT={withdrawT} />
               </td>
             </tr>
           ))}
@@ -273,6 +294,7 @@ function PayoutHistoryCard({
   payout,
   sharedT,
   statusT,
+  withdrawT,
 }: {
   locale: Locale;
   payout: {
@@ -280,10 +302,14 @@ function PayoutHistoryCard({
     type: string;
     status: string;
     paymentMethod: string | null;
+    walletAddress: string | null;
+    bankIbanSnapshot: string | null;
+    txHash: string | null;
     createdAt: Date;
   };
   sharedT: ServerT;
   statusT: ServerT;
+  withdrawT: ServerT;
 }) {
   return (
     <article className="rounded-2xl border border-neutral-200 bg-neutral-50 p-4">
@@ -308,12 +334,62 @@ function PayoutHistoryCard({
         <div>
           <p className="text-xs text-neutral-500">{sharedT("labels.method")}</p>
           <p className="mt-1 font-medium text-neutral-950">
-            {payout.paymentMethod || "-"}
+            {payoutMethodLabel(payout.paymentMethod, withdrawT)}
           </p>
+        </div>
+        <div className="col-span-2">
+          <p className="text-xs text-neutral-500">{sharedT("labels.destination")}</p>
+          <div className="mt-1 font-medium text-neutral-950">
+            <PayoutDestination payout={payout} withdrawT={withdrawT} />
+          </div>
         </div>
       </div>
     </article>
   );
+}
+
+function payoutMethodLabel(method: string | null, withdrawT: ServerT) {
+  if (method === "CRYPTO") return withdrawT("cryptoMethod");
+  if (method === "BANK_TRANSFER") return withdrawT("bankMethod");
+  return method || "-";
+}
+
+function PayoutDestination({
+  payout,
+  withdrawT,
+}: {
+  payout: {
+    paymentMethod: string | null;
+    walletAddress: string | null;
+    bankIbanSnapshot: string | null;
+    txHash: string | null;
+  };
+  withdrawT: ServerT;
+}) {
+  if (payout.paymentMethod === "CRYPTO" && payout.walletAddress) {
+    return (
+      <div className="min-w-0">
+        <p className="truncate font-mono text-xs" title={payout.walletAddress}>
+          {maskSolanaAddress(payout.walletAddress)}
+        </p>
+        {payout.txHash ? (
+          <p className="mt-1 truncate font-mono text-[11px] text-neutral-500" title={payout.txHash}>
+            {withdrawT("txHash")}: {payout.txHash}
+          </p>
+        ) : null}
+      </div>
+    );
+  }
+
+  if (payout.paymentMethod === "BANK_TRANSFER" && payout.bankIbanSnapshot) {
+    return (
+      <span className="font-mono text-xs" title={payout.bankIbanSnapshot}>
+        {maskIban(payout.bankIbanSnapshot)}
+      </span>
+    );
+  }
+
+  return <span>-</span>;
 }
 
 

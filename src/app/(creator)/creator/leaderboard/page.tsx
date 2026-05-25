@@ -4,6 +4,10 @@ import { getLocale, getTranslations } from "next-intl/server";
 import type { Locale } from "@/i18n/routing";
 import { formatCurrency, formatNumber, formatTime } from "@/lib/i18n-format";
 import { resolveCreatorLeaderboardName } from "@/lib/creator-leaderboard-name";
+import {
+  isExcludedFromLeaderboards,
+  LEADERBOARD_OVERSCAN_LIMIT,
+} from "@/lib/leaderboard-exclusions";
 
 interface LeaderboardEntry {
   rank: number;
@@ -26,7 +30,7 @@ async function getLeaderboard(periodDays: number | null): Promise<LeaderboardEnt
     where: whereClause,
     _sum: { earnedAmount: true, claimedViews: true },
     orderBy: { _sum: { earnedAmount: "desc" } },
-    take: 5,
+    take: LEADERBOARD_OVERSCAN_LIMIT,
   });
 
   const creatorIds = results.map((r) => r.creatorId);
@@ -42,14 +46,18 @@ async function getLeaderboard(periodDays: number | null): Promise<LeaderboardEnt
   const nameMap = new Map(
     users.map((u) => [u.id, resolveCreatorLeaderboardName(u) ?? u.email]),
   );
+  const userMap = new Map(users.map((u) => [u.id, u]));
 
-  return results.map((r, i) => ({
-    rank: i + 1,
-    creatorId: r.creatorId,
-    displayName: nameMap.get(r.creatorId) ?? "",
-    earnings: Number(r._sum.earnedAmount ?? 0),
-    views: Number(r._sum.claimedViews ?? 0),
-  }));
+  return results
+    .filter((r) => !isExcludedFromLeaderboards(userMap.get(r.creatorId)))
+    .slice(0, 5)
+    .map((r, i) => ({
+      rank: i + 1,
+      creatorId: r.creatorId,
+      displayName: nameMap.get(r.creatorId) ?? "",
+      earnings: Number(r._sum.earnedAmount ?? 0),
+      views: Number(r._sum.claimedViews ?? 0),
+    }));
 }
 
 export default async function LeaderboardPage() {

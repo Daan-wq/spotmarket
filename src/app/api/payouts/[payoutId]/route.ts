@@ -34,6 +34,7 @@ export async function PATCH(
   const now = new Date();
   const next = parsed.data;
   const bankReference = next.bankReference || payout.bankReference;
+  const txHash = next.txHash || payout.txHash;
 
   if (
     payout.paymentMethod === "BANK_TRANSFER" &&
@@ -42,6 +43,16 @@ export async function PATCH(
   ) {
     return NextResponse.json(
       { error: "Bank reference is required to mark this payout as paid." },
+      { status: 400 },
+    );
+  }
+  if (
+    payout.paymentMethod === "CRYPTO" &&
+    next.status === "confirmed" &&
+    !txHash
+  ) {
+    return NextResponse.json(
+      { error: "Transaction hash is required to mark this crypto payout as paid." },
       { status: 400 },
     );
   }
