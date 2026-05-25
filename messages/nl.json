@@ -414,7 +414,7 @@
       "payoutSummary": {
         "title": "Uitbetalingsoverzicht",
         "description": "Beschikbaar saldo gaat naar in behandeling bij een opname, daarna naar profit na betaling.",
-        "balance": "Balance",
+        "balance": "Saldo",
         "pending": "In behandeling",
         "profit": "Profit",
         "estimated": "Geschat",
@@ -1112,7 +1112,7 @@
       },
       "withdraw": {
         "loading": "Laden...",
-        "balance": "Balance",
+        "balance": "Saldo",
         "pendingBalance": "In behandeling",
         "profit": "Profit",
         "methodTitle": "Bankgegevens",
