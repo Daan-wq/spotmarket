@@ -100,6 +100,24 @@ describe("scoreVelocity", () => {
     expect(out.flags.some((f) => f.type === "BOT_SUSPECTED")).toBe(false);
   });
 
+  it("keeps good cumulative engagement below the bot warning threshold for context-only risk", () => {
+    const out = scoreVelocity({
+      snapshots: [
+        snap(0.25, 186908, 7217, 39, 250),
+        snap(0, 189650, 7347, 39, 253),
+      ],
+      campaignBenchmark: { velocityP90: 1136 },
+      accountSnapshot: { audienceCount: 9385 },
+    });
+
+    const antiBot = antiBotOf(out);
+    expect(antiBot?.riskScore).toBeLessThan(40);
+    expect(antiBot?.evidence.map((item) => item.kind)).toContain("ACCOUNT_PLAUSIBILITY");
+    expect(antiBot?.evidence.map((item) => item.kind)).toContain("VELOCITY_ANOMALY");
+    expect(out.ratios?.engagementRate).toBeGreaterThanOrEqual(0.03);
+    expect(out.flags.some((f) => f.type === "BOT_SUSPECTED")).toBe(false);
+  });
+
   it("ignores unavailable engagement metrics instead of counting them as zero", () => {
     const out = scoreVelocity({
       snapshots: [

@@ -318,7 +318,8 @@ function evaluateAntiBot(input: AntiBotInput): AntiBotPayload {
     }
   }
 
-  const riskScore = Math.min(100, evidence.reduce((sum, item) => sum + item.points, 0));
+  const rawRiskScore = Math.min(100, evidence.reduce((sum, item) => sum + item.points, 0));
+  const riskScore = adjustedRiskScore(rawRiskScore, evidence, input.ratios.engagementRate);
   const orderedEvidence = [...evidence].sort((a, b) => b.points - a.points);
   const reasons = orderedEvidence.map((item) => item.label);
   const confidence: AntiBotPayload["confidence"] =
@@ -336,6 +337,20 @@ function evaluateAntiBot(input: AntiBotInput): AntiBotPayload {
     evaluatedAt: input.evaluatedAt.toISOString(),
     version: "anti-bot-v2",
   };
+}
+
+function adjustedRiskScore(
+  rawRiskScore: number,
+  evidence: AntiBotEvidence[],
+  engagementRate: number | null,
+) {
+  const hasDirectEngagementRisk = evidence.some(
+    (item) => item.kind === "ENGAGEMENT_COLLAPSE" || item.kind === "RATIO_ANOMALY",
+  );
+  if (engagementRate != null && engagementRate >= 0.03 && !hasDirectEngagementRisk) {
+    return Math.min(rawRiskScore, 35);
+  }
+  return rawRiskScore;
 }
 
 type EngagementField = "likeCount" | "commentCount" | "shareCount" | "saveCount";
