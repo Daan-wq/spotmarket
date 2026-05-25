@@ -1272,6 +1272,7 @@ model MetricSnapshot {
   watchTimeSec      Int?
   reachCount        Int?
   raw               Json?
+  metricAvailability Json?
   // Track-everything extensions (PR1 — additive, populated by per-platform PRs)
   totalInteractions Int?
   followsFromMedia  Int?

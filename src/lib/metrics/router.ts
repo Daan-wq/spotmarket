@@ -17,7 +17,7 @@
 import { prisma } from "@/lib/prisma";
 import type { ConnectionType } from "@prisma/client";
 import { parseClipUrl, type ClipPlatform } from "@/lib/parse-clip-url";
-import type { MetricSource } from "@/lib/contracts/metrics";
+import type { MetricAvailability, MetricSource } from "@/lib/contracts/metrics";
 import { fetchInstagramMetric } from "./instagram";
 import { fetchTikTokMetric } from "./tiktok";
 import { fetchYoutubeMetric } from "./youtube";
@@ -37,6 +37,7 @@ export interface MetricFetcherSuccess {
   saveCount: number | null;
   watchTimeSec: number | null;
   reachCount: number | null;
+  metricAvailability: MetricAvailability;
   raw?: unknown;
   // Track-everything Phase 1 — per-media breakdowns when the platform exposes them.
   totalInteractions?: number | null;
@@ -191,7 +192,7 @@ export async function routeMetric(
             id: submission.sourceConnectionId,
           });
         }
-        return await fetchYoutubeMetric(conn, parsed);
+        return await fetchYoutubeMetric(conn, parsed, submission.id);
       }
       if (hasMismatchedStoredSource(submission, "YT")) {
         return storedPlatformMismatch(submission, parsed.platform);
@@ -208,7 +209,7 @@ export async function routeMetric(
       if (conns.length === 0) {
         return failure("NO_CONNECTION", "No verified YT account connection", null);
       }
-      return await tryConnections(conns, (conn) => fetchYoutubeMetric(conn, parsed));
+      return await tryConnections(conns, (conn) => fetchYoutubeMetric(conn, parsed, submission.id));
     }
     case "FACEBOOK": {
       if (hasStoredSource(submission, "FB")) {

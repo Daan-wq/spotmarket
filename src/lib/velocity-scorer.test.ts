@@ -16,6 +16,7 @@ function snap(
   likes = 0,
   comments = 0,
   shares = 0,
+  saves: number | null = null,
 ) {
   return {
     capturedAt: new Date(Date.now() - hoursAgo * 60 * 60 * 1000),
@@ -23,6 +24,7 @@ function snap(
     likeCount: likes,
     commentCount: comments,
     shareCount: shares,
+    saveCount: saves,
   };
 }
 
@@ -82,6 +84,82 @@ describe("scoreVelocity", () => {
       ],
     });
     expect(out.flags.some((f) => f.type === "BOT_SUSPECTED")).toBe(false);
+  });
+
+  it("does not mark healthy cumulative engagement as an engagement collapse", () => {
+    const out = scoreVelocity({
+      snapshots: [
+        snap(1, 100000, 5000, 37, 206, 434),
+        snap(0, 162290, 6000, 37, 206, 434),
+      ],
+    });
+
+    expect(antiBotOf(out)?.evidence.map((item) => item.kind)).not.toContain(
+      "ENGAGEMENT_COLLAPSE",
+    );
+    expect(out.flags.some((f) => f.type === "BOT_SUSPECTED")).toBe(false);
+  });
+
+  it("keeps good cumulative engagement below the bot warning threshold for context-only risk", () => {
+    const out = scoreVelocity({
+      snapshots: [
+        snap(0.25, 186908, 7217, 39, 250),
+        snap(0, 189650, 7347, 39, 253),
+      ],
+      campaignBenchmark: { velocityP90: 1136 },
+      accountSnapshot: { audienceCount: 9385 },
+    });
+
+    const antiBot = antiBotOf(out);
+    expect(antiBot?.riskScore).toBeLessThan(40);
+    expect(antiBot?.evidence.map((item) => item.kind)).toContain("ACCOUNT_PLAUSIBILITY");
+    expect(antiBot?.evidence.map((item) => item.kind)).toContain("VELOCITY_ANOMALY");
+    expect(antiBot?.evidence.map((item) => item.kind)).toContain("HEALTHY_ENGAGEMENT");
+    expect(out.ratios?.engagementRate).toBeGreaterThanOrEqual(0.03);
+    expect(out.flags.some((f) => f.type === "BOT_SUSPECTED")).toBe(false);
+  });
+
+  it("ignores unavailable engagement metrics instead of counting them as zero", () => {
+    const out = scoreVelocity({
+      snapshots: [
+        {
+          ...snap(1, 1000, 100, 0, 0),
+          metricAvailability: {
+            views: true,
+            likes: true,
+            comments: false,
+            shares: false,
+            saves: false,
+            watchTime: false,
+            reach: false,
+            totalInteractions: false,
+            follows: false,
+            profileVisits: false,
+            reactions: false,
+          },
+        },
+        {
+          ...snap(0, 50000, 2500, 0, 0),
+          metricAvailability: {
+            views: true,
+            likes: true,
+            comments: false,
+            shares: false,
+            saves: false,
+            watchTime: false,
+            reach: false,
+            totalInteractions: false,
+            follows: false,
+            profileVisits: false,
+            reactions: false,
+          },
+        },
+      ],
+    });
+
+    expect(antiBotOf(out)?.evidence.map((item) => item.kind)).not.toContain(
+      "ENGAGEMENT_COLLAPSE",
+    );
   });
 
   it("scores fake-view risk as critical when a view-growth anomaly has collapsed engagement", () => {

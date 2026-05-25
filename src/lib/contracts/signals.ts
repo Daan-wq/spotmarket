@@ -49,7 +49,8 @@ export type AntiBotEvidenceKind =
   | "VELOCITY_ANOMALY"
   | "ENGAGEMENT_COLLAPSE"
   | "RATIO_ANOMALY"
-  | "ACCOUNT_PLAUSIBILITY";
+  | "ACCOUNT_PLAUSIBILITY"
+  | "HEALTHY_ENGAGEMENT";
 
 export interface AntiBotEvidence {
   kind: AntiBotEvidenceKind;
@@ -64,7 +65,7 @@ export interface AntiBotPayload extends SignalPayloadBase {
   reasons: string[];
   evidence: AntiBotEvidence[];
   evaluatedAt: string;
-  version: "anti-bot-v1";
+  version: "anti-bot-v1" | "anti-bot-v2";
 }
 
 export type SignalPayload =

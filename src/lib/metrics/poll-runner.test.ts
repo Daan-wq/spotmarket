@@ -12,6 +12,20 @@ const findFirstPlatformAccountSnapshotMock = vi.fn();
 const publishEventMock = vi.fn();
 const routeMetricMock = vi.fn();
 const scoreVelocityMock = vi.fn();
+const syncAntiBotSignalMock = vi.fn();
+const availableCoreMetrics = {
+  views: true,
+  likes: true,
+  comments: true,
+  shares: true,
+  saves: false,
+  watchTime: false,
+  reach: false,
+  totalInteractions: false,
+  follows: false,
+  profileVisits: false,
+  reactions: false,
+};
 
 vi.mock("@/lib/prisma", () => ({
   prisma: {
@@ -49,6 +63,10 @@ vi.mock("@/lib/velocity-scorer", () => ({
   scoreVelocity: (...args: unknown[]) => scoreVelocityMock(...args),
 }));
 
+vi.mock("./anti-bot-signal", () => ({
+  syncAntiBotSignal: (...args: unknown[]) => syncAntiBotSignalMock(...args),
+}));
+
 import { emitFlag, pollSubmissions } from "./poll-runner";
 
 beforeEach(() => {
@@ -64,6 +82,7 @@ beforeEach(() => {
   publishEventMock.mockReset();
   routeMetricMock.mockReset();
   scoreVelocityMock.mockReset();
+  syncAntiBotSignalMock.mockReset();
 
   findFirstSignalMock.mockResolvedValue(null);
   createSignalMock.mockResolvedValue({
@@ -86,7 +105,9 @@ beforeEach(() => {
     ratios: null,
     flags: [],
     velocityScore: null,
+    antiBot: null,
   });
+  syncAntiBotSignalMock.mockResolvedValue({ action: "unchanged" });
 });
 
 describe("emitFlag", () => {
@@ -204,6 +225,7 @@ describe("pollSubmissions earnings refresh", () => {
       saveCount: null,
       watchTimeSec: null,
       reachCount: null,
+      metricAvailability: availableCoreMetrics,
       raw: null,
       connection: { type: "IG", id: "conn_1" },
     });
@@ -277,6 +299,7 @@ describe("pollSubmissions earnings refresh", () => {
       saveCount: null,
       watchTimeSec: null,
       reachCount: null,
+      metricAvailability: availableCoreMetrics,
       raw: null,
       connection: { type: "IG", id: "conn_1" },
     });
@@ -339,6 +362,177 @@ describe("pollSubmissions earnings refresh", () => {
         id: "sub_1",
         sourceConnectionType: "IG",
         sourceConnectionId: "ig-conn-1",
+      }),
+    );
+  });
+
+  it("syncs the latest anti-bot payload after a successful poll even when no BOT flag is emitted", async () => {
+    const capturedAt = new Date("2026-05-12T10:00:00.000Z");
+    const antiBotPayload = {
+      reason: "Anti-bot risk 0/100",
+      riskScore: 0,
+      confidence: "LOW",
+      reasons: [],
+      evidence: [],
+      evaluatedAt: capturedAt.toISOString(),
+      version: "anti-bot-v2",
+    };
+    findManySubmissionMock.mockResolvedValueOnce([
+      {
+        id: "sub_healthy",
+        postUrl: "https://www.tiktok.com/@u/video/1",
+        creatorId: "creator_1",
+        campaignId: "campaign_1",
+        status: "PENDING",
+        sourceConnectionType: "TT",
+        sourceConnectionId: "tt-conn-1",
+        baselineViews: 0,
+        settledAt: null,
+        payoutRunItems: [],
+        campaign: {
+          creatorCpv: 0.01,
+          minimumPaidViews: 0,
+          maximumPaidViews: null,
+        },
+      },
+    ]);
+    routeMetricMock.mockResolvedValueOnce({
+      ok: true,
+      source: "OAUTH_TT",
+      viewCount: BigInt(10000),
+      likeCount: 400,
+      commentCount: 30,
+      shareCount: 20,
+      saveCount: null,
+      watchTimeSec: null,
+      reachCount: null,
+      metricAvailability: availableCoreMetrics,
+      raw: null,
+      connection: { type: "TT", id: "tt-conn-1" },
+    });
+    createMetricSnapshotMock.mockResolvedValueOnce({
+      id: "snap_healthy",
+      viewCount: BigInt(10000),
+      capturedAt,
+    });
+    findManyMetricSnapshotMock.mockResolvedValueOnce([
+      {
+        capturedAt: new Date("2026-05-12T09:45:00.000Z"),
+        viewCount: BigInt(9000),
+        likeCount: 360,
+        commentCount: 30,
+        shareCount: 20,
+        saveCount: null,
+        metricAvailability: availableCoreMetrics,
+      },
+      {
+        capturedAt,
+        viewCount: BigInt(10000),
+        likeCount: 400,
+        commentCount: 30,
+        shareCount: 20,
+        saveCount: null,
+        metricAvailability: availableCoreMetrics,
+      },
+    ]);
+    scoreVelocityMock.mockReturnValueOnce({
+      velocity: null,
+      ratios: null,
+      flags: [],
+      velocityScore: null,
+      antiBot: antiBotPayload,
+    });
+
+    await pollSubmissions({ tier: "hot", limit: 1 });
+
+    expect(syncAntiBotSignalMock).toHaveBeenCalledWith("sub_healthy", antiBotPayload);
+    expect(findFirstSignalMock).not.toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({ type: "BOT_SUSPECTED" }),
+      }),
+    );
+  });
+
+  it("does not emit duplicate BOT_SUSPECTED flags after syncing the anti-bot payload", async () => {
+    const capturedAt = new Date("2026-05-12T10:00:00.000Z");
+    const antiBotPayload = {
+      reason: "Anti-bot risk 45/100",
+      riskScore: 45,
+      confidence: "MEDIUM",
+      reasons: ["risk"],
+      evidence: [],
+      evaluatedAt: capturedAt.toISOString(),
+      version: "anti-bot-v2",
+    };
+    findManySubmissionMock.mockResolvedValueOnce([
+      {
+        id: "sub_warn",
+        postUrl: "https://www.tiktok.com/@u/video/2",
+        creatorId: "creator_1",
+        campaignId: "campaign_1",
+        status: "PENDING",
+        sourceConnectionType: "TT",
+        sourceConnectionId: "tt-conn-1",
+        baselineViews: 0,
+        settledAt: null,
+        payoutRunItems: [],
+        campaign: {
+          creatorCpv: 0.01,
+          minimumPaidViews: 0,
+          maximumPaidViews: null,
+        },
+      },
+    ]);
+    routeMetricMock.mockResolvedValueOnce({
+      ok: true,
+      source: "OAUTH_TT",
+      viewCount: BigInt(10000),
+      likeCount: 20,
+      commentCount: 0,
+      shareCount: 0,
+      saveCount: null,
+      watchTimeSec: null,
+      reachCount: null,
+      metricAvailability: availableCoreMetrics,
+      raw: null,
+      connection: { type: "TT", id: "tt-conn-1" },
+    });
+    createMetricSnapshotMock.mockResolvedValueOnce({
+      id: "snap_warn",
+      viewCount: BigInt(10000),
+      capturedAt,
+    });
+    findManyMetricSnapshotMock.mockResolvedValueOnce([
+      {
+        capturedAt,
+        viewCount: BigInt(10000),
+        likeCount: 20,
+        commentCount: 0,
+        shareCount: 0,
+        saveCount: null,
+        metricAvailability: availableCoreMetrics,
+      },
+    ]);
+    scoreVelocityMock.mockReturnValueOnce({
+      velocity: null,
+      ratios: null,
+      flags: [
+        {
+          type: "BOT_SUSPECTED",
+          severity: "WARN",
+          payload: antiBotPayload,
+        },
+      ],
+      velocityScore: null,
+      antiBot: antiBotPayload,
+    });
+
+    await pollSubmissions({ tier: "hot", limit: 1 });
+
+    expect(syncAntiBotSignalMock).toHaveBeenCalledWith("sub_warn", antiBotPayload);
+    expect(findFirstSignalMock).not.toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({ type: "BOT_SUSPECTED" }),
       }),
     );
   });

@@ -36,7 +36,7 @@ interface StatColumn {
 function num(getter: (r: ContentRow) => number | null | undefined) {
   return function StatNumberCell(r: ContentRow) {
     const v = getter(r);
-    if (v == null) return <span className="text-neutral-400">—</span>;
+    if (v == null) return <span className="text-neutral-400">Niet beschikbaar</span>;
     return v.toLocaleString();
   };
 }
@@ -63,10 +63,11 @@ const PLATFORM_STAT_COLUMNS: Record<PlatformSlug, StatColumn[]> = {
     { key: "views", label: "Views", cell: num((r) => r.views), sortValue: (r) => r.views },
     { key: "likes", label: "Likes", cell: num((r) => r.likes), sortValue: (r) => r.likes },
     { key: "comments", label: "Comments", cell: num((r) => r.comments), sortValue: (r) => r.comments },
+    { key: "shares", label: "Shares", cell: num((r) => r.shares), sortValue: (r) => r.shares },
     {
       key: "watchTime",
       label: "Watch (min)",
-      cell: (r) => (r.watchTimeSec != null ? Math.round(r.watchTimeSec / 60).toLocaleString() : <span className="text-neutral-400">—</span>),
+      cell: (r) => (r.watchTimeSec != null ? Math.round(r.watchTimeSec / 60).toLocaleString() : <span className="text-neutral-400">Niet beschikbaar</span>),
       sortValue: (r) => r.watchTimeSec ?? 0,
     },
   ],
@@ -81,7 +82,7 @@ const PLATFORM_STAT_COLUMNS: Record<PlatformSlug, StatColumn[]> = {
       label: "Reactions",
       cell: (r) => {
         const data = (r.extras?.reactionsByType as Record<string, number> | null | undefined) ?? null;
-        if (!data) return <span className="text-neutral-400">—</span>;
+        if (!data) return <span className="text-neutral-400">Niet beschikbaar</span>;
         const total = Object.values(data).reduce((s, v) => s + (Number(v) || 0), 0);
         return (
           <span title={Object.entries(data).map(([k, v]) => `${k}: ${v}`).join(" · ")}>

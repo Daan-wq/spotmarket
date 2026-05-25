@@ -100,6 +100,18 @@ describe("fetchInstagramMetric", () => {
     expect(r.totalInteractions).toBe(320);
     expect(r.followsFromMedia).toBe(5);
     expect(r.profileVisits).toBe(40);
+    expect(r.metricAvailability).toMatchObject({
+      views: true,
+      likes: true,
+      comments: true,
+      shares: true,
+      saves: true,
+      watchTime: true,
+      reach: true,
+      totalInteractions: true,
+      follows: true,
+      profileVisits: true,
+    });
     // REEL has no profile_activity breakdown
     expect(r.profileActivity).toBeNull();
     expect(fetchMediaInsightsMock).toHaveBeenCalledWith("media_99", "decoded", "REEL");
@@ -168,6 +180,14 @@ describe("fetchInstagramMetric", () => {
       DIRECTION: 0,
       EMAIL: 0,
       TEXT: 0,
+    });
+    expect(r.metricAvailability).toMatchObject({
+      views: true,
+      likes: false,
+      comments: false,
+      shares: true,
+      saves: false,
+      reach: true,
     });
     const raw = r.raw as { navigation?: Record<string, number | null>; replies?: number | null };
     expect(raw.navigation).toEqual({

@@ -11,9 +11,10 @@
 
 import type {
   EngagementRatios,
-  MetricSnapshot,
+  MetricAvailabilityKey,
   VelocityWindow,
 } from "@/lib/contracts/metrics";
+import { metricAvailabilityValue } from "@/lib/contracts/metrics";
 import type {
   AntiBotEvidence,
   AntiBotPayload,
@@ -26,10 +27,7 @@ import type {
 
 export interface ScorerInput {
   /** Snapshots ordered by capturedAt ASC. */
-  snapshots: Pick<
-    MetricSnapshot,
-    "capturedAt" | "viewCount" | "likeCount" | "commentCount" | "shareCount"
-  >[];
+  snapshots: ScoredSnapshot[];
   campaignBenchmark?: {
     velocityP50?: number | null;
     velocityP90?: number | null;
@@ -76,8 +74,9 @@ export function scoreVelocity(input: ScorerInput): ScorerOutput {
   }
 
   const deltaViews = Number(last.viewCount) - Number(prev.viewCount);
-  const deltaComments = Math.max(0, last.commentCount - prev.commentCount);
-  const deltaShares = Math.max(0, last.shareCount - prev.shareCount);
+  const deltaComments = deltaMetric(prev, last, "comments", "commentCount");
+  const deltaShares = deltaMetric(prev, last, "shares", "shareCount");
+  const deltaSaves = deltaMetric(prev, last, "saves", "saveCount");
   const viewsPerHour = (deltaViews / elapsedMs) * HOUR_MS;
 
   const cutoff = last.capturedAt.getTime() - SEVEN_DAYS_MS;
@@ -102,10 +101,31 @@ export function scoreVelocity(input: ScorerInput): ScorerOutput {
     rolling7dMean && rolling7dMean > 0 ? viewsPerHour / rolling7dMean : null;
 
   const lastViews = Number(last.viewCount);
+  const availableLikes = availableCount(last, "likes", "likeCount");
+  const availableComments = availableCount(last, "comments", "commentCount");
+  const availableShares = availableCount(last, "shares", "shareCount");
+  const availableSaves = availableCount(last, "saves", "saveCount");
+  const availableEngagementMetricCount = [
+    availableLikes,
+    availableComments,
+    availableShares,
+    availableSaves,
+  ].filter((value) => value != null).length;
+  const availableEngagements =
+    (availableLikes ?? 0) +
+    (availableComments ?? 0) +
+    (availableShares ?? 0) +
+    (availableSaves ?? 0);
   const ratios: EngagementRatios = {
-    likeRatio: lastViews > 0 ? last.likeCount / lastViews : 0,
-    commentRatio: lastViews > 0 ? last.commentCount / lastViews : 0,
-    shareRatio: lastViews > 0 ? last.shareCount / lastViews : 0,
+    likeRatio: lastViews > 0 && availableLikes != null ? availableLikes / lastViews : null,
+    commentRatio: lastViews > 0 && availableComments != null ? availableComments / lastViews : null,
+    shareRatio: lastViews > 0 && availableShares != null ? availableShares / lastViews : null,
+    saveRatio: lastViews > 0 && availableSaves != null ? availableSaves / lastViews : null,
+    engagementRate:
+      lastViews > 0 && availableEngagementMetricCount > 0
+        ? availableEngagements / lastViews
+        : null,
+    availableEngagements,
   };
 
   const flags: FlagDraft[] = [];
@@ -125,7 +145,7 @@ export function scoreVelocity(input: ScorerInput): ScorerOutput {
     }
   }
 
-  if (lastViews > 5000 && ratios.likeRatio > 0.5) {
+  if (lastViews > 5000 && ratios.likeRatio != null && ratios.likeRatio > 0.5) {
     flags.push({
       type: "RATIO_ANOMALY",
       severity: "WARN",
@@ -147,6 +167,7 @@ export function scoreVelocity(input: ScorerInput): ScorerOutput {
     deltaViews,
     deltaComments,
     deltaShares,
+    deltaSaves,
     viewsPerHour,
     rolling7dMean,
     spikeMultiplier,
@@ -182,8 +203,9 @@ export function scoreVelocity(input: ScorerInput): ScorerOutput {
 
 interface AntiBotInput {
   deltaViews: number;
-  deltaComments: number;
-  deltaShares: number;
+  deltaComments: number | null;
+  deltaShares: number | null;
+  deltaSaves: number | null;
   viewsPerHour: number;
   rolling7dMean: number | null;
   spikeMultiplier: number | null;
@@ -229,24 +251,46 @@ function evaluateAntiBot(input: AntiBotInput): AntiBotPayload {
     }
   }
 
+  const deltaEngagementRatios = [
+    input.deltaComments == null ? null : input.deltaComments / input.deltaViews,
+    input.deltaShares == null ? null : input.deltaShares / input.deltaViews,
+    input.deltaSaves == null ? null : input.deltaSaves / input.deltaViews,
+  ].filter((value): value is number => value != null);
+  const deltaEngagements =
+    (input.deltaComments ?? 0) + (input.deltaShares ?? 0) + (input.deltaSaves ?? 0);
+  const deltaEngagementRatio =
+    input.deltaViews > 0 && deltaEngagementRatios.length > 0
+      ? deltaEngagements / input.deltaViews
+      : null;
+
   if (
     input.deltaViews > 1000 &&
-    input.deltaComments / input.deltaViews < 0.0005 &&
-    input.deltaShares / input.deltaViews < 0.0001
+    input.ratios.engagementRate != null &&
+    input.ratios.engagementRate < 0.03 &&
+    deltaEngagementRatios.length >= 2 &&
+    deltaEngagementRatios.every((ratio) => ratio < 0.001)
   ) {
     evidence.push({
       kind: "ENGAGEMENT_COLLAPSE",
-      label: "High view growth with near-zero comments and shares",
+      label: "High view growth with near-zero available engagement",
       points: input.deltaViews > 10_000 ? 45 : 40,
       metrics: {
         deltaViews: input.deltaViews,
-        deltaCommentRatio: round(input.deltaComments / input.deltaViews, 5),
-        deltaShareRatio: round(input.deltaShares / input.deltaViews, 5),
+        deltaEngagements,
+        deltaEngagementRatio: deltaEngagementRatio == null ? null : round(deltaEngagementRatio, 5),
+        engagementRate: round(input.ratios.engagementRate, 4),
+        availableMetrics: deltaEngagementRatios.length,
+        deltaCommentRatio:
+          input.deltaComments == null ? null : round(input.deltaComments / input.deltaViews, 5),
+        deltaShareRatio:
+          input.deltaShares == null ? null : round(input.deltaShares / input.deltaViews, 5),
+        deltaSaveRatio:
+          input.deltaSaves == null ? null : round(input.deltaSaves / input.deltaViews, 5),
       },
     });
   }
 
-  if (input.lastViews > 5000 && input.ratios.likeRatio > 0.5) {
+  if (input.lastViews > 5000 && input.ratios.likeRatio != null && input.ratios.likeRatio > 0.5) {
     evidence.push({
       kind: "RATIO_ANOMALY",
       label: "Like ratio is unusually high for the view count",
@@ -274,8 +318,12 @@ function evaluateAntiBot(input: AntiBotInput): AntiBotPayload {
     }
   }
 
-  const riskScore = Math.min(100, evidence.reduce((sum, item) => sum + item.points, 0));
-  const orderedEvidence = [...evidence].sort((a, b) => b.points - a.points);
+  const adjustedEvidence = withEngagementRiskAdjustment(evidence, input.ratios.engagementRate);
+  const riskScore = Math.max(
+    0,
+    Math.min(100, adjustedEvidence.reduce((sum, item) => sum + item.points, 0)),
+  );
+  const orderedEvidence = [...adjustedEvidence].sort((a, b) => b.points - a.points);
   const reasons = orderedEvidence.map((item) => item.label);
   const confidence: AntiBotPayload["confidence"] =
     riskScore >= 70 && evidence.length >= 2 ? "HIGH" : riskScore >= 40 ? "MEDIUM" : "LOW";
@@ -290,8 +338,77 @@ function evaluateAntiBot(input: AntiBotInput): AntiBotPayload {
     reasons,
     evidence: orderedEvidence,
     evaluatedAt: input.evaluatedAt.toISOString(),
-    version: "anti-bot-v1",
+    version: "anti-bot-v2",
   };
+}
+
+function withEngagementRiskAdjustment(
+  evidence: AntiBotEvidence[],
+  engagementRate: number | null,
+) {
+  const rawRiskScore = Math.min(100, evidence.reduce((sum, item) => sum + item.points, 0));
+  const hasDirectEngagementRisk = evidence.some(
+    (item) => item.kind === "ENGAGEMENT_COLLAPSE" || item.kind === "RATIO_ANOMALY",
+  );
+  if (engagementRate != null && engagementRate >= 0.03 && !hasDirectEngagementRisk && rawRiskScore > 35) {
+    return [
+      ...evidence,
+      {
+        kind: "HEALTHY_ENGAGEMENT",
+        label: "Good cumulative engagement lowers bot risk",
+        points: 35 - rawRiskScore,
+        metrics: { engagementRate: round(engagementRate, 4) },
+      } satisfies AntiBotEvidence,
+    ];
+  }
+  return evidence;
+}
+
+type EngagementField = "likeCount" | "commentCount" | "shareCount" | "saveCount";
+interface ScoredSnapshot {
+  capturedAt: Date;
+  viewCount: bigint;
+  likeCount: number;
+  commentCount: number;
+  shareCount: number;
+  saveCount?: number | null;
+  metricAvailability?: unknown;
+}
+
+function deltaMetric(
+  prev: ScoredSnapshot,
+  last: ScoredSnapshot,
+  key: MetricAvailabilityKey,
+  field: EngagementField,
+): number | null {
+  if (!isMetricAvailable(prev, key, field) || !isMetricAvailable(last, key, field)) {
+    return null;
+  }
+  return Math.max(0, metricNumber(last[field]) - metricNumber(prev[field]));
+}
+
+function availableCount(
+  snapshot: ScoredSnapshot,
+  key: MetricAvailabilityKey,
+  field: EngagementField,
+): number | null {
+  if (!isMetricAvailable(snapshot, key, field)) return null;
+  return metricNumber(snapshot[field]);
+}
+
+function isMetricAvailable(
+  snapshot: ScoredSnapshot,
+  key: MetricAvailabilityKey,
+  field: EngagementField,
+): boolean {
+  const explicit = metricAvailabilityValue(snapshot.metricAvailability, key);
+  if (explicit != null) return explicit;
+  if (key === "saves") return snapshot.saveCount != null;
+  return snapshot[field] != null;
+}
+
+function metricNumber(value: number | null | undefined): number {
+  return typeof value === "number" && Number.isFinite(value) ? value : 0;
 }
 
 function round(value: number, digits = 0): number {
