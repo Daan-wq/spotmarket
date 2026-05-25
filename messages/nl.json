@@ -281,6 +281,7 @@
       "control": "Controle",
       "commandCenter": "Command center",
       "campaigns": "Campagnes",
+      "referrals": "Referrals",
       "clippers": "Clippers",
       "production": "Productie",
       "clipReview": "Clipreview",
@@ -1189,25 +1190,41 @@
     },
     "referral": {
       "page": {
-        "title": "Referralprogramma",
-        "description": "Nodig creators uit voor ClipProfit.",
+        "title": "ClipProfit-link",
+        "description": "Gebruik deze persoonlijke link in je bio voor de ClipProfit-campagne.",
         "emptyTitle": "Nodig een creator uit",
         "emptyDescription": "Deel je link hieronder zodat nieuwe creators ClipProfit kunnen joinen.",
-        "peopleInvited": "Mensen uitgenodigd",
-        "totalEarned": "Totaal verdiend",
+        "peopleInvited": "Mensen geinvite",
+        "totalEarned": "Goedgekeurde invites",
         "pending": "In behandeling",
         "pendingReview": "In review",
         "thisMonth": "Deze maand",
-        "earningsOverTime": "Inkomsten door de tijd",
-        "topReferrers": "Top referrers",
-        "yourReferrals": "Jouw referrals",
+        "earningsOverTime": "Activiteit door de tijd",
+        "topReferrers": "Invite leaderboard",
+        "yourReferrals": "Jouw invites",
         "recentActivity": "Recente activiteit",
         "anonymous": "Anoniem",
-        "unknown": "Onbekend"
+        "unknown": "Onbekend",
+        "metrics": {
+          "clicks": "Link clicks",
+          "clicksDetail": "Aantal gemeten bezoeken via je bio-link",
+          "invites": "Invites",
+          "invitesDetail": "Onboarding afgerond via jouw link",
+          "activeClippers": "Actieve clippers",
+          "activeClippersDetail": "Invites met minimaal 1 submission",
+          "conversion": "Conversie",
+          "conversionDetail": "Actieve clippers gedeeld door invites"
+        },
+        "definitions": {
+          "title": "Zo tellen we dit",
+          "invite": "Invite = iemand rondt onboarding af via jouw ClipProfit-link.",
+          "active": "Actieve clipper = een invite heeft minimaal 1 submission ingediend.",
+          "approved": "Approved signaal = een invite heeft later een goedgekeurde clip."
+        }
       },
       "link": {
-        "title": "Jouw referrallink",
-        "description": "Deel deze link met creators. Je verdient 10% van hun payouts tot de €100-cap.",
+        "title": "Jouw ClipProfit bio-link",
+        "description": "Plaats deze link in je bio voor de ClipProfit-campagne.",
         "code": "Referralcode",
         "yourCode": "Jouw code: {code}",
         "copy": "Kopieren",
@@ -1219,63 +1236,20 @@
         "hideQr": "QR verbergen",
         "qrCode": "QR-code",
         "discordTooltip": "Kopieert een opgemaakt bericht dat je in Discord kunt plakken",
-        "shareText": "Join me op ClipProfit en doe mee aan creator campagnes!",
+        "shareText": "Join ClipProfit via mijn campagne-link.",
         "mailSubject": "Join ClipProfit",
-        "mailBody": "Hey! Ik gebruik ClipProfit voor creator campagnes. Meld je aan via mijn link:",
-        "discordMessage": "**Join ClipProfit** - meld je aan via mijn link: {url}"
-      },
-      "milestone": {
-        "title": "Referral mijlpaal",
-        "invited": "{count, plural, one {# creator uitgenodigd} other {# creators uitgenodigd}}",
-        "next": "{count, plural, one {nog # invite} other {nog # invites}}",
-        "topTierReached": "Hoogste niveau bereikt",
-        "nextMilestone": "Volgende mijlpaal",
-        "maxDescription": "Je bent voorbij {count} invites. Thanks voor het delen.",
-        "unlocks": "Speelt vrij: {reward}.",
-        "rewards": {
-          "firstCommission": "Eerste commissie vrijgespeeld",
-          "recruiterBadge": "Recruiterbadge op je profiel",
-          "priorityFeedback": "Prioriteit voor feedback op je clips",
-          "earlyAccess": "Vroege toegang tot nieuwe campagnes",
-          "topReferrer": "Top Referrer-status + Discord-rol"
-        }
-      },
-      "table": {
-        "creator": "Creator",
-        "joined": "Aangemeld",
-        "commission": "Commissie",
-        "empty": "Nog geen doorverwezen creators.",
-        "emptyTitle": "Nog geen referrals",
-        "emptyDescription": "Deel je link. Zodra iemand zich aanmeldt en begint te verdienen, verschijnt diegene hier.",
-        "user": "Gebruiker",
-        "capProgress": "Capvoortgang",
-        "yourCommission": "Jouw commissie",
-        "maxed": "Max bereikt",
-        "joinedDate": "Aangemeld {date}",
-        "commissionAmount": "{amount} commissie",
-        "pendingReviewAmount": "{amount} in review"
-      },
-      "activity": {
-        "signup": "{name} heeft zich aangemeld",
-        "earning": "{name} genereerde {amount}",
-        "empty": "Nog geen referralactiviteit.",
-        "emptyStart": "Nog geen activiteit. Deel je referrallink om te starten.",
-        "signupWithLink": "{name} meldde zich aan via jouw link",
-        "earnedFrom": "{amount} verdiend via {name}",
-        "pendingReviewFrom": "{amount} via {name} is in review",
-        "earnedStatus": "Verdiend",
-        "pendingReviewStatus": "In review"
+        "mailBody": "Hey! Join ClipProfit via mijn campagne-link:",
+        "discordMessage": "**Join ClipProfit** - meld je aan via mijn campagne-link: {url}"
       },
       "leaderboard": {
+        "title": "Invite leaderboard",
+        "description": "Top creators op basis van actieve ClipProfit-invites.",
         "referrals": "Referrals",
-        "earned": "Verdiend",
+        "activeClippers": "Actieve clippers",
+        "earned": "Goedgekeurd",
         "you": "Jij",
-        "empty": "Nog geen referrers. Wees de eerste!",
+        "empty": "Nog geen invites gemeten.",
         "yourRank": "Jouw rang: #{rank}"
-      },
-      "chart": {
-        "empty": "Nog geen referralinkomsten.",
-        "earnings": "Inkomsten"
       }
     },
     "profile": {

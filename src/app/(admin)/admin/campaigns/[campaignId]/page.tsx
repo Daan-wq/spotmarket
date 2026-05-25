@@ -65,7 +65,11 @@ export default async function CampaignHealthPage({ params }: PageProps) {
           id: true,
           referrerId: true,
           referredUserId: true,
+          clickedAt: true,
+          signedUpAt: true,
           onboardedAt: true,
+          discordLinkedAt: true,
+          socialConnectedAt: true,
           firstSubmissionAt: true,
           activeAt: true,
           firstEarnedAmount: true,
@@ -119,7 +123,11 @@ export default async function CampaignHealthPage({ params }: PageProps) {
         attribution.referrer.discordUsername ??
         attribution.referrer.email,
       referredUserId: attribution.referredUserId,
+      clickedAt: attribution.clickedAt,
+      signedUpAt: attribution.signedUpAt,
       onboardedAt: attribution.onboardedAt,
+      discordLinkedAt: attribution.discordLinkedAt,
+      socialConnectedAt: attribution.socialConnectedAt,
       firstSubmissionAt: attribution.firstSubmissionAt,
       activeAt: attribution.activeAt,
       earnedAmount: attribution.referredUserId
@@ -287,7 +295,7 @@ export default async function CampaignHealthPage({ params }: PageProps) {
               Campagne referral rapportage
             </h2>
             <p className="mt-1 text-sm" style={{ color: "var(--text-secondary)" }}>
-              Invite count telt afgeronde onboarding. Active clipper count telt de eerste goedgekeurde earning.
+              Invite count telt afgeronde onboarding. Active clipper count telt de eerste ingestuurde submission.
             </p>
           </div>
           <div className="grid gap-3 p-5 sm:grid-cols-2 xl:grid-cols-6">
@@ -304,7 +312,7 @@ export default async function CampaignHealthPage({ params }: PageProps) {
             <KpiCard
               label="Active clippers"
               value={referralReport.activeClipperCount}
-              hint="eerste earning boven 0"
+              hint="minimaal 1 submission"
             />
             <KpiCard
               label="Activatie"

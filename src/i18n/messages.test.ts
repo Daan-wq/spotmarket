@@ -22,6 +22,14 @@ function flattenKeys(value: MessageValue, prefix = ""): string[] {
   );
 }
 
+function flattenStringValues(value: MessageValue): string[] {
+  if (typeof value === "string") return [value];
+  if (Array.isArray(value)) return value.flatMap(flattenStringValues);
+  if (value === null || typeof value !== "object") return [];
+
+  return Object.values(value).flatMap(flattenStringValues);
+}
+
 describe("localized messages", () => {
   it.each(["creator", "creatorSettings", "dashboard", "navigation"] as const)(
     "keeps Dutch %s keys in parity with English",
@@ -41,5 +49,16 @@ describe("localized messages", () => {
     expect(dashboardKeys).toContain("admin.queue.followUps.title");
     expect(creatorKeys).toContain("campaigns.page.title");
     expect(creatorKeys).toContain("connections.page.headerTitle");
+  });
+
+  it("keeps creator referral copy focused on campaign attribution, not cash rewards", () => {
+    const referralCopy = [
+      ...flattenStringValues(enMessages.creator.referral),
+      ...flattenStringValues(nlMessages.creator.referral),
+    ].join("\n");
+
+    expect(referralCopy).not.toMatch(
+      /€100|10%|commission|commissie|cap|earnings|earning|inkomsten|verdien/i,
+    );
   });
 });
