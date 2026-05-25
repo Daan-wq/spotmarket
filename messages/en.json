@@ -1,7 +1,7 @@
 {
   "metadata": {
     "title": "ClipProfit - Creator Campaign Marketplace",
-    "description": "Connect casino businesses with social media creators for view-based ad campaigns."
+    "description": "Join campaigns from Brands and Creators, post clips and earn per view."
   },
   "common": {
     "back": "Back",
@@ -286,6 +286,7 @@
       "production": "Production",
       "clipReview": "Clip review",
       "leads": "Leads",
+      "discord": "Discord",
       "recruitment": "Recruitment",
       "brands": "Brands",
       "onboarding": "Onboarding",

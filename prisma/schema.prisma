@@ -34,6 +34,8 @@ model User {
   campaignReferralAttributions CampaignReferralAttribution[] @relation("CampaignReferralReferrer")
   referredCampaignAttributions CampaignReferralAttribution[] @relation("CampaignReferralUser")
   ownedCampaigns               Campaign[]                    @relation("OwnedCampaigns")
+  createdDiscordTemplates       DiscordMessageTemplate[]      @relation("DiscordTemplateCreatedBy")
+  updatedDiscordTemplates       DiscordMessageTemplate[]      @relation("DiscordTemplateUpdatedBy")
   notifications                Notification[]
   campaignSubmissions          CampaignSubmission[]
   wallet                       Wallet?
@@ -1135,6 +1137,29 @@ enum SopStatus {
 // ─────────────────────────────────────────
 // AUDIT LOG
 // ─────────────────────────────────────────
+
+enum DiscordMessageTemplateKind {
+  DRAFT
+  TEMPLATE
+}
+
+model DiscordMessageTemplate {
+  id              String                     @id @default(cuid())
+  name            String
+  kind            DiscordMessageTemplateKind @default(DRAFT)
+  content         String                     @db.Text
+  tags            String[]                   @default([])
+  createdByUserId String?
+  createdBy       User?                      @relation("DiscordTemplateCreatedBy", fields: [createdByUserId], references: [id], onDelete: SetNull)
+  updatedByUserId String?
+  updatedBy       User?                      @relation("DiscordTemplateUpdatedBy", fields: [updatedByUserId], references: [id], onDelete: SetNull)
+  createdAt       DateTime                   @default(now())
+  updatedAt       DateTime                   @updatedAt
+
+  @@index([kind, updatedAt])
+  @@index([createdByUserId])
+  @@index([updatedByUserId])
+}
 
 model AuditLog {
   id         String   @id @default(cuid())

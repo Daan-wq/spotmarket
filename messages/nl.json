@@ -1,7 +1,7 @@
 {
   "metadata": {
     "title": "ClipProfit - Campagneplatform voor creators",
-    "description": "Koppel casino bedrijven aan social media creators voor campagnes op basis van views."
+    "description": "Join campagnes van Brands en Creators, post clips en verdien per view."
   },
   "common": {
     "back": "Terug",
@@ -286,6 +286,7 @@
       "production": "Productie",
       "clipReview": "Clipreview",
       "leads": "Leads",
+      "discord": "Discord",
       "recruitment": "Recruitment",
       "brands": "Merken",
       "onboarding": "Onboarding",
