@@ -281,6 +281,7 @@
       "control": "Controle",
       "commandCenter": "Command center",
       "campaigns": "Campagnes",
+      "referrals": "Referrals",
       "clippers": "Clippers",
       "production": "Productie",
       "clipReview": "Clipreview",
@@ -950,6 +951,12 @@
         "noClipsDescription": "Dien een clip in vanaf je gekoppelde social accounts en hij verschijnt hier.",
         "biggestEarners": "Grootste verdieners",
         "noEarners": "Nog geen goedgekeurde verdieners.",
+        "referralLink": {
+          "title": "Persoonlijke bio-link",
+          "description": "Plaats deze ClipProfit-link in je bio zodat invites en actieve clippers voor deze campagne worden gemeten.",
+          "copy": "Link kopieren",
+          "copied": "Gekopieerd"
+        },
         "contactSupport": {
           "title": "Hulp nodig met deze campagne?",
           "description": "Support loopt via Discord zodat het team elk verzoek op een plek kan opvolgen.",
@@ -1093,8 +1100,12 @@
       "overview": {
         "availableBalance": "Beschikbaar saldo",
         "readyUnlocks": "Klaar zodra opnemen vrij is",
+        "pendingReview": "In review",
+        "pendingReviewDetail": "Goedgekeurde clips die wachten op fraudcheck",
         "pending": "In behandeling",
         "requestsProgress": "Verzoeken in verwerking",
+        "paid": "Betaald",
+        "paidDetail": "Bevestigd, verzonden of gesetteld",
         "profit": "Profit",
         "profitDetail": "Succesvol uitbetaald",
         "totalPaid": "Totaal betaald",
@@ -1113,7 +1124,9 @@
       "withdraw": {
         "loading": "Laden...",
         "balance": "Saldo",
+        "pendingReviewBalance": "In review",
         "pendingBalance": "In behandeling",
+        "paidBalance": "Betaald",
         "profit": "Profit",
         "methodTitle": "Bankgegevens",
         "panelTitle": "Opname aanvragen",
@@ -1177,24 +1190,41 @@
     },
     "referral": {
       "page": {
-        "title": "Referralprogramma",
-        "description": "Verdien tot €100 voor elke creator die je uitnodigt - betaald als 10% van hun inkomsten tot je de €100-cap raakt. Wij betalen 110%: creators houden 100%, jouw deel komt daarbovenop.",
-        "emptyTitle": "Nodig een creator uit en verdien tot €100 per signup",
-        "emptyDescription": "Deel je link hieronder. Elke clipper die via jouw link aanmeldt levert je tot €100 op - betaald als 10% van hun payouts tot die cap. Zij houden nog steeds 100%; ons platform betaalt jouw deel.",
-        "peopleInvited": "Mensen uitgenodigd",
-        "totalEarned": "Totaal verdiend",
+        "title": "ClipProfit-link",
+        "description": "Gebruik deze persoonlijke link in je bio voor de ClipProfit-campagne.",
+        "emptyTitle": "Nodig een creator uit",
+        "emptyDescription": "Deel je link hieronder zodat nieuwe creators ClipProfit kunnen joinen.",
+        "peopleInvited": "Mensen geinvite",
+        "totalEarned": "Goedgekeurde invites",
         "pending": "In behandeling",
+        "pendingReview": "In review",
         "thisMonth": "Deze maand",
-        "earningsOverTime": "Inkomsten door de tijd",
-        "topReferrers": "Top referrers",
-        "yourReferrals": "Jouw referrals",
+        "earningsOverTime": "Activiteit door de tijd",
+        "topReferrers": "Invite leaderboard",
+        "yourReferrals": "Jouw invites",
         "recentActivity": "Recente activiteit",
         "anonymous": "Anoniem",
-        "unknown": "Onbekend"
+        "unknown": "Onbekend",
+        "metrics": {
+          "clicks": "Link clicks",
+          "clicksDetail": "Aantal gemeten bezoeken via je bio-link",
+          "invites": "Invites",
+          "invitesDetail": "Onboarding afgerond via jouw link",
+          "activeClippers": "Actieve clippers",
+          "activeClippersDetail": "Invites met minimaal 1 submission",
+          "conversion": "Conversie",
+          "conversionDetail": "Actieve clippers gedeeld door invites"
+        },
+        "definitions": {
+          "title": "Zo tellen we dit",
+          "invite": "Invite = iemand rondt onboarding af via jouw ClipProfit-link.",
+          "active": "Actieve clipper = een invite heeft minimaal 1 submission ingediend.",
+          "approved": "Approved signaal = een invite heeft later een goedgekeurde clip."
+        }
       },
       "link": {
-        "title": "Jouw referrallink",
-        "description": "Deel deze link met creators. Je verdient 10% van hun payouts tot de €100-cap.",
+        "title": "Jouw ClipProfit bio-link",
+        "description": "Plaats deze link in je bio voor de ClipProfit-campagne.",
         "code": "Referralcode",
         "yourCode": "Jouw code: {code}",
         "copy": "Kopieren",
@@ -1206,59 +1236,20 @@
         "hideQr": "QR verbergen",
         "qrCode": "QR-code",
         "discordTooltip": "Kopieert een opgemaakt bericht dat je in Discord kunt plakken",
-        "shareText": "Join me op ClipProfit en verdien met je content!",
+        "shareText": "Join ClipProfit via mijn campagne-link.",
         "mailSubject": "Join ClipProfit",
-        "mailBody": "Hey! Ik gebruik ClipProfit om met mijn content te verdienen. Meld je aan via mijn referrallink en dan verdienen we allebei:",
-        "discordMessage": "**Verdien met je clips op ClipProfit** - meld je aan via mijn link en dan verdienen we allebei: {url}"
-      },
-      "milestone": {
-        "title": "Referral mijlpaal",
-        "invited": "{count, plural, one {# creator uitgenodigd} other {# creators uitgenodigd}}",
-        "next": "{count, plural, one {nog # invite} other {nog # invites}}",
-        "topTierReached": "Hoogste niveau bereikt",
-        "nextMilestone": "Volgende mijlpaal",
-        "maxDescription": "Je bent voorbij {count} invites. Thanks voor het delen.",
-        "unlocks": "Speelt vrij: {reward}.",
-        "rewards": {
-          "firstCommission": "Eerste commissie vrijgespeeld",
-          "recruiterBadge": "Recruiterbadge op je profiel",
-          "priorityFeedback": "Prioriteit voor feedback op je clips",
-          "earlyAccess": "Vroege toegang tot nieuwe campagnes",
-          "topReferrer": "Top Referrer-status + Discord-rol"
-        }
-      },
-      "table": {
-        "creator": "Creator",
-        "joined": "Aangemeld",
-        "commission": "Commissie",
-        "empty": "Nog geen doorverwezen creators.",
-        "emptyTitle": "Nog geen referrals",
-        "emptyDescription": "Deel je link. Zodra iemand zich aanmeldt en begint te verdienen, verschijnt diegene hier.",
-        "user": "Gebruiker",
-        "capProgress": "Capvoortgang",
-        "yourCommission": "Jouw commissie",
-        "maxed": "Max bereikt",
-        "joinedDate": "Aangemeld {date}",
-        "commissionAmount": "{amount} commissie"
-      },
-      "activity": {
-        "signup": "{name} heeft zich aangemeld",
-        "earning": "{name} genereerde {amount}",
-        "empty": "Nog geen referralactiviteit.",
-        "emptyStart": "Nog geen activiteit. Deel je referrallink om te starten.",
-        "signupWithLink": "{name} meldde zich aan via jouw link",
-        "earnedFrom": "{amount} verdiend via {name}"
+        "mailBody": "Hey! Join ClipProfit via mijn campagne-link:",
+        "discordMessage": "**Join ClipProfit** - meld je aan via mijn campagne-link: {url}"
       },
       "leaderboard": {
+        "title": "Invite leaderboard",
+        "description": "Top creators op basis van actieve ClipProfit-invites.",
         "referrals": "Referrals",
-        "earned": "Verdiend",
+        "activeClippers": "Actieve clippers",
+        "earned": "Goedgekeurd",
         "you": "Jij",
-        "empty": "Nog geen referrers. Wees de eerste!",
+        "empty": "Nog geen invites gemeten.",
         "yourRank": "Jouw rang: #{rank}"
-      },
-      "chart": {
-        "empty": "Nog geen referralinkomsten.",
-        "earnings": "Inkomsten"
       }
     },
     "profile": {

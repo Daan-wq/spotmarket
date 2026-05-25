@@ -10,6 +10,7 @@ import {
 } from "@/components/campaigns/campaign-display";
 import { prisma } from "@/lib/prisma";
 import { isExcludedFromLeaderboards } from "@/lib/leaderboard-exclusions";
+import { calculateCampaignReferralReport } from "@/lib/campaign-referrals";
 import { CampaignSubmissionsOverview } from "./campaign-submissions-overview";
 
 export const dynamic = "force-dynamic";
@@ -59,6 +60,31 @@ export default async function CampaignHealthPage({ params }: PageProps) {
         },
         orderBy: { createdAt: "desc" },
       },
+      referralAttributions: {
+        select: {
+          id: true,
+          referrerId: true,
+          referredUserId: true,
+          clickedAt: true,
+          signedUpAt: true,
+          onboardedAt: true,
+          discordLinkedAt: true,
+          socialConnectedAt: true,
+          firstSubmissionAt: true,
+          activeAt: true,
+          firstEarnedAmount: true,
+          referrer: {
+            select: {
+              email: true,
+              discordUsername: true,
+              creatorProfile: {
+                select: { displayName: true, username: true },
+              },
+            },
+          },
+        },
+        orderBy: { clickedAt: "desc" },
+      },
     },
   });
   if (!campaign) return notFound();
@@ -77,6 +103,38 @@ export default async function CampaignHealthPage({ params }: PageProps) {
   const maximumPaidViews = campaign.maximumPaidViews;
   const burnPct = totalBudget > 0 ? totalEarned / totalBudget : 0;
   const goalPct = goalViews > 0 ? totalEligibleViews / goalViews : 0;
+  const earnedByInvitedCreator = new Map<string, number>();
+
+  for (const submission of campaign.campaignSubmissions) {
+    if (submission.status !== "APPROVED") continue;
+    earnedByInvitedCreator.set(
+      submission.creatorId,
+      (earnedByInvitedCreator.get(submission.creatorId) ?? 0) +
+        Number(submission.earnedAmount ?? 0),
+    );
+  }
+
+  const referralReport = calculateCampaignReferralReport({
+    totalBudget,
+    attributions: campaign.referralAttributions.map((attribution) => ({
+      referrerId: attribution.referrerId,
+      referrerLabel:
+        attribution.referrer.creatorProfile?.displayName ??
+        attribution.referrer.discordUsername ??
+        attribution.referrer.email,
+      referredUserId: attribution.referredUserId,
+      clickedAt: attribution.clickedAt,
+      signedUpAt: attribution.signedUpAt,
+      onboardedAt: attribution.onboardedAt,
+      discordLinkedAt: attribution.discordLinkedAt,
+      socialConnectedAt: attribution.socialConnectedAt,
+      firstSubmissionAt: attribution.firstSubmissionAt,
+      activeAt: attribution.activeAt,
+      earnedAmount: attribution.referredUserId
+        ? earnedByInvitedCreator.get(attribution.referredUserId) ?? 0
+        : Number(attribution.firstEarnedAmount ?? 0),
+    })),
+  });
 
   const byCreator = new Map<
     string,
@@ -228,6 +286,117 @@ export default async function CampaignHealthPage({ params }: PageProps) {
       </div>
 
       <div className="space-y-6">
+        <section
+          className="overflow-hidden rounded-xl"
+          style={{ background: "var(--bg-card)", border: "1px solid var(--border)" }}
+        >
+          <div className="px-5 py-4" style={{ borderBottom: "1px solid var(--border)" }}>
+            <h2 className="text-base font-semibold" style={{ color: "var(--text-primary)" }}>
+              Campagne referral rapportage
+            </h2>
+            <p className="mt-1 text-sm" style={{ color: "var(--text-secondary)" }}>
+              Invite count telt afgeronde onboarding. Active clipper count telt de eerste ingestuurde submission.
+            </p>
+          </div>
+          <div className="grid gap-3 p-5 sm:grid-cols-2 xl:grid-cols-6">
+            <KpiCard
+              label="Clicks"
+              value={referralReport.totalClicks}
+              hint="persoonlijke campagne-links"
+            />
+            <KpiCard
+              label="Invite count"
+              value={referralReport.inviteCount}
+              hint="signup plus onboarding"
+            />
+            <KpiCard
+              label="Active clippers"
+              value={referralReport.activeClipperCount}
+              hint="minimaal 1 submission"
+            />
+            <KpiCard
+              label="Activatie"
+              value={`${Math.round(referralReport.activationRate * 100)}%`}
+              hint="active / invites"
+              tone={referralReport.activationRate > 0.25 ? "success" : "default"}
+            />
+            <KpiCard
+              label="CPA invite"
+              value={
+                referralReport.cpaPerInvite === null
+                  ? "n.v.t."
+                  : `EUR ${referralReport.cpaPerInvite.toFixed(2)}`
+              }
+              hint="budget / invites"
+            />
+            <KpiCard
+              label="CPA active"
+              value={
+                referralReport.cpaPerActiveClipper === null
+                  ? "n.v.t."
+                  : `EUR ${referralReport.cpaPerActiveClipper.toFixed(2)}`
+              }
+              hint="budget / active clippers"
+            />
+          </div>
+          {referralReport.referrers.length === 0 ? (
+            <p className="px-5 pb-5 text-sm" style={{ color: "var(--text-secondary)" }}>
+              Nog geen campagne-invites gemeten.
+            </p>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead>
+                  <tr style={{ borderTop: "1px solid var(--border)", borderBottom: "1px solid var(--border)" }}>
+                    <th className="px-5 py-3 text-left text-xs font-semibold" style={{ color: "var(--text-secondary)" }}>
+                      Referrer
+                    </th>
+                    <th className="px-5 py-3 text-right text-xs font-semibold" style={{ color: "var(--text-secondary)" }}>
+                      Clicks
+                    </th>
+                    <th className="px-5 py-3 text-right text-xs font-semibold" style={{ color: "var(--text-secondary)" }}>
+                      Invites
+                    </th>
+                    <th className="px-5 py-3 text-right text-xs font-semibold" style={{ color: "var(--text-secondary)" }}>
+                      Active
+                    </th>
+                    <th className="px-5 py-3 text-right text-xs font-semibold" style={{ color: "var(--text-secondary)" }}>
+                      Eerste submissions
+                    </th>
+                    <th className="px-5 py-3 text-right text-xs font-semibold" style={{ color: "var(--text-secondary)" }}>
+                      Verdiend door invites
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {referralReport.referrers.map((referrer) => (
+                    <tr key={referrer.referrerId} style={{ borderBottom: "1px solid var(--border)" }}>
+                      <td className="max-w-[260px] px-5 py-3 text-sm" style={{ color: "var(--text-primary)" }}>
+                        <span className="block truncate">{referrer.referrerLabel}</span>
+                      </td>
+                      <td className="px-5 py-3 text-right text-sm tabular-nums" style={{ color: "var(--text-primary)" }}>
+                        {referrer.clicks}
+                      </td>
+                      <td className="px-5 py-3 text-right text-sm tabular-nums" style={{ color: "var(--text-primary)" }}>
+                        {referrer.inviteCount}
+                      </td>
+                      <td className="px-5 py-3 text-right text-sm tabular-nums" style={{ color: "var(--text-primary)" }}>
+                        {referrer.activeClipperCount}
+                      </td>
+                      <td className="px-5 py-3 text-right text-sm tabular-nums" style={{ color: "var(--text-primary)" }}>
+                        {referrer.firstSubmissions}
+                      </td>
+                      <td className="px-5 py-3 text-right text-sm tabular-nums" style={{ color: "var(--text-primary)" }}>
+                        EUR {referrer.totalEarnedByInvitedClippers.toFixed(2)}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </section>
+
         <CampaignSubmissionsOverview
           submissions={overviewSubmissions}
           creators={creatorOptions}

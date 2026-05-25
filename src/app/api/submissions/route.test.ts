@@ -6,6 +6,7 @@ const routeMocks = vi.hoisted(() => ({
   userFindUnique: vi.fn(),
   applicationFindUnique: vi.fn(),
   submissionCreate: vi.fn(),
+  attributionUpdateMany: vi.fn(),
   findDuplicate: vi.fn(),
   publishEvent: vi.fn(),
   resolveInstagramThumbnail: vi.fn(),
@@ -22,6 +23,9 @@ vi.mock("@/lib/prisma", () => ({
     campaignSubmission: {
       findMany: vi.fn(),
       create: routeMocks.submissionCreate,
+    },
+    campaignReferralAttribution: {
+      updateMany: routeMocks.attributionUpdateMany,
     },
     campaignApplication: {
       findUnique: routeMocks.applicationFindUnique,
@@ -147,6 +151,125 @@ describe("POST /api/submissions", () => {
     expect(routeMocks.submissionCreate).not.toHaveBeenCalled();
   });
 
+  test("rejects URL forms without a reliable platform video id", async () => {
+    routeMocks.userFindUnique.mockResolvedValue({
+      id: "creator-user-1",
+      creatorProfile: {
+        id: "creator-profile-1",
+        igConnections: [],
+        ttConnections: [{ id: "tt-conn-1", username: "creator", accessToken: "token" }],
+        fbConnections: [],
+        ytConnections: [],
+      },
+    });
+
+    const response = await POST(
+      request({
+        applicationId: "application-1",
+        postUrl: "https://vm.tiktok.com/ZMabc123/",
+      }),
+    );
+
+    expect(response.status).toBe(400);
+    await expect(response.json()).resolves.toEqual({
+      error:
+        "Unsupported URL form. Paste the direct TikTok, Instagram, Facebook, or YouTube video link.",
+    });
+    expect(routeMocks.applicationFindUnique).not.toHaveBeenCalled();
+    expect(routeMocks.findDuplicate).not.toHaveBeenCalled();
+    expect(routeMocks.submissionCreate).not.toHaveBeenCalled();
+  });
+
+  test("rejects duplicate submissions by normalized platform video identity", async () => {
+    routeMocks.userFindUnique.mockResolvedValue({
+      id: "creator-user-1",
+      creatorProfile: {
+        id: "creator-profile-1",
+        igConnections: [],
+        ttConnections: [],
+        fbConnections: [],
+        ytConnections: [{ id: "yt-conn-1", channelId: "UC_test", channelName: "Creator", accessToken: "token" }],
+      },
+    });
+    routeMocks.applicationFindUnique.mockResolvedValue({
+      id: "application-1",
+      creatorProfileId: "creator-profile-1",
+      campaignId: "campaign-1",
+      campaign: {
+        status: "active",
+        deadline: new Date("2026-06-17T00:00:00.000Z"),
+      },
+    });
+    routeMocks.findDuplicate.mockResolvedValue({
+      submissionId: "submission-existing",
+      campaignId: "campaign-other",
+      creatorId: "creator-other",
+      matchType: "platform_video_id",
+    });
+
+    const response = await POST(
+      request({
+        applicationId: "application-1",
+        postUrl: "https://youtu.be/abc_DEF-123",
+        connectionId: "yt-conn-1",
+      }),
+    );
+
+    expect(response.status).toBe(409);
+    await expect(response.json()).resolves.toEqual({
+      error: "This clip has already been submitted.",
+      duplicate: { submissionId: "submission-existing", matchType: "platform_video_id" },
+    });
+    expect(routeMocks.findDuplicate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        postUrl: "https://youtu.be/abc_DEF-123",
+        parsed: expect.objectContaining({
+          normalizedPlatform: "YOUTUBE",
+          platformVideoId: "abc_DEF-123",
+        }),
+      }),
+    );
+    expect(routeMocks.submissionCreate).not.toHaveBeenCalled();
+  });
+
+  test("returns conflict when the database unique identity constraint wins a race", async () => {
+    routeMocks.userFindUnique.mockResolvedValue({
+      id: "creator-user-1",
+      creatorProfile: {
+        id: "creator-profile-1",
+        igConnections: [],
+        ttConnections: [{ id: "tt-conn-1", username: "creator", accessToken: "token" }],
+        fbConnections: [],
+        ytConnections: [],
+      },
+    });
+    routeMocks.applicationFindUnique.mockResolvedValue({
+      id: "application-1",
+      creatorProfileId: "creator-profile-1",
+      campaignId: "campaign-1",
+      campaign: {
+        status: "active",
+        deadline: new Date("2026-06-17T00:00:00.000Z"),
+      },
+    });
+    routeMocks.submissionCreate.mockRejectedValue({
+      code: "P2002",
+      meta: { target: ["normalizedPlatform", "platformVideoId"] },
+    });
+
+    const response = await POST(
+      request({
+        applicationId: "application-1",
+        postUrl: "https://www.tiktok.com/@creator/video/7123456789012345678",
+      }),
+    );
+
+    expect(response.status).toBe(409);
+    await expect(response.json()).resolves.toEqual({
+      error: "This clip has already been submitted.",
+    });
+  });
+
   test("stores a stable cached thumbnail instead of a client-supplied TikTok CDN URL", async () => {
     routeMocks.userFindUnique.mockResolvedValue({
       id: "creator-user-1",
@@ -205,6 +328,8 @@ describe("POST /api/submissions", () => {
     expect(routeMocks.submissionCreate).toHaveBeenCalledWith(
       expect.objectContaining({
         data: expect.objectContaining({
+          normalizedPlatform: "TIKTOK",
+          platformVideoId: "7123456789012345678",
           thumbnailUrl:
             "https://project.supabase.co/storage/v1/object/public/creator-media-cache/tt/tt-conn-1/7123456789012345678.jpg",
           mediaType: "video",

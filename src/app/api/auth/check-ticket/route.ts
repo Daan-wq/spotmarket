@@ -17,6 +17,8 @@ export async function GET(request: Request) {
       accessToken: true,
       refreshToken: true,
       ref: true,
+      campaignSlug: true,
+      clickId: true,
     },
   });
 
@@ -38,5 +40,7 @@ export async function GET(request: Request) {
       refresh_token: ticket.refreshToken,
     },
     ref: ticket.ref,
+    campaign: ticket.campaignSlug,
+    click: ticket.clickId,
   });
 }

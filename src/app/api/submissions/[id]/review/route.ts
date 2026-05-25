@@ -3,7 +3,7 @@ import { z } from "zod";
 import { requireAuth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { calculatePaidViews } from "@/lib/paid-views";
-import { calculateReferralSplit } from "@/lib/referral";
+import { reconcileReferralPayoutForSubmission } from "@/lib/referral-reconciliation";
 
 const rejectionReasonSchema = z.enum([
   "BOT_TRAFFIC",
@@ -121,72 +121,6 @@ export async function POST(
         status === "REJECTED" && submission.status === "APPROVED";
       const previousEarnedAmount = Number(submission.earnedAmount);
 
-      const creator = await tx.user.findUnique({
-        where: { id: submission.creatorId },
-        select: { referredBy: true, createdAt: true },
-      });
-
-      let creatorAmount = earnedAmount;
-
-      if (isFirstApproval && creator?.referredBy) {
-        const [existingPayout, alreadyPaid] = await Promise.all([
-          tx.referralPayout.findFirst({
-            where: {
-              referrerId: creator.referredBy,
-              referredUserId: submission.creatorId,
-              submissionId: submission.id,
-            },
-            select: { id: true },
-          }),
-          tx.referralPayout.aggregate({
-            where: {
-              referrerId: creator.referredBy,
-              referredUserId: submission.creatorId,
-            },
-            _sum: { amount: true },
-          }),
-        ]);
-        const totalPaidSoFar = Number(alreadyPaid._sum.amount ?? 0);
-
-        const split = calculateReferralSplit(
-          earnedAmount,
-          creator.referredBy,
-          creator.createdAt,
-          totalPaidSoFar,
-        );
-        creatorAmount = split.creatorAmount;
-
-        if (!existingPayout && split.referralFee > 0 && split.referrerId) {
-          await tx.referralPayout.create({
-            data: {
-              referrerId: split.referrerId,
-              referredUserId: submission.creatorId,
-              campaignApplicationId: submission.applicationId,
-              submissionId: submission.id,
-              amount: split.referralFee,
-              status: "pending",
-            },
-          });
-
-          await tx.user.update({
-            where: { id: split.referrerId },
-            data: { referralEarnings: { increment: split.referralFee } },
-          });
-
-          await tx.notification.create({
-            data: {
-              userId: split.referrerId,
-              type: "REFERRAL_EARNED",
-              data: {
-                campaignName: submission.campaign.name,
-                amount: split.referralFee,
-                referredUserId: submission.creatorId,
-              },
-            },
-          });
-        }
-      }
-
       const sub = await tx.campaignSubmission.update({
         where: { id },
         data: {
@@ -200,12 +134,38 @@ export async function POST(
         },
         include: { campaign: true, creator: true },
       });
+      await reconcileReferralPayoutForSubmission(tx, submission.id);
+
+      if (status === "APPROVED") {
+        await tx.campaignReferralAttribution.updateMany({
+          where: {
+            campaignId: submission.campaignId,
+            referredUserId: submission.creatorId,
+            firstSubmissionAt: null,
+          },
+          data: { firstSubmissionAt: submission.createdAt },
+        });
+      }
+
+      if (status === "APPROVED" && earnedAmount > 0) {
+        await tx.campaignReferralAttribution.updateMany({
+          where: {
+            campaignId: submission.campaignId,
+            referredUserId: submission.creatorId,
+            activeAt: null,
+          },
+          data: {
+            activeAt: new Date(),
+            firstEarnedAmount: earnedAmount,
+          },
+        });
+      }
 
       if (isFirstApproval && submission.application) {
         await tx.campaignApplication.update({
           where: { id: submission.application.id },
           data: {
-            earnedAmount: { increment: Math.round(creatorAmount) },
+            earnedAmount: { increment: Math.round(earnedAmount) },
           },
         });
       }
@@ -217,35 +177,6 @@ export async function POST(
             earnedAmount: { decrement: Math.round(previousEarnedAmount) },
           },
         });
-      }
-
-      if (isApprovedRejection) {
-        const referralPayout = await tx.referralPayout.findFirst({
-          where: {
-            submissionId: submission.id,
-            status: "pending",
-          },
-          select: {
-            id: true,
-            amount: true,
-            referrerId: true,
-          },
-        });
-
-        if (referralPayout) {
-          await tx.referralPayout.deleteMany({
-            where: {
-              id: referralPayout.id,
-              status: "pending",
-            },
-          });
-          await tx.user.update({
-            where: { id: referralPayout.referrerId },
-            data: {
-              referralEarnings: { decrement: Number(referralPayout.amount) },
-            },
-          });
-        }
       }
 
       const notificationData =

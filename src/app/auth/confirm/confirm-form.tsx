@@ -16,6 +16,19 @@ export function ConfirmForm() {
 
   const ticket = searchParams.get("ticket");
 
+  function buildOnboardingPath(data: {
+    ref?: string | null;
+    campaign?: string | null;
+    click?: string | null;
+  }) {
+    const params = new URLSearchParams();
+    if (data.ref) params.set("ref", data.ref);
+    if (data.campaign) params.set("campaign", data.campaign);
+    if (data.click) params.set("click", data.click);
+    const query = params.toString();
+    return query ? `/onboarding?${query}` : "/onboarding";
+  }
+
   async function handleConfirm() {
     if (!ticket) return;
     setLoading(true);
@@ -42,8 +55,7 @@ export function ConfirmForm() {
       refresh_token: data.session.refresh_token,
     });
 
-    const redirectTo = data.ref ? `/onboarding?ref=${data.ref}` : "/onboarding";
-    router.push(redirectTo);
+    router.push(buildOnboardingPath(data));
     router.refresh();
   }
 

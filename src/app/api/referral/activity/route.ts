@@ -34,7 +34,10 @@ export async function GET(req: NextRequest) {
         orderBy: { createdAt: "desc" },
       }),
       prisma.referralPayout.findMany({
-        where: { referrerId: user.id },
+        where: {
+          referrerId: user.id,
+          status: { in: ["pending", "pending_review"] },
+        },
         select: {
           id: true,
           referredUserId: true,

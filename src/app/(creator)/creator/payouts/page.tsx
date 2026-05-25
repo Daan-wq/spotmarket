@@ -54,9 +54,9 @@ export default async function PaymentsPage() {
 
   const {
     totalEarned,
-    totalPaid,
     pendingPayout,
-    profit,
+    pendingReviewBalance,
+    paidBalance,
     availableBalance: balance,
     earningsByCampaign,
   } = paymentSummary;
@@ -66,9 +66,10 @@ export default async function PaymentsPage() {
   );
   const overviewSlot = await OverviewTab({
     locale,
-    profit,
+    paidBalance,
     balance,
     pendingPayout,
+    pendingReviewBalance,
     earningsByCampaign,
   });
   const historySlot = await HistoryTab({ locale, payouts });
@@ -83,7 +84,7 @@ export default async function PaymentsPage() {
 
       <PaymentsTabs
         totalEarned={totalEarned}
-        totalPaid={totalPaid}
+        totalPaid={paidBalance}
         balance={balance}
         pendingPayout={pendingPayout}
         hasPaymentMethod={hasPaymentMethod}
@@ -96,9 +97,10 @@ export default async function PaymentsPage() {
 
 interface OverviewTabProps {
   locale: Locale;
-  profit: number;
+  paidBalance: number;
   balance: number;
   pendingPayout: number;
+  pendingReviewBalance: number;
   earningsByCampaign: Array<{
     campaignId: string;
     campaignName: string;
@@ -110,22 +112,24 @@ interface OverviewTabProps {
 
 async function OverviewTab({
   locale,
-  profit,
+  paidBalance,
   balance,
   pendingPayout,
+  pendingReviewBalance,
   earningsByCampaign,
 }: OverviewTabProps) {
   const t = await getTranslations("creator.payouts.overview");
   const sharedT = await getTranslations("creator.shared");
   const cards = [
     { label: t("availableBalance"), value: formatCurrency(balance, locale), detail: t("readyUnlocks") },
+    { label: t("pendingReview"), value: formatCurrency(pendingReviewBalance, locale), detail: t("pendingReviewDetail") },
     { label: t("pending"), value: formatCurrency(pendingPayout, locale), detail: t("requestsProgress") },
-    { label: t("profit"), value: formatCurrency(profit, locale), detail: t("profitDetail") },
+    { label: t("paid"), value: formatCurrency(paidBalance, locale), detail: t("paidDetail") },
   ];
 
   return (
     <div className="space-y-5">
-      <div className="grid grid-cols-1 gap-3 md:grid-cols-3 md:gap-4">
+      <div className="grid grid-cols-1 gap-3 md:grid-cols-4 md:gap-4">
         {cards.map((card) => (
           <SoftStat key={card.label} label={card.label} value={card.value} detail={card.detail} />
         ))}

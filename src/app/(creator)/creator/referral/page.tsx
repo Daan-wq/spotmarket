@@ -1,20 +1,14 @@
 import { requireAuth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { ReferralLink } from "./_components/referral-link";
-import { ReferralEarningsChart } from "./_components/earnings-chart";
-import { Leaderboard } from "./_components/leaderboard";
-import { ActivityFeed } from "./_components/activity-feed";
-import { ReferredUsersTable, type ReferredUserRow } from "./_components/referred-users-table";
-import { MilestoneCard } from "./_components/milestone-card";
 import { getLocale, getTranslations } from "next-intl/server";
 import { buildAppUrl, getAppUrlForLocale } from "@/lib/app-url";
-import { formatCurrency, formatNumber } from "@/lib/i18n-format";
-import type { Locale } from "@/i18n/routing";
-import { resolveCreatorLeaderboardName } from "@/lib/creator-leaderboard-name";
 import {
-  isExcludedFromLeaderboards,
-  LEADERBOARD_OVERSCAN_LIMIT,
-} from "@/lib/leaderboard-exclusions";
+  buildCampaignReferralUrl,
+  calculateCampaignReferralReport,
+  CLIPPROFIT_CAMPAIGN_SLUG,
+} from "@/lib/campaign-referrals";
+import type { Locale } from "@/i18n/routing";
 
 export default async function ReferralPage() {
   const { userId } = await requireAuth("creator");
@@ -23,310 +17,240 @@ export default async function ReferralPage() {
     where: { supabaseId: userId },
     select: {
       id: true,
-      email: true,
-      discordUsername: true,
       referralCode: true,
-      referralEarnings: true,
-      creatorProfile: { select: { username: true } },
     },
   });
   if (!user) throw new Error("User not found");
 
   const locale = (await getLocale()) as Locale;
   const t = await getTranslations("creator.referral.page");
-  const referralUrl = buildAppUrl(`/sign-up?ref=${user.referralCode}`, getAppUrlForLocale(locale));
-
-  // Fetch all data in parallel
-  const now = new Date();
-  const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
-  const sixMonthsAgo = new Date();
-  sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
-  sixMonthsAgo.setDate(1);
-  sixMonthsAgo.setHours(0, 0, 0, 0);
-
-  const [
-    totalInvited,
-    pendingResult,
-    thisMonthResult,
-    payouts,
-    signups,
-    topReferrersRaw,
-  ] = await Promise.all([
-    prisma.user.count({ where: { referredBy: user.id } }),
-    prisma.referralPayout.aggregate({
-      where: { referrerId: user.id, status: "pending" },
-      _sum: { amount: true },
-    }),
-    prisma.referralPayout.aggregate({
-      where: { referrerId: user.id, createdAt: { gte: monthStart } },
-      _sum: { amount: true },
-    }),
-    prisma.referralPayout.findMany({
-      where: { referrerId: user.id, createdAt: { gte: sixMonthsAgo } },
-      select: { amount: true, createdAt: true, referredUserId: true, status: true },
-      orderBy: { createdAt: "desc" },
-    }),
-    prisma.user.findMany({
-      where: { referredBy: user.id },
-      select: {
-        id: true,
-        email: true,
-        createdAt: true,
-        creatorProfile: { select: { displayName: true } },
-      },
-      orderBy: { createdAt: "desc" },
-    }),
-    prisma.user.findMany({
-      where: { referralEarnings: { gt: 0 }, role: "creator" },
-      select: {
-        id: true,
-        email: true,
-        discordUsername: true,
-        referralEarnings: true,
-        creatorProfile: { select: { username: true } },
-      },
-      orderBy: { referralEarnings: "desc" },
-      take: LEADERBOARD_OVERSCAN_LIMIT,
-    }),
-  ]);
-  const topReferrers = topReferrersRaw
-    .filter((referrer) => !isExcludedFromLeaderboards(referrer))
-    .slice(0, 5);
-
-  // Stats
-  const totalEarnings = parseFloat(user.referralEarnings.toString());
-  const pendingEarnings = parseFloat(pendingResult._sum.amount?.toString() ?? "0");
-  const thisMonthEarnings = parseFloat(thisMonthResult._sum.amount?.toString() ?? "0");
-
-  // Earnings chart data (monthly)
-  const monthlyMap = new Map<string, number>();
-  for (let i = 5; i >= 0; i--) {
-    const d = new Date();
-    d.setMonth(d.getMonth() - i);
-    const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
-    monthlyMap.set(key, 0);
-  }
-  for (const p of payouts) {
-    const key = `${p.createdAt.getFullYear()}-${String(p.createdAt.getMonth() + 1).padStart(2, "0")}`;
-    monthlyMap.set(key, (monthlyMap.get(key) ?? 0) + parseFloat(p.amount.toString()));
-  }
-  const chartData = Array.from(monthlyMap.entries()).map(([month, earnings]) => ({
-    month,
-    earnings: Math.round(earnings * 100) / 100,
-  }));
-
-  // Leaderboard
-  const referredUserMap = new Map(signups.map((s) => [s.id, s.creatorProfile?.displayName ?? s.email.split("@")[0]]));
-
-  const referrerIds = topReferrers.map((r) => r.id);
-  const referralCounts = await prisma.user.groupBy({
-    by: ["referredBy"],
-    where: { referredBy: { in: referrerIds } },
-    _count: { id: true },
+  const leaderboardT = await getTranslations("creator.referral.leaderboard");
+  const baseUrl = getAppUrlForLocale(locale);
+  const referralUrl = user.referralCode
+    ? buildCampaignReferralUrl(CLIPPROFIT_CAMPAIGN_SLUG, user.referralCode, baseUrl)
+    : buildAppUrl("/sign-up", baseUrl);
+  const numberFormatter = new Intl.NumberFormat(locale === "nl" ? "nl-NL" : "en-US");
+  const percentFormatter = new Intl.NumberFormat(locale === "nl" ? "nl-NL" : "en-US", {
+    style: "percent",
+    maximumFractionDigits: 0,
   });
-  const countMap = new Map(referralCounts.map((r) => [r.referredBy, r._count.id]));
 
-  const leaderboardEntries = topReferrers.map((r, i) => ({
-    rank: i + 1,
-    displayName: resolveCreatorLeaderboardName(r) ?? r.email,
-    totalEarnings: parseFloat(r.referralEarnings.toString()),
-    referralCount: countMap.get(r.id) ?? 0,
-    isCurrentUser: r.id === user.id,
-  }));
-
-  let currentUserRank: number | null = null;
-  if (
-    !leaderboardEntries.some((e) => e.isCurrentUser) &&
-    totalEarnings > 0 &&
-    !isExcludedFromLeaderboards(user)
-  ) {
-    const rankedReferrers = await prisma.user.findMany({
-      where: {
-        referralEarnings: { gt: 0 },
-        role: "creator",
+  const campaign = await prisma.campaign.findFirst({
+    where: { slug: CLIPPROFIT_CAMPAIGN_SLUG },
+    select: {
+      totalBudget: true,
+      referralAttributions: {
+        select: {
+          referrerId: true,
+          referredUserId: true,
+          clickedAt: true,
+          signedUpAt: true,
+          onboardedAt: true,
+          discordLinkedAt: true,
+          socialConnectedAt: true,
+          firstSubmissionAt: true,
+          activeAt: true,
+          firstEarnedAmount: true,
+          referrer: {
+            select: {
+              email: true,
+              discordUsername: true,
+              creatorProfile: {
+                select: {
+                  displayName: true,
+                  username: true,
+                },
+              },
+            },
+          },
+        },
       },
-      select: {
-        id: true,
-        email: true,
-        discordUsername: true,
-        creatorProfile: { select: { username: true } },
-      },
-      orderBy: { referralEarnings: "desc" },
-    });
-    const visibleIndex = rankedReferrers
-      .filter((referrer) => !isExcludedFromLeaderboards(referrer))
-      .findIndex((referrer) => referrer.id === user.id);
-    currentUserRank = visibleIndex >= 0 ? visibleIndex + 1 : null;
-  }
+    },
+  });
 
-  // Activity feed (merged signups + earnings, sorted by date)
-  type ActivityItem = {
-    type: "signup" | "earning";
-    timestamp: string;
-    referredUserName: string;
-    amount?: number;
-    status?: string;
-  };
-  const activities: ActivityItem[] = [
-    ...signups.map((s) => ({
-      type: "signup" as const,
-      timestamp: s.createdAt.toISOString(),
-      referredUserName: s.creatorProfile?.displayName ?? s.email.split("@")[0],
-    })),
-    ...payouts.map((p) => ({
-      type: "earning" as const,
-      timestamp: p.createdAt.toISOString(),
-      referredUserName: referredUserMap.get(p.referredUserId) ?? t("unknown"),
-      amount: parseFloat(p.amount.toString()),
-      status: p.status,
-    })),
-  ].sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
-    .slice(0, 20);
+  const report = calculateCampaignReferralReport({
+    totalBudget: Number(campaign?.totalBudget ?? 0),
+    attributions:
+      campaign?.referralAttributions.map((attribution) => ({
+        referrerId: attribution.referrerId,
+        referrerLabel: getCreatorLabel(attribution.referrer, t("anonymous")),
+        referredUserId: attribution.referredUserId,
+        clickedAt: attribution.clickedAt,
+        signedUpAt: attribution.signedUpAt,
+        onboardedAt: attribution.onboardedAt,
+        discordLinkedAt: attribution.discordLinkedAt,
+        socialConnectedAt: attribution.socialConnectedAt,
+        firstSubmissionAt: attribution.firstSubmissionAt,
+        activeAt: attribution.activeAt,
+        earnedAmount: Number(attribution.firstEarnedAmount ?? 0),
+      })) ?? [],
+  });
 
-  const stats = [
-    { label: t("peopleInvited"), value: formatNumber(totalInvited, locale), color: "#6366f1" },
-    { label: t("totalEarned"), value: formatCurrency(totalEarnings, locale), color: "#22c55e" },
-    { label: t("pending"), value: formatCurrency(pendingEarnings, locale), color: "#f59e0b" },
-    { label: t("thisMonth"), value: formatCurrency(thisMonthEarnings, locale), color: "#3b82f6" },
-  ];
-
-  // Per-referred-user commission breakdown.
-  const commissionByReferred = new Map<string, number>();
-  for (const p of payouts) {
-    commissionByReferred.set(
-      p.referredUserId,
-      (commissionByReferred.get(p.referredUserId) ?? 0) +
-        parseFloat(p.amount.toString()),
-    );
-  }
-  const referredUserRows: ReferredUserRow[] = signups.map((s) => ({
-    userId: s.id,
-    displayName: s.creatorProfile?.displayName ?? s.email.split("@")[0],
-    joinedAt: s.createdAt.toISOString(),
-    commissionEarned: commissionByReferred.get(s.id) ?? 0,
-  }));
-  referredUserRows.sort((a, b) => b.commissionEarned - a.commissionEarned);
-
-  const isEmpty = totalInvited === 0;
+  const currentStats =
+    report.referrers.find((referrer) => referrer.referrerId === user.id) ??
+    {
+      clicks: 0,
+      inviteCount: 0,
+      activeClipperCount: 0,
+      activationRate: 0,
+    };
+  const leaderboard = report.referrers.slice(0, 5);
+  const currentRank =
+    report.referrers.findIndex((referrer) => referrer.referrerId === user.id) + 1;
 
   return (
     <div className="space-y-6 md:p-6">
-      {/* Header */}
       <div>
         <h1 className="text-3xl font-bold" style={{ color: "var(--text-primary)" }}>
           {t("title")}
         </h1>
-        <p className="text-sm mt-1" style={{ color: "var(--text-secondary)" }}>
+        <p className="mt-1 max-w-2xl text-sm" style={{ color: "var(--text-secondary)" }}>
           {t("description")}
         </p>
       </div>
 
-      {isEmpty ? (
-        // Empty-state hero: prioritize the share link + clear value prop
-        <>
-          <div
-            className="rounded-2xl border p-8 text-center"
-            style={{
-              background:
-                "linear-gradient(135deg, var(--accent-bg) 0%, var(--bg-card) 100%)",
-              borderColor: "var(--border)",
-            }}
-          >
-            <div
-              className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full"
-              style={{ background: "var(--accent)", color: "#fff" }}
-            >
-              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
-                <circle cx="9" cy="7" r="4" />
-                <path d="M22 21v-2a4 4 0 0 0-3-3.87" />
-                <path d="M16 3.13a4 4 0 0 1 0 7.75" />
-              </svg>
-            </div>
-            <h2 className="text-xl font-bold" style={{ color: "var(--text-primary)" }}>
-              {t("emptyTitle")}
-            </h2>
-            <p className="mx-auto mt-1.5 max-w-xl text-sm" style={{ color: "var(--text-secondary)" }}>
-              {t("emptyDescription")}
-            </p>
-          </div>
+      <ReferralLink referralCode={user.referralCode ?? ""} referralUrl={referralUrl} />
 
-          <ReferralLink referralCode={user.referralCode ?? ""} referralUrl={referralUrl} />
-        </>
-      ) : (
-        <>
-          {/* Stats Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-            {stats.map((stat) => (
-              <div
-                key={stat.label}
-                className="rounded-lg p-6 border"
-                style={{ background: "var(--bg-card)", borderColor: "var(--border)" }}
+      <div className="grid gap-4 md:grid-cols-4">
+        <MetricCard
+          label={t("metrics.clicks")}
+          value={numberFormatter.format(currentStats.clicks)}
+          detail={t("metrics.clicksDetail")}
+        />
+        <MetricCard
+          label={t("metrics.invites")}
+          value={numberFormatter.format(currentStats.inviteCount)}
+          detail={t("metrics.invitesDetail")}
+        />
+        <MetricCard
+          label={t("metrics.activeClippers")}
+          value={numberFormatter.format(currentStats.activeClipperCount)}
+          detail={t("metrics.activeClippersDetail")}
+        />
+        <MetricCard
+          label={t("metrics.conversion")}
+          value={percentFormatter.format(currentStats.activationRate)}
+          detail={t("metrics.conversionDetail")}
+        />
+      </div>
+
+      <section
+        className="rounded-lg border p-5"
+        style={{ background: "var(--bg-card)", borderColor: "var(--border)" }}
+      >
+        <h2 className="text-lg font-semibold" style={{ color: "var(--text-primary)" }}>
+          {t("definitions.title")}
+        </h2>
+        <div className="mt-3 grid gap-3 md:grid-cols-3">
+          {[t("definitions.invite"), t("definitions.active"), t("definitions.approved")].map(
+            (definition) => (
+              <p
+                key={definition}
+                className="rounded-lg border px-4 py-3 text-sm leading-6"
+                style={{
+                  background: "var(--bg-primary)",
+                  borderColor: "var(--border)",
+                  color: "var(--text-secondary)",
+                }}
               >
-                <p style={{ color: "var(--text-secondary)" }} className="text-sm mb-2">
-                  {stat.label}
+                {definition}
+              </p>
+            ),
+          )}
+        </div>
+      </section>
+
+      <section
+        className="overflow-hidden rounded-lg border"
+        style={{ background: "var(--bg-card)", borderColor: "var(--border)" }}
+      >
+        <div className="px-5 py-4" style={{ borderBottom: "1px solid var(--border)" }}>
+          <h2 className="text-lg font-semibold" style={{ color: "var(--text-primary)" }}>
+            {leaderboardT("title")}
+          </h2>
+          <p className="mt-1 text-sm" style={{ color: "var(--text-secondary)" }}>
+            {leaderboardT("description")}
+          </p>
+        </div>
+        {leaderboard.length === 0 ? (
+          <p className="px-5 py-6 text-sm" style={{ color: "var(--text-secondary)" }}>
+            {leaderboardT("empty")}
+          </p>
+        ) : (
+          <div className="divide-y" style={{ borderColor: "var(--border)" }}>
+            {leaderboard.map((entry, index) => (
+              <div
+                key={entry.referrerId}
+                className="grid grid-cols-[48px_1fr_auto_auto] items-center gap-3 px-5 py-4"
+                style={{ borderColor: "var(--border)" }}
+              >
+                <span className="text-sm font-semibold" style={{ color: "var(--text-muted)" }}>
+                  #{index + 1}
+                </span>
+                <div className="min-w-0">
+                  <p className="truncate text-sm font-semibold" style={{ color: "var(--text-primary)" }}>
+                    {entry.referrerId === user.id
+                      ? `${entry.referrerLabel} (${leaderboardT("you")})`
+                      : entry.referrerLabel}
+                  </p>
+                </div>
+                <p className="text-right text-sm" style={{ color: "var(--text-secondary)" }}>
+                  {leaderboardT("referrals")}: {numberFormatter.format(entry.inviteCount)}
                 </p>
-                <p style={{ color: stat.color, fontSize: "32px" }} className="font-bold">
-                  {stat.value}
+                <p className="text-right text-sm" style={{ color: "var(--text-secondary)" }}>
+                  {leaderboardT("activeClippers")}:{" "}
+                  {numberFormatter.format(entry.activeClipperCount)}
                 </p>
               </div>
             ))}
           </div>
-
-          {/* Referral Link + Milestone */}
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            <div className="lg:col-span-2">
-              <ReferralLink referralCode={user.referralCode ?? ""} referralUrl={referralUrl} />
-            </div>
-            <MilestoneCard totalInvited={totalInvited} />
-          </div>
-
-          {/* Chart + Leaderboard */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <div
-              className="rounded-lg p-6 border"
-              style={{ background: "var(--bg-card)", borderColor: "var(--border)" }}
-            >
-              <h2 className="text-lg font-semibold mb-4" style={{ color: "var(--text-primary)" }}>
-                {t("earningsOverTime")}
-              </h2>
-              <ReferralEarningsChart data={chartData} />
-            </div>
-
-            <div
-              className="rounded-lg p-6 border"
-              style={{ background: "var(--bg-card)", borderColor: "var(--border)" }}
-            >
-              <h2 className="text-lg font-semibold mb-4" style={{ color: "var(--text-primary)" }}>
-                {t("topReferrers")}
-              </h2>
-              <Leaderboard entries={leaderboardEntries} currentUserRank={currentUserRank} />
-            </div>
-          </div>
-
-          {/* Per-referred-user breakdown */}
-          <section>
-            <h2
-              className="text-lg font-semibold mb-3"
-              style={{ color: "var(--text-primary)" }}
-            >
-              {t("yourReferrals")}
-            </h2>
-            <ReferredUsersTable rows={referredUserRows} />
-          </section>
-
-          {/* Activity Feed */}
-          <div
-            className="rounded-lg p-6 border"
-            style={{ background: "var(--bg-card)", borderColor: "var(--border)" }}
-          >
-            <h2 className="text-lg font-semibold mb-4" style={{ color: "var(--text-primary)" }}>
-              {t("recentActivity")}
-            </h2>
-            <ActivityFeed activities={activities} />
-          </div>
-        </>
-      )}
+        )}
+        {currentRank > 0 ? (
+          <p className="px-5 py-4 text-sm" style={{ color: "var(--text-secondary)" }}>
+            {leaderboardT("yourRank", { rank: currentRank })}
+          </p>
+        ) : null}
+      </section>
     </div>
+  );
+}
+
+function MetricCard({
+  label,
+  value,
+  detail,
+}: {
+  label: string;
+  value: string;
+  detail: string;
+}) {
+  return (
+    <div
+      className="rounded-lg border p-5"
+      style={{ background: "var(--bg-card)", borderColor: "var(--border)" }}
+    >
+      <p className="text-xs font-semibold uppercase tracking-wide" style={{ color: "var(--text-secondary)" }}>
+        {label}
+      </p>
+      <p className="mt-2 text-3xl font-bold" style={{ color: "var(--text-primary)" }}>
+        {value}
+      </p>
+      <p className="mt-1 text-xs leading-5" style={{ color: "var(--text-muted)" }}>
+        {detail}
+      </p>
+    </div>
+  );
+}
+
+function getCreatorLabel(user: {
+  email: string;
+  discordUsername: string | null;
+  creatorProfile: { displayName: string | null; username: string | null } | null;
+}, fallback: string) {
+  return (
+    user.creatorProfile?.displayName ??
+    user.creatorProfile?.username ??
+    user.discordUsername ??
+    fallback
   );
 }

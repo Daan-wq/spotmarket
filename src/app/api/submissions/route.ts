@@ -12,6 +12,8 @@ import {
   isCampaignClosedForSubmissions,
 } from "@/lib/campaign-submission-state";
 
+const DUPLICATE_SUBMISSION_ERROR = "This clip has already been submitted.";
+
 const createSubmissionSchema = z.object({
   applicationId: z.string().min(1),
   postUrl: z.string().url(),
@@ -145,6 +147,16 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    if (!parsed.normalizedPlatform || !parsed.platformVideoId) {
+      return NextResponse.json(
+        {
+          error:
+            "Unsupported URL form. Paste the direct TikTok, Instagram, Facebook, or YouTube video link.",
+        },
+        { status: 400 },
+      );
+    }
+
     // ───────────────────────────────────────────────────────────────────
     // OAuth-only gate — reject if creator has no verified OAuth connection
     // on the submission platform. Direct creator to /creator/connections.
@@ -193,13 +205,12 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Duplicate detection — URL + author handle. Same clip cannot be submitted
-    // twice across the platform (any creator, any campaign).
-    const dup = await findDuplicate({ postUrl });
+    // Global duplicate detection: a platform video identity can only be submitted once.
+    const dup = await findDuplicate({ postUrl, parsed });
     if (dup) {
       return NextResponse.json(
         {
-          error: "This clip has already been submitted.",
+          error: DUPLICATE_SUBMISSION_ERROR,
           duplicate: { submissionId: dup.submissionId, matchType: dup.matchType },
         },
         { status: 409 },
@@ -231,6 +242,8 @@ export async function POST(req: NextRequest) {
         creatorId: creator.id,
         campaignId: app.campaignId,
         postUrl,
+        normalizedPlatform: parsed.normalizedPlatform,
+        platformVideoId: parsed.platformVideoId,
         screenshotUrl: screenshotUrl ?? null,
         thumbnailUrl: resolvedThumbnail,
         mediaType: resolvedMediaType,
@@ -259,6 +272,18 @@ export async function POST(req: NextRequest) {
     });
 
     const eventPlatform = PLATFORM_TO_EVENT[parsed.platform];
+    await prisma.campaignReferralAttribution.updateMany({
+      where: {
+        campaignId: app.campaignId,
+        referredUserId: creator.id,
+        firstSubmissionAt: null,
+      },
+      data: {
+        firstSubmissionAt: submission.createdAt,
+        socialConnectedAt: submission.createdAt,
+      },
+    });
+
     if (eventPlatform) {
       await publishEvent({
         type: "submission.created",
@@ -274,6 +299,9 @@ export async function POST(req: NextRequest) {
   } catch (err) {
     if (err instanceof z.ZodError) {
       return NextResponse.json({ error: "Invalid input", details: err.issues }, { status: 400 });
+    }
+    if (isUniqueConstraintError(err)) {
+      return NextResponse.json({ error: DUPLICATE_SUBMISSION_ERROR }, { status: 409 });
     }
     const message = err instanceof Error ? err.message : "Internal error";
     console.error("[submissions POST]", err);
@@ -379,4 +407,9 @@ function resolveSourceConnection({
 
 function isNonNull<T>(value: T | null): value is T {
   return value !== null;
+}
+
+function isUniqueConstraintError(err: unknown): boolean {
+  if (!err || typeof err !== "object") return false;
+  return "code" in err && (err as { code?: unknown }).code === "P2002";
 }

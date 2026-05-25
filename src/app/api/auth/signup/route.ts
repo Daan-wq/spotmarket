@@ -3,6 +3,7 @@ import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { buildAppUrl, getAppUrlFromRequest, getLocaleFromRequest } from "@/lib/app-url";
+import { normalizeCampaignSlug } from "@/lib/campaign-referrals";
 import { Resend } from "resend";
 import { getTranslations } from "next-intl/server";
 
@@ -14,6 +15,8 @@ const signupSchema = z.object({
   email: z.string().email(),
   password: z.string().min(6),
   ref: z.string().optional(),
+  campaign: z.string().optional(),
+  click: z.string().optional(),
 });
 
 export async function POST(request: Request) {
@@ -31,6 +34,8 @@ export async function POST(request: Request) {
   }
 
   const { password, ref } = parsed.data;
+  const campaignSlug = normalizeCampaignSlug(parsed.data.campaign);
+  const clickId = parsed.data.click?.trim() || undefined;
   const email = parsed.data.email.toLowerCase();
 
   // Rate limit: 1 ticket per email per 60s
@@ -74,9 +79,18 @@ export async function POST(request: Request) {
     data: {
       email,
       ref: ref || null,
+      campaignSlug: campaignSlug ?? null,
+      clickId: clickId ?? null,
       expiresAt: new Date(Date.now() + 15 * 60 * 1000), // 15 min
     },
   });
+
+  if (clickId) {
+    await prisma.campaignReferralAttribution.updateMany({
+      where: { clickId, signedUpAt: null },
+      data: { signedUpAt: new Date() },
+    });
+  }
 
   // Send verification email via Resend
   const confirmUrl = buildAppUrl(`/auth/confirm?ticket=${ticket.id}`, getAppUrlFromRequest(request));

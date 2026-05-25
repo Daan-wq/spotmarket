@@ -26,6 +26,7 @@ export async function GET() {
     const payouts = await prisma.referralPayout.findMany({
       where: {
         referrerId: user.id,
+        status: "pending",
         createdAt: { gte: sixMonthsAgo },
       },
       select: { amount: true, createdAt: true },

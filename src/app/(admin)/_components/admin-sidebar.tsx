@@ -39,6 +39,7 @@ const NAV: Array<{ labelKey: string; items: NavItem[] }> = [
     items: [
       { href: "/admin", labelKey: "commandCenter", icon: LayoutDashboard },
       { href: "/admin/campaigns", labelKey: "campaigns", icon: Send },
+      { href: "/admin/referrals", labelKey: "referrals", icon: Users },
       { href: "/admin/clippers", labelKey: "clippers", icon: Users },
       { href: "/admin/production", labelKey: "production", icon: GitPullRequestArrow, hiddenFromSidebar: true },
       { href: "/admin/review", labelKey: "clipReview", icon: ClipboardCheck },

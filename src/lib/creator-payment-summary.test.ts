@@ -133,4 +133,38 @@ describe("buildCreatorPaymentSummary", () => {
 
     expect(summary.earningsByCampaign[0]?.totalViews).toBe(5_000);
   });
+
+  it("keeps open warning and critical signals out of available balance", () => {
+    const summary = buildCreatorPaymentSummary({
+      submissions: [
+        submission({
+          earnedAmount: 40,
+          submissionSignals: [{ severity: "WARN", resolvedAt: null }],
+        }),
+        submission({
+          earnedAmount: 25,
+          submissionSignals: [{ severity: "INFO", resolvedAt: null }],
+        }),
+      ],
+      payouts: [],
+    });
+
+    expect(summary.totalEarned).toBe(65);
+    expect(summary.pendingReviewBalance).toBe(40);
+    expect(summary.availableBalance).toBe(25);
+  });
+
+  it("treats payout-run locked submissions as pending payout instead of withdrawable", () => {
+    const summary = buildCreatorPaymentSummary({
+      submissions: [
+        submission({ earnedAmount: 60, payoutRunItems: [{ id: "item_1", payout: null }] }),
+        submission({ earnedAmount: 30 }),
+      ],
+      payouts: [],
+    });
+
+    expect(summary.totalEarned).toBe(90);
+    expect(summary.pendingPayout).toBe(60);
+    expect(summary.availableBalance).toBe(30);
+  });
 });

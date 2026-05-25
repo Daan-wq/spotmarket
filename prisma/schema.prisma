@@ -11,33 +11,35 @@ datasource db {
 // ─────────────────────────────────────────
 
 model User {
-  id                   String   @id @default(cuid())
-  supabaseId           String   @unique
-  email                String   @unique
-  role                 UserRole
-  referralCode         String?  @unique
-  referredBy           String?
-  referralEarnings     Decimal  @default(0) @db.Decimal(10, 2)
-  notifyCampaignAlerts Boolean  @default(true)
-  notifyPayoutAlerts   Boolean  @default(true)
-  profilePublic        Boolean  @default(true)
+  id                                    String   @id @default(cuid())
+  supabaseId                            String   @unique
+  email                                 String   @unique
+  role                                  UserRole
+  referralCode                          String?  @unique
+  referredBy                            String?
+  referralEarnings                      Decimal  @default(0) @db.Decimal(10, 2)
+  notifyCampaignAlerts                  Boolean  @default(true)
+  notifyPayoutAlerts                    Boolean  @default(true)
+  profilePublic                         Boolean  @default(true)
   dismissedFacebookPageWarning          Boolean  @default(false)
   dismissedInstagramProfessionalWarning Boolean  @default(false)
-  discordId            String?  @unique
-  discordUsername      String?
-  createdAt            DateTime @default(now())
-  updatedAt            DateTime @updatedAt
+  discordId                             String?  @unique
+  discordUsername                       String?
+  createdAt                             DateTime @default(now())
+  updatedAt                             DateTime @updatedAt
 
-  creatorProfile      CreatorProfile?
-  auditLogs           AuditLog[]
-  referralPayouts     ReferralPayout[]     @relation("ReferrerPayouts")
-  ownedCampaigns      Campaign[]           @relation("OwnedCampaigns")
-  notifications       Notification[]
-  campaignSubmissions CampaignSubmission[]
-  wallet              Wallet?
-  lessonProgress      LessonProgress[]
-  quizAttempts        QuizAttempt[]
-  badges              UserBadge[]
+  creatorProfile               CreatorProfile?
+  auditLogs                    AuditLog[]
+  referralPayouts              ReferralPayout[]              @relation("ReferrerPayouts")
+  campaignReferralAttributions CampaignReferralAttribution[] @relation("CampaignReferralReferrer")
+  referredCampaignAttributions CampaignReferralAttribution[] @relation("CampaignReferralUser")
+  ownedCampaigns               Campaign[]                    @relation("OwnedCampaigns")
+  notifications                Notification[]
+  campaignSubmissions          CampaignSubmission[]
+  wallet                       Wallet?
+  lessonProgress               LessonProgress[]
+  quizAttempts                 QuizAttempt[]
+  badges                       UserBadge[]
 
   @@index([supabaseId])
   @@index([role])
@@ -50,34 +52,34 @@ enum UserRole {
 }
 
 model CreatorProfile {
-  id                 String   @id @default(cuid())
-  userId             String   @unique
-  user               User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  username           String?  @unique
-  displayName        String
-  bio                String?
-  avatarUrl          String?
-  walletAddress      String?
-  tronsAddress       String?
-  payoutIban         String?
-  payoutAccountName  String?
+  id                  String   @id @default(cuid())
+  userId              String   @unique
+  user                User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  username            String?  @unique
+  displayName         String
+  bio                 String?
+  avatarUrl           String?
+  walletAddress       String?
+  tronsAddress        String?
+  payoutIban          String?
+  payoutAccountName   String?
   payoutSolanaAddress String?
-  stripeAccountId    String?
-  primaryGeo         String   @default("US")
-  totalFollowers     Int      @default(0)
-  engagementRate     Decimal  @default(0) @db.Decimal(5, 2)
-  isVerified         Boolean  @default(false)
-  topCountry         String?
-  topCountryPercent  Float?
-  malePercent        Float?
-  age18PlusPercent   Float?
-  bestEngagementRate Float?
-  attributionSource  String?
-  experienceLevel    String?
-  portfolioVideoUrl  String?
-  hasTalkingVideos   Boolean  @default(false)
-  createdAt          DateTime @default(now())
-  updatedAt          DateTime @updatedAt
+  stripeAccountId     String?
+  primaryGeo          String   @default("US")
+  totalFollowers      Int      @default(0)
+  engagementRate      Decimal  @default(0) @db.Decimal(5, 2)
+  isVerified          Boolean  @default(false)
+  topCountry          String?
+  topCountryPercent   Float?
+  malePercent         Float?
+  age18PlusPercent    Float?
+  bestEngagementRate  Float?
+  attributionSource   String?
+  experienceLevel     String?
+  portfolioVideoUrl   String?
+  hasTalkingVideos    Boolean  @default(false)
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
 
   igConnections            CreatorIgConnection[]
   fbConnections            CreatorFbConnection[]
@@ -121,28 +123,28 @@ model ReferralPayout {
 // ─────────────────────────────────────────
 
 model CreatorIgConnection {
-  id               String         @id @default(cuid())
-  creatorProfileId String
-  creatorProfile   CreatorProfile @relation(fields: [creatorProfileId], references: [id], onDelete: Cascade)
-  igUsername       String         @unique
-  verificationCode String         @unique
-  isVerified       Boolean        @default(false)
-  verifiedAt       DateTime?
-  lastCheckedAt    DateTime?
-  followerCount    Int?
-  profilePicUrl    String?
-  igUserId         String?
-  accessToken      String?
-  accessTokenIv    String?
-  tokenExpiresAt   DateTime?
+  id                      String               @id @default(cuid())
+  creatorProfileId        String
+  creatorProfile          CreatorProfile       @relation(fields: [creatorProfileId], references: [id], onDelete: Cascade)
+  igUsername              String               @unique
+  verificationCode        String               @unique
+  isVerified              Boolean              @default(false)
+  verifiedAt              DateTime?
+  lastCheckedAt           DateTime?
+  followerCount           Int?
+  profilePicUrl           String?
+  igUserId                String?
+  accessToken             String?
+  accessTokenIv           String?
+  tokenExpiresAt          DateTime?
   accountRefreshStatus    AccountRefreshStatus @default(NEVER_REFRESHED)
   lastRefreshAttemptAt    DateTime?
   lastSuccessfulRefreshAt DateTime?
   lastRefreshFailedAt     DateTime?
   lastRefreshErrorCode    String?
   lastRefreshErrorMessage String?
-  createdAt        DateTime       @default(now())
-  updatedAt        DateTime       @updatedAt
+  createdAt               DateTime             @default(now())
+  updatedAt               DateTime             @updatedAt
 
   bioVerifications BioVerification[]
 
@@ -157,29 +159,29 @@ model CreatorIgConnection {
 // ─────────────────────────────────────────
 
 model CreatorFbConnection {
-  id               String         @id @default(cuid())
-  creatorProfileId String
-  creatorProfile   CreatorProfile @relation(fields: [creatorProfileId], references: [id], onDelete: Cascade)
-  fbPageId         String?        @unique
-  fbUserId         String?
-  pageName         String
-  pageHandle       String?
-  profilePicUrl    String?
-  followerCount    Int?
-  accessToken      String?
-  accessTokenIv    String?
-  tokenExpiresAt   DateTime?
-  isVerified       Boolean        @default(false)
-  verifiedAt       DateTime?
-  lastCheckedAt    DateTime?
+  id                      String               @id @default(cuid())
+  creatorProfileId        String
+  creatorProfile          CreatorProfile       @relation(fields: [creatorProfileId], references: [id], onDelete: Cascade)
+  fbPageId                String?              @unique
+  fbUserId                String?
+  pageName                String
+  pageHandle              String?
+  profilePicUrl           String?
+  followerCount           Int?
+  accessToken             String?
+  accessTokenIv           String?
+  tokenExpiresAt          DateTime?
+  isVerified              Boolean              @default(false)
+  verifiedAt              DateTime?
+  lastCheckedAt           DateTime?
   accountRefreshStatus    AccountRefreshStatus @default(NEVER_REFRESHED)
   lastRefreshAttemptAt    DateTime?
   lastSuccessfulRefreshAt DateTime?
   lastRefreshFailedAt     DateTime?
   lastRefreshErrorCode    String?
   lastRefreshErrorMessage String?
-  createdAt        DateTime       @default(now())
-  updatedAt        DateTime       @updatedAt
+  createdAt               DateTime             @default(now())
+  updatedAt               DateTime             @updatedAt
 
   bioVerifications BioVerification[]
 
@@ -195,28 +197,28 @@ model CreatorFbConnection {
 // ─────────────────────────────────────────
 
 model CreatorYtConnection {
-  id               String         @id @default(cuid())
-  creatorProfileId String
-  creatorProfile   CreatorProfile @relation(fields: [creatorProfileId], references: [id], onDelete: Cascade)
-  channelId        String         @unique
-  channelName      String
-  profilePicUrl    String?
-  subscriberCount  Int?
-  videoCount       Int?
-  accessToken      String?
-  accessTokenIv    String?
-  refreshToken     String?
-  refreshTokenIv   String?
-  tokenExpiresAt   DateTime?
-  isVerified       Boolean        @default(true)
+  id                      String               @id @default(cuid())
+  creatorProfileId        String
+  creatorProfile          CreatorProfile       @relation(fields: [creatorProfileId], references: [id], onDelete: Cascade)
+  channelId               String               @unique
+  channelName             String
+  profilePicUrl           String?
+  subscriberCount         Int?
+  videoCount              Int?
+  accessToken             String?
+  accessTokenIv           String?
+  refreshToken            String?
+  refreshTokenIv          String?
+  tokenExpiresAt          DateTime?
+  isVerified              Boolean              @default(true)
   accountRefreshStatus    AccountRefreshStatus @default(NEVER_REFRESHED)
   lastRefreshAttemptAt    DateTime?
   lastSuccessfulRefreshAt DateTime?
   lastRefreshFailedAt     DateTime?
   lastRefreshErrorCode    String?
   lastRefreshErrorMessage String?
-  createdAt        DateTime       @default(now())
-  updatedAt        DateTime       @updatedAt
+  createdAt               DateTime             @default(now())
+  updatedAt               DateTime             @updatedAt
 
   @@unique([creatorProfileId, channelId])
   @@index([creatorProfileId])
@@ -228,30 +230,30 @@ model CreatorYtConnection {
 // ─────────────────────────────────────────
 
 model CreatorTikTokConnection {
-  id               String         @id @default(cuid())
-  creatorProfileId String
-  creatorProfile   CreatorProfile @relation(fields: [creatorProfileId], references: [id], onDelete: Cascade)
-  tikTokOpenId     String?        @unique
-  username         String
-  displayName      String?
-  profilePicUrl    String?
-  followerCount    Int?
-  accessToken      String?
-  accessTokenIv    String?
-  refreshToken     String?
-  refreshTokenIv   String?
-  tokenExpiresAt   DateTime?
-  isVerified       Boolean        @default(false)
-  verifiedAt       DateTime?
-  lastCheckedAt    DateTime?
+  id                      String               @id @default(cuid())
+  creatorProfileId        String
+  creatorProfile          CreatorProfile       @relation(fields: [creatorProfileId], references: [id], onDelete: Cascade)
+  tikTokOpenId            String?              @unique
+  username                String
+  displayName             String?
+  profilePicUrl           String?
+  followerCount           Int?
+  accessToken             String?
+  accessTokenIv           String?
+  refreshToken            String?
+  refreshTokenIv          String?
+  tokenExpiresAt          DateTime?
+  isVerified              Boolean              @default(false)
+  verifiedAt              DateTime?
+  lastCheckedAt           DateTime?
   accountRefreshStatus    AccountRefreshStatus @default(NEVER_REFRESHED)
   lastRefreshAttemptAt    DateTime?
   lastSuccessfulRefreshAt DateTime?
   lastRefreshFailedAt     DateTime?
   lastRefreshErrorCode    String?
   lastRefreshErrorMessage String?
-  createdAt        DateTime       @default(now())
-  updatedAt        DateTime       @updatedAt
+  createdAt               DateTime             @default(now())
+  updatedAt               DateTime             @updatedAt
 
   demographicSubmissions TikTokDemographicSubmission[]
   bioVerifications       BioVerification[]
@@ -491,6 +493,7 @@ enum LeadPriority {
 model Campaign {
   id                String         @id @default(cuid())
   name              String
+  slug              String?        @unique
   platforms         Platform[]     @default([])
   description       String?
   contentGuidelines String?        @db.Text
@@ -554,6 +557,7 @@ model Campaign {
   applications          CampaignApplication[]
   campaignSubmissions   CampaignSubmission[]
   inviteLinks           CampaignInviteLink[]
+  referralAttributions  CampaignReferralAttribution[]
   productionAssignments ProductionAssignment[]
   contractDocuments     ContractDocument[]
 
@@ -604,6 +608,36 @@ model CampaignInviteLink {
 // ─────────────────────────────────────────
 // CAMPAIGN APPLICATIONS
 // ─────────────────────────────────────────
+
+model CampaignReferralAttribution {
+  id                String    @id @default(cuid())
+  campaignId        String
+  campaign          Campaign  @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  referrerId        String
+  referrer          User      @relation("CampaignReferralReferrer", fields: [referrerId], references: [id], onDelete: Cascade)
+  referralCode      String
+  clickId           String    @unique
+  referredUserId    String?
+  referredUser      User?     @relation("CampaignReferralUser", fields: [referredUserId], references: [id], onDelete: SetNull)
+  clickedAt         DateTime  @default(now())
+  signedUpAt        DateTime?
+  onboardedAt       DateTime?
+  discordLinkedAt   DateTime?
+  socialConnectedAt DateTime?
+  firstSubmissionAt DateTime?
+  activeAt          DateTime?
+  firstEarnedAmount Decimal?  @db.Decimal(10, 2)
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  @@unique([campaignId, referredUserId])
+  @@index([campaignId])
+  @@index([referrerId])
+  @@index([campaignId, referrerId])
+  @@index([referredUserId])
+  @@index([onboardedAt])
+  @@index([activeAt])
+}
 
 model CampaignApplication {
   id                 String            @id @default(cuid())
@@ -664,12 +698,14 @@ model CampaignSubmission {
   productionAssignmentId String?               @unique
   productionAssignment   ProductionAssignment? @relation(fields: [productionAssignmentId], references: [id])
 
-  postUrl       String
-  videoUrl      String?
-  screenshotUrl String?
-  thumbnailUrl  String?
-  mediaType     String?
-  claimedViews  Int              @default(0)
+  postUrl            String
+  normalizedPlatform String?
+  platformVideoId    String?
+  videoUrl           String?
+  screenshotUrl      String?
+  thumbnailUrl       String?
+  mediaType          String?
+  claimedViews       Int              @default(0)
   brandMessage  String?          @db.Text
   viewCount     Int?
   likeCount     Int?
@@ -680,13 +716,13 @@ model CampaignSubmission {
   status        SubmissionStatus @default(PENDING)
 
   // Source tracking for bio-verify fallback flow
-  sourcePlatform BioPlatform?
-  sourceMethod   SubmissionMethod @default(UNKNOWN)
-  authorHandle   String?
-  sourceConnectionType ConnectionType?
-  sourceConnectionId   String?
-  lastMetricsRefreshAt    DateTime?
-  metricsRefreshFailures  Int              @default(0)
+  sourcePlatform         BioPlatform?
+  sourceMethod           SubmissionMethod @default(UNKNOWN)
+  authorHandle           String?
+  sourceConnectionType   ConnectionType?
+  sourceConnectionId     String?
+  lastMetricsRefreshAt   DateTime?
+  metricsRefreshFailures Int              @default(0)
 
   reviewedAt    DateTime?
   reviewedBy    String?
@@ -717,6 +753,7 @@ model CampaignSubmission {
   @@index([status])
   @@index([settledAt])
   @@index([sourceConnectionType, sourceConnectionId])
+  @@unique([normalizedPlatform, platformVideoId])
   @@index([logoStatus])
   @@index([productionAssignmentId])
 }
@@ -1160,6 +1197,8 @@ model SignupTicket {
   id           String    @id @default(cuid())
   email        String
   ref          String?
+  campaignSlug String?
+  clickId      String?
   expiresAt    DateTime
   usedAt       DateTime?
   accessToken  String?
@@ -1259,26 +1298,26 @@ model SiteAnalyticsSnapshot {
 // ─────────────────────────────────────────
 
 model MetricSnapshot {
-  id                String             @id @default(cuid())
-  submissionId      String
-  submission        CampaignSubmission @relation(fields: [submissionId], references: [id], onDelete: Cascade)
-  capturedAt        DateTime           @default(now())
-  source            MetricSource
-  viewCount         BigInt
-  likeCount         Int                @default(0)
-  commentCount      Int                @default(0)
-  shareCount        Int                @default(0)
-  saveCount         Int?
-  watchTimeSec      Int?
-  reachCount        Int?
-  raw               Json?
+  id                 String             @id @default(cuid())
+  submissionId       String
+  submission         CampaignSubmission @relation(fields: [submissionId], references: [id], onDelete: Cascade)
+  capturedAt         DateTime           @default(now())
+  source             MetricSource
+  viewCount          BigInt
+  likeCount          Int                @default(0)
+  commentCount       Int                @default(0)
+  shareCount         Int                @default(0)
+  saveCount          Int?
+  watchTimeSec       Int?
+  reachCount         Int?
+  raw                Json?
   metricAvailability Json?
   // Track-everything extensions (PR1 — additive, populated by per-platform PRs)
-  totalInteractions Int?
-  followsFromMedia  Int?
-  profileVisits     Int?
-  profileActivity   Json?
-  reactionsByType   Json?
+  totalInteractions  Int?
+  followsFromMedia   Int?
+  profileVisits      Int?
+  profileActivity    Json?
+  reactionsByType    Json?
 
   @@index([submissionId, capturedAt])
   @@index([source])

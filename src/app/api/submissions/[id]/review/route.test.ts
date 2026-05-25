@@ -11,6 +11,7 @@ const routeMocks = vi.hoisted(() => {
       findFirst: vi.fn(),
     },
     campaignSubmission: { update: vi.fn() },
+    campaignReferralAttribution: { updateMany: vi.fn() },
     campaignApplication: { update: vi.fn() },
     notification: { create: vi.fn() },
     auditLog: { create: vi.fn() },
@@ -22,6 +23,7 @@ const routeMocks = vi.hoisted(() => {
     userFindUnique: vi.fn(),
     submissionFindUnique: vi.fn(),
     transaction: vi.fn(async (callback: (client: ReviewTransaction) => unknown) => callback(tx)),
+    reconcileReferralPayoutForSubmission: vi.fn(),
     tx,
   };
 });
@@ -40,6 +42,10 @@ vi.mock("@/lib/prisma", () => ({
   },
 }));
 
+vi.mock("@/lib/referral-reconciliation", () => ({
+  reconcileReferralPayoutForSubmission: routeMocks.reconcileReferralPayoutForSubmission,
+}));
+
 const params = { params: Promise.resolve({ id: "submission-1" }) };
 
 function reviewRequest(body: unknown) {
@@ -55,6 +61,7 @@ function submission(overrides: Record<string, unknown> = {}) {
     id: "submission-1",
     status: "PENDING",
     creatorId: "creator-user-1",
+    campaignId: "campaign-1",
     applicationId: "application-1",
     earnedAmount: 0,
     eligibleViews: null,
@@ -64,6 +71,7 @@ function submission(overrides: Record<string, unknown> = {}) {
     settledAt: null,
     payoutRunItems: [],
     metricSnapshots: [],
+    createdAt: new Date("2026-05-20T10:00:00.000Z"),
     campaign: {
       id: "campaign-1",
       name: "Spring Campaign",
@@ -93,6 +101,11 @@ describe("POST /api/submissions/[id]/review", () => {
     routeMocks.tx.campaignSubmission.update.mockResolvedValue({
       id: "submission-1",
       status: "REJECTED",
+    });
+    routeMocks.reconcileReferralPayoutForSubmission.mockResolvedValue({
+      action: "unchanged",
+      amount: 0,
+      status: null,
     });
   });
 
@@ -186,16 +199,10 @@ describe("POST /api/submissions/[id]/review", () => {
       where: { id: "application-1" },
       data: { earnedAmount: { decrement: 43 } },
     });
-    expect(routeMocks.tx.referralPayout.deleteMany).toHaveBeenCalledWith({
-      where: {
-        id: "referral-payout-1",
-        status: "pending",
-      },
-    });
-    expect(routeMocks.tx.user.update).toHaveBeenCalledWith({
-      where: { id: "referrer-user-1" },
-      data: { referralEarnings: { decrement: 4.28 } },
-    });
+    expect(routeMocks.reconcileReferralPayoutForSubmission).toHaveBeenCalledWith(
+      routeMocks.tx,
+      "submission-1",
+    );
   });
 
   it("blocks rejecting approved submissions that are already paid or locked in a payout run", async () => {

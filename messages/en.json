@@ -281,6 +281,7 @@
       "control": "Control",
       "commandCenter": "Command Center",
       "campaigns": "Campaigns",
+      "referrals": "Referrals",
       "clippers": "Clippers",
       "production": "Production",
       "clipReview": "Clip review",
@@ -950,6 +951,12 @@
         "noClipsDescription": "Submit a clip from your connected social accounts and it will appear here.",
         "biggestEarners": "Biggest earners",
         "noEarners": "No approved earners yet.",
+        "referralLink": {
+          "title": "Personal bio link",
+          "description": "Place this ClipProfit link in your bio so invites and active clippers are tracked for this campaign.",
+          "copy": "Copy link",
+          "copied": "Copied"
+        },
         "contactSupport": {
           "title": "Need help with this campaign?",
           "description": "Support now runs through Discord so the team can keep every request in one place.",
@@ -1093,8 +1100,12 @@
       "overview": {
         "availableBalance": "Available balance",
         "readyUnlocks": "Ready when withdrawal unlocks",
+        "pendingReview": "Under review",
+        "pendingReviewDetail": "Approved clips waiting on fraud checks",
         "pending": "Pending",
         "requestsProgress": "Requests in progress",
+        "paid": "Paid",
+        "paidDetail": "Confirmed, sent, or settled",
         "profit": "Profit",
         "profitDetail": "Successfully paid out",
         "totalPaid": "Total paid",
@@ -1113,7 +1124,9 @@
       "withdraw": {
         "loading": "Loading...",
         "balance": "Balance",
+        "pendingReviewBalance": "Under review",
         "pendingBalance": "In progress",
+        "paidBalance": "Paid",
         "profit": "Profit",
         "methodTitle": "Bank details",
         "panelTitle": "Request withdrawal",
@@ -1177,24 +1190,41 @@
     },
     "referral": {
       "page": {
-        "title": "Referral Program",
-        "description": "Earn up to €100 for every creator you invite - paid as 10% of their earnings until you hit the €100 cap. We pay 110%: creators keep 100%, your share is on top.",
-        "emptyTitle": "Invite a creator, earn up to €100 per signup",
-        "emptyDescription": "Share your link below. Every clipper who signs up under it earns you up to €100 - paid as 10% of their payouts until that cap. They still keep 100%; our platform covers your share.",
-        "peopleInvited": "People Invited",
-        "totalEarned": "Total Earned",
+        "title": "ClipProfit link",
+        "description": "Use this personal link in your bio for the ClipProfit campaign.",
+        "emptyTitle": "Invite a creator",
+        "emptyDescription": "Share your link below so new creators can join ClipProfit.",
+        "peopleInvited": "People invited",
+        "totalEarned": "Approved invites",
         "pending": "Pending",
+        "pendingReview": "Under review",
         "thisMonth": "This Month",
-        "earningsOverTime": "Earnings Over Time",
-        "topReferrers": "Top Referrers",
-        "yourReferrals": "Your referrals",
+        "earningsOverTime": "Activity over time",
+        "topReferrers": "Invite leaderboard",
+        "yourReferrals": "Your invites",
         "recentActivity": "Recent Activity",
         "anonymous": "Anonymous",
-        "unknown": "Unknown"
+        "unknown": "Unknown",
+        "metrics": {
+          "clicks": "Link clicks",
+          "clicksDetail": "Measured visits through your bio link",
+          "invites": "Invites",
+          "invitesDetail": "Finished onboarding through your link",
+          "activeClippers": "Active clippers",
+          "activeClippersDetail": "Invites with at least 1 submission",
+          "conversion": "Conversion",
+          "conversionDetail": "Active clippers divided by invites"
+        },
+        "definitions": {
+          "title": "How we count this",
+          "invite": "Invite = someone finishes onboarding through your ClipProfit link.",
+          "active": "Active clipper = an invite submitted at least 1 post.",
+          "approved": "Approved signal = an invite later has an approved clip."
+        }
       },
       "link": {
-        "title": "Your referral link",
-        "description": "Share this link with creators. You earn 10% of their payouts until the €100 cap.",
+        "title": "Your ClipProfit bio link",
+        "description": "Place this link in your bio for the ClipProfit campaign.",
         "code": "Referral code",
         "yourCode": "Your code: {code}",
         "copy": "Copy",
@@ -1206,59 +1236,20 @@
         "hideQr": "Hide QR",
         "qrCode": "QR code",
         "discordTooltip": "Copies a formatted message you can paste into Discord",
-        "shareText": "Join me on ClipProfit and start earning from your content!",
+        "shareText": "Join ClipProfit through my campaign link.",
         "mailSubject": "Join ClipProfit",
-        "mailBody": "Hey! I have been using ClipProfit to earn from my content. Sign up with my referral link and let's both earn:",
-        "discordMessage": "**Earn from your clips on ClipProfit** - sign up with my link and we both earn: {url}"
-      },
-      "milestone": {
-        "title": "Referral milestone",
-        "invited": "{count, plural, one {# creator invited} other {# creators invited}}",
-        "next": "{count, plural, one {# more invite} other {# more invites}}",
-        "topTierReached": "Top tier reached",
-        "nextMilestone": "Next milestone",
-        "maxDescription": "You passed {count} invites. Thanks for spreading the word.",
-        "unlocks": "Unlocks: {reward}.",
-        "rewards": {
-          "firstCommission": "First commission unlocked",
-          "recruiterBadge": "Recruiter badge on your profile",
-          "priorityFeedback": "Priority feedback on your clips",
-          "earlyAccess": "Early access to new campaigns",
-          "topReferrer": "Top Referrer status + Discord role"
-        }
-      },
-      "table": {
-        "creator": "Creator",
-        "joined": "Joined",
-        "commission": "Commission",
-        "empty": "No referred creators yet.",
-        "emptyTitle": "No referrals yet",
-        "emptyDescription": "Share your link. When someone signs up and starts earning, they will appear here.",
-        "user": "User",
-        "capProgress": "Cap progress",
-        "yourCommission": "Your commission",
-        "maxed": "Maxed",
-        "joinedDate": "Joined {date}",
-        "commissionAmount": "{amount} commission"
-      },
-      "activity": {
-        "signup": "{name} signed up",
-        "earning": "{name} generated {amount}",
-        "empty": "No referral activity yet.",
-        "emptyStart": "No activity yet. Share your referral link to get started.",
-        "signupWithLink": "{name} signed up with your link",
-        "earnedFrom": "Earned {amount} from {name}"
+        "mailBody": "Hey! Join ClipProfit through my campaign link:",
+        "discordMessage": "**Join ClipProfit** - sign up through my campaign link: {url}"
       },
       "leaderboard": {
+        "title": "Invite leaderboard",
+        "description": "Top creators based on active ClipProfit invites.",
         "referrals": "Referrals",
-        "earned": "Earned",
+        "activeClippers": "Active clippers",
+        "earned": "Approved",
         "you": "You",
-        "empty": "No referrers yet. Be the first!",
+        "empty": "No invites tracked yet.",
         "yourRank": "Your rank: #{rank}"
-      },
-      "chart": {
-        "empty": "No referral earnings yet.",
-        "earnings": "Earnings"
       }
     },
     "profile": {

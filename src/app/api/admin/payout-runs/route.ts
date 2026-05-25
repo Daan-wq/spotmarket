@@ -3,6 +3,8 @@ import { z } from "zod";
 import { requireAuth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { jsonError, isoDate, serialize } from "@/lib/admin/agency-api";
+import { isSubmissionPayoutEligible } from "@/lib/financial-eligibility";
+import { reconcileReferralPayoutForSubmission } from "@/lib/referral-reconciliation";
 
 const payoutRunSchema = z.object({
   name: z.string().max(180).optional(),
@@ -63,31 +65,59 @@ export async function POST(req: Request) {
     const periodEnd = data.periodEnd as Date;
     const currency = data.currency ?? "EUR";
 
-    const approvedSubmissions = await prisma.campaignSubmission.findMany({
-      where: {
-        status: "APPROVED",
-        reviewedAt: { gte: periodStart, lte: periodEnd },
-        payoutRunItems: { none: {} },
-      },
-      include: {
-        productionAssignment: true,
-        creator: {
-          select: {
-            creatorProfile: {
-              select: {
-                id: true,
-                operationalProfile: { select: { ratePerClip: true } },
+    const run = await prisma.$transaction(async (tx) => {
+      const approvedSubmissions = await tx.campaignSubmission.findMany({
+        where: {
+          status: "APPROVED",
+          reviewedAt: { gte: periodStart, lte: periodEnd },
+          settledAt: null,
+          payoutRunItems: { none: {} },
+          earnedAmount: { gt: 0 },
+          submissionSignals: {
+            none: {
+              resolvedAt: null,
+              severity: { in: ["WARN", "CRITICAL"] },
+            },
+          },
+        },
+        include: {
+          productionAssignment: true,
+          payoutRunItems: {
+            select: {
+              id: true,
+              payout: { select: { status: true } },
+            },
+          },
+          submissionSignals: {
+            where: {
+              resolvedAt: null,
+              severity: { in: ["WARN", "CRITICAL"] },
+            },
+            select: { severity: true, resolvedAt: true },
+          },
+          creator: {
+            select: {
+              creatorProfile: {
+                select: {
+                  id: true,
+                  operationalProfile: { select: { ratePerClip: true } },
+                },
               },
             },
           },
         },
-      },
-      take: 500,
-    });
+        take: 500,
+      });
 
-    const items = approvedSubmissions
-      .filter((submission) => submission.creator.creatorProfile?.id)
-      .map((submission) => {
+      const eligibleSubmissions = approvedSubmissions.filter((submission) =>
+        Boolean(submission.creator.creatorProfile?.id) &&
+        isSubmissionPayoutEligible(submission),
+      );
+      for (const submission of eligibleSubmissions) {
+        await reconcileReferralPayoutForSubmission(tx, submission.id);
+      }
+
+      const items = eligibleSubmissions.map((submission) => {
         const creatorProfile = submission.creator.creatorProfile!;
         const gross = Number(submission.earnedAmount);
         const rate = Number(creatorProfile.operationalProfile?.ratePerClip ?? 0);
@@ -103,31 +133,34 @@ export async function POST(req: Request) {
         };
       });
 
-    const totalGross = items.reduce((sum, item) => sum + item.total, 0);
-    const totalNet = totalGross;
+      const totalGross = items.reduce((sum, item) => sum + item.total, 0);
+      const totalNet = totalGross;
 
-    const run = await prisma.payoutRun.create({
-      data: {
-        name: data.name ?? `Payout run ${periodStart.toLocaleDateString()} - ${periodEnd.toLocaleDateString()}`,
-        periodStart,
-        periodEnd,
-        currency,
-        totalGross,
-        totalNet,
-        createdBy: userId,
-        items: { create: items },
-      },
-      include: { items: true },
-    });
+      const createdRun = await tx.payoutRun.create({
+        data: {
+          name: data.name ?? `Payout run ${periodStart.toLocaleDateString()} - ${periodEnd.toLocaleDateString()}`,
+          periodStart,
+          periodEnd,
+          currency,
+          totalGross,
+          totalNet,
+          createdBy: userId,
+          items: { create: items },
+        },
+        include: { items: true },
+      });
 
-    await prisma.auditLog.create({
-      data: {
-        userId,
-        action: "payoutRun.create",
-        entityType: "PayoutRun",
-        entityId: run.id,
-        metadata: { itemCount: run.items.length, totalNet },
-      },
+      await tx.auditLog.create({
+        data: {
+          userId,
+          action: "payoutRun.create",
+          entityType: "PayoutRun",
+          entityId: createdRun.id,
+          metadata: { itemCount: createdRun.items.length, totalNet },
+        },
+      });
+
+      return createdRun;
     });
 
     return NextResponse.json(serialize(run), { status: 201 });
