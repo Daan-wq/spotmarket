@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { PageHeader, SectionHeader, StatCard } from "@/components/ui/page";
 import { formatDate, formatNumber, titleCaseEnum } from "@/lib/admin/agency-format";
 import { metricAvailabilityValue, type MetricAvailabilityKey } from "@/lib/contracts/metrics";
+import { AUTO_ANTIBOT_RESOLVED_BY } from "@/lib/metrics/anti-bot-signal";
 import { prisma } from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
@@ -118,10 +119,16 @@ export default async function SignalDetailPage({ params }: PageProps) {
       <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-neutral-200 bg-white p-4">
         <div>
           <p className="text-sm font-semibold text-neutral-950">
-            {signal.resolvedAt ? "Deze waarschuwing is opgelost" : "Open waarschuwing"}
+            {signal.resolvedBy === AUTO_ANTIBOT_RESOLVED_BY
+              ? "Deze waarschuwing is automatisch opgelost"
+              : signal.resolvedAt
+                ? "Deze waarschuwing is opgelost"
+                : "Open waarschuwing"}
           </p>
           <p className="mt-1 text-xs leading-5 text-neutral-500">
-            Oplossen verbergt dit signaal uit de open lijst. Als dezelfde maker later opnieuw verdacht gedrag vertoont, maakt de poller weer een nieuw signaal aan.
+            {signal.resolvedBy === AUTO_ANTIBOT_RESOLVED_BY
+              ? "Een nieuwe anti-bot herberekening kwam onder de risicodrempel. Als dezelfde maker later opnieuw verdacht gedrag vertoont, maakt de poller weer een nieuw signaal aan."
+              : "Oplossen verbergt dit signaal uit de open lijst. Als dezelfde maker later opnieuw verdacht gedrag vertoont, maakt de poller weer een nieuw signaal aan."}
           </p>
         </div>
         <SignalResolveButton signalId={signal.id} resolved={Boolean(signal.resolvedAt)} />

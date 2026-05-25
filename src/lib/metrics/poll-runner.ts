@@ -19,6 +19,7 @@ import { routeMetric } from "./router";
 import { scoreVelocity, type FlagDraft } from "@/lib/velocity-scorer";
 import { calculatePaidViews } from "@/lib/paid-views";
 import { UNAVAILABLE_METRICS } from "@/lib/contracts/metrics";
+import { syncAntiBotSignal } from "./anti-bot-signal";
 
 export type Tier = "hot" | "warm" | "cold";
 
@@ -127,7 +128,7 @@ export async function pollSubmissions(opts: RunOptions): Promise<PollResult> {
 
         const recent = await prisma.metricSnapshot.findMany({
           where: { submissionId: sub.id },
-          orderBy: { capturedAt: "asc" },
+          orderBy: { capturedAt: "desc" },
           take: 200,
           select: {
             capturedAt: true,
@@ -139,6 +140,7 @@ export async function pollSubmissions(opts: RunOptions): Promise<PollResult> {
             metricAvailability: true,
           },
         });
+        const recentAsc = [...recent].reverse();
 
         const [campaignBenchmark, accountSnapshot] = await Promise.all([
           prisma.campaignBenchmark.findFirst({
@@ -159,13 +161,13 @@ export async function pollSubmissions(opts: RunOptions): Promise<PollResult> {
         ]);
 
         const scored = scoreVelocity({
-          snapshots: recent,
+          snapshots: recentAsc,
           campaignBenchmark,
           accountSnapshot,
           now: snap.capturedAt,
         });
 
-        const prev = recent.length >= 2 ? recent[recent.length - 2] : null;
+        const prev = recentAsc.length >= 2 ? recentAsc[recentAsc.length - 2] : null;
         const deltaViews = prev ? Number(snap.viewCount) - Number(prev.viewCount) : Number(snap.viewCount);
         const cumulativeViews = Number(snap.viewCount);
         const shouldRefreshEarnings =
@@ -211,7 +213,15 @@ export async function pollSubmissions(opts: RunOptions): Promise<PollResult> {
           occurredAt: new Date().toISOString(),
         });
 
+        const antiBotSync = scored.antiBot
+          ? await syncAntiBotSignal(sub.id, scored.antiBot)
+          : { action: "unchanged" as const };
+        if (antiBotSync.action === "created") {
+          flagged++;
+        }
+
         for (const flag of scored.flags) {
+          if (flag.type === "BOT_SUSPECTED") continue;
           await emitFlag(sub.id, flag);
           flagged++;
         }

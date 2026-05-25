@@ -334,7 +334,7 @@ function evaluateAntiBot(input: AntiBotInput): AntiBotPayload {
     reasons,
     evidence: orderedEvidence,
     evaluatedAt: input.evaluatedAt.toISOString(),
-    version: "anti-bot-v1",
+    version: "anti-bot-v2",
   };
 }
 

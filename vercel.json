@@ -26,6 +26,10 @@
       "schedule": "0 3 * * *"
     },
     {
+      "path": "/api/cron/recompute-antibot-signals",
+      "schedule": "35 0 * * *"
+    },
+    {
       "path": "/api/cron/notification-dispatch",
       "schedule": "20 0 * * *"
     },

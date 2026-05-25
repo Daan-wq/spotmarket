@@ -64,7 +64,7 @@ export interface AntiBotPayload extends SignalPayloadBase {
   reasons: string[];
   evidence: AntiBotEvidence[];
   evaluatedAt: string;
-  version: "anti-bot-v1";
+  version: "anti-bot-v1" | "anti-bot-v2";
 }
 
 export type SignalPayload =
