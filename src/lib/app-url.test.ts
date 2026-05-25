@@ -1,5 +1,11 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { buildAppUrl, getAppUrlFromHost, getAppUrlFromRequest, getAppUrlForLocale } from "./app-url";
+import {
+  buildAppUrl,
+  getAppUrlFromHeaders,
+  getAppUrlFromHost,
+  getAppUrlFromRequest,
+  getAppUrlForLocale,
+} from "./app-url";
 import { getLocaleFromHost } from "@/i18n/routing";
 
 const savedEnv = {
@@ -59,6 +65,22 @@ describe("app URL and locale routing", () => {
     });
 
     expect(getAppUrlFromRequest(req)).toBe("https://preview-123.vercel.app");
+  });
+
+  it("builds dashboard links from forwarded preview headers", () => {
+    const headers = new Headers({
+      "x-forwarded-host": "preview-123.vercel.app",
+      "x-forwarded-proto": "https",
+      host: "app.clipprofit.com",
+    });
+
+    expect(getAppUrlFromHeaders(headers)).toBe("https://preview-123.vercel.app");
+  });
+
+  it("uses http for local dashboard links", () => {
+    expect(getAppUrlFromHeaders(new Headers({ host: "localhost:3000" }))).toBe(
+      "http://localhost:3000",
+    );
   });
 
   it("builds absolute app URLs without double slashes", () => {

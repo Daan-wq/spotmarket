@@ -2,7 +2,8 @@ import { requireAuth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { ReferralLink } from "./_components/referral-link";
 import { getLocale, getTranslations } from "next-intl/server";
-import { buildAppUrl, getAppUrlForLocale } from "@/lib/app-url";
+import { headers } from "next/headers";
+import { buildAppUrl, getAppUrlFromHeaders } from "@/lib/app-url";
 import {
   buildCampaignReferralUrl,
   calculateCampaignReferralReport,
@@ -23,9 +24,10 @@ export default async function ReferralPage() {
   if (!user) throw new Error("User not found");
 
   const locale = (await getLocale()) as Locale;
+  const headerStore = await headers();
   const t = await getTranslations("creator.referral.page");
   const leaderboardT = await getTranslations("creator.referral.leaderboard");
-  const baseUrl = getAppUrlForLocale(locale);
+  const baseUrl = getAppUrlFromHeaders(headerStore);
   const referralUrl = user.referralCode
     ? buildCampaignReferralUrl(CLIPPROFIT_CAMPAIGN_SLUG, user.referralCode, baseUrl)
     : buildAppUrl("/sign-up", baseUrl);
@@ -36,7 +38,12 @@ export default async function ReferralPage() {
   });
 
   const campaign = await prisma.campaign.findFirst({
-    where: { slug: CLIPPROFIT_CAMPAIGN_SLUG },
+    where: {
+      OR: [
+        { slug: CLIPPROFIT_CAMPAIGN_SLUG },
+        { name: { equals: "ClipProfit", mode: "insensitive" } },
+      ],
+    },
     select: {
       totalBudget: true,
       referralAttributions: {

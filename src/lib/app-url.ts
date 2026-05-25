@@ -23,6 +23,25 @@ export function getAppUrlFromHost(host: string | null | undefined): string {
   return getAppUrlForLocale(getLocaleFromHost(host));
 }
 
+export function getAppUrlFromHeaders(
+  headers: Pick<Headers, "get">,
+): string {
+  const host = (
+    headers.get("x-forwarded-host") ??
+    headers.get("x-host") ??
+    headers.get("host")
+  )?.split(",")[0]?.trim();
+  if (!host) return getAppUrlForLocale();
+
+  const hostname = host.split(":")[0] ?? "";
+  const protocol = LOCAL_HOSTS.has(hostname)
+    ? "http"
+    : (headers.get("x-forwarded-proto") ?? "https").split(",")[0]?.trim() ||
+      "https";
+
+  return normalizeBaseUrl(`${protocol}://${host}`);
+}
+
 export function getLocaleFromRequest(request: Request): Locale {
   const headerLocale = request.headers.get("x-locale");
   if (isLocale(headerLocale)) return headerLocale;
