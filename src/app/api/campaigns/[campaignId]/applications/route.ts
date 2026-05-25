@@ -15,6 +15,7 @@ import {
   DiscordCampaignRoleError,
   removeDiscordCampaignRole,
 } from "@/lib/discord-campaign-roles";
+import { ensureDiscordCampaignProvisioning } from "@/lib/discord-campaign-provisioning";
 
 function discordRoleErrorResponse(err: unknown) {
   if (err instanceof DiscordCampaignRoleError) {
@@ -156,7 +157,8 @@ export async function POST(
     }
 
     try {
-      await addDiscordCampaignRole(campaign, user.discordId);
+      const provisioned = await ensureDiscordCampaignProvisioning(campaign);
+      await addDiscordCampaignRole(provisioned.campaign, user.discordId);
     } catch (err) {
       return discordRoleErrorResponse(err);
     }

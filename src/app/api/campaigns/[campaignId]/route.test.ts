@@ -7,6 +7,7 @@ const routeMocks = vi.hoisted(() => ({
   campaignFindUnique: vi.fn(),
   campaignUpdate: vi.fn(),
   applicationFindMany: vi.fn(),
+  ensureDiscordCampaignResources: vi.fn(),
   removeDiscordCampaignRole: vi.fn(),
 }));
 
@@ -28,6 +29,7 @@ vi.mock("@/lib/prisma", () => ({
 }));
 
 vi.mock("@/lib/discord-campaign-roles", () => ({
+  ensureDiscordCampaignResources: routeMocks.ensureDiscordCampaignResources,
   removeDiscordCampaignRole: routeMocks.removeDiscordCampaignRole,
 }));
 
@@ -50,6 +52,8 @@ function campaign(status = "active") {
     maximumPaidViews: null,
     creatorCpv: 0.01,
     adminMargin: 0.002,
+    discordRoleId: null,
+    discordChannelId: null,
   };
 }
 
@@ -65,6 +69,12 @@ describe("PATCH /api/campaigns/[campaignId]", () => {
       { creatorProfile: { user: { discordId: null } } },
       { creatorProfile: { user: { discordId: "discord-user-2" } } },
     ]);
+    routeMocks.ensureDiscordCampaignResources.mockResolvedValue({
+      roleId: "discord-role-1",
+      channelId: "discord-channel-1",
+      roleCreated: true,
+      channelCreated: true,
+    });
     routeMocks.removeDiscordCampaignRole.mockResolvedValue({ skipped: false });
   });
 
@@ -108,5 +118,46 @@ describe("PATCH /api/campaigns/[campaignId]", () => {
     expect(response.status).toBe(200);
     expect(routeMocks.applicationFindMany).not.toHaveBeenCalled();
     expect(routeMocks.removeDiscordCampaignRole).not.toHaveBeenCalled();
+    expect(routeMocks.ensureDiscordCampaignResources).not.toHaveBeenCalled();
+  });
+
+  it("provisions Discord campaign resources when a campaign becomes active", async () => {
+    routeMocks.campaignFindUnique.mockResolvedValueOnce(campaign("draft"));
+    routeMocks.campaignUpdate.mockResolvedValueOnce({
+      ...campaign("active"),
+      discordRoleId: "discord-role-1",
+      discordChannelId: "discord-channel-1",
+    });
+
+    const response = await PATCH(request({ status: "active" }), params);
+
+    expect(response.status).toBe(200);
+    expect(routeMocks.ensureDiscordCampaignResources).toHaveBeenCalledWith(
+      expect.objectContaining({
+        id: "campaign-1",
+        name: "ClipProfit",
+        discordRoleId: null,
+        discordChannelId: null,
+      }),
+    );
+    expect(routeMocks.campaignUpdate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          status: "active",
+          discordRoleId: "discord-role-1",
+          discordChannelId: "discord-channel-1",
+        }),
+      }),
+    );
+    await expect(response.json()).resolves.toEqual(
+      expect.objectContaining({
+        discordProvisioning: {
+          roleId: "discord-role-1",
+          channelId: "discord-channel-1",
+          roleCreated: true,
+          channelCreated: true,
+        },
+      }),
+    );
   });
 });

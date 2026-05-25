@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { requireAuth } from "@/lib/auth";
 import type { Niche } from "@prisma/client";
 import { z } from "zod";
+import { ensureDiscordCampaignProvisioning } from "@/lib/discord-campaign-provisioning";
 
 const launchCampaignSchema = z.object({
   name: z.string().min(3),
@@ -79,11 +80,20 @@ export async function POST(req: NextRequest) {
         targetMinAge18Percent: data.targetMinAge18Percent,
         targetMalePercent: data.targetMalePercent,
         createdByUserId: user.id,
-        status: "active",
+        status: "draft",
       },
     });
 
-    return NextResponse.json({ campaign }, { status: 201 });
+    const provisioned = await ensureDiscordCampaignProvisioning(campaign);
+    const activeCampaign = await prisma.campaign.update({
+      where: { id: campaign.id },
+      data: { status: "active" },
+    });
+
+    return NextResponse.json(
+      { campaign: activeCampaign, discordProvisioning: provisioned.resources },
+      { status: 201 },
+    );
   } catch (err: unknown) {
     console.error("[campaigns launch]", err);
     if (err instanceof z.ZodError) {

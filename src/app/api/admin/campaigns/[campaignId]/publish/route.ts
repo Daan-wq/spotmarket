@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { checkRole } from "@/lib/auth";
+import { ensureDiscordCampaignProvisioning } from "@/lib/discord-campaign-provisioning";
 
 export async function POST(
   _req: Request,
@@ -13,10 +14,15 @@ export async function POST(
 
   const campaign = await prisma.campaign.findUnique({
     where: { id: campaignId },
-    select: { id: true },
   });
 
   if (!campaign) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
-  return NextResponse.json({ success: true, discordAnnouncement: "disabled" });
+  const provisioned = await ensureDiscordCampaignProvisioning(campaign);
+
+  return NextResponse.json({
+    success: true,
+    discordAnnouncement: "disabled",
+    discordProvisioning: provisioned.resources,
+  });
 }

@@ -512,6 +512,8 @@ model Campaign {
   startsAt          DateTime?
   status            CampaignStatus @default(draft)
   briefAssetUrl     String?
+  discordRoleId     String?        @unique
+  discordChannelId  String?        @unique
 
   // Instant claim
   maxSlots         Int?
