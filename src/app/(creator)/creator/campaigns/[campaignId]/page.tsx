@@ -1,9 +1,10 @@
 import Link from "next/link";
+import { headers } from "next/headers";
 import { getLocale, getTranslations } from "next-intl/server";
 import { notFound } from "next/navigation";
 import { requireAuth } from "@/lib/auth";
 import type { Locale } from "@/i18n/routing";
-import { getAppUrlForLocale } from "@/lib/app-url";
+import { getAppUrlFromHeaders } from "@/lib/app-url";
 import { buildCampaignReferralUrl } from "@/lib/campaign-referrals";
 import {
   formatCurrency,
@@ -302,12 +303,13 @@ export default async function CampaignDetailPage({
   };
   const myViews = videos.reduce((sum, video) => sum + video.views, 0);
   const projectedEarned = videos.reduce((sum, video) => sum + video.earned, 0);
+  const headerStore = await headers();
   const campaignReferralUrl =
     campaign.slug && user.referralCode
       ? buildCampaignReferralUrl(
           campaign.slug,
           user.referralCode,
-          getAppUrlForLocale(locale),
+          getAppUrlFromHeaders(headerStore),
         )
       : null;
 
