@@ -1190,9 +1190,9 @@
     "referral": {
       "page": {
         "title": "Referralprogramma",
-        "description": "Verdien tot €100 voor elke creator die je uitnodigt - betaald als 10% van hun inkomsten tot je de €100-cap raakt. Wij betalen 110%: creators houden 100%, jouw deel komt daarbovenop.",
-        "emptyTitle": "Nodig een creator uit en verdien tot €100 per signup",
-        "emptyDescription": "Deel je link hieronder. Elke clipper die via jouw link aanmeldt levert je tot €100 op - betaald als 10% van hun payouts tot die cap. Zij houden nog steeds 100%; ons platform betaalt jouw deel.",
+        "description": "Nodig creators uit voor ClipProfit.",
+        "emptyTitle": "Nodig een creator uit",
+        "emptyDescription": "Deel je link hieronder zodat nieuwe creators ClipProfit kunnen joinen.",
         "peopleInvited": "Mensen uitgenodigd",
         "totalEarned": "Totaal verdiend",
         "pending": "In behandeling",
@@ -1219,10 +1219,10 @@
         "hideQr": "QR verbergen",
         "qrCode": "QR-code",
         "discordTooltip": "Kopieert een opgemaakt bericht dat je in Discord kunt plakken",
-        "shareText": "Join me op ClipProfit en verdien met je content!",
+        "shareText": "Join me op ClipProfit en doe mee aan creator campagnes!",
         "mailSubject": "Join ClipProfit",
-        "mailBody": "Hey! Ik gebruik ClipProfit om met mijn content te verdienen. Meld je aan via mijn referrallink en dan verdienen we allebei:",
-        "discordMessage": "**Verdien met je clips op ClipProfit** - meld je aan via mijn link en dan verdienen we allebei: {url}"
+        "mailBody": "Hey! Ik gebruik ClipProfit voor creator campagnes. Meld je aan via mijn link:",
+        "discordMessage": "**Join ClipProfit** - meld je aan via mijn link: {url}"
       },
       "milestone": {
         "title": "Referral mijlpaal",

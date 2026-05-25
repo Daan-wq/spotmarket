@@ -1190,9 +1190,9 @@
     "referral": {
       "page": {
         "title": "Referral Program",
-        "description": "Earn up to €100 for every creator you invite - paid as 10% of their earnings until you hit the €100 cap. We pay 110%: creators keep 100%, your share is on top.",
-        "emptyTitle": "Invite a creator, earn up to €100 per signup",
-        "emptyDescription": "Share your link below. Every clipper who signs up under it earns you up to €100 - paid as 10% of their payouts until that cap. They still keep 100%; our platform covers your share.",
+        "description": "Invite creators to ClipProfit.",
+        "emptyTitle": "Invite a creator",
+        "emptyDescription": "Share your link below so new creators can join ClipProfit.",
         "peopleInvited": "People Invited",
         "totalEarned": "Total Earned",
         "pending": "Pending",
@@ -1221,8 +1221,8 @@
         "discordTooltip": "Copies a formatted message you can paste into Discord",
         "shareText": "Join me on ClipProfit and start earning from your content!",
         "mailSubject": "Join ClipProfit",
-        "mailBody": "Hey! I have been using ClipProfit to earn from my content. Sign up with my referral link and let's both earn:",
-        "discordMessage": "**Earn from your clips on ClipProfit** - sign up with my link and we both earn: {url}"
+        "mailBody": "Hey! I use ClipProfit for creator campaigns. Sign up with my link:",
+        "discordMessage": "**Join ClipProfit** - sign up with my link: {url}"
       },
       "milestone": {
         "title": "Referral milestone",
