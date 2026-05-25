@@ -49,6 +49,7 @@ export const getActivationStatus = cache(
         tronsAddress: true,
         payoutIban: true,
         payoutAccountName: true,
+        payoutSolanaAddress: true,
         stripeAccountId: true,
       },
     });
@@ -89,6 +90,7 @@ export const getActivationStatus = cache(
       (profile.payoutIban && profile.payoutAccountName) ||
         profile.walletAddress ||
         profile.tronsAddress ||
+        profile.payoutSolanaAddress ||
         profile.stripeAccountId,
     );
     const firstClipSubmitted = submissionCount > 0;

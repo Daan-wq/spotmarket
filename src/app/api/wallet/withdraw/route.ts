@@ -5,12 +5,15 @@ import { getCreatorPaymentSummary } from "@/lib/creator-payment-summary";
 
 const MIN_WITHDRAWAL_EUR = 20;
 const OPEN_PAYOUT_STATUSES = ["pending", "processing"] as const;
+const WITHDRAWAL_METHODS = ["BANK_TRANSFER", "USDC_SOLANA"] as const;
+type WithdrawalMethod = (typeof WITHDRAWAL_METHODS)[number];
 
 export async function POST(request: Request) {
   try {
     const { userId } = await requireAuth("creator");
     const body = await request.json().catch(() => ({}));
     const parsedAmount = parseWithdrawalAmount(body?.amount);
+    const parsedMethod = parseWithdrawalMethod(body?.method);
 
     if ("error" in parsedAmount) {
       return NextResponse.json(
@@ -18,8 +21,15 @@ export async function POST(request: Request) {
         { status: 400 },
       );
     }
+    if ("error" in parsedMethod) {
+      return NextResponse.json(
+        { error: parsedMethod.error },
+        { status: 400 },
+      );
+    }
 
     const amount = parsedAmount.amount;
+    const method = parsedMethod.method;
 
     if (amount < MIN_WITHDRAWAL_EUR) {
       return NextResponse.json(
@@ -37,6 +47,7 @@ export async function POST(request: Request) {
             id: true,
             payoutIban: true,
             payoutAccountName: true,
+            payoutSolanaAddress: true,
           },
         },
       },
@@ -49,10 +60,17 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Creator profile not found" }, { status: 404 });
     }
 
-    const { id: creatorProfileId, payoutIban, payoutAccountName } = user.creatorProfile;
-    if (!payoutIban || !payoutAccountName) {
+    const { id: creatorProfileId, payoutIban, payoutAccountName, payoutSolanaAddress } =
+      user.creatorProfile;
+    if (method === "BANK_TRANSFER" && (!payoutIban || !payoutAccountName)) {
       return NextResponse.json(
         { error: "Add your IBAN and account holder name before requesting a payout." },
+        { status: 400 },
+      );
+    }
+    if (method === "USDC_SOLANA" && !payoutSolanaAddress) {
+      return NextResponse.json(
+        { error: "Add your Solana wallet address before requesting a USDC payout." },
         { status: 400 },
       );
     }
@@ -96,9 +114,15 @@ export async function POST(request: Request) {
         currency: "EUR",
         status: "pending",
         type: "final",
-        paymentMethod: "BANK_TRANSFER",
-        bankIbanSnapshot: payoutIban,
-        bankAccountNameSnapshot: payoutAccountName,
+        paymentMethod: method === "USDC_SOLANA" ? "CRYPTO" : "BANK_TRANSFER",
+        ...(method === "BANK_TRANSFER"
+          ? {
+              bankIbanSnapshot: payoutIban,
+              bankAccountNameSnapshot: payoutAccountName,
+            }
+          : {
+              walletAddress: payoutSolanaAddress,
+            }),
         requestedAt: now,
         applicationIds: [],
       },
@@ -114,6 +138,8 @@ export async function POST(request: Request) {
           paymentMethod: payout.paymentMethod,
           bankIban: payout.bankIbanSnapshot,
           bankAccountName: payout.bankAccountNameSnapshot,
+          walletAddress: payout.walletAddress,
+          network: payout.paymentMethod === "CRYPTO" ? "SOLANA" : null,
           requestedAt: payout.requestedAt,
         },
       },
@@ -141,6 +167,18 @@ function parseWithdrawalAmount(value: unknown) {
     return { error: "Withdrawal amount must use euro cents." };
   }
   return { amount: rounded };
+}
+
+function parseWithdrawalMethod(value: unknown):
+  | { method: WithdrawalMethod }
+  | { error: string } {
+  if (value === undefined || value === null || value === "") {
+    return { method: "BANK_TRANSFER" };
+  }
+  if (WITHDRAWAL_METHODS.includes(value as WithdrawalMethod)) {
+    return { method: value as WithdrawalMethod };
+  }
+  return { error: "Unsupported withdrawal method." };
 }
 
 function roundToCents(value: number) {
