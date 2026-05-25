@@ -1,6 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { resolveCreatorLeaderboardName } from "@/lib/creator-leaderboard-name";
+import {
+  isExcludedFromLeaderboards,
+  LEADERBOARD_OVERSCAN_LIMIT,
+} from "@/lib/leaderboard-exclusions";
 
 export async function GET(req: NextRequest) {
   const { searchParams } = req.nextUrl;
@@ -32,7 +36,7 @@ export async function GET(req: NextRequest) {
     _sum: { amount: true },
     _count: { id: true },
     orderBy: { _sum: { amount: "desc" } },
-    take: limit,
+    take: LEADERBOARD_OVERSCAN_LIMIT,
   });
 
   if (grouped.length === 0) {
@@ -57,53 +61,84 @@ export async function GET(req: NextRequest) {
 
   const profileMap = new Map(profiles.map((p) => [p.id, p]));
 
-  const leaderboard = grouped.map((g, i) => {
-    const profile = g.creatorProfileId ? profileMap.get(g.creatorProfileId) : null;
-    return {
+  const leaderboard = grouped
+    .map((g) => {
+      const profile = g.creatorProfileId ? profileMap.get(g.creatorProfileId) : null;
+      return { group: g, profile };
+    })
+    .flatMap(({ group, profile }) => {
+      if (
+        !profile ||
+        isExcludedFromLeaderboards({
+          email: profile.user.email,
+          discordUsername: profile.user.discordUsername,
+          creatorProfile: { username: profile.username },
+        })
+      ) {
+        return [];
+      }
+      return [{ group, profile }];
+    })
+    .slice(0, limit)
+    .map(({ group, profile }, i) => ({
       rank: i + 1,
-      creatorProfileId: g.creatorProfileId,
-      displayName: profile
-        ? resolveCreatorLeaderboardName({
-            email: profile.user.email,
-            discordUsername: profile.user.discordUsername,
-            creatorProfile: { username: profile.username },
-          }) ?? profile.user.email
-        : "",
-      avatarUrl: profile?.avatarUrl ?? null,
-      userId: profile?.userId ?? null,
-      totalEarned: parseFloat(g._sum.amount?.toString() ?? "0"),
-      payoutCount: g._count.id,
-    };
-  });
+      creatorProfileId: group.creatorProfileId,
+      displayName:
+        resolveCreatorLeaderboardName({
+          email: profile.user.email,
+          discordUsername: profile.user.discordUsername,
+          creatorProfile: { username: profile.username },
+        }) ?? profile.user.email,
+      avatarUrl: profile.avatarUrl,
+      userId: profile.userId,
+      totalEarned: parseFloat(group._sum.amount?.toString() ?? "0"),
+      payoutCount: group._count.id,
+    }));
 
-  // Also get platform-wide stats for context
-  const totalPaidOut = await prisma.payout.aggregate({
-    where: {
-      status: { in: ["confirmed", "sent"] },
-      ...(dateFilter ? { createdAt: { gte: dateFilter } } : {}),
-      ...(campaignId ? { application: { campaignId } } : {}),
-    },
-    _sum: { amount: true },
-    _count: { id: true },
-  });
-
-  const uniqueEarners = await prisma.payout.groupBy({
-    by: ["creatorProfileId"],
+  // Also get platform-wide stats for context, excluding internal test accounts.
+  const paidPayouts = await prisma.payout.findMany({
     where: {
       status: { in: ["confirmed", "sent"] },
       creatorProfileId: { not: null },
       ...(dateFilter ? { createdAt: { gte: dateFilter } } : {}),
       ...(campaignId ? { application: { campaignId } } : {}),
     },
+    select: {
+      amount: true,
+      creatorProfileId: true,
+      creatorProfile: {
+        select: {
+          username: true,
+          user: { select: { email: true, discordUsername: true } },
+        },
+      },
+    },
   });
+  const visiblePaidPayouts = paidPayouts.filter(
+    (payout) =>
+      payout.creatorProfile &&
+      !isExcludedFromLeaderboards({
+        email: payout.creatorProfile.user.email,
+        discordUsername: payout.creatorProfile.user.discordUsername,
+        creatorProfile: { username: payout.creatorProfile.username },
+      }),
+  );
+  const uniqueEarners = new Set(
+    visiblePaidPayouts
+      .map((payout) => payout.creatorProfileId)
+      .filter((id): id is string => id !== null),
+  );
 
   return NextResponse.json({
     leaderboard,
     period,
     stats: {
-      totalPaidOut: parseFloat(totalPaidOut._sum.amount?.toString() ?? "0"),
-      totalPayouts: totalPaidOut._count.id,
-      uniqueEarners: uniqueEarners.length,
+      totalPaidOut: visiblePaidPayouts.reduce(
+        (sum, payout) => sum + parseFloat(payout.amount.toString()),
+        0,
+      ),
+      totalPayouts: visiblePaidPayouts.length,
+      uniqueEarners: uniqueEarners.size,
     },
   });
 }

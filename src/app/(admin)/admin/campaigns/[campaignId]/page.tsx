@@ -9,6 +9,7 @@ import {
   CampaignStatusBadge,
 } from "@/components/campaigns/campaign-display";
 import { prisma } from "@/lib/prisma";
+import { isExcludedFromLeaderboards } from "@/lib/leaderboard-exclusions";
 import { CampaignSubmissionsOverview } from "./campaign-submissions-overview";
 
 export const dynamic = "force-dynamic";
@@ -42,7 +43,8 @@ export default async function CampaignHealthPage({ params }: PageProps) {
             select: {
               id: true,
               email: true,
-              creatorProfile: { select: { id: true, displayName: true } },
+              discordUsername: true,
+              creatorProfile: { select: { id: true, displayName: true, username: true } },
             },
           },
           payoutRunItems: { select: { id: true } },
@@ -91,6 +93,8 @@ export default async function CampaignHealthPage({ params }: PageProps) {
   >();
 
   for (const submission of campaign.campaignSubmissions) {
+    if (isExcludedFromLeaderboards(submission.creator)) continue;
+
     const current =
       byCreator.get(submission.creatorId) ??
       {

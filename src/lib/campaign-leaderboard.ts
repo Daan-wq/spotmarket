@@ -1,5 +1,6 @@
 import { calculatePaidViews } from "@/lib/paid-views";
 import { resolveCreatorLeaderboardName } from "@/lib/creator-leaderboard-name";
+import { isExcludedFromLeaderboards } from "@/lib/leaderboard-exclusions";
 
 type NumericLike = number | string | { toString(): string } | null | undefined;
 
@@ -96,6 +97,8 @@ export function buildCampaignLeaderboardRows(
   const byCreator = new Map<string, CampaignLeaderboardRow>();
 
   for (const submission of submissions) {
+    if (isExcludedFromLeaderboards(submission.creator)) continue;
+
     const profile = submission.creator.creatorProfile;
     const views = campaignLeaderboardTotalViews(submission);
     const earned = campaignLeaderboardEarnings(submission);
