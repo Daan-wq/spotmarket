@@ -698,12 +698,14 @@ model CampaignSubmission {
   productionAssignmentId String?               @unique
   productionAssignment   ProductionAssignment? @relation(fields: [productionAssignmentId], references: [id])
 
-  postUrl       String
-  videoUrl      String?
-  screenshotUrl String?
-  thumbnailUrl  String?
-  mediaType     String?
-  claimedViews  Int              @default(0)
+  postUrl            String
+  normalizedPlatform String?
+  platformVideoId    String?
+  videoUrl           String?
+  screenshotUrl      String?
+  thumbnailUrl       String?
+  mediaType          String?
+  claimedViews       Int              @default(0)
   brandMessage  String?          @db.Text
   viewCount     Int?
   likeCount     Int?
@@ -751,6 +753,7 @@ model CampaignSubmission {
   @@index([status])
   @@index([settledAt])
   @@index([sourceConnectionType, sourceConnectionId])
+  @@unique([normalizedPlatform, platformVideoId])
   @@index([logoStatus])
   @@index([productionAssignmentId])
 }
