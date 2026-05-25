@@ -5,6 +5,7 @@ import { SignalResolveButton } from "@/components/admin/signal-resolve-button";
 import { Badge } from "@/components/ui/badge";
 import { PageHeader, SectionHeader, StatCard } from "@/components/ui/page";
 import { formatDate, formatNumber, titleCaseEnum } from "@/lib/admin/agency-format";
+import { metricAvailabilityValue, type MetricAvailabilityKey } from "@/lib/contracts/metrics";
 import { prisma } from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
@@ -19,6 +20,8 @@ type SnapshotPoint = {
   likeCount: number;
   commentCount: number;
   shareCount: number;
+  saveCount: number | null;
+  metricAvailability: Prisma.JsonValue | null;
 };
 
 type PayloadRecord = Record<string, unknown>;
@@ -35,7 +38,7 @@ type ComparisonRow = {
   postUrl: string;
   createdAt: Date;
   latestViews: number;
-  latestEngagements: number;
+  latestEngagements: number | null;
   recentVelocity: number | null;
 };
 
@@ -63,6 +66,8 @@ export default async function SignalDetailPage({ params }: PageProps) {
               likeCount: true,
               commentCount: true,
               shareCount: true,
+              saveCount: true,
+              metricAvailability: true,
             },
           },
         },
@@ -78,8 +83,8 @@ export default async function SignalDetailPage({ params }: PageProps) {
   const previous = snapshots.length >= 2 ? snapshots[snapshots.length - 2] : null;
   const currentViews = latest ? Number(latest.viewCount) : (submission.viewCount ?? submission.claimedViews);
   const currentEngagements = latest
-    ? latest.likeCount + latest.commentCount + latest.shareCount
-    : (submission.likeCount ?? 0) + (submission.commentCount ?? 0) + (submission.shareCount ?? 0);
+    ? snapshotEngagements(latest)
+    : legacyEngagements(submission);
   const currentVelocity = previous && latest ? viewsPerHour(previous, latest) : null;
   const payload = asPayloadRecord(signal.payload);
   const evidence = getEvidence(payload);
@@ -125,7 +130,7 @@ export default async function SignalDetailPage({ params }: PageProps) {
       <div className="grid grid-cols-1 gap-4 md:grid-cols-5">
         <StatCard label="Risicoscore" value={riskScore == null ? "-" : `${riskScore}/100`} detail={confidence ? `${confidenceLabel(confidence)} vertrouwen` : "Geen vertrouwen opgeslagen"} tone={riskScore != null && riskScore >= 70 ? "danger" : "warning"} />
         <StatCard label="Totale views" value={formatNumber(currentViews)} detail="Laatste meting" />
-        <StatCard label="Engagement" value={formatNumber(currentEngagements)} detail={formatRate(engagementRate(currentEngagements, currentViews))} />
+        <StatCard label="Engagement" value={currentEngagements == null ? "Niet beschikbaar" : formatNumber(currentEngagements)} detail={formatRate(currentEngagements == null ? null : engagementRate(currentEngagements, currentViews))} />
         <StatCard label="Recente snelheid" value={currentVelocity == null ? "-" : `${formatNumber(Math.round(currentVelocity))}/u`} detail="Tussen laatste twee metingen" />
         <StatCard label="Accountmediaan" value={medianViews == null ? "-" : formatNumber(Math.round(medianViews))} detail="Vergelijkbare videos" />
       </div>
@@ -245,6 +250,8 @@ async function loadComparisonRows(submission: {
           likeCount: true,
           commentCount: true,
           shareCount: true,
+          saveCount: true,
+          metricAvailability: true,
         },
       },
     },
@@ -256,8 +263,8 @@ async function loadComparisonRows(submission: {
     const previous = ordered.length >= 2 ? ordered[ordered.length - 2] : null;
     const latestViews = latest ? Number(latest.viewCount) : (row.viewCount ?? row.claimedViews);
     const latestEngagements = latest
-      ? latest.likeCount + latest.commentCount + latest.shareCount
-      : (row.likeCount ?? 0) + (row.commentCount ?? 0) + (row.shareCount ?? 0);
+      ? snapshotEngagements(latest)
+      : legacyEngagements(row);
     return {
       id: row.id,
       postUrl: row.postUrl,
@@ -341,7 +348,7 @@ function ComparisonLine({
   label: string;
   href: string;
   views: number;
-  engagements: number;
+  engagements: number | null;
   velocity: number | null;
   medianViews: number | null;
   highlighted?: boolean;
@@ -353,7 +360,7 @@ function ComparisonLine({
         {label}
       </Link>
       <span className="text-right font-semibold tabular-nums text-neutral-950">{formatNumber(views)}</span>
-      <span className="text-right tabular-nums text-neutral-600">{formatNumber(engagements)}</span>
+      <span className="text-right tabular-nums text-neutral-600">{engagements == null ? "Niet beschikbaar" : formatNumber(engagements)}</span>
       <span className="text-right tabular-nums text-neutral-600">{velocity == null ? "-" : `${formatNumber(Math.round(velocity))}/u`}</span>
       <span className="text-right tabular-nums text-neutral-600">{vsMedian == null ? "-" : `${vsMedian.toFixed(1)}x`}</span>
     </div>
@@ -373,6 +380,42 @@ function viewsPerHour(previous: SnapshotPoint, latest: SnapshotPoint) {
 function engagementRate(engagements: number, views: number) {
   if (views <= 0) return null;
   return (engagements / views) * 100;
+}
+
+function snapshotEngagements(snapshot: SnapshotPoint): number | null {
+  const values = [
+    metricCount(snapshot, "likes", "likeCount"),
+    metricCount(snapshot, "comments", "commentCount"),
+    metricCount(snapshot, "shares", "shareCount"),
+    metricCount(snapshot, "saves", "saveCount"),
+  ].filter((value): value is number => value != null);
+  if (values.length === 0) return null;
+  return values.reduce((sum, value) => sum + value, 0);
+}
+
+function metricCount(
+  snapshot: SnapshotPoint,
+  key: MetricAvailabilityKey,
+  field: "likeCount" | "commentCount" | "shareCount" | "saveCount",
+): number | null {
+  const explicit = metricAvailabilityValue(snapshot.metricAvailability, key);
+  if (explicit === false) return null;
+  const value = snapshot[field];
+  if (explicit === true) return value ?? 0;
+  if (key === "saves") return value;
+  return value ?? 0;
+}
+
+function legacyEngagements(row: {
+  likeCount?: number | null;
+  commentCount?: number | null;
+  shareCount?: number | null;
+}) {
+  const values = [row.likeCount, row.commentCount, row.shareCount].filter(
+    (value): value is number => value != null,
+  );
+  if (values.length === 0) return null;
+  return values.reduce((sum, value) => sum + value, 0);
 }
 
 function median(values: number[]) {
@@ -429,6 +472,7 @@ function sanitizeMetrics(metrics: PayloadRecord) {
 function translateSignalText(value: string) {
   const translations: Record<string, string> = {
     "High view growth with near-zero comments and shares": "Hoge viewgroei met bijna geen reacties en shares",
+    "High view growth with near-zero available engagement": "Hoge viewgroei met bijna geen beschikbare engagement",
     "Views are high relative to the tracked account audience": "Views zijn hoog ten opzichte van de gemeten accountgrootte",
     "View growth above campaign benchmark": "Viewgroei boven de campagnebenchmark",
     "View growth anomaly against submission history": "Ongebruikelijke viewgroei ten opzichte van eerdere metingen",
@@ -480,6 +524,11 @@ function metricLabel(key: string) {
     deltaViews: "Viewgroei",
     deltaCommentRatio: "Reactieratio",
     deltaShareRatio: "Shareratio",
+    deltaSaveRatio: "Saveratio",
+    deltaEngagements: "Engagementgroei",
+    deltaEngagementRatio: "Engagementratio",
+    engagementRate: "Engagementrate",
+    availableMetrics: "Beschikbare metrics",
     likeRatio: "Like-ratio",
     audienceCount: "Accountgrootte",
     audienceMultiple: "Publieksfactor",
@@ -488,13 +537,13 @@ function metricLabel(key: string) {
 }
 
 function formatMetricValue(value: number | string | null) {
-  if (value == null) return "-";
+  if (value == null) return "Niet beschikbaar";
   if (typeof value === "number") return Number.isInteger(value) ? formatNumber(value) : value.toLocaleString("nl-NL", { maximumFractionDigits: 3 });
   return value;
 }
 
 function formatRate(value: number | null) {
-  return value == null ? "-" : `${value.toLocaleString("nl-NL", { maximumFractionDigits: 2 })}% engagement`;
+  return value == null ? "Niet beschikbaar" : `${value.toLocaleString("nl-NL", { maximumFractionDigits: 2 })}% engagement`;
 }
 
 function formatDateTime(value: Date) {

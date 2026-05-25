@@ -24,6 +24,7 @@ export interface MetricSnapshot {
   saveCount: number | null;
   watchTimeSec: number | null;
   reachCount: number | null;
+  metricAvailability?: MetricAvailability | null;
 }
 
 export interface VelocityWindow {
@@ -40,9 +41,60 @@ export interface VelocityWindow {
 }
 
 export interface EngagementRatios {
-  likeRatio: number; // likes / views
-  commentRatio: number; // comments / views
-  shareRatio: number; // shares / views
+  likeRatio: number | null; // likes / views
+  commentRatio: number | null; // comments / views
+  shareRatio: number | null; // shares / views
+  saveRatio: number | null; // saves / views
+  engagementRate: number | null; // available engagements / views
+  availableEngagements: number;
+}
+
+export const METRIC_AVAILABILITY_KEYS = [
+  "views",
+  "likes",
+  "comments",
+  "shares",
+  "saves",
+  "watchTime",
+  "reach",
+  "totalInteractions",
+  "follows",
+  "profileVisits",
+  "reactions",
+] as const;
+
+export type MetricAvailabilityKey = (typeof METRIC_AVAILABILITY_KEYS)[number];
+export type MetricAvailability = Record<MetricAvailabilityKey, boolean>;
+
+export const UNAVAILABLE_METRICS: MetricAvailability = {
+  views: false,
+  likes: false,
+  comments: false,
+  shares: false,
+  saves: false,
+  watchTime: false,
+  reach: false,
+  totalInteractions: false,
+  follows: false,
+  profileVisits: false,
+  reactions: false,
+};
+
+export function metricAvailability(
+  overrides: Partial<MetricAvailability>,
+): MetricAvailability {
+  return { ...UNAVAILABLE_METRICS, ...overrides };
+}
+
+export function metricAvailabilityValue(
+  availability: unknown,
+  key: MetricAvailabilityKey,
+): boolean | null {
+  if (!availability || typeof availability !== "object" || Array.isArray(availability)) {
+    return null;
+  }
+  const value = (availability as Partial<Record<MetricAvailabilityKey, unknown>>)[key];
+  return typeof value === "boolean" ? value : null;
 }
 
 export type ConnectionType = "IG" | "TT" | "YT" | "FB";

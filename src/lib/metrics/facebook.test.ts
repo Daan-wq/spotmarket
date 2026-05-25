@@ -102,6 +102,18 @@ describe("fetchFacebookMetric", () => {
     expect(r.followsFromMedia).toBe(7);
     expect(r.totalInteractions).toBe(750);
     expect(r.reactionsByType).toMatchObject({ LIKE: 600, LOVE: 80, WOW: 30, HAHA: 25, SAD: 5, ANGRY: 10 });
+    expect(r.metricAvailability).toMatchObject({
+      views: true,
+      likes: true,
+      comments: true,
+      shares: true,
+      saves: false,
+      watchTime: true,
+      reach: true,
+      totalInteractions: true,
+      follows: true,
+      reactions: true,
+    });
 
     expect(createCurveMock).toHaveBeenCalledTimes(1);
     const curveCall = createCurveMock.mock.calls[0][0];

@@ -10,6 +10,19 @@ const fetchInstagramMetricMock = vi.fn();
 const fetchTikTokMetricMock = vi.fn();
 const fetchYoutubeMetricMock = vi.fn();
 const fetchFacebookMetricMock = vi.fn();
+const availableCoreMetrics = {
+  views: true,
+  likes: true,
+  comments: true,
+  shares: true,
+  saves: false,
+  watchTime: false,
+  reach: false,
+  totalInteractions: false,
+  follows: false,
+  profileVisits: false,
+  reactions: false,
+};
 
 vi.mock("@/lib/prisma", () => ({
   prisma: {
@@ -80,6 +93,7 @@ describe("routeMetric", () => {
       saveCount: null,
       watchTimeSec: null,
       reachCount: null,
+      metricAvailability: availableCoreMetrics,
     });
 
     const result = await routeMetric({
@@ -130,6 +144,7 @@ describe("routeMetric", () => {
         saveCount: null,
         watchTimeSec: null,
         reachCount: null,
+        metricAvailability: availableCoreMetrics,
       });
 
     const result = await routeMetric({

@@ -18,6 +18,7 @@ import { publishEvent } from "@/lib/event-bus";
 import { routeMetric } from "./router";
 import { scoreVelocity, type FlagDraft } from "@/lib/velocity-scorer";
 import { calculatePaidViews } from "@/lib/paid-views";
+import { UNAVAILABLE_METRICS } from "@/lib/contracts/metrics";
 
 export type Tier = "hot" | "warm" | "cold";
 
@@ -108,6 +109,7 @@ export async function pollSubmissions(opts: RunOptions): Promise<PollResult> {
             watchTimeSec: fetched.watchTimeSec,
             reachCount: fetched.reachCount,
             raw: fetched.raw == null ? Prisma.JsonNull : (fetched.raw as Prisma.InputJsonValue),
+            metricAvailability: fetched.metricAvailability as unknown as Prisma.InputJsonValue,
             totalInteractions: fetched.totalInteractions ?? null,
             followsFromMedia: fetched.followsFromMedia ?? null,
             profileVisits: fetched.profileVisits ?? null,
@@ -133,6 +135,8 @@ export async function pollSubmissions(opts: RunOptions): Promise<PollResult> {
             likeCount: true,
             commentCount: true,
             shareCount: true,
+            saveCount: true,
+            metricAvailability: true,
           },
         });
 
@@ -184,9 +188,9 @@ export async function pollSubmissions(opts: RunOptions): Promise<PollResult> {
             lastMetricsRefreshAt: snap.capturedAt,
             metricsRefreshFailures: 0,
             viewCount: Math.min(cumulativeViews, 2_147_483_647),
-            likeCount: fetched.likeCount,
-            commentCount: fetched.commentCount,
-            shareCount: fetched.shareCount,
+            likeCount: fetched.metricAvailability.likes ? fetched.likeCount : null,
+            commentCount: fetched.metricAvailability.comments ? fetched.commentCount : null,
+            shareCount: fetched.metricAvailability.shares ? fetched.shareCount : null,
             velocityScore: scored.velocityScore ?? undefined,
             sourceMethod: "OAUTH",
             ...(paidViews
@@ -221,6 +225,7 @@ export async function pollSubmissions(opts: RunOptions): Promise<PollResult> {
             likeCount: 0,
             commentCount: 0,
             shareCount: 0,
+            metricAvailability: UNAVAILABLE_METRICS as unknown as Prisma.InputJsonValue,
             raw: { reason: fetched.reason, message: fetched.message } as Prisma.InputJsonValue,
           },
         });

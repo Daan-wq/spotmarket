@@ -17,6 +17,7 @@ import { Prisma, type CreatorFbConnection } from "@prisma/client";
 import { decrypt } from "@/lib/crypto";
 import { prisma } from "@/lib/prisma";
 import type { ParsedClipUrl } from "@/lib/parse-clip-url";
+import { metricAvailability } from "@/lib/contracts/metrics";
 import { failure, type MetricFetcherResult } from "./router";
 import { recordRawApiResponse } from "./raw-storage";
 
@@ -138,10 +139,10 @@ export async function fetchFacebookMetric(
           : null;
 
     const reactionsByType = extractReactionsByType(data);
-    const totalReactions = sumOf(data.reactions);
-    const summaryLikes = sumOf(data.likes);
-    const comments = sumOf(data.comments);
-    const shares = (data.shares as { count?: number } | undefined)?.count ?? 0;
+    const totalReactions = summaryCount(data.reactions);
+    const summaryLikes = summaryCount(data.likes);
+    const comments = summaryCount(data.comments);
+    const shares = shareCount(data.shares);
 
     // Use the concrete LIKE breakdown when present (more accurate than the
     // legacy `likes` summary), but fall back to summary count.
@@ -179,6 +180,17 @@ export async function fetchFacebookMetric(
       socialActions: extractInsight(data, "post_video_social_actions"),
       videoFollowers: extractInsight(data, "post_video_followers"),
     };
+    const availability = metricAvailability({
+      views: views != null || reelPlays != null,
+      likes: reactionsByType?.LIKE != null || summaryLikes != null,
+      comments: comments != null,
+      shares: shares != null,
+      watchTime: watchTimeSec != null,
+      reach: reach != null,
+      totalInteractions: totalReactions != null,
+      follows: reelMeta.videoFollowers != null,
+      reactions: reactionsByType != null,
+    });
 
     return {
       ok: true,
@@ -186,12 +198,13 @@ export async function fetchFacebookMetric(
       connection: { type: "FB", id: conn.id },
       viewCount: BigInt(views ?? reelPlays ?? 0),
       likeCount,
-      commentCount: comments,
-      shareCount: shares,
+      commentCount: comments ?? 0,
+      shareCount: shares ?? 0,
       saveCount: null,
       watchTimeSec,
       reachCount: reach,
-      totalInteractions: totalReactions || null,
+      metricAvailability: availability,
+      totalInteractions: totalReactions,
       followsFromMedia: reelMeta.videoFollowers,
       profileVisits: null,
       profileActivity: null,
@@ -209,10 +222,16 @@ export async function fetchFacebookMetric(
   });
 }
 
-function sumOf(field: unknown): number {
-  if (!field || typeof field !== "object") return 0;
+function summaryCount(field: unknown): number | null {
+  if (!field || typeof field !== "object") return null;
   const summary = (field as { summary?: { total_count?: number } }).summary;
-  return summary?.total_count ?? 0;
+  return typeof summary?.total_count === "number" ? summary.total_count : null;
+}
+
+function shareCount(field: unknown): number | null {
+  if (!field || typeof field !== "object") return null;
+  const count = (field as { count?: number }).count;
+  return typeof count === "number" ? count : null;
 }
 
 function extractInsight(data: Record<string, unknown>, name: string): number | null {

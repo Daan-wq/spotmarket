@@ -12,6 +12,19 @@ const findFirstPlatformAccountSnapshotMock = vi.fn();
 const publishEventMock = vi.fn();
 const routeMetricMock = vi.fn();
 const scoreVelocityMock = vi.fn();
+const availableCoreMetrics = {
+  views: true,
+  likes: true,
+  comments: true,
+  shares: true,
+  saves: false,
+  watchTime: false,
+  reach: false,
+  totalInteractions: false,
+  follows: false,
+  profileVisits: false,
+  reactions: false,
+};
 
 vi.mock("@/lib/prisma", () => ({
   prisma: {
@@ -204,6 +217,7 @@ describe("pollSubmissions earnings refresh", () => {
       saveCount: null,
       watchTimeSec: null,
       reachCount: null,
+      metricAvailability: availableCoreMetrics,
       raw: null,
       connection: { type: "IG", id: "conn_1" },
     });
@@ -277,6 +291,7 @@ describe("pollSubmissions earnings refresh", () => {
       saveCount: null,
       watchTimeSec: null,
       reachCount: null,
+      metricAvailability: availableCoreMetrics,
       raw: null,
       connection: { type: "IG", id: "conn_1" },
     });

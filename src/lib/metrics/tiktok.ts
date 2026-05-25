@@ -13,6 +13,7 @@ import type { CreatorTikTokConnection } from "@prisma/client";
 import { fetchTikTokVideos, type TikTokVideo } from "@/lib/tiktok";
 import { getFreshTikTokAccessToken } from "@/lib/token-refresh";
 import type { ParsedClipUrl } from "@/lib/parse-clip-url";
+import { metricAvailability } from "@/lib/contracts/metrics";
 import { failure, type MetricFetcherResult } from "./router";
 import { recordRawApiResponse } from "./raw-storage";
 
@@ -103,12 +104,22 @@ function buildSuccess(match: TikTokVideo, connectionId: string): MetricFetcherRe
     saveCount: null,
     watchTimeSec: null,
     reachCount: null,
+    metricAvailability: metricAvailability({
+      views: true,
+      likes: true,
+      comments: true,
+      shares: true,
+    }),
     raw: {
       videoId: match.id,
       title: match.title,
+      videoDescription: match.videoDescription,
       coverImageUrl: match.coverImageUrl,
       shareUrl: match.shareUrl,
+      embedLink: match.embedLink,
       duration: match.duration,
+      height: match.height,
+      width: match.width,
       createTime: match.createTime,
     },
   };

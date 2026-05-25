@@ -44,14 +44,18 @@ describe("fetchTikTokMetric", () => {
         {
           id: "vid_42",
           title: "test clip",
+          videoDescription: "full description",
           coverImageUrl: "https://cdn.tiktok.com/cover.jpg",
           shareUrl: "https://www.tiktok.com/@user/video/vid_42",
+          embedLink: "https://www.tiktok.com/embed/vid_42",
           viewCount: 100000,
           likeCount: 5000,
           commentCount: 200,
           shareCount: 80,
           createTime: 1714660000,
           duration: 28,
+          height: 1920,
+          width: 1080,
         },
       ],
       nextCursor: null,
@@ -70,12 +74,23 @@ describe("fetchTikTokMetric", () => {
     expect(r.likeCount).toBe(5000);
     expect(r.commentCount).toBe(200);
     expect(r.shareCount).toBe(80);
+    expect(r.metricAvailability).toMatchObject({
+      views: true,
+      likes: true,
+      comments: true,
+      shares: true,
+      saves: false,
+    });
     expect(r.raw).toEqual({
       videoId: "vid_42",
       title: "test clip",
+      videoDescription: "full description",
       coverImageUrl: "https://cdn.tiktok.com/cover.jpg",
       shareUrl: "https://www.tiktok.com/@user/video/vid_42",
+      embedLink: "https://www.tiktok.com/embed/vid_42",
       duration: 28,
+      height: 1920,
+      width: 1080,
       createTime: 1714660000,
     });
     expect(recordRawMock).toHaveBeenCalledWith(

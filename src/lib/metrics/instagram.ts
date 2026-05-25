@@ -20,6 +20,7 @@ import {
   type MediaInsightType,
 } from "@/lib/instagram";
 import type { ParsedClipUrl } from "@/lib/parse-clip-url";
+import { metricAvailability } from "@/lib/contracts/metrics";
 import { failure, type MetricFetcherResult } from "./router";
 import { recordRawApiResponse } from "./raw-storage";
 
@@ -163,6 +164,18 @@ export async function fetchInstagramMetric(
   const commentCount = insights.comments ?? matched.commentCount;
   const shareCount = insights.shares ?? 0;
   const saveCount = insights.saved ?? null;
+  const availability = metricAvailability({
+    views: insights.views != null || (!isVideoLike && reachCount != null),
+    likes: insights.likes != null || (mediaType !== "STORY" && matched.likeCount != null),
+    comments: insights.comments != null || (mediaType !== "STORY" && matched.commentCount != null),
+    shares: insights.shares != null,
+    saves: insights.saved != null,
+    watchTime: watchTimeSec != null,
+    reach: reachCount != null,
+    totalInteractions: insights.totalInteractions != null,
+    follows: insights.follows != null,
+    profileVisits: insights.profileVisits != null,
+  });
 
   const rawPayload = {
     media: matched,
@@ -190,6 +203,7 @@ export async function fetchInstagramMetric(
     saveCount,
     watchTimeSec,
     reachCount,
+    metricAvailability: availability,
     totalInteractions: insights.totalInteractions ?? null,
     followsFromMedia: insights.follows ?? null,
     profileVisits: insights.profileVisits ?? null,

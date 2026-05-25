@@ -112,14 +112,19 @@ export interface TikTokProfile {
 export interface TikTokVideo {
   id: string;
   title: string;
+  videoDescription: string | null;
   coverImageUrl: string | null;
   shareUrl: string | null;
+  embedHtml: string | null;
+  embedLink: string | null;
   viewCount: number;
   likeCount: number;
   commentCount: number;
   shareCount: number;
   createTime: number;
   duration: number;
+  height: number | null;
+  width: number | null;
 }
 
 export async function fetchTikTokProfile(
@@ -292,7 +297,23 @@ export async function fetchTikTokVideos(
   maxCount = 20,
   cursor?: number
 ): Promise<{ videos: TikTokVideo[]; nextCursor: number | null; hasMore: boolean }> {
-  const fields = "id,title,cover_image_url,share_url,view_count,like_count,comment_count,share_count,create_time,duration";
+  const fields = [
+    "id",
+    "title",
+    "video_description",
+    "cover_image_url",
+    "share_url",
+    "embed_html",
+    "embed_link",
+    "view_count",
+    "like_count",
+    "comment_count",
+    "share_count",
+    "create_time",
+    "duration",
+    "height",
+    "width",
+  ].join(",");
   const body: Record<string, unknown> = { max_count: maxCount };
   if (cursor !== undefined) body.cursor = cursor;
   const res = await fetch(`${TIKTOK_API_BASE}/video/list/?fields=${fields}`, {
@@ -317,14 +338,19 @@ export async function fetchTikTokVideos(
   const videos: TikTokVideo[] = (data.data?.videos ?? []).map((v: Record<string, unknown>) => ({
     id: v.id as string,
     title: (v.title as string) ?? "",
+    videoDescription: (v.video_description as string) ?? null,
     coverImageUrl: (v.cover_image_url as string) ?? null,
     shareUrl: (v.share_url as string) ?? null,
+    embedHtml: (v.embed_html as string) ?? null,
+    embedLink: (v.embed_link as string) ?? null,
     viewCount: (v.view_count as number) ?? 0,
     likeCount: (v.like_count as number) ?? 0,
     commentCount: (v.comment_count as number) ?? 0,
     shareCount: (v.share_count as number) ?? 0,
     createTime: (v.create_time as number) ?? 0,
     duration: (v.duration as number) ?? 0,
+    height: (v.height as number) ?? null,
+    width: (v.width as number) ?? null,
   }));
 
   const hasMore = data.data?.has_more === true;
