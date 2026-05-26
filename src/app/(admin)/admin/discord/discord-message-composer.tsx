@@ -867,21 +867,23 @@ export function DiscordMessageComposer() {
                         <input value={embed.authorName ?? ""} onChange={(event) => updateEmbed(embedIndex, { authorName: event.target.value })} placeholder="Auteurnaam" className="h-10 rounded-lg border border-neutral-200 bg-white px-3 text-sm outline-none focus:border-neutral-500" />
                         <input value={embed.authorIconUrl ?? ""} onChange={(event) => updateEmbed(embedIndex, { authorIconUrl: event.target.value })} placeholder="Auteuricoon-URL" className="h-10 rounded-lg border border-neutral-200 bg-white px-3 text-sm outline-none focus:border-neutral-500" />
                         <input value={embed.authorUrl ?? ""} onChange={(event) => updateEmbed(embedIndex, { authorUrl: event.target.value })} placeholder="Auteur-URL" className="h-10 rounded-lg border border-neutral-200 bg-white px-3 text-sm outline-none focus:border-neutral-500" />
-                        <EmbedImageUpload
-                          label="Thumbnail"
-                          value={embed.thumbnailUrl ?? ""}
-                          media={getEmbedMediaFile(embed.thumbnailUrl, embedMediaFiles)}
-                          onSelect={(selected) => handleEmbedImageFile(embedIndex, "thumbnailUrl", selected)}
-                          onClear={() => clearEmbedImage(embedIndex, "thumbnailUrl")}
-                        />
-                        <EmbedImageUpload
-                          label="Grote afbeelding"
-                          value={embed.imageUrl ?? ""}
-                          media={getEmbedMediaFile(embed.imageUrl, embedMediaFiles)}
-                          onSelect={(selected) => handleEmbedImageFile(embedIndex, "imageUrl", selected)}
-                          onClear={() => clearEmbedImage(embedIndex, "imageUrl")}
-                        />
-                        <label className="flex h-10 items-center gap-2 rounded-lg border border-neutral-200 bg-white px-3 text-sm text-neutral-700">
+                        <div className="grid grid-cols-1 gap-2 md:col-span-3 xl:grid-cols-2">
+                          <EmbedImageUpload
+                            label="Thumbnail"
+                            value={embed.thumbnailUrl ?? ""}
+                            media={getEmbedMediaFile(embed.thumbnailUrl, embedMediaFiles)}
+                            onSelect={(selected) => handleEmbedImageFile(embedIndex, "thumbnailUrl", selected)}
+                            onClear={() => clearEmbedImage(embedIndex, "thumbnailUrl")}
+                          />
+                          <EmbedImageUpload
+                            label="Grote afbeelding"
+                            value={embed.imageUrl ?? ""}
+                            media={getEmbedMediaFile(embed.imageUrl, embedMediaFiles)}
+                            onSelect={(selected) => handleEmbedImageFile(embedIndex, "imageUrl", selected)}
+                            onClear={() => clearEmbedImage(embedIndex, "imageUrl")}
+                          />
+                        </div>
+                        <label className="flex min-h-10 items-center gap-2 rounded-lg border border-neutral-200 bg-white px-3 py-2 text-sm text-neutral-700">
                           <input type="checkbox" checked={embed.timestamp === true} onChange={(event) => updateEmbed(embedIndex, { timestamp: event.target.checked })} />
                           Huidige timestamp
                         </label>
@@ -901,9 +903,8 @@ export function DiscordMessageComposer() {
                       {(embed.fields ?? []).length > 0 ? (
                         <div className="mt-3 space-y-2">
                           {(embed.fields ?? []).map((field, fieldIndex) => (
-                            <div key={fieldIndex} className="grid grid-cols-1 gap-2 rounded-lg border border-neutral-200 bg-white p-2 md:grid-cols-[minmax(0,160px)_minmax(0,1fr)_90px_116px]">
+                            <div key={fieldIndex} className="grid grid-cols-1 gap-2 rounded-lg border border-neutral-200 bg-white p-2 md:grid-cols-[minmax(0,1fr)_88px_104px]">
                               <input value={field.name} onChange={(event) => updateEmbedField(embedIndex, fieldIndex, { name: event.target.value })} placeholder="Veldnaam" maxLength={256} className="h-10 rounded-lg border border-neutral-200 px-3 text-sm outline-none focus:border-neutral-500" />
-                              <textarea value={field.value} onChange={(event) => updateEmbedField(embedIndex, fieldIndex, { value: event.target.value })} placeholder="Veldwaarde" rows={2} maxLength={1024} className="rounded-lg border border-neutral-200 px-3 py-2 text-sm outline-none focus:border-neutral-500" />
                               <label className="flex h-10 items-center gap-2 rounded-lg border border-neutral-200 px-3 text-sm text-neutral-600">
                                 <input type="checkbox" checked={field.inline === true} onChange={(event) => updateEmbedField(embedIndex, fieldIndex, { inline: event.target.checked })} />
                                 Inline
@@ -913,6 +914,7 @@ export function DiscordMessageComposer() {
                                 <IconButton label="Veld omlaag" onClick={() => moveEmbedField(embedIndex, fieldIndex, 1)} disabled={fieldIndex === (embed.fields?.length ?? 0) - 1}><ArrowDown className="h-4 w-4" /></IconButton>
                                 <IconButton label="Veld verwijderen" onClick={() => removeEmbedField(embedIndex, fieldIndex)}><Trash2 className="h-4 w-4" /></IconButton>
                               </div>
+                              <textarea value={field.value} onChange={(event) => updateEmbedField(embedIndex, fieldIndex, { value: event.target.value })} placeholder="Veldwaarde" rows={2} maxLength={1024} className="rounded-lg border border-neutral-200 px-3 py-2 text-sm outline-none focus:border-neutral-500 md:col-span-3" />
                             </div>
                           ))}
                         </div>
@@ -1205,17 +1207,17 @@ function EmbedImageUpload({
         : "Geen afbeelding geselecteerd";
 
   return (
-    <div className="rounded-lg border border-neutral-200 bg-white p-2">
-      <div className="flex min-w-0 gap-2">
-        <div className="flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-md bg-neutral-100">
+    <div className="min-w-0 rounded-lg border border-neutral-200 bg-white p-2.5">
+      <div className="grid min-w-0 grid-cols-[48px_minmax(0,1fr)] gap-3">
+        <div className="flex h-12 w-12 items-center justify-center overflow-hidden rounded-md bg-neutral-100">
           {previewSrc ? (
             <img src={previewSrc} alt="" className="h-full w-full object-cover" />
           ) : (
             <Paperclip className="h-4 w-4 text-neutral-400" />
           )}
         </div>
-        <div className="min-w-0 flex-1">
-          <div className="flex min-w-0 items-start justify-between gap-2">
+        <div className="min-w-0">
+          <div className="flex min-w-0 items-start justify-between gap-3">
             <div className="min-w-0">
               <p className="truncate text-sm font-semibold text-neutral-950">{label}</p>
               <p className={cn("mt-0.5 truncate text-xs", isMissingUpload ? "text-amber-700" : "text-neutral-500")}>{detail}</p>
@@ -1231,19 +1233,22 @@ function EmbedImageUpload({
               </button>
             ) : null}
           </div>
-          <label className="mt-2 inline-flex h-8 cursor-pointer items-center gap-1.5 rounded-md border border-neutral-200 px-2 text-xs font-semibold text-neutral-600 transition hover:border-neutral-300 hover:text-neutral-950">
-            <Paperclip className="h-3.5 w-3.5" />
-            Upload
-            <input
-              type="file"
-              accept="image/*"
-              className="hidden"
-              onChange={(event) => {
-                onSelect(event.target.files);
-                event.currentTarget.value = "";
-              }}
-            />
-          </label>
+          <div className="mt-2 flex min-w-0 items-center gap-2">
+            <label className="inline-flex h-8 cursor-pointer items-center gap-1.5 rounded-md border border-neutral-200 px-2.5 text-xs font-semibold text-neutral-600 transition hover:border-neutral-300 hover:text-neutral-950">
+              <Paperclip className="h-3.5 w-3.5" />
+              Upload
+              <input
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={(event) => {
+                  onSelect(event.target.files);
+                  event.currentTarget.value = "";
+                }}
+              />
+            </label>
+            {media ? <span className="min-w-0 truncate text-xs text-neutral-400">{media.attachmentName}</span> : null}
+          </div>
         </div>
       </div>
     </div>
