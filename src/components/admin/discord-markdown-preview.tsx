@@ -1,13 +1,14 @@
 /* eslint-disable @next/next/no-img-element */
 import { Fragment, type ReactNode } from "react";
 import type { DiscordEmoji } from "@/lib/admin/discord";
-import type { DiscordLinkButton } from "@/lib/admin/discord-message-validation";
-import { normalizeDiscordLinkButtons } from "@/lib/admin/discord-message-validation";
+import type { DiscordEmbedInput, DiscordEmbedPayload, DiscordLinkButton } from "@/lib/admin/discord-message-validation";
+import { normalizeDiscordEmbeds, normalizeDiscordLinkButtons } from "@/lib/admin/discord-message-validation";
 import { cn } from "@/lib/cn";
 
 interface DiscordMarkdownPreviewProps {
   content: string;
   emojis: DiscordEmoji[];
+  embeds?: DiscordEmbedInput[];
   buttons?: DiscordLinkButton[];
   className?: string;
   frame?: "default" | "mobile";
@@ -76,15 +77,18 @@ const INLINE_FORMATS: InlineFormat[] = [
 export function DiscordMarkdownPreview({
   content,
   emojis,
+  embeds = [],
   buttons = [],
   className,
   frame = "default",
 }: DiscordMarkdownPreviewProps) {
   const emojiById = new Map(emojis.map((emoji) => [emoji.id, emoji]));
   const blocks = parseDiscordBlocks(content);
+  const cleanedEmbeds = normalizeDiscordEmbeds(embeds);
   const linkButtons = normalizeDiscordLinkButtons(buttons);
   const variant: PreviewVariant = frame === "mobile" ? "mobile" : "default";
   const body = renderPreviewBody(blocks, emojiById, variant);
+  const embedPreview = renderEmbeds(cleanedEmbeds, emojiById, variant);
   const buttonPreview = renderLinkButtons(linkButtons, variant);
 
   if (frame === "mobile") {
@@ -105,13 +109,14 @@ export function DiscordMarkdownPreview({
                 <span className="text-[#949ba4]">Today at 12:00</span>
               </div>
               <div className="mt-1 min-h-[320px] text-[16px] leading-[1.35] tracking-normal text-[#dbdee1]">
-                {blocks.length === 0 && linkButtons.length === 0 ? (
+                {blocks.length === 0 && cleanedEmbeds.length === 0 && linkButtons.length === 0 ? (
                   <div className="rounded-lg border border-white/10 bg-[#2b2d31] p-4 text-sm text-[#b5bac1]">
                     Preview verschijnt hier zodra je begint te typen.
                   </div>
                 ) : (
                   <>
                     {blocks.length > 0 ? body : null}
+                    {embedPreview}
                     {buttonPreview}
                   </>
                 )}
@@ -123,7 +128,7 @@ export function DiscordMarkdownPreview({
     );
   }
 
-  if (blocks.length === 0 && linkButtons.length === 0) {
+  if (blocks.length === 0 && cleanedEmbeds.length === 0 && linkButtons.length === 0) {
     return (
       <div className={cn("rounded-xl border border-neutral-200 bg-neutral-50 p-4 text-sm text-neutral-400", className)}>
         Preview verschijnt hier zodra je begint te typen.
@@ -134,6 +139,7 @@ export function DiscordMarkdownPreview({
   return (
     <div className={cn("discord-preview rounded-xl border border-neutral-200 bg-[#f2f3f5] p-4 text-sm leading-6 text-[#313338]", className)}>
       {blocks.length > 0 ? body : null}
+      {embedPreview}
       {buttonPreview}
     </div>
   );
@@ -375,8 +381,111 @@ function renderInlineLines(lines: string[], emojiById: Map<string, DiscordEmoji>
   ));
 }
 
+function renderEmbeds(embeds: DiscordEmbedPayload[], emojiById: Map<string, DiscordEmoji>, variant: PreviewVariant): ReactNode {
+  if (embeds.length === 0) return null;
+  return (
+    <div className="mt-3 space-y-3">
+      {embeds.map((embed, index) => (
+        <article
+          key={index}
+          className={cn(
+            "relative overflow-hidden rounded-md border-l-4 px-3 py-3",
+            variant === "mobile"
+              ? "max-w-[295px] bg-[#2b2d31] text-[#dbdee1]"
+              : "max-w-[520px] border border-[#c7ccd1] bg-white text-[#313338]",
+          )}
+          style={{ borderLeftColor: numberToHex(embed.color ?? 0x5865f2) }}
+        >
+          <div className="flex gap-3">
+            <div className="min-w-0 flex-1 space-y-2">
+              {embed.author ? (
+                <div className="flex min-w-0 items-center gap-2 text-xs font-semibold text-[#f2f3f5]">
+                  {embed.author.icon_url ? (
+                    <img src={embed.author.icon_url} alt="" className="h-5 w-5 shrink-0 rounded-full object-cover" />
+                  ) : null}
+                  {embed.author.url ? (
+                    <a href={embed.author.url} target="_blank" rel="noreferrer" className="truncate text-[#f2f3f5] no-underline hover:underline">
+                      {embed.author.name}
+                    </a>
+                  ) : (
+                    <span className={cn("truncate", variant === "mobile" ? "text-[#f2f3f5]" : "text-[#313338]")}>{embed.author.name}</span>
+                  )}
+                </div>
+              ) : null}
+
+              {embed.title ? (
+                embed.url ? (
+                  <a
+                    href={embed.url}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="block break-words text-sm font-semibold leading-5 text-[#00a8fc] no-underline hover:underline"
+                  >
+                    {renderInline(embed.title, emojiById, variant)}
+                  </a>
+                ) : (
+                  <h3 className={cn("break-words text-sm font-semibold leading-5", variant === "mobile" ? "text-[#f2f3f5]" : "text-[#313338]")}>
+                    {renderInline(embed.title, emojiById, variant)}
+                  </h3>
+                )
+              ) : null}
+
+              {embed.description ? (
+                <div className="text-sm leading-[1.38]">
+                  {renderPreviewBody(parseDiscordBlocks(embed.description), emojiById, variant)}
+                </div>
+              ) : null}
+
+              {embed.fields && embed.fields.length > 0 ? (
+                <div className="grid grid-cols-1 gap-x-3 gap-y-2 sm:grid-cols-3">
+                  {embed.fields.map((field, fieldIndex) => (
+                    <div key={fieldIndex} className={cn("min-w-0", field.inline ? "sm:col-span-1" : "sm:col-span-3")}>
+                      <p className={cn("break-words text-sm font-semibold leading-5", variant === "mobile" ? "text-[#f2f3f5]" : "text-[#313338]")}>
+                        {renderInline(field.name, emojiById, variant)}
+                      </p>
+                      <div className="break-words text-sm leading-5">
+                        {renderInlineLines(field.value.split("\n"), emojiById, variant, `embed-${fieldIndex}`)}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : null}
+
+              {embed.image ? (
+                <img src={embed.image.url} alt="" className="mt-2 max-h-[260px] w-full rounded object-cover" />
+              ) : null}
+
+              {embed.footer || embed.timestamp ? (
+                <div className="flex min-w-0 items-center gap-1.5 text-xs leading-4 text-[#949ba4]">
+                  {embed.footer?.icon_url ? <img src={embed.footer.icon_url} alt="" className="h-5 w-5 shrink-0 rounded-full object-cover" /> : null}
+                  {embed.footer?.text ? <span className="truncate">{embed.footer.text}</span> : null}
+                  {embed.footer?.text && embed.timestamp ? <span aria-hidden="true">&middot;</span> : null}
+                  {embed.timestamp ? <span>{formatDiscordPreviewTime(embed.timestamp)}</span> : null}
+                </div>
+              ) : null}
+            </div>
+            {embed.thumbnail ? (
+              <img src={embed.thumbnail.url} alt="" className="h-20 w-20 shrink-0 rounded object-cover" />
+            ) : null}
+          </div>
+        </article>
+      ))}
+    </div>
+  );
+}
+
 function renderInline(text: string, emojiById: Map<string, DiscordEmoji>, variant: PreviewVariant): ReactNode[] {
   return renderInlineSegments(text, emojiById, "inline", variant);
+}
+
+function numberToHex(value: number): string {
+  return `#${Math.max(0, Math.min(0xffffff, value)).toString(16).padStart(6, "0")}`;
+}
+
+function formatDiscordPreviewTime(value: string): string {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "";
+  return date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
 }
 
 function renderLinkButtons(buttons: DiscordLinkButton[], variant: PreviewVariant): ReactNode {

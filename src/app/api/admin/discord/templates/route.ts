@@ -3,7 +3,15 @@ import { z } from "zod";
 import { requireAuth } from "@/lib/auth";
 import { jsonError, serialize } from "@/lib/admin/agency-api";
 import {
+  DISCORD_EMBED_AUTHOR_NAME_MAX_CHARS,
+  DISCORD_EMBED_DESCRIPTION_MAX_CHARS,
+  DISCORD_EMBED_FIELD_NAME_MAX_CHARS,
+  DISCORD_EMBED_FIELD_VALUE_MAX_CHARS,
+  DISCORD_EMBED_FOOTER_TEXT_MAX_CHARS,
+  DISCORD_EMBED_MAX_FIELDS,
+  DISCORD_EMBED_TITLE_MAX_CHARS,
   DISCORD_LINK_BUTTON_MAX_LABEL_CHARS,
+  DISCORD_MAX_EMBEDS,
   DISCORD_LINK_BUTTON_MAX_URL_CHARS,
   DISCORD_MAX_LINK_BUTTONS,
 } from "@/lib/admin/discord-message-validation";
@@ -19,10 +27,35 @@ const buttonSchema = z.object({
     .refine((value) => isHttpUrl(value), "URL must start with http:// or https://."),
 });
 
+const embedFieldSchema = z.object({
+  name: z.string().trim().max(DISCORD_EMBED_FIELD_NAME_MAX_CHARS),
+  value: z.string().trim().max(DISCORD_EMBED_FIELD_VALUE_MAX_CHARS),
+  inline: z.boolean().default(false),
+});
+
+const embedSchema = z.object({
+  title: z.string().trim().max(DISCORD_EMBED_TITLE_MAX_CHARS).optional().default(""),
+  url: z.string().trim().optional().default("").refine((value) => !value || isHttpUrl(value), "URL must start with http:// or https://."),
+  description: z.string().trim().max(DISCORD_EMBED_DESCRIPTION_MAX_CHARS).optional().default(""),
+  color: z.number().int().min(0).max(0xffffff).nullable().optional().default(null),
+  authorName: z.string().trim().max(DISCORD_EMBED_AUTHOR_NAME_MAX_CHARS).optional().default(""),
+  authorIconUrl: z.string().trim().optional().default("").refine((value) => !value || isHttpUrl(value), "URL must start with http:// or https://."),
+  authorUrl: z.string().trim().optional().default("").refine((value) => !value || isHttpUrl(value), "URL must start with http:// or https://."),
+  thumbnailUrl: z.string().trim().optional().default("").refine((value) => !value || isHttpUrl(value), "URL must start with http:// or https://."),
+  imageUrl: z.string().trim().optional().default("").refine((value) => !value || isHttpUrl(value), "URL must start with http:// or https://."),
+  footerText: z.string().trim().max(DISCORD_EMBED_FOOTER_TEXT_MAX_CHARS).optional().default(""),
+  footerIconUrl: z.string().trim().optional().default("").refine((value) => !value || isHttpUrl(value), "URL must start with http:// or https://."),
+  timestamp: z.union([z.boolean(), z.string(), z.null()]).optional().default(false),
+  fields: z.array(embedFieldSchema).max(DISCORD_EMBED_MAX_FIELDS).default([]),
+});
+
 const templateSchema = z.object({
   name: z.string().trim().min(1).max(120),
   kind: z.enum(["DRAFT", "TEMPLATE"]).default("DRAFT"),
+  messageMode: z.enum(["CONTENT", "EMBED", "CONTENT_EMBED"]).default("CONTENT"),
+  channelId: z.string().trim().max(64).nullable().optional().default(null),
   content: z.string().max(2000),
+  embeds: z.array(embedSchema).max(DISCORD_MAX_EMBEDS).default([]),
   buttons: z.array(buttonSchema).max(DISCORD_MAX_LINK_BUTTONS).default([]),
   tags: z.array(z.string().trim().min(1).max(32)).max(12).default([]),
 });
@@ -101,7 +134,13 @@ export async function POST(req: Request) {
         action: existing ? "discord.template.update" : "discord.template.create",
         entityType: "DiscordMessageTemplate",
         entityId: template.id,
-        metadata: { kind: template.kind, contentLength: template.content.length, buttons: data.buttons.length },
+        metadata: {
+          kind: template.kind,
+          messageMode: data.messageMode,
+          contentLength: template.content.length,
+          embeds: data.embeds.length,
+          buttons: data.buttons.length,
+        },
       },
     });
 

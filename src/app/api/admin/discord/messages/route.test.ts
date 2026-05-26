@@ -22,10 +22,11 @@ vi.mock("@/lib/admin/discord", () => ({
   discordMessageUrl: (channelId: string, messageId: string) =>
     `https://discord.com/channels/guild-1/${channelId}/${messageId}`,
   sendDiscordMessage: mocks.sendDiscordMessage,
-  validateDiscordMessageInput: vi.fn(({ content, files, buttons }) => {
+  normalizeDiscordEmbeds: vi.fn((embeds) => embeds ?? []),
+  validateDiscordMessageInput: vi.fn(({ content, files, buttons, embeds }) => {
     if (content.length > 2000) return "Message content must be 2000 characters or fewer.";
-    if (!content.trim() && files.length === 0 && buttons.length === 0) {
-      return "Add message content, a file, or a URL button.";
+    if (!content.trim() && files.length === 0 && buttons.length === 0 && embeds.length === 0) {
+      return "Add message content, an embed, a file, or a URL button.";
     }
     return null;
   }),
@@ -81,6 +82,7 @@ describe("POST /api/admin/discord/messages", () => {
     expect(mocks.sendDiscordMessage).toHaveBeenCalledWith({
       channelId: "channel-1",
       content: "Hello Discord",
+      embeds: [],
       buttons: [{ label: "Open", url: "https://clipprofit.com" }],
       files: [expect.any(File)],
     });
@@ -106,7 +108,26 @@ describe("POST /api/admin/discord/messages", () => {
     expect(mocks.sendDiscordMessage).toHaveBeenCalledWith({
       channelId: "channel-1",
       content: "",
+      embeds: [],
       buttons: [{ label: "Join campaign", url: "https://clipprofit.com/campaigns/1" }],
+      files: [],
+    });
+  });
+
+  it("accepts embed-only messages", async () => {
+    const formData = new FormData();
+    formData.append("channelId", "channel-1");
+    formData.append("content", "");
+    formData.append("embeds", JSON.stringify([{ title: "Rules", description: "Respect each other.", color: 0x5865f2 }]));
+
+    const response = await POST(new Request("https://app.test/api/admin/discord/messages", { method: "POST", body: formData }));
+
+    expect(response.status).toBe(200);
+    expect(mocks.sendDiscordMessage).toHaveBeenCalledWith({
+      channelId: "channel-1",
+      content: "",
+      embeds: [expect.objectContaining({ title: "Rules", description: "Respect each other.", color: 0x5865f2, fields: [] })],
+      buttons: [],
       files: [],
     });
   });

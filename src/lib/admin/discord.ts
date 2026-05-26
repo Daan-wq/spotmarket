@@ -1,16 +1,23 @@
-import { buildDiscordButtonComponents, normalizeDiscordLinkButtons, validateDiscordMessageInput } from "./discord-message-validation";
-import type { DiscordLinkButton } from "./discord-message-validation";
+import {
+  buildDiscordButtonComponents,
+  normalizeDiscordEmbeds,
+  normalizeDiscordLinkButtons,
+  validateDiscordMessageInput,
+} from "./discord-message-validation";
+import type { DiscordEmbedInput, DiscordLinkButton } from "./discord-message-validation";
 
 export const DISCORD_API_BASE = "https://discord.com/api/v10";
 export const DISCORD_CDN_BASE = "https://cdn.discordapp.com";
 
 export {
   DISCORD_MAX_FILES,
+  DISCORD_MAX_EMBEDS,
   DISCORD_MAX_LINK_BUTTONS,
   DISCORD_MAX_REQUEST_BYTES,
   DISCORD_MESSAGE_MAX_CHARS,
   buildDiscordButtonComponents,
   getDiscordMessageValidationIssues,
+  normalizeDiscordEmbeds,
   normalizeDiscordLinkButtons,
   validateDiscordMessageInput,
 } from "./discord-message-validation";
@@ -54,6 +61,7 @@ export interface DiscordMessageInput {
   content: string;
   files: File[];
   buttons?: DiscordLinkButton[];
+  embeds?: DiscordEmbedInput[];
 }
 
 interface RawDiscordChannel {
@@ -181,11 +189,13 @@ export async function sendDiscordMessage(input: DiscordMessageInput): Promise<Di
   if (validationError) throw new DiscordApiError(validationError, 400);
 
   const components = buildDiscordButtonComponents(normalizeDiscordLinkButtons(input.buttons ?? []));
+  const embeds = normalizeDiscordEmbeds(input.embeds ?? []);
   const body = new FormData();
   body.append(
     "payload_json",
     JSON.stringify({
       content: input.content,
+      ...(embeds.length > 0 ? { embeds } : {}),
       ...(components.length > 0 ? { components } : {}),
       attachments: input.files.map((file, index) => ({
         id: index,

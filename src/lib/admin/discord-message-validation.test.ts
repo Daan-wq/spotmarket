@@ -3,6 +3,7 @@ import {
   DISCORD_MAX_REQUEST_BYTES,
   buildDiscordButtonComponents,
   getDiscordMessageValidationIssues,
+  normalizeDiscordEmbeds,
   normalizeDiscordLinkButtons,
   validateDiscordMessageInput,
 } from "./discord-message-validation";
@@ -17,7 +18,7 @@ describe("Discord message validation", () => {
       }),
     ).toEqual([
       { code: "missing_channel", message: "Choose a Discord channel." },
-      { code: "missing_payload", message: "Add message content, a file, or a URL button." },
+      { code: "missing_payload", message: "Add message content, an embed, a file, or a URL button." },
     ]);
   });
 
@@ -53,6 +54,73 @@ describe("Discord message validation", () => {
         validChannelIds: ["channel-1"],
       }),
     ).toBeNull();
+  });
+
+  it("allows embed-only messages with a valid channel", () => {
+    expect(
+      validateDiscordMessageInput({
+        channelId: "channel-1",
+        content: "",
+        files: [],
+        embeds: [{ title: "Rules", description: "Respect each other.", color: 0x5865f2 }],
+        validChannelIds: ["channel-1"],
+      }),
+    ).toBeNull();
+  });
+
+  it("normalizes embeds by removing empty optional objects", () => {
+    expect(
+      normalizeDiscordEmbeds([
+        {
+          title: " Rules ",
+          url: " https://clipprofit.com ",
+          description: " Be kind ",
+          color: 0x5865f2,
+          authorName: "",
+          authorIconUrl: "",
+          footerText: " ClipProfit ",
+          footerIconUrl: "",
+          imageUrl: "",
+          thumbnailUrl: "",
+          timestamp: false,
+          fields: [
+            { name: " Rule 1 ", value: " Respect ", inline: true },
+            { name: "", value: "", inline: false },
+          ],
+        },
+      ]),
+    ).toEqual([
+      {
+        title: "Rules",
+        url: "https://clipprofit.com",
+        description: "Be kind",
+        color: 0x5865f2,
+        fields: [{ name: "Rule 1", value: "Respect", inline: true }],
+        footer: { text: "ClipProfit" },
+      },
+    ]);
+  });
+
+  it("validates Discord embed limits", () => {
+    expect(
+      getDiscordMessageValidationIssues({
+        channelId: "channel-1",
+        content: "",
+        files: [],
+        embeds: [
+          {
+            title: "x".repeat(257),
+            description: "x".repeat(4097),
+            fields: [{ name: "Name", value: "", inline: false }],
+          },
+        ],
+        validChannelIds: ["channel-1"],
+      }).map((issue) => issue.message),
+    ).toEqual([
+      "Embed 1 title must be 256 characters or fewer.",
+      "Embed 1 description must be 4096 characters or fewer.",
+      "Embed 1 field 1 needs both name and value.",
+    ]);
   });
 
   it("validates URL button label and URL rules", () => {

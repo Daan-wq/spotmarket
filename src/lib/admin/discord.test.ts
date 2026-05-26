@@ -156,4 +156,39 @@ describe("admin Discord helpers", () => {
       },
     ]);
   });
+
+  it("sends cleaned Discord embeds in payload_json", async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ id: "msg-1", channel_id: "channel-1" }),
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    await sendDiscordMessage({
+      channelId: "channel-1",
+      content: "",
+      files: [],
+      embeds: [
+        {
+          title: "Rules",
+          description: "Respect each other.",
+          color: 0x5865f2,
+          authorName: "",
+          imageUrl: "",
+          fields: [{ name: "Rule 1", value: "Be kind", inline: false }],
+        },
+      ],
+    });
+
+    const init = fetchMock.mock.calls[0][1] as RequestInit;
+    const payload = JSON.parse(String((init.body as FormData).get("payload_json")));
+    expect(payload.embeds).toEqual([
+      {
+        title: "Rules",
+        description: "Respect each other.",
+        color: 0x5865f2,
+        fields: [{ name: "Rule 1", value: "Be kind", inline: false }],
+      },
+    ]);
+  });
 });

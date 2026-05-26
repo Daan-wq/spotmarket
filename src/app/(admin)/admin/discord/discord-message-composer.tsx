@@ -4,9 +4,12 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { ReactNode } from "react";
 import {
+  ArrowDown,
+  ArrowUp,
   Bold,
   Code2,
   CodeXml,
+  Copy,
   Eye,
   Heading1,
   Heading2,
@@ -39,12 +42,16 @@ import type { DiscordChannelGroup, DiscordEmoji } from "@/lib/admin/discord";
 import {
   DISCORD_MAX_FILES as MAX_FILES,
   DISCORD_MAX_LINK_BUTTONS as MAX_BUTTONS,
+  DISCORD_MAX_EMBEDS as MAX_EMBEDS,
   DISCORD_MAX_REQUEST_BYTES as MAX_TOTAL_BYTES,
   DISCORD_MESSAGE_MAX_CHARS as MAX_CONTENT,
+  buildDiscordButtonComponents,
+  getDiscordEmbedCharacterCount,
+  normalizeDiscordEmbeds,
   normalizeDiscordLinkButtons,
   getDiscordMessageValidationIssues,
 } from "@/lib/admin/discord-message-validation";
-import type { DiscordLinkButton } from "@/lib/admin/discord-message-validation";
+import type { DiscordEmbedFieldInput, DiscordEmbedInput, DiscordLinkButton } from "@/lib/admin/discord-message-validation";
 import {
   escapeDiscordMarkdown,
   isBlockFormatActive,
@@ -62,7 +69,10 @@ interface DiscordTemplate {
   id: string;
   name: string;
   kind: "DRAFT" | "TEMPLATE";
+  messageMode?: DiscordMessageMode;
+  channelId?: string | null;
   content: string;
+  embeds?: DiscordEmbedInput[];
   buttons: DiscordLinkButton[];
   tags: string[];
   updatedAt: string;
@@ -86,8 +96,11 @@ interface EmojisResponse {
   emojis: DiscordEmoji[];
 }
 
+type DiscordMessageMode = "CONTENT" | "EMBED" | "CONTENT_EMBED";
+
 const HEADER_PREFIX_PATTERN = /^#{1,3}\s+/;
 const ORDERED_PREFIX_PATTERN = /^\s*\d+\.\s+/;
+const DEFAULT_EMBED_COLOR = 0x5865f2;
 
 export function DiscordMessageComposer() {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -96,7 +109,9 @@ export function DiscordMessageComposer() {
   const [emojis, setEmojis] = useState<DiscordEmoji[]>([]);
   const [templates, setTemplates] = useState<DiscordTemplate[]>([]);
   const [selectedChannelId, setSelectedChannelId] = useState("");
+  const [messageMode, setMessageMode] = useState<DiscordMessageMode>("CONTENT");
   const [content, setContent] = useState("");
+  const [embeds, setEmbeds] = useState<DiscordEmbedInput[]>([]);
   const [linkButtons, setLinkButtons] = useState<DiscordLinkButton[]>([]);
   const [files, setFiles] = useState<File[]>([]);
   const [templateId, setTemplateId] = useState<string | null>(null);
@@ -111,6 +126,7 @@ export function DiscordMessageComposer() {
   const [saving, setSaving] = useState(false);
   const [sending, setSending] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
+  const [sendIntent, setSendIntent] = useState<"test" | "publish">("publish");
   const [selection, setSelection] = useState<SelectionRange>({ start: 0, end: 0 });
   const [activeInlineFormat, setActiveInlineFormat] = useState<string | null>(null);
 
@@ -125,7 +141,19 @@ export function DiscordMessageComposer() {
   const validChannelIds = useMemo(() => allChannels.map((channel) => channel.id), [allChannels]);
   const selectedChannel = allChannels.find((channel) => channel.id === selectedChannelId) ?? null;
   const totalFileSize = files.reduce((sum, file) => sum + file.size, 0);
+  const activeContent = messageMode === "EMBED" ? "" : content;
+  const activeEmbeds = useMemo(() => (messageMode === "CONTENT" ? [] : embeds), [embeds, messageMode]);
+  const cleanedEmbeds = useMemo(() => normalizeDiscordEmbeds(activeEmbeds), [activeEmbeds]);
+  const embedCharacterCount = cleanedEmbeds.reduce((sum, embed) => sum + getDiscordEmbedCharacterCount(embed), 0);
   const completeLinkButtons = useMemo(() => normalizeDiscordLinkButtons(linkButtons), [linkButtons]);
+  const previewPayload = useMemo(
+    () => ({
+      content: activeContent || undefined,
+      embeds: cleanedEmbeds.length > 0 ? cleanedEmbeds : undefined,
+      components: completeLinkButtons.length > 0 ? buildDiscordButtonComponents(completeLinkButtons) : undefined,
+    }),
+    [activeContent, cleanedEmbeds, completeLinkButtons],
+  );
   const filteredEmojis = emojis.filter((emoji) =>
     emoji.name.toLowerCase().includes(emojiQuery.trim().toLowerCase()),
   );
@@ -133,12 +161,13 @@ export function DiscordMessageComposer() {
     () =>
       getDiscordMessageValidationIssues({
         channelId: selectedChannelId,
-        content,
+        content: activeContent,
         files,
+        embeds: activeEmbeds,
         buttons: linkButtons,
         validChannelIds: loading ? undefined : validChannelIds,
       }),
-    [content, files, linkButtons, loading, selectedChannelId, validChannelIds],
+    [activeContent, activeEmbeds, files, linkButtons, loading, selectedChannelId, validChannelIds],
   );
   const primarySendIssue = loading
     ? { message: "Discord channels and emojis are still loading." }
@@ -239,8 +268,9 @@ export function DiscordMessageComposer() {
     setFiles(next);
     const issue = getDiscordMessageValidationIssues({
       channelId: selectedChannelId,
-      content,
+      content: activeContent,
       files: next,
+      embeds: activeEmbeds,
       buttons: linkButtons,
       validChannelIds: loading ? undefined : validChannelIds,
     })[0];
@@ -270,13 +300,80 @@ export function DiscordMessageComposer() {
     setLinkButtons((current) => current.filter((_, buttonIndex) => buttonIndex !== index));
   }
 
+  function addEmbed(embed: DiscordEmbedInput = createEmptyEmbed()) {
+    if (embeds.length >= MAX_EMBEDS) {
+      setError(`Discord accepts up to ${MAX_EMBEDS} embeds per message.`);
+      return;
+    }
+    setEmbeds((current) => [...current, embed]);
+    if (messageMode === "CONTENT") setMessageMode(content.trim() ? "CONTENT_EMBED" : "EMBED");
+  }
+
+  function updateEmbed(index: number, patch: Partial<DiscordEmbedInput>) {
+    setEmbeds((current) => current.map((embed, embedIndex) => (embedIndex === index ? { ...embed, ...patch } : embed)));
+  }
+
+  function duplicateEmbed(index: number) {
+    const source = embeds[index];
+    if (!source) return;
+    addEmbed({
+      ...source,
+      fields: source.fields?.map((field) => ({ ...field })) ?? [],
+    });
+  }
+
+  function removeEmbed(index: number) {
+    setEmbeds((current) => current.filter((_, embedIndex) => embedIndex !== index));
+  }
+
+  function moveEmbed(index: number, direction: -1 | 1) {
+    setEmbeds((current) => moveItem(current, index, index + direction));
+  }
+
+  function applyEmbedPreset(preset: EmbedPreset) {
+    const next = createPresetEmbed(preset);
+    setEmbeds([next]);
+    setMessageMode(content.trim() ? "CONTENT_EMBED" : "EMBED");
+    setStatus(`${preset.label} embed preset loaded`);
+  }
+
+  function addEmbedField(embedIndex: number) {
+    const embed = embeds[embedIndex];
+    if ((embed.fields?.length ?? 0) >= 25) {
+      setError("Discord accepts up to 25 fields per embed.");
+      return;
+    }
+    updateEmbed(embedIndex, { fields: [...(embed.fields ?? []), { name: "", value: "", inline: false }] });
+  }
+
+  function updateEmbedField(embedIndex: number, fieldIndex: number, patch: Partial<DiscordEmbedFieldInput>) {
+    const embed = embeds[embedIndex];
+    const fields = embed.fields ?? [];
+    updateEmbed(embedIndex, {
+      fields: fields.map((field, index) => (index === fieldIndex ? { ...field, ...patch } : field)),
+    });
+  }
+
+  function removeEmbedField(embedIndex: number, fieldIndex: number) {
+    const embed = embeds[embedIndex];
+    updateEmbed(embedIndex, { fields: (embed.fields ?? []).filter((_, index) => index !== fieldIndex) });
+  }
+
+  function moveEmbedField(embedIndex: number, fieldIndex: number, direction: -1 | 1) {
+    const embed = embeds[embedIndex];
+    updateEmbed(embedIndex, { fields: moveItem(embed.fields ?? [], fieldIndex, fieldIndex + direction) });
+  }
+
   function loadTemplate(template: DiscordTemplate) {
     setTemplateId(template.id);
     setLoadedTemplateIdentity({ id: template.id, name: template.name, kind: template.kind });
     setTemplateName(template.name);
     setTemplateKind(template.kind);
     setTemplateTags(template.tags.join(", "));
+    setMessageMode(template.messageMode ?? inferMessageMode(template.content, template.embeds ?? []));
+    if (template.channelId) setSelectedChannelId(template.channelId);
     setContent(template.content);
+    setEmbeds(template.embeds ?? []);
     setLinkButtons(template.buttons ?? []);
     setSelection({ start: 0, end: template.content.length });
     setActiveInlineFormat(null);
@@ -289,7 +386,9 @@ export function DiscordMessageComposer() {
     setTemplateName("");
     setTemplateTags("");
     setTemplateKind("DRAFT");
+    setMessageMode("CONTENT");
     setContent("");
+    setEmbeds([]);
     setLinkButtons([]);
     setFiles([]);
     setSelection({ start: 0, end: 0 });
@@ -316,7 +415,10 @@ export function DiscordMessageComposer() {
     const payload = {
       name: templateName.trim() || `${kind === "DRAFT" ? "Draft" : "Template"} ${new Date().toLocaleDateString()}`,
       kind,
-      content,
+      messageMode,
+      channelId: selectedChannelId || null,
+      content: activeContent,
+      embeds: activeEmbeds,
       buttons: completeLinkButtons,
       tags: templateTags
         .split(",")
@@ -375,9 +477,10 @@ export function DiscordMessageComposer() {
     setStatus("Template deleted");
   }
 
-  function openSendConfirm() {
+  function openSendConfirm(intent: "test" | "publish") {
     setError(null);
     if (primarySendIssue) return setError(primarySendIssue.message);
+    setSendIntent(intent);
     setConfirmOpen(true);
   }
 
@@ -391,7 +494,9 @@ export function DiscordMessageComposer() {
     setStatus(null);
     const payload = new FormData();
     payload.append("channelId", selectedChannelId);
-    payload.append("content", content);
+    payload.append("sendMode", sendIntent);
+    payload.append("content", activeContent);
+    payload.append("embeds", JSON.stringify(activeEmbeds));
     payload.append("buttons", JSON.stringify(completeLinkButtons));
     if (templateId) payload.append("templateId", templateId);
     for (const file of files) payload.append("files", file);
@@ -405,7 +510,7 @@ export function DiscordMessageComposer() {
       if (!response.ok) throw new Error(body.error ?? "Could not send Discord message.");
       setConfirmOpen(false);
       setFiles([]);
-      setStatus(`Message sent: ${body.message?.url ?? body.message?.id ?? "Discord"}`);
+      setStatus(`${sendIntent === "test" ? "Test message" : "Message"} sent: ${body.message?.url ?? body.message?.id ?? "Discord"}`);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not send Discord message.");
     } finally {
@@ -450,6 +555,35 @@ export function DiscordMessageComposer() {
             </div>
           </div>
 
+          <div className="mt-5 rounded-xl border border-neutral-200 bg-neutral-50 p-2">
+            <div className="grid grid-cols-1 gap-2 text-sm md:grid-cols-3">
+              <ModeButton
+                label="Normal message"
+                description="Only Markdown content"
+                active={messageMode === "CONTENT"}
+                onClick={() => setMessageMode("CONTENT")}
+              />
+              <ModeButton
+                label="With embed"
+                description="Only embed payload"
+                active={messageMode === "EMBED"}
+                onClick={() => {
+                  setMessageMode("EMBED");
+                  if (embeds.length === 0) addEmbed();
+                }}
+              />
+              <ModeButton
+                label="Normal + embed"
+                description="Text above embeds"
+                active={messageMode === "CONTENT_EMBED"}
+                onClick={() => {
+                  setMessageMode("CONTENT_EMBED");
+                  if (embeds.length === 0) addEmbed();
+                }}
+              />
+            </div>
+          </div>
+
           <div className="mt-5 flex flex-wrap items-center gap-2 rounded-xl border border-neutral-200 bg-neutral-50 p-2">
             <ToolbarButton label="Big header" pressed={lineActive("# ")} onClick={() => applyLinePrefix("# ", HEADER_PREFIX_PATTERN)}><Heading1 className="h-4 w-4" /></ToolbarButton>
             <ToolbarButton label="Medium header" pressed={lineActive("## ")} onClick={() => applyLinePrefix("## ", HEADER_PREFIX_PATTERN)}><Heading2 className="h-4 w-4" /></ToolbarButton>
@@ -478,25 +612,176 @@ export function DiscordMessageComposer() {
             <ToolbarButton label="Attach files" onClick={() => fileInputRef.current?.click()}><Paperclip className="h-4 w-4" /></ToolbarButton>
           </div>
 
-          <textarea
-            ref={textareaRef}
-            value={content}
-            onChange={(event) => {
-              setContent(event.target.value);
-              setSelection({ start: event.target.selectionStart, end: event.target.selectionEnd });
-            }}
-            onSelect={syncSelection}
-            onClick={syncSelection}
-            onKeyUp={syncSelection}
-            rows={13}
-            className="mt-4 w-full resize-y rounded-xl border border-neutral-200 px-4 py-3 text-sm leading-6 outline-none focus:border-neutral-500"
-            placeholder="Write Discord Markdown here..."
-          />
+          <label className="mt-4 block">
+            <span className="text-xs font-semibold uppercase tracking-[0.14em] text-neutral-500">Main message content</span>
+            <textarea
+              ref={textareaRef}
+              value={content}
+              onChange={(event) => {
+                setContent(event.target.value);
+                setSelection({ start: event.target.selectionStart, end: event.target.selectionEnd });
+              }}
+              onSelect={syncSelection}
+              onClick={syncSelection}
+              onKeyUp={syncSelection}
+              rows={13}
+              className="mt-2 w-full resize-y rounded-xl border border-neutral-200 px-4 py-3 text-sm leading-6 outline-none focus:border-neutral-500"
+              placeholder="Write Discord Markdown here..."
+            />
+          </label>
           <div className="mt-2 flex flex-wrap items-center justify-between gap-3 text-xs text-neutral-500">
-            <span className={content.length > MAX_CONTENT ? "font-semibold text-red-600" : undefined}>
-              {content.length} / {MAX_CONTENT} characters
+            <span className={activeContent.length > MAX_CONTENT ? "font-semibold text-red-600" : undefined}>
+              {activeContent.length} / {MAX_CONTENT} characters sent
             </span>
+            {messageMode === "EMBED" && content.trim() ? <span>Text is saved locally here but not sent in embed-only mode.</span> : null}
             <span>{files.length} / {MAX_FILES} files - {formatBytes(totalFileSize)} / {formatBytes(MAX_TOTAL_BYTES)}</span>
+          </div>
+
+          <div className="mt-4 rounded-xl border border-neutral-200 bg-neutral-50 p-3">
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div>
+                <p className="text-sm font-semibold text-neutral-950">Embeds</p>
+                <p className="text-xs text-neutral-500">
+                  {cleanedEmbeds.length} / {MAX_EMBEDS} embeds ready - {embedCharacterCount} / 6000 embed characters
+                </p>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  onClick={() => addEmbed()}
+                  className="inline-flex h-9 items-center gap-2 rounded-lg border border-neutral-200 bg-white px-3 text-xs font-semibold text-neutral-700 transition hover:border-neutral-300 hover:text-neutral-950"
+                >
+                  <Plus className="h-4 w-4" />
+                  Add embed
+                </button>
+              </div>
+            </div>
+
+            <div className="mt-3 flex flex-wrap gap-2">
+              {EMBED_PRESETS.map((preset) => (
+                <button
+                  key={preset.id}
+                  type="button"
+                  onClick={() => applyEmbedPreset(preset)}
+                  className="rounded-full border border-neutral-200 bg-white px-3 py-1.5 text-xs font-semibold text-neutral-600 transition hover:border-neutral-300 hover:text-neutral-950"
+                >
+                  {preset.label}
+                </button>
+              ))}
+            </div>
+
+            {messageMode === "CONTENT" ? (
+              <p className="mt-3 rounded-lg bg-white px-3 py-2 text-xs text-neutral-500">
+                Embed payload is off in normal-message mode. Switch to an embed mode to send embeds.
+              </p>
+            ) : null}
+
+            {embeds.length > 0 ? (
+              <div className="mt-3 space-y-3">
+                {embeds.map((embed, embedIndex) => (
+                  <div key={embedIndex} className="rounded-xl border border-neutral-200 bg-white p-3">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <p className="text-sm font-semibold text-neutral-950">Embed {embedIndex + 1}</p>
+                      <div className="flex gap-1">
+                        <IconButton label="Move embed up" onClick={() => moveEmbed(embedIndex, -1)} disabled={embedIndex === 0}>
+                          <ArrowUp className="h-4 w-4" />
+                        </IconButton>
+                        <IconButton label="Move embed down" onClick={() => moveEmbed(embedIndex, 1)} disabled={embedIndex === embeds.length - 1}>
+                          <ArrowDown className="h-4 w-4" />
+                        </IconButton>
+                        <IconButton label="Duplicate embed" onClick={() => duplicateEmbed(embedIndex)}>
+                          <Copy className="h-4 w-4" />
+                        </IconButton>
+                        <IconButton label="Delete embed" onClick={() => removeEmbed(embedIndex)}>
+                          <Trash2 className="h-4 w-4" />
+                        </IconButton>
+                      </div>
+                    </div>
+
+                    <div className="mt-3 grid grid-cols-1 gap-2 md:grid-cols-[minmax(0,1fr)_150px]">
+                      <input
+                        value={embed.title ?? ""}
+                        onChange={(event) => updateEmbed(embedIndex, { title: event.target.value })}
+                        placeholder="Embed title"
+                        maxLength={256}
+                        className="h-10 rounded-lg border border-neutral-200 bg-white px-3 text-sm outline-none focus:border-neutral-500"
+                      />
+                      <label className="flex h-10 items-center gap-2 rounded-lg border border-neutral-200 bg-white px-3 text-xs font-semibold text-neutral-500">
+                        <span>Color</span>
+                        <input
+                          type="color"
+                          value={numberToHex(embed.color ?? DEFAULT_EMBED_COLOR)}
+                          onChange={(event) => updateEmbed(embedIndex, { color: hexToNumber(event.target.value) })}
+                          className="h-6 w-10 cursor-pointer border-0 bg-transparent p-0"
+                        />
+                      </label>
+                    </div>
+                    <input
+                      value={embed.url ?? ""}
+                      onChange={(event) => updateEmbed(embedIndex, { url: event.target.value })}
+                      placeholder="Title URL, optional"
+                      className="mt-2 h-10 w-full rounded-lg border border-neutral-200 bg-white px-3 text-sm outline-none focus:border-neutral-500"
+                    />
+                    <textarea
+                      value={embed.description ?? ""}
+                      onChange={(event) => updateEmbed(embedIndex, { description: event.target.value })}
+                      placeholder="Embed description with Discord Markdown..."
+                      rows={5}
+                      maxLength={4096}
+                      className="mt-2 w-full resize-y rounded-lg border border-neutral-200 bg-white px-3 py-2 text-sm leading-6 outline-none focus:border-neutral-500"
+                    />
+
+                    <details className="mt-3 rounded-lg border border-neutral-200 bg-neutral-50 p-3">
+                      <summary className="cursor-pointer text-xs font-semibold uppercase tracking-[0.14em] text-neutral-500">Author, media and footer</summary>
+                      <div className="mt-3 grid grid-cols-1 gap-2 md:grid-cols-3">
+                        <input value={embed.authorName ?? ""} onChange={(event) => updateEmbed(embedIndex, { authorName: event.target.value })} placeholder="Author name" className="h-10 rounded-lg border border-neutral-200 bg-white px-3 text-sm outline-none focus:border-neutral-500" />
+                        <input value={embed.authorIconUrl ?? ""} onChange={(event) => updateEmbed(embedIndex, { authorIconUrl: event.target.value })} placeholder="Author icon URL" className="h-10 rounded-lg border border-neutral-200 bg-white px-3 text-sm outline-none focus:border-neutral-500" />
+                        <input value={embed.authorUrl ?? ""} onChange={(event) => updateEmbed(embedIndex, { authorUrl: event.target.value })} placeholder="Author URL" className="h-10 rounded-lg border border-neutral-200 bg-white px-3 text-sm outline-none focus:border-neutral-500" />
+                        <input value={embed.thumbnailUrl ?? ""} onChange={(event) => updateEmbed(embedIndex, { thumbnailUrl: event.target.value })} placeholder="Thumbnail image URL" className="h-10 rounded-lg border border-neutral-200 bg-white px-3 text-sm outline-none focus:border-neutral-500" />
+                        <input value={embed.imageUrl ?? ""} onChange={(event) => updateEmbed(embedIndex, { imageUrl: event.target.value })} placeholder="Large image URL" className="h-10 rounded-lg border border-neutral-200 bg-white px-3 text-sm outline-none focus:border-neutral-500" />
+                        <label className="flex h-10 items-center gap-2 rounded-lg border border-neutral-200 bg-white px-3 text-sm text-neutral-700">
+                          <input type="checkbox" checked={embed.timestamp === true} onChange={(event) => updateEmbed(embedIndex, { timestamp: event.target.checked })} />
+                          Current timestamp
+                        </label>
+                        <input value={embed.footerText ?? ""} onChange={(event) => updateEmbed(embedIndex, { footerText: event.target.value })} placeholder="Footer text" className="h-10 rounded-lg border border-neutral-200 bg-white px-3 text-sm outline-none focus:border-neutral-500 md:col-span-2" />
+                        <input value={embed.footerIconUrl ?? ""} onChange={(event) => updateEmbed(embedIndex, { footerIconUrl: event.target.value })} placeholder="Footer icon URL" className="h-10 rounded-lg border border-neutral-200 bg-white px-3 text-sm outline-none focus:border-neutral-500" />
+                      </div>
+                    </details>
+
+                    <div className="mt-3 rounded-lg border border-neutral-200 bg-neutral-50 p-3">
+                      <div className="flex items-center justify-between gap-2">
+                        <p className="text-xs font-semibold uppercase tracking-[0.14em] text-neutral-500">Fields</p>
+                        <button type="button" onClick={() => addEmbedField(embedIndex)} className="inline-flex h-8 items-center gap-1 rounded-md border border-neutral-200 bg-white px-2 text-xs font-semibold text-neutral-600 hover:text-neutral-950">
+                          <Plus className="h-3.5 w-3.5" />
+                          Add field
+                        </button>
+                      </div>
+                      {(embed.fields ?? []).length > 0 ? (
+                        <div className="mt-3 space-y-2">
+                          {(embed.fields ?? []).map((field, fieldIndex) => (
+                            <div key={fieldIndex} className="grid grid-cols-1 gap-2 rounded-lg border border-neutral-200 bg-white p-2 md:grid-cols-[minmax(0,160px)_minmax(0,1fr)_90px_116px]">
+                              <input value={field.name} onChange={(event) => updateEmbedField(embedIndex, fieldIndex, { name: event.target.value })} placeholder="Field name" maxLength={256} className="h-10 rounded-lg border border-neutral-200 px-3 text-sm outline-none focus:border-neutral-500" />
+                              <textarea value={field.value} onChange={(event) => updateEmbedField(embedIndex, fieldIndex, { value: event.target.value })} placeholder="Field value" rows={2} maxLength={1024} className="rounded-lg border border-neutral-200 px-3 py-2 text-sm outline-none focus:border-neutral-500" />
+                              <label className="flex h-10 items-center gap-2 rounded-lg border border-neutral-200 px-3 text-sm text-neutral-600">
+                                <input type="checkbox" checked={field.inline === true} onChange={(event) => updateEmbedField(embedIndex, fieldIndex, { inline: event.target.checked })} />
+                                Inline
+                              </label>
+                              <div className="flex items-center justify-end gap-1">
+                                <IconButton label="Move field up" onClick={() => moveEmbedField(embedIndex, fieldIndex, -1)} disabled={fieldIndex === 0}><ArrowUp className="h-4 w-4" /></IconButton>
+                                <IconButton label="Move field down" onClick={() => moveEmbedField(embedIndex, fieldIndex, 1)} disabled={fieldIndex === (embed.fields?.length ?? 0) - 1}><ArrowDown className="h-4 w-4" /></IconButton>
+                                <IconButton label="Remove field" onClick={() => removeEmbedField(embedIndex, fieldIndex)}><Trash2 className="h-4 w-4" /></IconButton>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <p className="mt-2 text-xs text-neutral-500">No fields yet.</p>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : null}
           </div>
 
           <div className="mt-4 rounded-xl border border-neutral-200 bg-neutral-50 p-3">
@@ -553,6 +838,13 @@ export function DiscordMessageComposer() {
           >
             {primarySendIssue?.message ?? "Ready to preview and send."}
           </p>
+          {sendValidationIssues.length > 1 ? (
+            <ul className="mt-2 space-y-1 rounded-xl bg-amber-50 px-3 py-2 text-xs text-amber-800">
+              {sendValidationIssues.slice(1, 6).map((issue, index) => (
+                <li key={`${issue.code}-${index}`}>{issue.message}</li>
+              ))}
+            </ul>
+          ) : null}
 
           <input
             ref={fileInputRef}
@@ -579,7 +871,11 @@ export function DiscordMessageComposer() {
           ) : null}
 
           <div className="mt-5 flex flex-wrap items-center gap-2">
-            <Button type="button" onClick={openSendConfirm}>
+            <Button type="button" variant="outline" onClick={() => openSendConfirm("test")}>
+              <Send className="h-4 w-4" />
+              Send test
+            </Button>
+            <Button type="button" onClick={() => openSendConfirm("publish")}>
               <Send className="h-4 w-4" />
               Preview and send
             </Button>
@@ -599,8 +895,8 @@ export function DiscordMessageComposer() {
         </div>
 
         <section className="xl:sticky xl:top-4 xl:self-start">
-          <SectionHeader title="Live preview" description="Mobile Discord preview. The actual send still uses your raw Markdown." />
-          <DiscordMarkdownPreview content={content} emojis={emojis} buttons={completeLinkButtons} frame="mobile" />
+          <SectionHeader title="Live preview" description="Mobile Discord preview for the exact payload that will be sent." />
+          <DiscordMarkdownPreview content={activeContent} embeds={activeEmbeds} emojis={emojis} buttons={completeLinkButtons} frame="mobile" />
         </section>
         </div>
       </section>
@@ -671,7 +967,9 @@ export function DiscordMessageComposer() {
                       <p className="text-sm font-semibold text-neutral-950">{template.name}</p>
                       <Badge variant={template.kind === "TEMPLATE" ? "active" : "neutral"}>{template.kind.toLowerCase()}</Badge>
                     </div>
-                    <p className="mt-1 line-clamp-2 text-xs leading-5 text-neutral-500">{template.content || "Empty draft"}</p>
+                    <p className="mt-1 line-clamp-2 text-xs leading-5 text-neutral-500">
+                      {template.content || (template.embeds?.length ? `${template.embeds.length} embed(s)` : "Empty draft")}
+                    </p>
                     {template.tags.length > 0 ? <p className="mt-2 text-[11px] text-neutral-400">{template.tags.join(", ")}</p> : null}
                   </button>
                   <button type="button" onClick={() => deleteTemplate(template.id)} className="mt-2 inline-flex items-center gap-1 text-xs font-medium text-neutral-400 hover:text-red-600">
@@ -683,12 +981,19 @@ export function DiscordMessageComposer() {
             )}
           </div>
         </div>
+
+        <details className="rounded-2xl border border-neutral-200 bg-white p-5">
+          <summary className="cursor-pointer text-sm font-semibold text-neutral-950">Preview payload</summary>
+          <pre className="mt-3 max-h-80 overflow-auto rounded-xl bg-neutral-950 p-3 text-[11px] leading-5 text-neutral-100">
+            {JSON.stringify(previewPayload, null, 2)}
+          </pre>
+        </details>
       </aside>
 
       <Dialog
         open={confirmOpen}
         onClose={() => setConfirmOpen(false)}
-        title="Confirm Discord send"
+        title={sendIntent === "test" ? "Confirm Discord test" : "Confirm Discord send"}
         description={selectedChannel ? `Posting to #${selectedChannel.name} from the ClipProfit bot.` : undefined}
         size="lg"
         className="max-w-3xl"
@@ -697,20 +1002,22 @@ export function DiscordMessageComposer() {
             <Button type="button" variant="ghost" onClick={() => setConfirmOpen(false)} disabled={sending}>Cancel</Button>
             <Button type="button" onClick={sendMessage} isPending={sending}>
               <Send className="h-4 w-4" />
-              Send now
+              {sendIntent === "test" ? "Send test" : "Send now"}
             </Button>
           </>
         }
       >
         <div className="space-y-4">
-          <div className="grid grid-cols-1 gap-3 text-sm md:grid-cols-4">
+          <div className="grid grid-cols-1 gap-3 text-sm md:grid-cols-5">
             <ConfirmStat label="Channel" value={selectedChannel ? `#${selectedChannel.name}` : "-"} />
-            <ConfirmStat label="Characters" value={`${content.length} / ${MAX_CONTENT}`} />
+            <ConfirmStat label="Content" value={`${activeContent.length} / ${MAX_CONTENT}`} />
+            <ConfirmStat label="Embeds" value={`${cleanedEmbeds.length} (${embedCharacterCount} chars)`} />
             <ConfirmStat label="Files" value={`${files.length} (${formatBytes(totalFileSize)})`} />
             <ConfirmStat label="Buttons" value={`${completeLinkButtons.length} / ${MAX_BUTTONS}`} />
           </div>
           <DiscordMarkdownPreview
-            content={content}
+            content={activeContent}
+            embeds={activeEmbeds}
             emojis={emojis}
             buttons={completeLinkButtons}
             frame="mobile"
@@ -736,6 +1043,176 @@ export function shouldPatchLoadedDiscordTemplate(
 
 function normalizeTemplateName(name: string) {
   return name.trim().toLowerCase();
+}
+
+interface EmbedPreset {
+  id: string;
+  label: string;
+  title: string;
+  description: string;
+  color: number;
+}
+
+const EMBED_PRESETS: EmbedPreset[] = [
+  {
+    id: "rules",
+    label: "Rules",
+    title: "📋 ClipProfit Server Regels",
+    color: DEFAULT_EMBED_COLOR,
+    description:
+      "Lees deze regels voordat je deelneemt - we houden het simpel.\n\n" +
+      "1. Respecteer elkaar\n" +
+      "2. Geen pesterijen, discriminatie of toxic gedrag.\n" +
+      "3. Geen ongewenste DM's\n" +
+      "4. Geen random priveberichten of promoties naar andere leden.\n" +
+      "5. Geen spam\n" +
+      "6. Geen links of zelfpromotie.\n" +
+      "7. Blijf on-topic\n" +
+      "8. Gebruik het juiste kanaal voor het juiste onderwerp.\n" +
+      "9. Enkel echte resultaten\n\n" +
+      "⚠️ Overtredingen: waarschuwing -> mute -> ban\n" +
+      "❓ Vragen? Stel ze in het juiste help-kanaal.",
+  },
+  {
+    id: "announcement",
+    label: "Announcement",
+    title: "📣 Nieuwe update",
+    color: 0x3498db,
+    description: "Schrijf hier de belangrijkste update, wat er verandert, en wat leden nu moeten doen.",
+  },
+  {
+    id: "campaign",
+    label: "Campaign update",
+    title: "🚨 Nieuwe campagne",
+    color: 0xf1c40f,
+    description: "**Campagne details**\nPlatform:\nCPM:\nMinimum views:\nMaximum views:\n\n**Links**\nVoeg de juiste links toe.",
+  },
+  {
+    id: "warning",
+    label: "Warning",
+    title: "⚠️ Belangrijke waarschuwing",
+    color: 0xe74c3c,
+    description: "Leg kort uit wat niet de bedoeling is en welke actie er volgt als dit doorgaat.",
+  },
+  {
+    id: "success",
+    label: "Success",
+    title: "✅ Resultaat behaald",
+    color: 0x2ecc71,
+    description: "Vat het resultaat samen en geef de volgende stap.",
+  },
+  {
+    id: "faq",
+    label: "FAQ / info",
+    title: "ℹ️ Veelgestelde vragen",
+    color: 0x5865f2,
+    description: "**Vraag:**\nAntwoord.\n\n**Vraag:**\nAntwoord.",
+  },
+];
+
+function createEmptyEmbed(): DiscordEmbedInput {
+  return {
+    title: "",
+    url: "",
+    description: "",
+    color: DEFAULT_EMBED_COLOR,
+    authorName: "",
+    authorIconUrl: "",
+    authorUrl: "",
+    thumbnailUrl: "",
+    imageUrl: "",
+    footerText: "",
+    footerIconUrl: "",
+    timestamp: false,
+    fields: [],
+  };
+}
+
+function createPresetEmbed(preset: EmbedPreset): DiscordEmbedInput {
+  return {
+    ...createEmptyEmbed(),
+    title: preset.title,
+    description: preset.description,
+    color: preset.color,
+    footerText: "ClipProfit",
+    timestamp: true,
+  };
+}
+
+function inferMessageMode(content: string, embeds: DiscordEmbedInput[]): DiscordMessageMode {
+  const hasContent = content.trim().length > 0;
+  const hasEmbeds = normalizeDiscordEmbeds(embeds).length > 0;
+  if (hasContent && hasEmbeds) return "CONTENT_EMBED";
+  if (hasEmbeds) return "EMBED";
+  return "CONTENT";
+}
+
+function moveItem<T>(items: T[], from: number, to: number): T[] {
+  if (to < 0 || to >= items.length || from === to) return items;
+  const next = [...items];
+  const [item] = next.splice(from, 1);
+  next.splice(to, 0, item);
+  return next;
+}
+
+function numberToHex(value: number): string {
+  return `#${Math.max(0, Math.min(0xffffff, value)).toString(16).padStart(6, "0")}`;
+}
+
+function hexToNumber(value: string): number {
+  return Number.parseInt(value.replace("#", ""), 16);
+}
+
+function ModeButton({
+  label,
+  description,
+  active,
+  onClick,
+}: {
+  label: string;
+  description: string;
+  active: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-pressed={active}
+      className={cn(
+        "rounded-lg border px-3 py-2 text-left transition",
+        active ? "border-neutral-900 bg-white shadow-sm" : "border-neutral-200 bg-white/70 hover:border-neutral-300",
+      )}
+    >
+      <span className="block text-sm font-semibold text-neutral-950">{label}</span>
+      <span className="mt-0.5 block text-xs text-neutral-500">{description}</span>
+    </button>
+  );
+}
+
+function IconButton({
+  label,
+  onClick,
+  disabled,
+  children,
+}: {
+  label: string;
+  onClick: () => void;
+  disabled?: boolean;
+  children: ReactNode;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={disabled}
+      aria-label={label}
+      title={label}
+      className="inline-flex h-8 w-8 items-center justify-center rounded-md text-neutral-500 transition hover:bg-neutral-100 hover:text-neutral-950 disabled:cursor-not-allowed disabled:opacity-30"
+    >
+      {children}
+    </button>
+  );
 }
 
 function ToolbarButton({
