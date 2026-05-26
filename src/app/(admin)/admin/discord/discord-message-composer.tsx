@@ -36,6 +36,12 @@ import { Dialog } from "@/components/ui/dialog";
 import { SectionHeader } from "@/components/ui/page";
 import type { DiscordChannelGroup, DiscordEmoji } from "@/lib/admin/discord";
 import {
+  DISCORD_MAX_FILES as MAX_FILES,
+  DISCORD_MAX_REQUEST_BYTES as MAX_TOTAL_BYTES,
+  DISCORD_MESSAGE_MAX_CHARS as MAX_CONTENT,
+  getDiscordMessageValidationIssues,
+} from "@/lib/admin/discord-message-validation";
+import {
   escapeDiscordMarkdown,
   isBlockFormatActive,
   isInlineFormatActive,
@@ -69,9 +75,6 @@ interface EmojisResponse {
   emojis: DiscordEmoji[];
 }
 
-const MAX_CONTENT = 2000;
-const MAX_FILES = 10;
-const MAX_TOTAL_BYTES = 25 * 1024 * 1024;
 const HEADER_PREFIX_PATTERN = /^#{1,3}\s+/;
 const ORDERED_PREFIX_PATTERN = /^\s*\d+\.\s+/;
 
@@ -106,11 +109,25 @@ export function DiscordMessageComposer() {
     () => channelGroups.flatMap((group) => group.channels.map((channel) => ({ ...channel, groupName: group.name }))),
     [channelGroups],
   );
+  const validChannelIds = useMemo(() => allChannels.map((channel) => channel.id), [allChannels]);
   const selectedChannel = allChannels.find((channel) => channel.id === selectedChannelId) ?? null;
   const totalFileSize = files.reduce((sum, file) => sum + file.size, 0);
   const filteredEmojis = emojis.filter((emoji) =>
     emoji.name.toLowerCase().includes(emojiQuery.trim().toLowerCase()),
   );
+  const sendValidationIssues = useMemo(
+    () =>
+      getDiscordMessageValidationIssues({
+        channelId: selectedChannelId,
+        content,
+        files,
+        validChannelIds: loading ? undefined : validChannelIds,
+      }),
+    [content, files, loading, selectedChannelId, validChannelIds],
+  );
+  const primarySendIssue = loading
+    ? { message: "Discord channels and emojis are still loading." }
+    : (sendValidationIssues[0] ?? null);
 
   async function refreshAll() {
     setLoading(true);
@@ -203,8 +220,15 @@ export function DiscordMessageComposer() {
 
   function handleFiles(selected: FileList | null) {
     if (!selected) return;
-    const next = [...files, ...Array.from(selected)].slice(0, MAX_FILES);
+    const next = [...files, ...Array.from(selected)];
     setFiles(next);
+    const issue = getDiscordMessageValidationIssues({
+      channelId: selectedChannelId,
+      content,
+      files: next,
+      validChannelIds: loading ? undefined : validChannelIds,
+    })[0];
+    setError(issue?.message ?? null);
     if (fileInputRef.current) fileInputRef.current.value = "";
   }
 
@@ -305,15 +329,15 @@ export function DiscordMessageComposer() {
 
   function openSendConfirm() {
     setError(null);
-    if (!selectedChannelId) return setError("Choose a Discord channel.");
-    if (!content.trim() && files.length === 0) return setError("Add message content or at least one file.");
-    if (content.length > MAX_CONTENT) return setError("Message content must be 2000 characters or fewer.");
-    if (files.length > MAX_FILES) return setError("Discord accepts up to 10 files per message.");
-    if (totalFileSize > MAX_TOTAL_BYTES) return setError("Discord accepts up to 25 MiB per message.");
+    if (primarySendIssue) return setError(primarySendIssue.message);
     setConfirmOpen(true);
   }
 
   async function sendMessage() {
+    if (primarySendIssue) {
+      setError(primarySendIssue.message);
+      return;
+    }
     setSending(true);
     setError(null);
     setStatus(null);
@@ -423,8 +447,17 @@ export function DiscordMessageComposer() {
             <span className={content.length > MAX_CONTENT ? "font-semibold text-red-600" : undefined}>
               {content.length} / {MAX_CONTENT} characters
             </span>
-            <span>{files.length} files - {formatBytes(totalFileSize)} / {formatBytes(MAX_TOTAL_BYTES)}</span>
+            <span>{files.length} / {MAX_FILES} files - {formatBytes(totalFileSize)} / {formatBytes(MAX_TOTAL_BYTES)}</span>
           </div>
+          <p
+            aria-live="polite"
+            className={cn(
+              "mt-2 rounded-xl px-3 py-2 text-xs font-medium",
+              primarySendIssue ? "bg-amber-50 text-amber-800" : "bg-emerald-50 text-emerald-700",
+            )}
+          >
+            {primarySendIssue?.message ?? "Ready to preview and send."}
+          </p>
 
           <input
             ref={fileInputRef}

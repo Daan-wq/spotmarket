@@ -1,8 +1,15 @@
+import { validateDiscordMessageInput } from "./discord-message-validation";
+
 export const DISCORD_API_BASE = "https://discord.com/api/v10";
 export const DISCORD_CDN_BASE = "https://cdn.discordapp.com";
-export const DISCORD_MESSAGE_MAX_CHARS = 2000;
-export const DISCORD_MAX_FILES = 10;
-export const DISCORD_MAX_REQUEST_BYTES = 25 * 1024 * 1024;
+
+export {
+  DISCORD_MAX_FILES,
+  DISCORD_MAX_REQUEST_BYTES,
+  DISCORD_MESSAGE_MAX_CHARS,
+  getDiscordMessageValidationIssues,
+  validateDiscordMessageInput,
+} from "./discord-message-validation";
 
 const CHANNEL_TYPE_TEXT = 0;
 const CHANNEL_TYPE_CATEGORY = 4;
@@ -162,22 +169,6 @@ export async function listDiscordEmojis(): Promise<DiscordEmoji[]> {
     })
     .filter((emoji): emoji is DiscordEmoji => emoji !== null)
     .sort((a, b) => a.name.localeCompare(b.name));
-}
-
-export function validateDiscordMessageInput(input: DiscordMessageInput): string | null {
-  const content = input.content.trim();
-  if (!input.channelId.trim()) return "Choose a Discord channel.";
-  if (input.content.length > DISCORD_MESSAGE_MAX_CHARS) {
-    return "Message content must be 2000 characters or fewer.";
-  }
-  if (!content && input.files.length === 0) return "Add message content or at least one file.";
-  if (input.files.length > DISCORD_MAX_FILES) return "Discord accepts up to 10 files per message.";
-
-  const totalSize = input.files.reduce((sum, file) => sum + file.size, 0);
-  if (totalSize > DISCORD_MAX_REQUEST_BYTES) {
-    return "Discord accepts up to 25 MiB per message.";
-  }
-  return null;
 }
 
 export async function sendDiscordMessage(input: DiscordMessageInput): Promise<DiscordSentMessage> {
