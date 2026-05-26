@@ -7,7 +7,9 @@ const mocks = vi.hoisted(() => ({
     user: { findUnique: vi.fn() },
     discordMessageTemplate: {
       findMany: vi.fn(),
+      findFirst: vi.fn(),
       create: vi.fn(),
+      update: vi.fn(),
     },
     auditLog: { create: vi.fn() },
   },
@@ -21,6 +23,7 @@ describe("/api/admin/discord/templates", () => {
     vi.clearAllMocks();
     mocks.requireAuth.mockResolvedValue({ userId: "supabase-admin-1" });
     mocks.prisma.user.findUnique.mockResolvedValue({ id: "admin-db-1" });
+    mocks.prisma.discordMessageTemplate.findFirst.mockResolvedValue(null);
   });
 
   it("lists templates with optional search filters", async () => {
@@ -101,6 +104,61 @@ describe("/api/admin/discord/templates", () => {
         userId: "admin-db-1",
         action: "discord.template.create",
         entityId: "tpl-1",
+      }),
+    });
+  });
+
+  it("updates an existing template when saving the same name and kind", async () => {
+    mocks.prisma.discordMessageTemplate.findFirst.mockResolvedValue({
+      id: "tpl-existing",
+      name: "Launch",
+      kind: "TEMPLATE",
+      updatedAt: new Date("2026-05-26T00:00:00Z"),
+    });
+    mocks.prisma.discordMessageTemplate.update.mockResolvedValue({
+      id: "tpl-existing",
+      name: "Launch",
+      kind: "TEMPLATE",
+      content: "Updated",
+      buttons: [],
+      tags: ["launch"],
+    });
+
+    const response = await POST(
+      new Request("https://app.test/api/admin/discord/templates", {
+        method: "POST",
+        body: JSON.stringify({ name: "Launch", kind: "TEMPLATE", content: "Updated", tags: ["launch"] }),
+      }),
+    );
+
+    expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toEqual({
+      template: {
+        id: "tpl-existing",
+        name: "Launch",
+        kind: "TEMPLATE",
+        content: "Updated",
+        buttons: [],
+        tags: ["launch"],
+      },
+    });
+    expect(mocks.prisma.discordMessageTemplate.create).not.toHaveBeenCalled();
+    expect(mocks.prisma.discordMessageTemplate.update).toHaveBeenCalledWith({
+      where: { id: "tpl-existing" },
+      data: {
+        name: "Launch",
+        kind: "TEMPLATE",
+        content: "Updated",
+        buttons: [],
+        tags: ["launch"],
+        updatedByUserId: "admin-db-1",
+      },
+    });
+    expect(mocks.prisma.auditLog.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        userId: "admin-db-1",
+        action: "discord.template.update",
+        entityId: "tpl-existing",
       }),
     });
   });

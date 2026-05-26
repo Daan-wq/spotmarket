@@ -68,6 +68,12 @@ interface DiscordTemplate {
   updatedAt: string;
 }
 
+interface LoadedTemplateIdentity {
+  id: string;
+  name: string;
+  kind: "DRAFT" | "TEMPLATE";
+}
+
 interface TemplatesResponse {
   templates: DiscordTemplate[];
 }
@@ -94,6 +100,7 @@ export function DiscordMessageComposer() {
   const [linkButtons, setLinkButtons] = useState<DiscordLinkButton[]>([]);
   const [files, setFiles] = useState<File[]>([]);
   const [templateId, setTemplateId] = useState<string | null>(null);
+  const [loadedTemplateIdentity, setLoadedTemplateIdentity] = useState<LoadedTemplateIdentity | null>(null);
   const [templateName, setTemplateName] = useState("");
   const [templateTags, setTemplateTags] = useState("");
   const [templateKind, setTemplateKind] = useState<"DRAFT" | "TEMPLATE">("DRAFT");
@@ -265,6 +272,7 @@ export function DiscordMessageComposer() {
 
   function loadTemplate(template: DiscordTemplate) {
     setTemplateId(template.id);
+    setLoadedTemplateIdentity({ id: template.id, name: template.name, kind: template.kind });
     setTemplateName(template.name);
     setTemplateKind(template.kind);
     setTemplateTags(template.tags.join(", "));
@@ -277,6 +285,7 @@ export function DiscordMessageComposer() {
 
   function newTemplate() {
     setTemplateId(null);
+    setLoadedTemplateIdentity(null);
     setTemplateName("");
     setTemplateTags("");
     setTemplateKind("DRAFT");
@@ -316,15 +325,24 @@ export function DiscordMessageComposer() {
     };
 
     try {
-      const response = await fetch(templateId ? `/api/admin/discord/templates/${templateId}` : "/api/admin/discord/templates", {
-        method: templateId ? "PATCH" : "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
+      const shouldPatchLoadedTemplate = shouldPatchLoadedDiscordTemplate(loadedTemplateIdentity, payload.name, kind);
+      const templateEndpoint =
+        shouldPatchLoadedTemplate && loadedTemplateIdentity
+          ? `/api/admin/discord/templates/${loadedTemplateIdentity.id}`
+          : "/api/admin/discord/templates";
+      const response = await fetch(
+        templateEndpoint,
+        {
+          method: shouldPatchLoadedTemplate ? "PATCH" : "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        },
+      );
       const body = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(body.error ?? "Could not save template.");
       const saved = body.template as DiscordTemplate;
       setTemplateId(saved.id);
+      setLoadedTemplateIdentity({ id: saved.id, name: saved.name, kind: saved.kind });
       setTemplateName(saved.name);
       setTemplateKind(saved.kind);
       setTemplateTags(saved.tags.join(", "));
@@ -702,6 +720,22 @@ export function DiscordMessageComposer() {
       </Dialog>
     </div>
   );
+}
+
+export function shouldPatchLoadedDiscordTemplate(
+  loaded: LoadedTemplateIdentity | null,
+  nextName: string,
+  nextKind: "DRAFT" | "TEMPLATE",
+) {
+  return Boolean(
+    loaded &&
+      loaded.kind === nextKind &&
+      normalizeTemplateName(loaded.name) === normalizeTemplateName(nextName),
+  );
+}
+
+function normalizeTemplateName(name: string) {
+  return name.trim().toLowerCase();
 }
 
 function ToolbarButton({
