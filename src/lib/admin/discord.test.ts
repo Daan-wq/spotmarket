@@ -202,11 +202,19 @@ describe("admin Discord helpers", () => {
     await sendDiscordMessage({
       channelId: "channel-1",
       content: "",
-      files: [new File(["image"], "embed-1-image-launch.png", { type: "image/png" })],
+      files: [
+        new File(["author"], "embed-1-author-logo.png", { type: "image/png" }),
+        new File(["image"], "embed-2-image-launch.png", { type: "image/png" }),
+        new File(["footer"], "embed-3-footer-logo.png", { type: "image/png" }),
+      ],
       embeds: [
         {
           title: "Launch",
-          imageUrl: "attachment://embed-1-image-launch.png",
+          authorName: "ClipProfit",
+          authorIconUrl: "attachment://embed-1-author-logo.png",
+          imageUrl: "attachment://embed-2-image-launch.png",
+          footerText: "ClipProfit",
+          footerIconUrl: "attachment://embed-3-footer-logo.png",
         },
       ],
     });
@@ -216,9 +224,15 @@ describe("admin Discord helpers", () => {
     expect(payload.embeds).toEqual([
       {
         title: "Launch",
-        image: { url: "attachment://embed-1-image-launch.png" },
+        author: { name: "ClipProfit", icon_url: "attachment://embed-1-author-logo.png" },
+        image: { url: "attachment://embed-2-image-launch.png" },
+        footer: { text: "ClipProfit", icon_url: "attachment://embed-3-footer-logo.png" },
       },
     ]);
-    expect(payload.attachments).toEqual([{ id: 0, filename: "embed-1-image-launch.png" }]);
+    expect(payload.attachments).toEqual([
+      { id: 0, filename: "embed-1-author-logo.png" },
+      { id: 1, filename: "embed-2-image-launch.png" },
+      { id: 2, filename: "embed-3-footer-logo.png" },
+    ]);
   });
 });

@@ -50,7 +50,6 @@ import {
   normalizeDiscordEmbeds,
   normalizeDiscordLinkButtons,
   getDiscordMessageValidationIssues,
-  isHttpUrl,
 } from "@/lib/admin/discord-message-validation";
 import type { DiscordEmbedFieldInput, DiscordEmbedInput, DiscordLinkButton } from "@/lib/admin/discord-message-validation";
 import {
@@ -98,7 +97,7 @@ interface EmojisResponse {
 }
 
 type DiscordMessageMode = "CONTENT" | "EMBED" | "CONTENT_EMBED";
-type EmbedImageField = "thumbnailUrl" | "imageUrl";
+type EmbedImageField = "authorIconUrl" | "thumbnailUrl" | "imageUrl" | "footerIconUrl";
 
 interface EmbedMediaFile {
   file: File;
@@ -109,7 +108,13 @@ interface EmbedMediaFile {
 const HEADER_PREFIX_PATTERN = /^#{1,3}\s+/;
 const ORDERED_PREFIX_PATTERN = /^\s*\d+\.\s+/;
 const DEFAULT_EMBED_COLOR = 0x5865f2;
-const EMBED_IMAGE_FIELDS: EmbedImageField[] = ["thumbnailUrl", "imageUrl"];
+const EMBED_IMAGE_FIELDS: EmbedImageField[] = ["authorIconUrl", "thumbnailUrl", "imageUrl", "footerIconUrl"];
+const EMBED_IMAGE_FIELD_SLUGS: Record<EmbedImageField, string> = {
+  authorIconUrl: "author",
+  thumbnailUrl: "thumb",
+  imageUrl: "image",
+  footerIconUrl: "footer",
+};
 
 export function DiscordMessageComposer() {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -399,7 +404,7 @@ export function DiscordMessageComposer() {
 
   function addLinkButton() {
     if (linkButtons.length >= MAX_BUTTONS) {
-      setError(`Discord accepts up to ${MAX_BUTTONS} URL buttons per message.`);
+      setError(`Discord accepts up to ${MAX_BUTTONS} link buttons per message.`);
       return;
     }
     setLinkButtons((current) => [...current, { label: "", url: "" }]);
@@ -490,7 +495,7 @@ export function DiscordMessageComposer() {
     setMessageMode(template.messageMode ?? inferMessageMode(template.content, template.embeds ?? []));
     if (template.channelId) setSelectedChannelId(template.channelId);
     setContent(template.content);
-    setEmbeds(removeLocalEmbedAttachmentUrls(template.embeds ?? []));
+    setEmbeds(prepareEmbedsForComposer(template.embeds ?? []));
     clearAllEmbedMediaFiles();
     setLinkButtons(template.buttons ?? []);
     setSelection({ start: 0, end: template.content.length });
@@ -846,12 +851,6 @@ export function DiscordMessageComposer() {
                         />
                       </label>
                     </div>
-                    <input
-                      value={embed.url ?? ""}
-                      onChange={(event) => updateEmbed(embedIndex, { url: event.target.value })}
-                      placeholder="Title URL, optional"
-                      className="mt-2 h-10 w-full rounded-lg border border-neutral-200 bg-white px-3 text-sm outline-none focus:border-neutral-500"
-                    />
                     <textarea
                       value={embed.description ?? ""}
                       onChange={(event) => updateEmbed(embedIndex, { description: event.target.value })}
@@ -864,10 +863,19 @@ export function DiscordMessageComposer() {
                     <details className="mt-3 rounded-lg border border-neutral-200 bg-neutral-50 p-3">
                       <summary className="cursor-pointer text-xs font-semibold uppercase tracking-[0.14em] text-neutral-500">Author, media and footer</summary>
                       <div className="mt-3 grid grid-cols-1 gap-2 md:grid-cols-3">
-                        <input value={embed.authorName ?? ""} onChange={(event) => updateEmbed(embedIndex, { authorName: event.target.value })} placeholder="Author name" className="h-10 rounded-lg border border-neutral-200 bg-white px-3 text-sm outline-none focus:border-neutral-500" />
-                        <input value={embed.authorIconUrl ?? ""} onChange={(event) => updateEmbed(embedIndex, { authorIconUrl: event.target.value })} placeholder="Author icon URL" className="h-10 rounded-lg border border-neutral-200 bg-white px-3 text-sm outline-none focus:border-neutral-500" />
-                        <input value={embed.authorUrl ?? ""} onChange={(event) => updateEmbed(embedIndex, { authorUrl: event.target.value })} placeholder="Author URL" className="h-10 rounded-lg border border-neutral-200 bg-white px-3 text-sm outline-none focus:border-neutral-500" />
+                        <input value={embed.authorName ?? ""} onChange={(event) => updateEmbed(embedIndex, { authorName: event.target.value })} placeholder="Author name" className="h-10 rounded-lg border border-neutral-200 bg-white px-3 text-sm outline-none focus:border-neutral-500 md:col-span-2" />
+                        <label className="flex min-h-10 items-center gap-2 rounded-lg border border-neutral-200 bg-white px-3 py-2 text-sm text-neutral-700">
+                          <input type="checkbox" checked={embed.timestamp === true} onChange={(event) => updateEmbed(embedIndex, { timestamp: event.target.checked })} />
+                          Current timestamp
+                        </label>
                         <div className="grid grid-cols-1 gap-2 md:col-span-3 xl:grid-cols-2">
+                          <EmbedImageUpload
+                            label="Author icon"
+                            value={embed.authorIconUrl ?? ""}
+                            media={getEmbedMediaFile(embed.authorIconUrl, embedMediaFiles)}
+                            onSelect={(selected) => handleEmbedImageFile(embedIndex, "authorIconUrl", selected)}
+                            onClear={() => clearEmbedImage(embedIndex, "authorIconUrl")}
+                          />
                           <EmbedImageUpload
                             label="Thumbnail"
                             value={embed.thumbnailUrl ?? ""}
@@ -882,13 +890,15 @@ export function DiscordMessageComposer() {
                             onSelect={(selected) => handleEmbedImageFile(embedIndex, "imageUrl", selected)}
                             onClear={() => clearEmbedImage(embedIndex, "imageUrl")}
                           />
+                          <EmbedImageUpload
+                            label="Footer icon"
+                            value={embed.footerIconUrl ?? ""}
+                            media={getEmbedMediaFile(embed.footerIconUrl, embedMediaFiles)}
+                            onSelect={(selected) => handleEmbedImageFile(embedIndex, "footerIconUrl", selected)}
+                            onClear={() => clearEmbedImage(embedIndex, "footerIconUrl")}
+                          />
                         </div>
-                        <label className="flex min-h-10 items-center gap-2 rounded-lg border border-neutral-200 bg-white px-3 py-2 text-sm text-neutral-700">
-                          <input type="checkbox" checked={embed.timestamp === true} onChange={(event) => updateEmbed(embedIndex, { timestamp: event.target.checked })} />
-                          Current timestamp
-                        </label>
-                        <input value={embed.footerText ?? ""} onChange={(event) => updateEmbed(embedIndex, { footerText: event.target.value })} placeholder="Footer text" className="h-10 rounded-lg border border-neutral-200 bg-white px-3 text-sm outline-none focus:border-neutral-500 md:col-span-2" />
-                        <input value={embed.footerIconUrl ?? ""} onChange={(event) => updateEmbed(embedIndex, { footerIconUrl: event.target.value })} placeholder="Footer icon URL" className="h-10 rounded-lg border border-neutral-200 bg-white px-3 text-sm outline-none focus:border-neutral-500" />
+                        <input value={embed.footerText ?? ""} onChange={(event) => updateEmbed(embedIndex, { footerText: event.target.value })} placeholder="Footer text" className="h-10 rounded-lg border border-neutral-200 bg-white px-3 text-sm outline-none focus:border-neutral-500 md:col-span-3" />
                       </div>
                     </details>
 
@@ -931,7 +941,7 @@ export function DiscordMessageComposer() {
           <div className="mt-4 rounded-xl border border-neutral-200 bg-neutral-50 p-3">
             <div className="flex flex-wrap items-center justify-between gap-2">
               <div>
-                <p className="text-sm font-semibold text-neutral-950">URL buttons</p>
+                <p className="text-sm font-semibold text-neutral-950">Link buttons</p>
                 <p className="text-xs text-neutral-500">{completeLinkButtons.length} / {MAX_BUTTONS} buttons ready</p>
               </div>
               <button
@@ -940,7 +950,7 @@ export function DiscordMessageComposer() {
                 className="inline-flex h-9 items-center gap-2 rounded-lg border border-neutral-200 bg-white px-3 text-xs font-semibold text-neutral-700 transition hover:border-neutral-300 hover:text-neutral-950"
               >
                 <Plus className="h-4 w-4" />
-                Add URL button
+                Add link button
               </button>
             </div>
             {linkButtons.length > 0 ? (
@@ -957,14 +967,14 @@ export function DiscordMessageComposer() {
                     <input
                       value={button.url}
                       onChange={(event) => updateLinkButton(index, "url", event.target.value)}
-                      placeholder="https://example.com"
+                      placeholder="Paste destination link"
                       className="h-10 rounded-lg border border-neutral-200 bg-white px-3 text-sm outline-none focus:border-neutral-500"
                     />
                     <button
                       type="button"
                       onClick={() => removeLinkButton(index)}
                       className="flex h-10 items-center justify-center rounded-lg text-neutral-500 transition hover:bg-neutral-200 hover:text-red-600"
-                      aria-label={`Remove URL button ${index + 1}`}
+                      aria-label={`Remove link button ${index + 1}`}
                     >
                       <Trash2 className="h-4 w-4" />
                     </button>
@@ -1198,15 +1208,11 @@ function EmbedImageUpload({
   onSelect: (selected: FileList | null) => void;
   onClear: () => void;
 }) {
-  const previewSrc = media?.previewUrl ?? (value && isHttpUrl(value) ? value : null);
-  const isMissingUpload = Boolean(value && getAttachmentNameFromUrl(value) && !media);
-  const detail = media
-    ? `${media.file.type || "image"} - ${formatBytes(media.file.size)}`
-    : previewSrc
-      ? "External image"
-      : isMissingUpload
-        ? "Re-upload required"
-        : "No image selected";
+  const previewSrc = media?.previewUrl ?? null;
+  const isMissingUpload = Boolean(value && !media);
+  let detail = "No image selected";
+  if (media) detail = `${media.file.type || "image"} - ${formatBytes(media.file.size)}`;
+  else if (isMissingUpload) detail = "Re-upload required";
 
   return (
     <div className="min-w-0 rounded-lg border border-neutral-200 bg-white p-2.5">
@@ -1311,6 +1317,14 @@ function removeLocalEmbedAttachmentUrls(embeds: DiscordEmbedInput[]): DiscordEmb
   });
 }
 
+function prepareEmbedsForComposer(embeds: DiscordEmbedInput[]): DiscordEmbedInput[] {
+  return removeLocalEmbedAttachmentUrls(embeds).map((embed) => ({
+    ...embed,
+    url: "",
+    authorUrl: "",
+  }));
+}
+
 function getAttachmentNamesFromEmbeds(embeds: DiscordEmbedInput[]) {
   const names = new Set<string>();
   for (const embed of embeds) {
@@ -1348,7 +1362,7 @@ function createEmbedAttachmentName(field: EmbedImageField, file: File, sequence:
   const dotIndex = safeName.lastIndexOf(".");
   const base = dotIndex > 0 ? safeName.slice(0, dotIndex) : safeName;
   const extension = dotIndex > 0 ? safeName.slice(dotIndex) : extensionFromImageType(file.type);
-  return `embed-${sequence}-${field === "thumbnailUrl" ? "thumb" : "image"}-${base}`.slice(0, 90) + extension;
+  return `embed-${sequence}-${EMBED_IMAGE_FIELD_SLUGS[field]}-${base}`.slice(0, 90) + extension;
 }
 
 function sanitizeAttachmentFileName(value: string) {

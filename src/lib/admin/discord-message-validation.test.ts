@@ -18,7 +18,7 @@ describe("Discord message validation", () => {
       }),
     ).toEqual([
       { code: "missing_channel", message: "Choose a Discord channel." },
-      { code: "missing_payload", message: "Add message content, an embed, a file, or a URL button." },
+      { code: "missing_payload", message: "Add message content, an embed, a file, or a link button." },
     ]);
   });
 
@@ -44,7 +44,7 @@ describe("Discord message validation", () => {
     ).toBeNull();
   });
 
-  it("allows URL-button-only messages with a valid channel", () => {
+  it("allows link-button-only messages with a valid channel", () => {
     expect(
       validateDiscordMessageInput({
         channelId: "channel-1",
@@ -73,8 +73,23 @@ describe("Discord message validation", () => {
       validateDiscordMessageInput({
         channelId: "channel-1",
         content: "",
-        files: [{ name: "embed-1-image-launch.png", size: 512 }],
-        embeds: [{ title: "Launch", imageUrl: "attachment://embed-1-image-launch.png" }],
+        files: [
+          { name: "embed-1-author-logo.png", size: 256 },
+          { name: "embed-2-thumb-preview.png", size: 384 },
+          { name: "embed-3-image-launch.png", size: 512 },
+          { name: "embed-4-footer-logo.png", size: 128 },
+        ],
+        embeds: [
+          {
+            title: "Launch",
+            authorName: "ClipProfit",
+            authorIconUrl: "attachment://embed-1-author-logo.png",
+            thumbnailUrl: "attachment://embed-2-thumb-preview.png",
+            imageUrl: "attachment://embed-3-image-launch.png",
+            footerText: "ClipProfit",
+            footerIconUrl: "attachment://embed-4-footer-logo.png",
+          },
+        ],
         validChannelIds: ["channel-1"],
       }),
     ).toBeNull();
@@ -87,7 +102,17 @@ describe("Discord message validation", () => {
         embeds: [{ title: "Launch", imageUrl: "attachment://embed-1-image-launch.png" }],
         validChannelIds: ["channel-1"],
       }).map((issue) => issue.message),
-    ).toContain("Embed 1 image URL upload is missing. Re-upload the image before sending.");
+    ).toContain("Embed 1 large image upload is missing. Re-upload the image before sending.");
+
+    expect(
+      getDiscordMessageValidationIssues({
+        channelId: "channel-1",
+        content: "",
+        files: [],
+        embeds: [{ title: "Launch", imageUrl: "https://cdn.example.com/launch.png" }],
+        validChannelIds: ["channel-1"],
+      }).map((issue) => issue.message),
+    ).toContain("Embed 1 large image must be uploaded from the admin dashboard.");
   });
 
   it("normalizes embeds by removing empty optional objects", () => {
@@ -165,7 +190,7 @@ describe("Discord message validation", () => {
     ]);
   });
 
-  it("normalizes and builds Discord action rows for URL buttons", () => {
+  it("normalizes and builds Discord action rows for link buttons", () => {
     const buttons = normalizeDiscordLinkButtons([
       { label: "  Open  ", url: " https://clipprofit.com " },
       { label: "", url: "" },

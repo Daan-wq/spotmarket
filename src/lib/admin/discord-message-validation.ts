@@ -128,7 +128,7 @@ export function getDiscordMessageValidationIssues(
   }
 
   if (!input.content.trim() && input.files.length === 0 && buttons.length === 0 && embeds.length === 0) {
-    issues.push({ code: "missing_payload", message: "Add message content, an embed, a file, or a URL button." });
+    issues.push({ code: "missing_payload", message: "Add message content, an embed, a file, or a link button." });
   }
 
   if (input.files.length > DISCORD_MAX_FILES) {
@@ -302,26 +302,20 @@ function getDiscordEmbedValidationIssues(
       issues.push({ code: "invalid_embed", message: `Embed ${number} author name must be ${DISCORD_EMBED_AUTHOR_NAME_MAX_CHARS} characters or fewer.` });
     }
     if ((authorIconUrl || authorUrl) && !authorName) {
-      issues.push({ code: "invalid_embed", message: `Embed ${number} author URLs need an author name.` });
+      issues.push({ code: "invalid_embed", message: `Embed ${number} author details need an author name.` });
     }
     for (const [label, value] of [
-      ["thumbnail URL", thumbnailUrl],
-      ["image URL", imageUrl],
+      ["author icon", authorIconUrl],
+      ["thumbnail image", thumbnailUrl],
+      ["large image", imageUrl],
+      ["footer icon", footerIconUrl],
     ] as const) {
       if (!value) continue;
       const attachmentName = getDiscordAttachmentFileName(value);
-      if (!isHttpUrl(value) && !attachmentName) {
-        issues.push({ code: "invalid_embed", message: `Embed ${number} ${label} must start with http://, https://, or attachment://.` });
-      } else if (attachmentName && !uploadedFileNames.has(attachmentName)) {
+      if (!attachmentName) {
+        issues.push({ code: "invalid_embed", message: `Embed ${number} ${label} must be uploaded from the admin dashboard.` });
+      } else if (!uploadedFileNames.has(attachmentName)) {
         issues.push({ code: "invalid_embed", message: `Embed ${number} ${label} upload is missing. Re-upload the image before sending.` });
-      }
-    }
-    for (const [label, value] of [
-      ["author icon URL", authorIconUrl],
-      ["footer icon URL", footerIconUrl],
-    ] as const) {
-      if (value && !isHttpUrl(value)) {
-        issues.push({ code: "invalid_embed", message: `Embed ${number} ${label} must start with http:// or https://.` });
       }
     }
     if (authorUrl && !isHttpUrl(authorUrl)) {
@@ -381,7 +375,7 @@ function getDiscordButtonValidationIssues(buttons: DiscordLinkButton[]): Discord
   const nonEmptyButtons = buttons.filter((button) => button.label.trim().length > 0 || button.url.trim().length > 0);
 
   if (nonEmptyButtons.length > DISCORD_MAX_LINK_BUTTONS) {
-    issues.push({ code: "too_many_buttons", message: "Discord accepts up to 25 URL buttons per message." });
+    issues.push({ code: "too_many_buttons", message: "Discord accepts up to 25 link buttons per message." });
   }
 
   nonEmptyButtons.forEach((button, index) => {
