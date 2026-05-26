@@ -164,4 +164,34 @@ describe("DiscordMarkdownPreview", () => {
     expect(html).toContain('href="https://clipprofit.com/campaigns/1"');
     expect(html).toContain("bg-[#4e5058]");
   });
+
+  it("renders Discord embed cards with title, fields, media and footer", () => {
+    const html = renderToStaticMarkup(
+      <DiscordMarkdownPreview
+        content="Read this"
+        emojis={emojis}
+        embeds={[
+          {
+            title: "Rules",
+            description: "**Respect** each other.",
+            color: 0x5865f2,
+            thumbnailUrl: "https://example.com/thumb.png",
+            imageUrl: "https://example.com/image.png",
+            footerText: "ClipProfit",
+            fields: [{ name: "Rule 1", value: "Be kind", inline: true }],
+          },
+        ]}
+        frame="mobile"
+      />,
+    );
+
+    expect(html).toContain("Rules");
+    expect(html).toContain("Respect");
+    expect(html).toContain("Rule 1");
+    expect(html).toContain("Be kind");
+    expect(html).toContain("https://example.com/thumb.png");
+    expect(html).toContain("https://example.com/image.png");
+    expect(html).toContain("ClipProfit");
+    expect(html).toContain("border-left-color:#5865f2");
+  });
 });

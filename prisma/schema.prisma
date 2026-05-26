@@ -1151,7 +1151,10 @@ model DiscordMessageTemplate {
   id              String                     @id @default(cuid())
   name            String
   kind            DiscordMessageTemplateKind @default(DRAFT)
+  messageMode     String                     @default("CONTENT")
+  channelId       String?
   content         String                     @db.Text
+  embeds          Json                       @default("[]")
   buttons         Json                       @default("[]")
   tags            String[]                   @default([])
   createdByUserId String?
