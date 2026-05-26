@@ -111,7 +111,6 @@ export function DiscordMessageComposer() {
   const filteredEmojis = emojis.filter((emoji) =>
     emoji.name.toLowerCase().includes(emojiQuery.trim().toLowerCase()),
   );
-  const canSend = Boolean(selectedChannelId) && (content.trim().length > 0 || files.length > 0) && content.length <= MAX_CONTENT && files.length <= MAX_FILES && totalFileSize <= MAX_TOTAL_BYTES;
 
   async function refreshAll() {
     setLoading(true);
@@ -452,7 +451,7 @@ export function DiscordMessageComposer() {
           ) : null}
 
           <div className="mt-5 flex flex-wrap items-center gap-2">
-            <Button type="button" onClick={openSendConfirm} disabled={!canSend}>
+            <Button type="button" onClick={openSendConfirm}>
               <Send className="h-4 w-4" />
               Preview and send
             </Button>
