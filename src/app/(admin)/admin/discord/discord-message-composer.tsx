@@ -6,18 +6,26 @@ import type { ReactNode } from "react";
 import {
   Bold,
   Code2,
+  CodeXml,
   Eye,
+  Heading1,
+  Heading2,
+  Heading3,
   Italic,
   Link2,
   List,
+  ListIndentIncrease,
   ListOrdered,
   Paperclip,
+  Pilcrow,
   Quote,
   RefreshCw,
   Save,
   Send,
+  Slash,
   Smile,
   Strikethrough,
+  TextQuote,
   Trash2,
   Underline,
 } from "lucide-react";
@@ -134,12 +142,65 @@ export function DiscordMessageComposer() {
 
   function applyLinePrefix(prefix: string) {
     const textarea = textareaRef.current;
-    if (!textarea) return setContent((current) => `${current}${current.endsWith("\n") || !current ? "" : "\n"}${prefix}`);
+    if (!textarea) {
+      return setContent((current) => `${current}${current.endsWith("\n") || !current ? "" : "\n"}${prefix}`);
+    }
     const start = textarea.selectionStart;
+    const end = textarea.selectionEnd;
     const lineStart = content.lastIndexOf("\n", Math.max(0, start - 1)) + 1;
-    const next = `${content.slice(0, lineStart)}${prefix}${content.slice(lineStart)}`;
+    const lineEndCandidate = content.indexOf("\n", Math.max(start, end));
+    const lineEnd = lineEndCandidate === -1 ? content.length : lineEndCandidate;
+    const selectedBlock = content.slice(lineStart, lineEnd);
+    const prefixed = selectedBlock
+      .split("\n")
+      .map((line) => `${prefix}${line}`)
+      .join("\n");
+    const next = `${content.slice(0, lineStart)}${prefixed}${content.slice(lineEnd)}`;
     setContent(next);
-    window.setTimeout(() => textarea.focus(), 0);
+    window.setTimeout(() => {
+      textarea.focus();
+      textarea.setSelectionRange(lineStart + prefix.length, lineStart + prefixed.length);
+    }, 0);
+  }
+
+  function applyBlockSnippet(prefix: string, suffix: string, fallback: string) {
+    const textarea = textareaRef.current;
+    if (!textarea) {
+      setContent((current) => `${current}${current.endsWith("\n") || !current ? "" : "\n"}${prefix}${fallback}${suffix}`);
+      return;
+    }
+    const start = textarea.selectionStart;
+    const end = textarea.selectionEnd;
+    const selected = content.slice(start, end) || fallback;
+    const leadingBreak = start > 0 && !content.slice(0, start).endsWith("\n") ? "\n" : "";
+    const trailingBreak = end < content.length && !content.slice(end).startsWith("\n") ? "\n" : "";
+    const insert = `${leadingBreak}${prefix}${selected}${suffix}${trailingBreak}`;
+    const next = `${content.slice(0, start)}${insert}${content.slice(end)}`;
+    const selectionStart = start + leadingBreak.length + prefix.length;
+    setContent(next);
+    window.setTimeout(() => {
+      textarea.focus();
+      textarea.setSelectionRange(selectionStart, selectionStart + selected.length);
+    }, 0);
+  }
+
+  function escapeMarkdownSelection() {
+    const textarea = textareaRef.current;
+    const fallback = "escaped markdown, not bold";
+    if (!textarea) {
+      setContent((current) => `${current}${escapeDiscordMarkdown(fallback)}`);
+      return;
+    }
+    const start = textarea.selectionStart;
+    const end = textarea.selectionEnd;
+    const selected = content.slice(start, end) || fallback;
+    const escaped = escapeDiscordMarkdown(selected);
+    const next = `${content.slice(0, start)}${escaped}${content.slice(end)}`;
+    setContent(next);
+    window.setTimeout(() => {
+      textarea.focus();
+      textarea.setSelectionRange(start, start + escaped.length);
+    }, 0);
   }
 
   function insertText(value: string) {
@@ -282,8 +343,9 @@ export function DiscordMessageComposer() {
   }
 
   return (
-    <div className="grid grid-cols-1 gap-5 xl:grid-cols-[minmax(0,1fr)_360px]">
+    <div className="grid grid-cols-1 gap-5 2xl:grid-cols-[minmax(0,1fr)_360px]">
       <section className="space-y-5">
+        <div className="grid grid-cols-1 gap-5 xl:grid-cols-[minmax(0,1fr)_410px]">
         <div className="rounded-2xl border border-neutral-200 bg-white p-5">
           <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1fr)_220px]">
             <label>
@@ -318,16 +380,30 @@ export function DiscordMessageComposer() {
           </div>
 
           <div className="mt-5 flex flex-wrap items-center gap-2 rounded-xl border border-neutral-200 bg-neutral-50 p-2">
+            <ToolbarButton label="Big header" onClick={() => applyLinePrefix("# ")}><Heading1 className="h-4 w-4" /></ToolbarButton>
+            <ToolbarButton label="Medium header" onClick={() => applyLinePrefix("## ")}><Heading2 className="h-4 w-4" /></ToolbarButton>
+            <ToolbarButton label="Small header" onClick={() => applyLinePrefix("### ")}><Heading3 className="h-4 w-4" /></ToolbarButton>
+            <ToolbarButton label="Subtext" onClick={() => applyLinePrefix("-# ")}><Pilcrow className="h-4 w-4" /></ToolbarButton>
+            <ToolbarDivider />
             <ToolbarButton label="Bold" onClick={() => applyWrap("**")}><Bold className="h-4 w-4" /></ToolbarButton>
             <ToolbarButton label="Italic" onClick={() => applyWrap("*")}><Italic className="h-4 w-4" /></ToolbarButton>
             <ToolbarButton label="Underline" onClick={() => applyWrap("__")}><Underline className="h-4 w-4" /></ToolbarButton>
+            <ToolbarButton label="Bold italic" onClick={() => applyWrap("***")}><span className="text-[11px] font-black italic">BI</span></ToolbarButton>
+            <ToolbarButton label="Underlined italic" onClick={() => applyWrap("__*", "*__")}><span className="text-[11px] font-semibold italic underline">I</span></ToolbarButton>
+            <ToolbarButton label="Underlined bold" onClick={() => applyWrap("__**", "**__")}><span className="text-[11px] font-black underline">B</span></ToolbarButton>
+            <ToolbarButton label="Underlined bold italic" onClick={() => applyWrap("__***", "***__")}><span className="text-[11px] font-black italic underline">BI</span></ToolbarButton>
             <ToolbarButton label="Strike" onClick={() => applyWrap("~~")}><Strikethrough className="h-4 w-4" /></ToolbarButton>
             <ToolbarButton label="Spoiler" onClick={() => applyWrap("||", "||", "spoiler")}><Eye className="h-4 w-4" /></ToolbarButton>
             <ToolbarButton label="Code" onClick={() => applyWrap("`", "`", "code")}><Code2 className="h-4 w-4" /></ToolbarButton>
+            <ToolbarButton label="Code block" onClick={() => applyBlockSnippet("```js\n", "\n```", "// code block with syntax highlighting\nconsole.log(\"Hello\");")}><CodeXml className="h-4 w-4" /></ToolbarButton>
+            <ToolbarDivider />
             <ToolbarButton label="Quote" onClick={() => applyLinePrefix("> ")}><Quote className="h-4 w-4" /></ToolbarButton>
+            <ToolbarButton label="Multiline quote" onClick={() => applyBlockSnippet(">>> ", "", "multi-line quote\nThis keeps quoting everything after it.")}><TextQuote className="h-4 w-4" /></ToolbarButton>
             <ToolbarButton label="List" onClick={() => applyLinePrefix("- ")}><List className="h-4 w-4" /></ToolbarButton>
             <ToolbarButton label="Numbered list" onClick={() => applyLinePrefix("1. ")}><ListOrdered className="h-4 w-4" /></ToolbarButton>
+            <ToolbarButton label="Indented bullet" onClick={() => applyLinePrefix("  - ")}><ListIndentIncrease className="h-4 w-4" /></ToolbarButton>
             <ToolbarButton label="Link" onClick={() => applyWrap("[", "](https://example.com)", "link")}><Link2 className="h-4 w-4" /></ToolbarButton>
+            <ToolbarButton label="Escape markdown" onClick={escapeMarkdownSelection}><Slash className="h-4 w-4" /></ToolbarButton>
             <ToolbarButton label="Attach files" onClick={() => fileInputRef.current?.click()}><Paperclip className="h-4 w-4" /></ToolbarButton>
           </div>
 
@@ -390,10 +466,11 @@ export function DiscordMessageComposer() {
           {status ? <p className="mt-4 rounded-xl bg-emerald-50 px-3 py-2 text-sm font-medium text-emerald-700">{status}</p> : null}
         </div>
 
-        <section>
-          <SectionHeader title="Live preview" description="Rendered as a safe Discord-style preview. The actual send still uses your raw Markdown." />
-          <DiscordMarkdownPreview content={content} emojis={emojis} />
+        <section className="xl:sticky xl:top-4 xl:self-start">
+          <SectionHeader title="Live preview" description="Mobile Discord preview. The actual send still uses your raw Markdown." />
+          <DiscordMarkdownPreview content={content} emojis={emojis} frame="mobile" />
         </section>
+        </div>
       </section>
 
       <aside className="space-y-5">
@@ -499,7 +576,7 @@ export function DiscordMessageComposer() {
             <ConfirmStat label="Characters" value={`${content.length} / ${MAX_CONTENT}`} />
             <ConfirmStat label="Files" value={`${files.length} (${formatBytes(totalFileSize)})`} />
           </div>
-          <DiscordMarkdownPreview content={content} emojis={emojis} className="max-h-80 overflow-y-auto" />
+          <DiscordMarkdownPreview content={content} emojis={emojis} frame="mobile" className="max-h-[520px] overflow-y-auto" />
         </div>
       </Dialog>
     </div>
@@ -528,6 +605,10 @@ function ToolbarButton({
   );
 }
 
+function ToolbarDivider() {
+  return <span aria-hidden="true" className="mx-1 h-6 w-px bg-neutral-200" />;
+}
+
 function ConfirmStat({ label, value }: { label: string; value: string }) {
   return (
     <div className="rounded-xl border border-neutral-200 bg-neutral-50 p-3">
@@ -535,6 +616,13 @@ function ConfirmStat({ label, value }: { label: string; value: string }) {
       <p className="mt-1 truncate text-sm font-semibold text-neutral-950">{value}</p>
     </div>
   );
+}
+
+function escapeDiscordMarkdown(value: string) {
+  const escapable = new Set(["\\", "*", "_", "~", "`", "|", "[", "]", "(", ")", "#", ">", "-"]);
+  return Array.from(value)
+    .map((char) => (escapable.has(char) ? `\\${char}` : char))
+    .join("");
 }
 
 function formatBytes(bytes: number) {
