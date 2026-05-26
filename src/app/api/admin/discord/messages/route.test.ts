@@ -136,8 +136,22 @@ describe("POST /api/admin/discord/messages", () => {
     const formData = new FormData();
     formData.append("channelId", "channel-1");
     formData.append("content", "");
-    formData.append("embeds", JSON.stringify([{ title: "Launch", imageUrl: "attachment://embed-1-image-launch.png" }]));
-    formData.append("files", new File(["image"], "launch.png", { type: "image/png" }), "embed-1-image-launch.png");
+    formData.append(
+      "embeds",
+      JSON.stringify([
+        {
+          title: "Launch",
+          authorName: "ClipProfit",
+          authorIconUrl: "attachment://embed-1-author-logo.png",
+          imageUrl: "attachment://embed-2-image-launch.png",
+          footerText: "ClipProfit",
+          footerIconUrl: "attachment://embed-3-footer-logo.png",
+        },
+      ]),
+    );
+    formData.append("files", new File(["author"], "logo.png", { type: "image/png" }), "embed-1-author-logo.png");
+    formData.append("files", new File(["image"], "launch.png", { type: "image/png" }), "embed-2-image-launch.png");
+    formData.append("files", new File(["footer"], "footer.png", { type: "image/png" }), "embed-3-footer-logo.png");
 
     const response = await POST(new Request("https://app.test/api/admin/discord/messages", { method: "POST", body: formData }));
 
@@ -145,9 +159,21 @@ describe("POST /api/admin/discord/messages", () => {
     expect(mocks.sendDiscordMessage).toHaveBeenCalledWith({
       channelId: "channel-1",
       content: "",
-      embeds: [expect.objectContaining({ title: "Launch", imageUrl: "attachment://embed-1-image-launch.png", fields: [] })],
+      embeds: [
+        expect.objectContaining({
+          title: "Launch",
+          authorIconUrl: "attachment://embed-1-author-logo.png",
+          imageUrl: "attachment://embed-2-image-launch.png",
+          footerIconUrl: "attachment://embed-3-footer-logo.png",
+          fields: [],
+        }),
+      ],
       buttons: [],
-      files: [expect.objectContaining({ name: "embed-1-image-launch.png", type: "image/png" })],
+      files: [
+        expect.objectContaining({ name: "embed-1-author-logo.png", type: "image/png" }),
+        expect.objectContaining({ name: "embed-2-image-launch.png", type: "image/png" }),
+        expect.objectContaining({ name: "embed-3-footer-logo.png", type: "image/png" }),
+      ],
     });
   });
 });
