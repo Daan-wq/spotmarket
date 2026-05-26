@@ -68,6 +68,28 @@ describe("Discord message validation", () => {
     ).toBeNull();
   });
 
+  it("allows uploaded embed images through attachment URLs when the file is present", () => {
+    expect(
+      validateDiscordMessageInput({
+        channelId: "channel-1",
+        content: "",
+        files: [{ name: "embed-1-image-launch.png", size: 512 }],
+        embeds: [{ title: "Launch", imageUrl: "attachment://embed-1-image-launch.png" }],
+        validChannelIds: ["channel-1"],
+      }),
+    ).toBeNull();
+
+    expect(
+      getDiscordMessageValidationIssues({
+        channelId: "channel-1",
+        content: "",
+        files: [],
+        embeds: [{ title: "Launch", imageUrl: "attachment://embed-1-image-launch.png" }],
+        validChannelIds: ["channel-1"],
+      }).map((issue) => issue.message),
+    ).toContain("Embed 1 image URL upload is missing. Re-upload the image before sending.");
+  });
+
   it("normalizes embeds by removing empty optional objects", () => {
     expect(
       normalizeDiscordEmbeds([

@@ -131,4 +131,23 @@ describe("POST /api/admin/discord/messages", () => {
       files: [],
     });
   });
+
+  it("passes uploaded embed images through as Discord files", async () => {
+    const formData = new FormData();
+    formData.append("channelId", "channel-1");
+    formData.append("content", "");
+    formData.append("embeds", JSON.stringify([{ title: "Launch", imageUrl: "attachment://embed-1-image-launch.png" }]));
+    formData.append("files", new File(["image"], "launch.png", { type: "image/png" }), "embed-1-image-launch.png");
+
+    const response = await POST(new Request("https://app.test/api/admin/discord/messages", { method: "POST", body: formData }));
+
+    expect(response.status).toBe(200);
+    expect(mocks.sendDiscordMessage).toHaveBeenCalledWith({
+      channelId: "channel-1",
+      content: "",
+      embeds: [expect.objectContaining({ title: "Launch", imageUrl: "attachment://embed-1-image-launch.png", fields: [] })],
+      buttons: [],
+      files: [expect.objectContaining({ name: "embed-1-image-launch.png", type: "image/png" })],
+    });
+  });
 });

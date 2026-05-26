@@ -191,4 +191,34 @@ describe("admin Discord helpers", () => {
       },
     ]);
   });
+
+  it("sends uploaded embed images as attachment references", async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ id: "msg-1", channel_id: "channel-1" }),
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    await sendDiscordMessage({
+      channelId: "channel-1",
+      content: "",
+      files: [new File(["image"], "embed-1-image-launch.png", { type: "image/png" })],
+      embeds: [
+        {
+          title: "Launch",
+          imageUrl: "attachment://embed-1-image-launch.png",
+        },
+      ],
+    });
+
+    const init = fetchMock.mock.calls[0][1] as RequestInit;
+    const payload = JSON.parse(String((init.body as FormData).get("payload_json")));
+    expect(payload.embeds).toEqual([
+      {
+        title: "Launch",
+        image: { url: "attachment://embed-1-image-launch.png" },
+      },
+    ]);
+    expect(payload.attachments).toEqual([{ id: 0, filename: "embed-1-image-launch.png" }]);
+  });
 });

@@ -36,7 +36,7 @@ export interface DiscordMessageValidationIssue {
 export interface DiscordMessageValidationInput {
   channelId: string;
   content: string;
-  files: Array<{ size: number }>;
+  files: Array<{ name?: string; size: number }>;
   buttons?: DiscordLinkButton[];
   embeds?: DiscordEmbedInput[];
   validChannelIds?: readonly string[];
@@ -141,7 +141,7 @@ export function getDiscordMessageValidationIssues(
   }
 
   issues.push(...getDiscordButtonValidationIssues(input.buttons ?? []));
-  issues.push(...getDiscordEmbedValidationIssues(input.embeds ?? []));
+  issues.push(...getDiscordEmbedValidationIssues(input.embeds ?? [], input.files));
 
   return issues;
 }
@@ -252,8 +252,16 @@ function normalizeDiscordTimestamp(value: DiscordEmbedInput["timestamp"]): strin
   return date.toISOString();
 }
 
-function getDiscordEmbedValidationIssues(embeds: DiscordEmbedInput[]): DiscordMessageValidationIssue[] {
+function getDiscordEmbedValidationIssues(
+  embeds: DiscordEmbedInput[],
+  files: Array<{ name?: string }> = [],
+): DiscordMessageValidationIssue[] {
   const issues: DiscordMessageValidationIssue[] = [];
+  const uploadedFileNames = new Set(
+    files
+      .map((file) => file.name?.trim())
+      .filter((name): name is string => Boolean(name)),
+  );
   if (embeds.length > DISCORD_MAX_EMBEDS) {
     issues.push({ code: "too_many_embeds", message: `Discord accepts up to ${DISCORD_MAX_EMBEDS} embeds per message.` });
   }
@@ -297,15 +305,27 @@ function getDiscordEmbedValidationIssues(embeds: DiscordEmbedInput[]): DiscordMe
       issues.push({ code: "invalid_embed", message: `Embed ${number} author URLs need an author name.` });
     }
     for (const [label, value] of [
-      ["author icon URL", authorIconUrl],
-      ["author URL", authorUrl],
       ["thumbnail URL", thumbnailUrl],
       ["image URL", imageUrl],
+    ] as const) {
+      if (!value) continue;
+      const attachmentName = getDiscordAttachmentFileName(value);
+      if (!isHttpUrl(value) && !attachmentName) {
+        issues.push({ code: "invalid_embed", message: `Embed ${number} ${label} must start with http://, https://, or attachment://.` });
+      } else if (attachmentName && !uploadedFileNames.has(attachmentName)) {
+        issues.push({ code: "invalid_embed", message: `Embed ${number} ${label} upload is missing. Re-upload the image before sending.` });
+      }
+    }
+    for (const [label, value] of [
+      ["author icon URL", authorIconUrl],
       ["footer icon URL", footerIconUrl],
     ] as const) {
       if (value && !isHttpUrl(value)) {
         issues.push({ code: "invalid_embed", message: `Embed ${number} ${label} must start with http:// or https://.` });
       }
+    }
+    if (authorUrl && !isHttpUrl(authorUrl)) {
+      issues.push({ code: "invalid_embed", message: `Embed ${number} author URL must start with http:// or https://.` });
     }
     if (footerText.length > DISCORD_EMBED_FOOTER_TEXT_MAX_CHARS) {
       issues.push({ code: "invalid_embed", message: `Embed ${number} footer text must be ${DISCORD_EMBED_FOOTER_TEXT_MAX_CHARS} characters or fewer.` });
@@ -409,4 +429,12 @@ export function isHttpUrl(value: string): boolean {
   } catch {
     return false;
   }
+}
+
+function getDiscordAttachmentFileName(value: string): string | null {
+  const prefix = "attachment://";
+  if (!value.startsWith(prefix)) return null;
+  const filename = value.slice(prefix.length).trim();
+  if (!filename || /[/\\?#]/.test(filename)) return null;
+  return filename;
 }
