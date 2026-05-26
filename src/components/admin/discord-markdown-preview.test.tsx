@@ -104,13 +104,37 @@ describe("DiscordMarkdownPreview", () => {
     expect(html).toContain("indented numbered list");
   });
 
-  it("can render the preview inside a mobile frame", () => {
+  it("renders a message-only Discord mobile preview", () => {
     const html = renderToStaticMarkup(
       <DiscordMarkdownPreview content="Mobile preview" emojis={emojis} frame="mobile" />,
     );
 
-    expect(html).toContain("Discord mobile preview");
+    expect(html).toContain("discord-mobile-message");
+    expect(html).toContain("ClipProfit bot");
+    expect(html).toContain("BOT");
+    expect(html).not.toContain("Discord mobile preview");
     expect(html).toContain("Mobile preview");
+  });
+
+  it("preserves leading spaces in the mobile preview", () => {
+    const html = renderToStaticMarkup(
+      <DiscordMarkdownPreview content={"Line one\n  indented line"} emojis={emojis} frame="mobile" />,
+    );
+
+    expect(html).toContain("whitespace-pre-wrap");
+    expect(html).toContain("  indented line");
+  });
+
+  it("renders mobile bullets and quotes with Discord-like indentation structure", () => {
+    const html = renderToStaticMarkup(
+      <DiscordMarkdownPreview content={"> quote\n- bullet\n  - nested"} emojis={emojis} frame="mobile" />,
+    );
+
+    expect(html).toContain("<blockquote");
+    expect(html).toContain("border-l");
+    expect(html).toContain("<ul");
+    expect(html).toContain("list-disc");
+    expect(html).toContain("nested");
   });
 
   it("replaces known custom emojis and leaves unknown syntax as text", () => {

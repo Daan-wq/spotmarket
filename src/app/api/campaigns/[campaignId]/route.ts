@@ -8,6 +8,7 @@ import {
   ensureDiscordCampaignResources,
   removeDiscordCampaignRole,
 } from "@/lib/discord-campaign-roles";
+import { sendCampaignAnnouncementOnce } from "@/lib/admin/discord-campaign-announcements";
 
 function serialize<T>(data: T): T {
   return JSON.parse(
@@ -242,6 +243,32 @@ export async function PATCH(
       data,
     });
 
+    let discordAnnouncement:
+      | Awaited<ReturnType<typeof sendCampaignAnnouncementOnce>>
+      | { status: "failed"; error: string }
+      | undefined;
+
+    if (shouldProvisionDiscordResources) {
+      try {
+        discordAnnouncement = await sendCampaignAnnouncementOnce({
+          campaign: updated,
+          userId: authorized.user.id,
+        });
+      } catch (err) {
+        const message = err instanceof Error ? err.message : "Discord announcement failed";
+        discordAnnouncement = { status: "failed", error: message };
+        return NextResponse.json(
+          serialize({
+            ...updated,
+            error: message,
+            discordAnnouncement,
+            discordProvisioning,
+          }),
+          { status: 502 },
+        );
+      }
+    }
+
     let discordRoleSync:
       | { attempted: number; failed: number }
       | undefined;
@@ -263,7 +290,7 @@ export async function PATCH(
       discordRoleSync = { attempted: discordIds.length, failed };
     }
 
-    return NextResponse.json(serialize({ ...updated, discordRoleSync, discordProvisioning }));
+    return NextResponse.json(serialize({ ...updated, discordRoleSync, discordProvisioning, discordAnnouncement }));
   } catch (err) {
     console.error("[PATCH /api/campaigns]", err);
     const message = err instanceof Error ? err.message : "Database error";

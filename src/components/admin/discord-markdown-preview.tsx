@@ -1,5 +1,5 @@
 /* eslint-disable @next/next/no-img-element */
-import type { ReactNode } from "react";
+import { Fragment, type ReactNode } from "react";
 import type { DiscordEmoji } from "@/lib/admin/discord";
 import { cn } from "@/lib/cn";
 
@@ -28,6 +28,8 @@ type InlineFormat = {
   marker: string;
   render: (key: string, children: ReactNode[]) => ReactNode;
 };
+
+type PreviewVariant = "default" | "mobile";
 
 const INLINE_FORMATS: InlineFormat[] = [
   {
@@ -76,33 +78,35 @@ export function DiscordMarkdownPreview({
 }: DiscordMarkdownPreviewProps) {
   const emojiById = new Map(emojis.map((emoji) => [emoji.id, emoji]));
   const blocks = parseDiscordBlocks(content);
-  const body = renderPreviewBody(blocks, emojiById);
+  const variant: PreviewVariant = frame === "mobile" ? "mobile" : "default";
+  const body = renderPreviewBody(blocks, emojiById, variant);
 
   if (frame === "mobile") {
     return (
       <div className={cn("mx-auto w-full max-w-[390px]", className)}>
         <div
-          aria-label="Discord mobile preview"
-          className="rounded-[2rem] border border-neutral-300 bg-[#1e1f22] p-2 shadow-sm"
+          aria-label="Discord mobile message preview"
+          className="discord-mobile-message rounded-xl bg-[#313338] px-3 py-3 text-[#dbdee1] shadow-sm"
         >
-          <div className="overflow-hidden rounded-[1.5rem] bg-[#313338]">
-            <div className="flex h-12 items-center gap-2 border-b border-white/10 px-4 text-white">
-              <div className="h-8 w-8 rounded-full bg-[#5865f2]" />
-              <div className="min-w-0">
-                <p className="truncate text-sm font-semibold">ClipProfit bot</p>
-                <p className="text-[11px] text-[#b5bac1]">Discord mobile preview</p>
-              </div>
+          <div className="flex items-start gap-3">
+            <div className="mt-0.5 h-10 w-10 shrink-0 overflow-hidden rounded-full bg-[#5865f2]">
+              <div className="flex h-full w-full items-center justify-center text-sm font-black text-white">CP</div>
             </div>
-            <div className="min-h-[360px] bg-[#313338] p-3">
-              {blocks.length === 0 ? (
-                <div className="rounded-lg border border-white/10 bg-[#2b2d31] p-4 text-sm text-[#b5bac1]">
-                  Preview verschijnt hier zodra je begint te typen.
-                </div>
-              ) : (
-                <div className="rounded-lg bg-[#f2f3f5] p-3 text-sm leading-6 text-[#313338]">
-                  {body}
-                </div>
-              )}
+            <div className="min-w-0 flex-1">
+              <div className="flex min-w-0 flex-wrap items-center gap-x-1.5 gap-y-0.5 text-[13px] leading-4">
+                <span className="truncate font-semibold text-[#f2f3f5]">ClipProfit bot</span>
+                <span className="rounded-[3px] bg-[#5865f2] px-1 py-0.5 text-[9px] font-bold leading-none text-white">BOT</span>
+                <span className="text-[#949ba4]">Today at 12:00</span>
+              </div>
+              <div className="mt-1 min-h-[320px] text-[16px] leading-[1.35] tracking-normal text-[#dbdee1]">
+                {blocks.length === 0 ? (
+                  <div className="rounded-lg border border-white/10 bg-[#2b2d31] p-4 text-sm text-[#b5bac1]">
+                    Preview verschijnt hier zodra je begint te typen.
+                  </div>
+                ) : (
+                  body
+                )}
+              </div>
             </div>
           </div>
         </div>
@@ -218,8 +222,12 @@ export function parseDiscordBlocks(source: string): Block[] {
   return blocks;
 }
 
-function renderPreviewBody(blocks: Block[], emojiById: Map<string, DiscordEmoji>) {
-  return <div className="space-y-3">{blocks.map((block, index) => renderBlock(block, index, emojiById))}</div>;
+function renderPreviewBody(blocks: Block[], emojiById: Map<string, DiscordEmoji>, variant: PreviewVariant) {
+  return (
+    <div className={cn(variant === "mobile" ? "space-y-2" : "space-y-3")}>
+      {blocks.map((block, index) => renderBlock(block, index, emojiById, variant))}
+    </div>
+  );
 }
 
 function parseListItem(line: string, ordered: boolean): ListItem | null {
@@ -241,13 +249,24 @@ function startsBlock(line: string) {
   );
 }
 
-function renderBlock(block: Block, key: number, emojiById: Map<string, DiscordEmoji>): ReactNode {
+function renderBlock(block: Block, key: number, emojiById: Map<string, DiscordEmoji>, variant: PreviewVariant): ReactNode {
   switch (block.kind) {
     case "code":
       return (
-        <div key={key} className="overflow-hidden rounded bg-[#e3e5e8] text-[#2b2d31]">
+        <div
+          key={key}
+          className={cn(
+            "overflow-hidden rounded",
+            variant === "mobile" ? "bg-[#2b2d31] text-[#dbdee1]" : "bg-[#e3e5e8] text-[#2b2d31]",
+          )}
+        >
           {block.language ? (
-            <div className="border-b border-[#c7ccd1] px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-[#6d6f78]">
+            <div
+              className={cn(
+                "border-b px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.14em]",
+                variant === "mobile" ? "border-white/10 text-[#949ba4]" : "border-[#c7ccd1] text-[#6d6f78]",
+              )}
+            >
               {block.language}
             </div>
           ) : null}
@@ -257,39 +276,41 @@ function renderBlock(block: Block, key: number, emojiById: Map<string, DiscordEm
         </div>
       );
     case "heading":
-      return renderHeading(block, key, emojiById);
+      return renderHeading(block, key, emojiById, variant);
     case "subtext":
       return (
-        <p key={key} className="text-xs leading-5 text-[#6d6f78]">
-          {renderInline(block.text, emojiById)}
+        <p className={cn("whitespace-pre-wrap break-words text-xs leading-5", variant === "mobile" ? "text-[#949ba4]" : "text-[#6d6f78]")} key={key}>
+          {renderInline(block.text, emojiById, variant)}
         </p>
       );
     case "quote":
       return (
-        <blockquote key={key} className="border-l-4 border-[#c7ccd1] pl-3 text-[#4e5058]">
-          {block.lines.map((line, index) =>
-            line.trim() === "" ? <br key={index} /> : <p key={index}>{renderInline(line, emojiById)}</p>,
+        <blockquote
+          key={key}
+          className={cn(
+            "whitespace-pre-wrap break-words border-l-4 pl-3",
+            variant === "mobile" ? "border-[#4e5058] text-[#dbdee1]" : "border-[#c7ccd1] text-[#4e5058]",
           )}
+        >
+          {renderInlineLines(block.lines, emojiById, variant, `quote-${key}`)}
         </blockquote>
       );
     case "ulist":
       return (
-        <ul key={key} className="list-disc space-y-1 pl-6">
-          {block.items.map((item, index) => renderListItem(item, index, emojiById))}
+        <ul key={key} className={cn("list-disc space-y-1 pl-6", variant === "mobile" && "marker:text-[#dbdee1]")}>
+          {block.items.map((item, index) => renderListItem(item, index, emojiById, variant))}
         </ul>
       );
     case "olist":
       return (
-        <ol key={key} className="list-decimal space-y-1 pl-6">
-          {block.items.map((item, index) => renderListItem(item, index, emojiById))}
+        <ol key={key} className={cn("list-decimal space-y-1 pl-6", variant === "mobile" && "marker:text-[#dbdee1]")}>
+          {block.items.map((item, index) => renderListItem(item, index, emojiById, variant))}
         </ol>
       );
     case "paragraph":
       return (
-        <div key={key} className="space-y-1">
-          {block.lines.map((line, index) => (
-            <p key={index}>{renderInline(line, emojiById)}</p>
-          ))}
+        <div key={key} className="whitespace-pre-wrap break-words">
+          {renderInlineLines(block.lines, emojiById, variant, `paragraph-${key}`)}
         </div>
       );
   }
@@ -299,41 +320,56 @@ function renderHeading(
   block: Extract<Block, { kind: "heading" }>,
   key: number,
   emojiById: Map<string, DiscordEmoji>,
+  variant: PreviewVariant,
 ) {
+  const textClass = variant === "mobile" ? "text-[#f2f3f5]" : "text-[#060607]";
   if (block.level === 1) {
     return (
-      <h1 key={key} className="text-xl font-bold leading-7 text-[#060607]">
-        {renderInline(block.text, emojiById)}
+      <h1 key={key} className={cn("whitespace-pre-wrap break-words text-xl font-bold leading-7", textClass)}>
+        {renderInline(block.text, emojiById, variant)}
       </h1>
     );
   }
   if (block.level === 2) {
     return (
-      <h2 key={key} className="text-lg font-bold leading-7 text-[#060607]">
-        {renderInline(block.text, emojiById)}
+      <h2 key={key} className={cn("whitespace-pre-wrap break-words text-lg font-bold leading-7", textClass)}>
+        {renderInline(block.text, emojiById, variant)}
       </h2>
     );
   }
   return (
-    <h3 key={key} className="text-base font-bold leading-6 text-[#060607]">
-      {renderInline(block.text, emojiById)}
+    <h3 key={key} className={cn("whitespace-pre-wrap break-words text-base font-bold leading-6", textClass)}>
+      {renderInline(block.text, emojiById, variant)}
     </h3>
   );
 }
 
-function renderListItem(item: ListItem, index: number, emojiById: Map<string, DiscordEmoji>) {
+function renderListItem(item: ListItem, index: number, emojiById: Map<string, DiscordEmoji>, variant: PreviewVariant) {
   return (
-    <li key={index} style={item.depth > 0 ? { marginLeft: `${item.depth * 1.25}rem` } : undefined}>
-      {renderInline(item.text, emojiById)}
+    <li
+      key={index}
+      className="whitespace-pre-wrap break-words pl-1"
+      style={item.depth > 0 ? { marginLeft: `${item.depth * 1.25}rem` } : undefined}
+    >
+      {renderInline(item.text, emojiById, variant)}
     </li>
   );
 }
 
-function renderInline(text: string, emojiById: Map<string, DiscordEmoji>): ReactNode[] {
-  return renderInlineSegments(text, emojiById, "inline");
+function renderInlineLines(lines: string[], emojiById: Map<string, DiscordEmoji>, variant: PreviewVariant, keyPrefix: string): ReactNode[] {
+  return lines.map((line, index) => (
+    <Fragment key={`${keyPrefix}-line-${index}`}>
+      {renderInline(line, emojiById, variant)}
+      {index < lines.length - 1 ? <br /> : null}
+    </Fragment>
+  ));
 }
 
-function renderInlineSegments(text: string, emojiById: Map<string, DiscordEmoji>, keyPrefix: string): ReactNode[] {
+function renderInline(text: string, emojiById: Map<string, DiscordEmoji>, variant: PreviewVariant): ReactNode[] {
+  return renderInlineSegments(text, emojiById, "inline", variant);
+}
+
+function renderInlineSegments(text: string, emojiById: Map<string, DiscordEmoji>, keyPrefix: string, variant: PreviewVariant): ReactNode[] {
   const nodes: ReactNode[] = [];
   let buffer = "";
   let index = 0;
@@ -376,7 +412,13 @@ function renderInlineSegments(text: string, emojiById: Map<string, DiscordEmoji>
     if (codeMatch) {
       flush();
       nodes.push(
-        <code key={`${keyPrefix}-code-${key++}`} className="rounded bg-[#e3e5e8] px-1.5 py-0.5 font-mono text-xs">
+        <code
+          key={`${keyPrefix}-code-${key++}`}
+          className={cn(
+            "rounded px-1.5 py-0.5 font-mono text-xs",
+            variant === "mobile" ? "bg-[#2b2d31] text-[#dbdee1]" : "bg-[#e3e5e8]",
+          )}
+        >
           {codeMatch[1]}
         </code>,
       );
@@ -395,7 +437,7 @@ function renderInlineSegments(text: string, emojiById: Map<string, DiscordEmoji>
           target="_blank"
           rel="noreferrer"
         >
-          {renderInlineSegments(linkMatch[1], emojiById, `${keyPrefix}-link-label-${key}`)}
+          {renderInlineSegments(linkMatch[1], emojiById, `${keyPrefix}-link-label-${key}`, variant)}
         </a>,
       );
       index += linkMatch[0].length;
@@ -428,7 +470,7 @@ function renderInlineSegments(text: string, emojiById: Map<string, DiscordEmoji>
       if (closingIndex > index + format.marker.length) {
         flush();
         const inner = text.slice(index + format.marker.length, closingIndex);
-        nodes.push(format.render(`${keyPrefix}-format-${key++}`, renderInlineSegments(inner, emojiById, `${keyPrefix}-${key}`)));
+        nodes.push(format.render(`${keyPrefix}-format-${key++}`, renderInlineSegments(inner, emojiById, `${keyPrefix}-${key}`, variant)));
         index = closingIndex + format.marker.length;
         continue;
       }
