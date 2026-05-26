@@ -2,12 +2,8 @@ import { requireAuth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { resolveThumbnail } from "@/lib/clip-thumbnail";
 import { parseClipUrl, type ClipPlatform } from "@/lib/parse-clip-url";
-import {
-  submissionMinimumPaidViews,
-  submissionNeedsPaidViewThreshold,
-  submissionProjectedEarnings,
-  submissionViews,
-} from "@/lib/earnings";
+import { submissionViews } from "@/lib/earnings";
+import { getCreatorPaymentSummary } from "@/lib/creator-payment-summary";
 import { VideosClient } from "./_components/videos-client";
 
 const CLIP_TO_PLATFORM_ICON: Record<ClipPlatform, string | null> = {
@@ -30,35 +26,39 @@ export default async function MyVideosPage() {
 
   const user = await prisma.user.findUnique({
     where: { supabaseId: userId },
-    select: { id: true },
-  });
-  if (!user) throw new Error("User not found");
-
-  const submissions = await prisma.campaignSubmission.findMany({
-    where: { creatorId: user.id },
-    orderBy: { createdAt: "desc" },
     select: {
       id: true,
-      postUrl: true,
-      thumbnailUrl: true,
-      mediaType: true,
-      sourcePlatform: true,
-      status: true,
-      earnedAmount: true,
-      claimedViews: true,
-      viewCount: true,
-      baselineViews: true,
-      createdAt: true,
-      campaign: {
-        select: {
-          name: true,
-          creatorCpv: true,
-          minimumPaidViews: true,
-          maximumPaidViews: true,
-        },
-      },
+      creatorProfile: { select: { id: true } },
     },
   });
+  if (!user) throw new Error("User not found");
+  if (!user.creatorProfile) throw new Error("Creator profile not found");
+
+  const [submissions, paymentSummary] = await Promise.all([
+    prisma.campaignSubmission.findMany({
+      where: { creatorId: user.id },
+      orderBy: { createdAt: "desc" },
+      select: {
+        id: true,
+        postUrl: true,
+        thumbnailUrl: true,
+        mediaType: true,
+        sourcePlatform: true,
+        status: true,
+        earnedAmount: true,
+        claimedViews: true,
+        viewCount: true,
+        baselineViews: true,
+        createdAt: true,
+        campaign: {
+          select: {
+            name: true,
+          },
+        },
+      },
+    }),
+    getCreatorPaymentSummary(user.id, user.creatorProfile.id),
+  ]);
 
   type ClipMediaType = "video" | "image" | "carousel";
   const asClipMediaType = (v: string | null | undefined): ClipMediaType | null =>
@@ -79,12 +79,7 @@ export default async function MyVideosPage() {
           storedMediaType: asClipMediaType(s.mediaType),
         },
       );
-      const needsThreshold = submissionNeedsPaidViewThreshold(s);
-      const earned = needsThreshold
-        ? 0
-        : s.status === "APPROVED"
-          ? Number(s.earnedAmount ?? 0)
-          : submissionProjectedEarnings(s);
+      const earned = Number(s.earnedAmount ?? 0);
       return {
         id: s.id,
         postUrl: s.postUrl,
@@ -92,15 +87,10 @@ export default async function MyVideosPage() {
         mediaType,
         status: s.status,
         earned,
-        earningDisplay: needsThreshold
-          ? {
-              state: "threshold" as const,
-              minimumPaidViews: submissionMinimumPaidViews(s),
-            }
-          : {
-              state: "amount" as const,
-              amount: earned,
-            },
+        earningDisplay: {
+          state: "amount" as const,
+          amount: earned,
+        },
         views: submissionViews(s),
         createdAt: s.createdAt.toISOString(),
         campaignName: s.campaign.name,
@@ -117,13 +107,13 @@ export default async function MyVideosPage() {
     ALL: videos.length,
   };
 
-  const totalEarnedProjected = videos.reduce((sum, video) => sum + video.earned, 0);
+  const totalEarned = paymentSummary.availableBalance + paymentSummary.profit;
 
   return (
     <VideosClient
       videos={videos}
       statusCounts={statusCounts}
-      totalEarnedProjected={totalEarnedProjected}
+      totalEarned={totalEarned}
     />
   );
 }

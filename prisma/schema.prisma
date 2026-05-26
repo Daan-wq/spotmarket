@@ -810,6 +810,7 @@ model Payout {
   bankIbanSnapshot        String?
   bankAccountNameSnapshot String?
   bankReference           String?
+  rejectionReason         String?              @db.Text
   coinbaseChargeId        String?
   stripeTransferId        String?
   periodStart             DateTime?

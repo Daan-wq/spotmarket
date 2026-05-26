@@ -17,7 +17,6 @@ import { parseClipUrl, type ClipPlatform } from "@/lib/parse-clip-url";
 import {
   submissionMinimumPaidViews,
   submissionNeedsPaidViewThreshold,
-  submissionProjectedEarnings,
   submissionViews,
 } from "@/lib/earnings";
 import {
@@ -264,11 +263,7 @@ export default async function CampaignDetailPage({
         },
       );
       const needsThreshold = submissionNeedsPaidViewThreshold(submission);
-      const earned = needsThreshold
-        ? 0
-        : submission.status === "APPROVED"
-          ? Number(submission.earnedAmount ?? 0)
-          : submissionProjectedEarnings(submission);
+      const earned = Number(submission.earnedAmount ?? 0);
 
       return {
         id: submission.id,
@@ -302,7 +297,7 @@ export default async function CampaignDetailPage({
     ALL: videos.length,
   };
   const myViews = videos.reduce((sum, video) => sum + video.views, 0);
-  const projectedEarned = videos.reduce((sum, video) => sum + video.earned, 0);
+  const recordedEarned = videos.reduce((sum, video) => sum + video.earned, 0);
   const headerStore = await headers();
   const campaignReferralUrl =
     campaign.slug && user.referralCode
@@ -428,21 +423,10 @@ export default async function CampaignDetailPage({
       <section>
         <SectionTitle title={t("payouts")} />
         <div className="rounded-2xl border border-neutral-200 bg-neutral-50 p-5">
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-            <InfoCard
-              label={t("estimate")}
-              value={formatCurrency(projectedEarned, locale)}
-              detail={t("trackedOrClaimed")}
-            />
+          <div className="grid grid-cols-1 gap-4">
             <InfoCard
               label={t("recorded")}
-              value={formatCurrency(
-                mySubmissions.reduce(
-                  (sum, s) => sum + Number(s.earnedAmount ?? 0),
-                  0,
-                ),
-                locale,
-              )}
+              value={formatCurrency(recordedEarned, locale)}
               detail={t("currentEarnings")}
             />
           </div>

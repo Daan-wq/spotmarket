@@ -24,6 +24,7 @@ export function PaymentRequestActions({
   const [isPending, startTransition] = useTransition();
   const [bankReference, setBankReference] = useState("");
   const [txHash, setTxHash] = useState("");
+  const [rejectionReason, setRejectionReason] = useState("");
   const isCrypto = method === "CRYPTO";
 
   function copyPayoutDetails() {
@@ -43,6 +44,10 @@ export function PaymentRequestActions({
       toast.error("Add a Solana transaction hash before marking as paid.");
       return;
     }
+    if (status === "failed" && !rejectionReason.trim()) {
+      toast.error("Add an internal rejection reason before rejecting.");
+      return;
+    }
 
     startTransition(async () => {
       try {
@@ -56,6 +61,9 @@ export function PaymentRequestActions({
               : {}),
             ...(status === "confirmed" && !isCrypto
               ? { bankReference: bankReference.trim() }
+              : {}),
+            ...(status === "failed"
+              ? { rejectionReason: rejectionReason.trim() }
               : {}),
           }),
         });
@@ -90,6 +98,12 @@ export function PaymentRequestActions({
         }}
         placeholder={isCrypto ? "Solana transaction hash" : "Bank reference or note"}
         className="h-9 rounded-lg border border-neutral-200 bg-white px-3 text-xs text-neutral-950 outline-none transition placeholder:text-neutral-400 focus:border-neutral-400"
+      />
+      <textarea
+        value={rejectionReason}
+        onChange={(event) => setRejectionReason(event.target.value)}
+        placeholder="Internal rejection reason"
+        className="min-h-16 rounded-lg border border-neutral-200 bg-white px-3 py-2 text-xs text-neutral-950 outline-none transition placeholder:text-neutral-400 focus:border-neutral-400"
       />
       <div className="flex flex-wrap gap-2">
         <Button

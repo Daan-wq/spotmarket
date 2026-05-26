@@ -19,12 +19,6 @@ interface Props {
 
 /**
  * Shared "Earned" card with optional disclaimer tooltip.
- *
- * Used on the submission detail page (per-video projected) and on the
- * My Clips list (total projected across all submissions). Pair the value
- * with one of the helpers from `@/lib/earnings`:
- *   - `submissionProjectedEarnings(s)` for a single submission
- *   - `totalProjectedEarnings(submissions)` for an aggregate
  */
 export default function EarningsCard({
   amount,

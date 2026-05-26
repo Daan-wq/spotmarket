@@ -11,7 +11,6 @@ import { parseClipUrl, type ClipPlatform } from "@/lib/parse-clip-url";
 import {
   submissionMinimumPaidViews,
   submissionNeedsPaidViewThreshold,
-  submissionProjectedEarnings,
   submissionViews,
 } from "@/lib/earnings";
 import type { Locale } from "@/i18n/routing";
@@ -68,11 +67,7 @@ export default async function VideoDetailPage({
   const totalEngagement = views > 0 ? (((likes + comments + shares) / views) * 100) : 0;
   const rewardRate = Number(submission.campaign.creatorCpv) * 1000;
   const needsThreshold = submissionNeedsPaidViewThreshold(submission);
-  const projectedEarnings = needsThreshold
-    ? 0
-    : submission.status === "APPROVED"
-      ? Number(submission.earnedAmount ?? 0)
-      : submissionProjectedEarnings(submission);
+  const earnedAmount = Number(submission.earnedAmount ?? 0);
   const earningsMessage = needsThreshold
     ? t("thresholdMessage", {
         views: formatNumber(submissionMinimumPaidViews(submission), locale),
@@ -182,7 +177,7 @@ export default async function VideoDetailPage({
         </div>
 
         <EarningsCard
-          amount={projectedEarnings}
+          amount={earnedAmount}
           message={earningsMessage}
           disclaimer={
             showEarningsDisclaimer

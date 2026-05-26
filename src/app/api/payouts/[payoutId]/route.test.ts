@@ -43,6 +43,7 @@ describe("PATCH /api/payouts/[payoutId]", () => {
       status: "pending",
       paymentMethod: "BANK_TRANSFER",
       bankReference: null,
+      rejectionReason: null,
     });
     routeMocks.payoutUpdate.mockImplementation(({ data }) =>
       Promise.resolve({
@@ -159,8 +160,24 @@ describe("PATCH /api/payouts/[payoutId]", () => {
     });
   });
 
-  it("marks a rejected payout request as failed without mutating balance directly", async () => {
+  it("requires an internal rejection reason before rejecting a payout request", async () => {
     const response = await PATCH(patchRequest({ status: "failed" }), params);
+
+    expect(response.status).toBe(400);
+    await expect(response.json()).resolves.toEqual({
+      error: "Internal rejection reason is required.",
+    });
+    expect(routeMocks.payoutUpdate).not.toHaveBeenCalled();
+  });
+
+  it("marks a rejected payout request as failed without mutating balance directly", async () => {
+    const response = await PATCH(
+      patchRequest({
+        status: "failed",
+        rejectionReason: "Marked paid before the manual bank transfer was sent.",
+      }),
+      params,
+    );
 
     expect(response.status).toBe(200);
     expect(routeMocks.payoutUpdate).toHaveBeenCalledWith({
@@ -168,6 +185,17 @@ describe("PATCH /api/payouts/[payoutId]", () => {
       data: expect.objectContaining({
         status: "failed",
         processedAt: expect.any(Date),
+        rejectionReason: "Marked paid before the manual bank transfer was sent.",
+      }),
+    });
+    expect(routeMocks.auditLogCreate).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        action: "payout.failed",
+        entityId: "payout-1",
+        metadata: expect.objectContaining({
+          rejectionReason: "Marked paid before the manual bank transfer was sent.",
+          paymentMethod: "BANK_TRANSFER",
+        }),
       }),
     });
   });

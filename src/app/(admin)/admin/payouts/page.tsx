@@ -223,6 +223,7 @@ export default async function PayoutsPage() {
                 { key: "amount", header: "Amount", align: "right", cell: (payout) => formatCurrencyPrecise(payout.amount, payout.currency) },
                 { key: "status", header: "Status", cell: (payout) => <Badge variant={payout.status === "confirmed" || payout.status === "sent" ? "verified" : payout.status === "failed" ? "failed" : "pending"}>{titleCaseEnum(payout.status)}</Badge> },
                 { key: "method", header: "Method", cell: (payout) => payout.paymentMethod || "-" },
+                { key: "reason", header: "Internal reason", cell: (payout) => payout.rejectionReason || "-" },
                 { key: "date", header: "Date", cell: (payout) => formatDate(payout.createdAt) },
               ]}
             />

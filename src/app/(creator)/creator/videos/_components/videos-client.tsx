@@ -15,13 +15,13 @@ import { useLocale, useTranslations } from "next-intl";
 interface VideosClientProps {
   videos: SubmittedClipData[];
   statusCounts: Record<string, number>;
-  totalEarnedProjected: number;
+  totalEarned: number;
 }
 
 export function VideosClient({
   videos,
   statusCounts,
-  totalEarnedProjected,
+  totalEarned,
 }: VideosClientProps) {
   const locale = useLocale();
   const t = useTranslations("creator.videos.page");
@@ -52,7 +52,7 @@ export function VideosClient({
           />
           <div className="col-span-2 md:col-span-1">
             <EarningsCard
-              amount={totalEarnedProjected}
+              amount={totalEarned}
               disclaimer={
                 hasUnsettled
                   ? t("unsettledDisclaimer")
