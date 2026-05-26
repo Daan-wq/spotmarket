@@ -72,25 +72,40 @@ export async function POST(req: Request) {
     if (!admin) return NextResponse.json({ error: "Admin user not found" }, { status: 404 });
 
     const data = templateSchema.parse(await req.json());
-    const template = await prisma.discordMessageTemplate.create({
-      data: {
-        ...data,
-        createdByUserId: admin.id,
-        updatedByUserId: admin.id,
+    const existing = await prisma.discordMessageTemplate.findFirst({
+      where: {
+        kind: data.kind,
+        name: { equals: data.name, mode: "insensitive" },
       },
+      orderBy: { updatedAt: "desc" },
     });
+    const template = existing
+      ? await prisma.discordMessageTemplate.update({
+          where: { id: existing.id },
+          data: {
+            ...data,
+            updatedByUserId: admin.id,
+          },
+        })
+      : await prisma.discordMessageTemplate.create({
+          data: {
+            ...data,
+            createdByUserId: admin.id,
+            updatedByUserId: admin.id,
+          },
+        });
 
     await prisma.auditLog.create({
       data: {
         userId: admin.id,
-        action: "discord.template.create",
+        action: existing ? "discord.template.update" : "discord.template.create",
         entityType: "DiscordMessageTemplate",
         entityId: template.id,
         metadata: { kind: template.kind, contentLength: template.content.length, buttons: data.buttons.length },
       },
     });
 
-    return NextResponse.json({ template: serialize(template) }, { status: 201 });
+    return NextResponse.json({ template: serialize(template) }, { status: existing ? 200 : 201 });
   } catch (error) {
     return jsonError(error, "[POST /api/admin/discord/templates]");
   }
