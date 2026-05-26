@@ -50,6 +50,7 @@ import {
   normalizeDiscordEmbeds,
   normalizeDiscordLinkButtons,
   getDiscordMessageValidationIssues,
+  isHttpUrl,
 } from "@/lib/admin/discord-message-validation";
 import type { DiscordEmbedFieldInput, DiscordEmbedInput, DiscordLinkButton } from "@/lib/admin/discord-message-validation";
 import {
@@ -97,14 +98,24 @@ interface EmojisResponse {
 }
 
 type DiscordMessageMode = "CONTENT" | "EMBED" | "CONTENT_EMBED";
+type EmbedImageField = "thumbnailUrl" | "imageUrl";
+
+interface EmbedMediaFile {
+  file: File;
+  previewUrl: string;
+  attachmentName: string;
+}
 
 const HEADER_PREFIX_PATTERN = /^#{1,3}\s+/;
 const ORDERED_PREFIX_PATTERN = /^\s*\d+\.\s+/;
 const DEFAULT_EMBED_COLOR = 0x5865f2;
+const EMBED_IMAGE_FIELDS: EmbedImageField[] = ["thumbnailUrl", "imageUrl"];
 
 export function DiscordMessageComposer() {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const embedMediaSequenceRef = useRef(0);
+  const embedMediaFilesRef = useRef<Record<string, EmbedMediaFile>>({});
   const [channelGroups, setChannelGroups] = useState<DiscordChannelGroup[]>([]);
   const [emojis, setEmojis] = useState<DiscordEmoji[]>([]);
   const [templates, setTemplates] = useState<DiscordTemplate[]>([]);
@@ -112,6 +123,7 @@ export function DiscordMessageComposer() {
   const [messageMode, setMessageMode] = useState<DiscordMessageMode>("CONTENT");
   const [content, setContent] = useState("");
   const [embeds, setEmbeds] = useState<DiscordEmbedInput[]>([]);
+  const [embedMediaFiles, setEmbedMediaFiles] = useState<Record<string, EmbedMediaFile>>({});
   const [linkButtons, setLinkButtons] = useState<DiscordLinkButton[]>([]);
   const [files, setFiles] = useState<File[]>([]);
   const [templateId, setTemplateId] = useState<string | null>(null);
@@ -134,15 +146,35 @@ export function DiscordMessageComposer() {
     void refreshAll();
   }, []);
 
+  useEffect(() => {
+    embedMediaFilesRef.current = embedMediaFiles;
+  }, [embedMediaFiles]);
+
+  useEffect(() => {
+    return () => revokeEmbedMediaPreviews(embedMediaFilesRef.current);
+  }, []);
+
   const allChannels = useMemo(
     () => channelGroups.flatMap((group) => group.channels.map((channel) => ({ ...channel, groupName: group.name }))),
     [channelGroups],
   );
   const validChannelIds = useMemo(() => allChannels.map((channel) => channel.id), [allChannels]);
   const selectedChannel = allChannels.find((channel) => channel.id === selectedChannelId) ?? null;
-  const totalFileSize = files.reduce((sum, file) => sum + file.size, 0);
   const activeContent = messageMode === "EMBED" ? "" : content;
   const activeEmbeds = useMemo(() => (messageMode === "CONTENT" ? [] : embeds), [embeds, messageMode]);
+  const activeEmbedMediaAttachments = useMemo(
+    () => getReferencedEmbedMediaFiles(activeEmbeds, embedMediaFiles),
+    [activeEmbeds, embedMediaFiles],
+  );
+  const validationFiles = useMemo(
+    () => toDiscordValidationFiles(files, activeEmbedMediaAttachments),
+    [activeEmbedMediaAttachments, files],
+  );
+  const totalFileSize = validationFiles.reduce((sum, file) => sum + file.size, 0);
+  const previewEmbeds = useMemo(
+    () => resolveEmbedAttachmentPreviews(activeEmbeds, embedMediaFiles),
+    [activeEmbeds, embedMediaFiles],
+  );
   const cleanedEmbeds = useMemo(() => normalizeDiscordEmbeds(activeEmbeds), [activeEmbeds]);
   const embedCharacterCount = cleanedEmbeds.reduce((sum, embed) => sum + getDiscordEmbedCharacterCount(embed), 0);
   const completeLinkButtons = useMemo(() => normalizeDiscordLinkButtons(linkButtons), [linkButtons]);
@@ -162,12 +194,12 @@ export function DiscordMessageComposer() {
       getDiscordMessageValidationIssues({
         channelId: selectedChannelId,
         content: activeContent,
-        files,
+        files: validationFiles,
         embeds: activeEmbeds,
         buttons: linkButtons,
         validChannelIds: loading ? undefined : validChannelIds,
       }),
-    [activeContent, activeEmbeds, files, linkButtons, loading, selectedChannelId, validChannelIds],
+    [activeContent, activeEmbeds, linkButtons, loading, selectedChannelId, validChannelIds, validationFiles],
   );
   const primarySendIssue = loading
     ? { message: "Discord channels and emojis are still loading." }
@@ -269,7 +301,7 @@ export function DiscordMessageComposer() {
     const issue = getDiscordMessageValidationIssues({
       channelId: selectedChannelId,
       content: activeContent,
-      files: next,
+      files: toDiscordValidationFiles(next, activeEmbedMediaAttachments),
       embeds: activeEmbeds,
       buttons: linkButtons,
       validChannelIds: loading ? undefined : validChannelIds,
@@ -280,6 +312,89 @@ export function DiscordMessageComposer() {
 
   function removeFile(index: number) {
     setFiles((current) => current.filter((_, fileIndex) => fileIndex !== index));
+  }
+
+  function handleEmbedImageFile(embedIndex: number, field: EmbedImageField, selected: FileList | null) {
+    const file = selected?.[0];
+    if (!file) return;
+    if (file.type && !file.type.startsWith("image/")) {
+      setError("Choose an image file for the embed.");
+      return;
+    }
+
+    const attachmentName = createEmbedAttachmentName(field, file, ++embedMediaSequenceRef.current);
+    const previewUrl = URL.createObjectURL(file);
+    const previousName = getAttachmentNameFromUrl(embeds[embedIndex]?.[field]);
+    updateEmbed(embedIndex, { [field]: `attachment://${attachmentName}` });
+    setEmbedMediaFiles((current) => {
+      const next = { ...current, [attachmentName]: { file, previewUrl, attachmentName } };
+      if (previousName && current[previousName] && !isAttachmentNameUsedElsewhere(embeds, previousName, embedIndex, field)) {
+        URL.revokeObjectURL(current[previousName].previewUrl);
+        delete next[previousName];
+      }
+      return next;
+    });
+    setError(null);
+  }
+
+  function clearEmbedImage(embedIndex: number, field: EmbedImageField) {
+    const previousName = getAttachmentNameFromUrl(embeds[embedIndex]?.[field]);
+    updateEmbed(embedIndex, { [field]: "" });
+    if (!previousName || isAttachmentNameUsedElsewhere(embeds, previousName, embedIndex, field)) return;
+    setEmbedMediaFiles((current) => {
+      const existing = current[previousName];
+      if (!existing) return current;
+      URL.revokeObjectURL(existing.previewUrl);
+      const next = { ...current };
+      delete next[previousName];
+      return next;
+    });
+  }
+
+  function clearAllEmbedMediaFiles() {
+    setEmbedMediaFiles((current) => {
+      revokeEmbedMediaPreviews(current);
+      return {};
+    });
+  }
+
+  function pruneEmbedMediaFiles(nextEmbeds: DiscordEmbedInput[]) {
+    const referencedNames = getAttachmentNamesFromEmbeds(nextEmbeds);
+    setEmbedMediaFiles((current) => {
+      const next: Record<string, EmbedMediaFile> = {};
+      for (const [name, media] of Object.entries(current)) {
+        if (referencedNames.has(name)) {
+          next[name] = media;
+        } else {
+          URL.revokeObjectURL(media.previewUrl);
+        }
+      }
+      return next;
+    });
+  }
+
+  function clearSentEmbedMediaFiles(sentAttachments: EmbedMediaFile[]) {
+    if (sentAttachments.length === 0) return;
+    const sentNames = new Set(sentAttachments.map((attachment) => attachment.attachmentName));
+    setEmbeds((current) =>
+      current.map((embed) => {
+        const next = { ...embed };
+        for (const field of EMBED_IMAGE_FIELDS) {
+          const attachmentName = getAttachmentNameFromUrl(next[field]);
+          if (attachmentName && sentNames.has(attachmentName)) next[field] = "";
+        }
+        return next;
+      }),
+    );
+    setEmbedMediaFiles((current) => {
+      const next = { ...current };
+      for (const name of sentNames) {
+        if (!next[name]) continue;
+        URL.revokeObjectURL(next[name].previewUrl);
+        delete next[name];
+      }
+      return next;
+    });
   }
 
   function addLinkButton() {
@@ -323,7 +438,9 @@ export function DiscordMessageComposer() {
   }
 
   function removeEmbed(index: number) {
-    setEmbeds((current) => current.filter((_, embedIndex) => embedIndex !== index));
+    const nextEmbeds = embeds.filter((_, embedIndex) => embedIndex !== index);
+    setEmbeds(nextEmbeds);
+    pruneEmbedMediaFiles(nextEmbeds);
   }
 
   function moveEmbed(index: number, direction: -1 | 1) {
@@ -373,7 +490,8 @@ export function DiscordMessageComposer() {
     setMessageMode(template.messageMode ?? inferMessageMode(template.content, template.embeds ?? []));
     if (template.channelId) setSelectedChannelId(template.channelId);
     setContent(template.content);
-    setEmbeds(template.embeds ?? []);
+    setEmbeds(removeLocalEmbedAttachmentUrls(template.embeds ?? []));
+    clearAllEmbedMediaFiles();
     setLinkButtons(template.buttons ?? []);
     setSelection({ start: 0, end: template.content.length });
     setActiveInlineFormat(null);
@@ -389,6 +507,7 @@ export function DiscordMessageComposer() {
     setMessageMode("CONTENT");
     setContent("");
     setEmbeds([]);
+    clearAllEmbedMediaFiles();
     setLinkButtons([]);
     setFiles([]);
     setSelection({ start: 0, end: 0 });
@@ -409,9 +528,13 @@ export function DiscordMessageComposer() {
   }
 
   async function saveTemplate(kind: "DRAFT" | "TEMPLATE") {
-    setSaving(true);
     setError(null);
     setStatus(null);
+    if (hasEmbedAttachmentReferences(activeEmbeds)) {
+      setError("Uploaded embed images are only available for this send. Clear or replace them before saving a draft or template.");
+      return;
+    }
+    setSaving(true);
     const payload = {
       name: templateName.trim() || `${kind === "DRAFT" ? "Draft" : "Template"} ${new Date().toLocaleDateString()}`,
       kind,
@@ -500,6 +623,9 @@ export function DiscordMessageComposer() {
     payload.append("buttons", JSON.stringify(completeLinkButtons));
     if (templateId) payload.append("templateId", templateId);
     for (const file of files) payload.append("files", file);
+    for (const attachment of activeEmbedMediaAttachments) {
+      payload.append("files", attachment.file, attachment.attachmentName);
+    }
 
     try {
       const response = await fetch("/api/admin/discord/messages", {
@@ -510,6 +636,7 @@ export function DiscordMessageComposer() {
       if (!response.ok) throw new Error(body.error ?? "Could not send Discord message.");
       setConfirmOpen(false);
       setFiles([]);
+      clearSentEmbedMediaFiles(activeEmbedMediaAttachments);
       setStatus(`${sendIntent === "test" ? "Test message" : "Message"} sent: ${body.message?.url ?? body.message?.id ?? "Discord"}`);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not send Discord message.");
@@ -634,7 +761,10 @@ export function DiscordMessageComposer() {
               {activeContent.length} / {MAX_CONTENT} characters sent
             </span>
             {messageMode === "EMBED" && content.trim() ? <span>Text is saved locally here but not sent in embed-only mode.</span> : null}
-            <span>{files.length} / {MAX_FILES} files - {formatBytes(totalFileSize)} / {formatBytes(MAX_TOTAL_BYTES)}</span>
+            <span>
+              {validationFiles.length} / {MAX_FILES} files
+              {activeEmbedMediaAttachments.length > 0 ? ` (${activeEmbedMediaAttachments.length} embedded)` : ""} - {formatBytes(totalFileSize)} / {formatBytes(MAX_TOTAL_BYTES)}
+            </span>
           </div>
 
           <div className="mt-4 rounded-xl border border-neutral-200 bg-neutral-50 p-3">
@@ -737,8 +867,20 @@ export function DiscordMessageComposer() {
                         <input value={embed.authorName ?? ""} onChange={(event) => updateEmbed(embedIndex, { authorName: event.target.value })} placeholder="Author name" className="h-10 rounded-lg border border-neutral-200 bg-white px-3 text-sm outline-none focus:border-neutral-500" />
                         <input value={embed.authorIconUrl ?? ""} onChange={(event) => updateEmbed(embedIndex, { authorIconUrl: event.target.value })} placeholder="Author icon URL" className="h-10 rounded-lg border border-neutral-200 bg-white px-3 text-sm outline-none focus:border-neutral-500" />
                         <input value={embed.authorUrl ?? ""} onChange={(event) => updateEmbed(embedIndex, { authorUrl: event.target.value })} placeholder="Author URL" className="h-10 rounded-lg border border-neutral-200 bg-white px-3 text-sm outline-none focus:border-neutral-500" />
-                        <input value={embed.thumbnailUrl ?? ""} onChange={(event) => updateEmbed(embedIndex, { thumbnailUrl: event.target.value })} placeholder="Thumbnail image URL" className="h-10 rounded-lg border border-neutral-200 bg-white px-3 text-sm outline-none focus:border-neutral-500" />
-                        <input value={embed.imageUrl ?? ""} onChange={(event) => updateEmbed(embedIndex, { imageUrl: event.target.value })} placeholder="Large image URL" className="h-10 rounded-lg border border-neutral-200 bg-white px-3 text-sm outline-none focus:border-neutral-500" />
+                        <EmbedImageUpload
+                          label="Thumbnail"
+                          value={embed.thumbnailUrl ?? ""}
+                          media={getEmbedMediaFile(embed.thumbnailUrl, embedMediaFiles)}
+                          onSelect={(selected) => handleEmbedImageFile(embedIndex, "thumbnailUrl", selected)}
+                          onClear={() => clearEmbedImage(embedIndex, "thumbnailUrl")}
+                        />
+                        <EmbedImageUpload
+                          label="Large image"
+                          value={embed.imageUrl ?? ""}
+                          media={getEmbedMediaFile(embed.imageUrl, embedMediaFiles)}
+                          onSelect={(selected) => handleEmbedImageFile(embedIndex, "imageUrl", selected)}
+                          onClear={() => clearEmbedImage(embedIndex, "imageUrl")}
+                        />
                         <label className="flex h-10 items-center gap-2 rounded-lg border border-neutral-200 bg-white px-3 text-sm text-neutral-700">
                           <input type="checkbox" checked={embed.timestamp === true} onChange={(event) => updateEmbed(embedIndex, { timestamp: event.target.checked })} />
                           Current timestamp
@@ -896,7 +1038,7 @@ export function DiscordMessageComposer() {
 
         <section className="xl:sticky xl:top-4 xl:self-start">
           <SectionHeader title="Live preview" description="Mobile Discord preview for the exact payload that will be sent." />
-          <DiscordMarkdownPreview content={activeContent} embeds={activeEmbeds} emojis={emojis} buttons={completeLinkButtons} frame="mobile" />
+          <DiscordMarkdownPreview content={activeContent} embeds={previewEmbeds} emojis={emojis} buttons={completeLinkButtons} frame="mobile" />
         </section>
         </div>
       </section>
@@ -1012,12 +1154,12 @@ export function DiscordMessageComposer() {
             <ConfirmStat label="Channel" value={selectedChannel ? `#${selectedChannel.name}` : "-"} />
             <ConfirmStat label="Content" value={`${activeContent.length} / ${MAX_CONTENT}`} />
             <ConfirmStat label="Embeds" value={`${cleanedEmbeds.length} (${embedCharacterCount} chars)`} />
-            <ConfirmStat label="Files" value={`${files.length} (${formatBytes(totalFileSize)})`} />
+            <ConfirmStat label="Files" value={`${validationFiles.length} (${formatBytes(totalFileSize)})`} />
             <ConfirmStat label="Buttons" value={`${completeLinkButtons.length} / ${MAX_BUTTONS}`} />
           </div>
           <DiscordMarkdownPreview
             content={activeContent}
-            embeds={activeEmbeds}
+            embeds={previewEmbeds}
             emojis={emojis}
             buttons={completeLinkButtons}
             frame="mobile"
@@ -1039,6 +1181,192 @@ export function shouldPatchLoadedDiscordTemplate(
       loaded.kind === nextKind &&
       normalizeTemplateName(loaded.name) === normalizeTemplateName(nextName),
   );
+}
+
+function EmbedImageUpload({
+  label,
+  value,
+  media,
+  onSelect,
+  onClear,
+}: {
+  label: string;
+  value: string;
+  media: EmbedMediaFile | null;
+  onSelect: (selected: FileList | null) => void;
+  onClear: () => void;
+}) {
+  const previewSrc = media?.previewUrl ?? (value && isHttpUrl(value) ? value : null);
+  const isMissingUpload = Boolean(value && getAttachmentNameFromUrl(value) && !media);
+  const detail = media
+    ? `${media.file.type || "image"} - ${formatBytes(media.file.size)}`
+    : previewSrc
+      ? "External image"
+      : isMissingUpload
+        ? "Re-upload required"
+        : "No image selected";
+
+  return (
+    <div className="rounded-lg border border-neutral-200 bg-white p-2">
+      <div className="flex min-w-0 gap-2">
+        <div className="flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-md bg-neutral-100">
+          {previewSrc ? (
+            <img src={previewSrc} alt="" className="h-full w-full object-cover" />
+          ) : (
+            <Paperclip className="h-4 w-4 text-neutral-400" />
+          )}
+        </div>
+        <div className="min-w-0 flex-1">
+          <div className="flex min-w-0 items-start justify-between gap-2">
+            <div className="min-w-0">
+              <p className="truncate text-sm font-semibold text-neutral-950">{label}</p>
+              <p className={cn("mt-0.5 truncate text-xs", isMissingUpload ? "text-amber-700" : "text-neutral-500")}>{detail}</p>
+            </div>
+            {value ? (
+              <button
+                type="button"
+                onClick={onClear}
+                className="shrink-0 rounded-md p-1 text-neutral-400 transition hover:bg-neutral-100 hover:text-red-600"
+                aria-label={`Clear ${label.toLowerCase()}`}
+              >
+                <Trash2 className="h-4 w-4" />
+              </button>
+            ) : null}
+          </div>
+          <label className="mt-2 inline-flex h-8 cursor-pointer items-center gap-1.5 rounded-md border border-neutral-200 px-2 text-xs font-semibold text-neutral-600 transition hover:border-neutral-300 hover:text-neutral-950">
+            <Paperclip className="h-3.5 w-3.5" />
+            Upload
+            <input
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={(event) => {
+                onSelect(event.target.files);
+                event.currentTarget.value = "";
+              }}
+            />
+          </label>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function getReferencedEmbedMediaFiles(embeds: DiscordEmbedInput[], mediaFiles: Record<string, EmbedMediaFile>): EmbedMediaFile[] {
+  const seen = new Set<string>();
+  const result: EmbedMediaFile[] = [];
+  for (const name of getAttachmentNamesFromEmbeds(embeds)) {
+    if (seen.has(name)) continue;
+    const media = mediaFiles[name];
+    if (!media) continue;
+    seen.add(name);
+    result.push(media);
+  }
+  return result;
+}
+
+function toDiscordValidationFiles(files: File[], embedMediaFiles: EmbedMediaFile[]) {
+  return [
+    ...files.map((file) => ({ name: file.name, size: file.size })),
+    ...embedMediaFiles.map((media) => ({ name: media.attachmentName, size: media.file.size })),
+  ];
+}
+
+function resolveEmbedAttachmentPreviews(
+  embeds: DiscordEmbedInput[],
+  mediaFiles: Record<string, EmbedMediaFile>,
+): DiscordEmbedInput[] {
+  return embeds.map((embed) => {
+    const next = { ...embed };
+    for (const field of EMBED_IMAGE_FIELDS) {
+      const attachmentName = getAttachmentNameFromUrl(embed[field]);
+      const media = attachmentName ? mediaFiles[attachmentName] : null;
+      if (media) next[field] = media.previewUrl;
+    }
+    return next;
+  });
+}
+
+function getEmbedMediaFile(value: string | undefined, mediaFiles: Record<string, EmbedMediaFile>): EmbedMediaFile | null {
+  const attachmentName = getAttachmentNameFromUrl(value);
+  return attachmentName ? (mediaFiles[attachmentName] ?? null) : null;
+}
+
+function hasEmbedAttachmentReferences(embeds: DiscordEmbedInput[]) {
+  return getAttachmentNamesFromEmbeds(embeds).size > 0;
+}
+
+function removeLocalEmbedAttachmentUrls(embeds: DiscordEmbedInput[]): DiscordEmbedInput[] {
+  return embeds.map((embed) => {
+    const next = { ...embed };
+    for (const field of EMBED_IMAGE_FIELDS) {
+      if (getAttachmentNameFromUrl(next[field])) next[field] = "";
+    }
+    return next;
+  });
+}
+
+function getAttachmentNamesFromEmbeds(embeds: DiscordEmbedInput[]) {
+  const names = new Set<string>();
+  for (const embed of embeds) {
+    for (const field of EMBED_IMAGE_FIELDS) {
+      const attachmentName = getAttachmentNameFromUrl(embed[field]);
+      if (attachmentName) names.add(attachmentName);
+    }
+  }
+  return names;
+}
+
+function isAttachmentNameUsedElsewhere(
+  embeds: DiscordEmbedInput[],
+  attachmentName: string,
+  skipEmbedIndex: number,
+  skipField: EmbedImageField,
+) {
+  return embeds.some((embed, embedIndex) =>
+    EMBED_IMAGE_FIELDS.some((field) => {
+      if (embedIndex === skipEmbedIndex && field === skipField) return false;
+      return getAttachmentNameFromUrl(embed[field]) === attachmentName;
+    }),
+  );
+}
+
+function getAttachmentNameFromUrl(value: string | undefined): string | null {
+  const prefix = "attachment://";
+  if (!value?.startsWith(prefix)) return null;
+  const name = value.slice(prefix.length).trim();
+  return name || null;
+}
+
+function createEmbedAttachmentName(field: EmbedImageField, file: File, sequence: number) {
+  const safeName = sanitizeAttachmentFileName(file.name || defaultImageFileName(file.type));
+  const dotIndex = safeName.lastIndexOf(".");
+  const base = dotIndex > 0 ? safeName.slice(0, dotIndex) : safeName;
+  const extension = dotIndex > 0 ? safeName.slice(dotIndex) : extensionFromImageType(file.type);
+  return `embed-${sequence}-${field === "thumbnailUrl" ? "thumb" : "image"}-${base}`.slice(0, 90) + extension;
+}
+
+function sanitizeAttachmentFileName(value: string) {
+  const safe = value
+    .toLowerCase()
+    .replace(/[^a-z0-9._-]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+  return safe || "image.png";
+}
+
+function defaultImageFileName(type: string) {
+  return `image${extensionFromImageType(type)}`;
+}
+
+function extensionFromImageType(type: string) {
+  if (type === "image/jpeg") return ".jpg";
+  if (type === "image/webp") return ".webp";
+  if (type === "image/gif") return ".gif";
+  return ".png";
+}
+
+function revokeEmbedMediaPreviews(mediaFiles: Record<string, EmbedMediaFile>) {
+  Object.values(mediaFiles).forEach((media) => URL.revokeObjectURL(media.previewUrl));
 }
 
 function normalizeTemplateName(name: string) {
