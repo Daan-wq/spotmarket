@@ -125,4 +125,35 @@ describe("admin Discord helpers", () => {
     const init = fetchMock.mock.calls[0][1] as RequestInit;
     expect((init.headers as Headers).get("Authorization")).toBe("Bot bot-token");
   });
+
+  it("sends URL buttons as Discord message components", async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ id: "msg-1", channel_id: "channel-1" }),
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    await sendDiscordMessage({
+      channelId: "channel-1",
+      content: "Hello",
+      files: [],
+      buttons: [{ label: "Open campaign", url: "https://clipprofit.com/campaigns/1" }],
+    });
+
+    const init = fetchMock.mock.calls[0][1] as RequestInit;
+    const payload = JSON.parse(String((init.body as FormData).get("payload_json")));
+    expect(payload.components).toEqual([
+      {
+        type: 1,
+        components: [
+          {
+            type: 2,
+            style: 5,
+            label: "Open campaign",
+            url: "https://clipprofit.com/campaigns/1",
+          },
+        ],
+      },
+    ]);
+  });
 });

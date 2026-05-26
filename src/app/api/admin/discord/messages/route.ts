@@ -8,6 +8,7 @@ import {
   sendDiscordMessage,
   validateDiscordMessageInput,
 } from "@/lib/admin/discord";
+import type { DiscordLinkButton } from "@/lib/admin/discord-message-validation";
 import { prisma } from "@/lib/prisma";
 
 export const runtime = "nodejs";
@@ -25,18 +26,19 @@ export async function POST(req: Request) {
     const channelId = String(formData.get("channelId") ?? "").trim();
     const content = String(formData.get("content") ?? "");
     const templateId = String(formData.get("templateId") ?? "").trim() || null;
+    const buttons = parseButtons(formData.get("buttons"));
     const files = formData
       .getAll("files")
       .filter((entry): entry is File => entry instanceof File && entry.size > 0);
 
-    const validationError = validateDiscordMessageInput({ channelId, content, files });
+    const validationError = validateDiscordMessageInput({ channelId, content, files, buttons });
     if (validationError) return NextResponse.json({ error: validationError }, { status: 400 });
 
     const channelGroups = await listDiscordChannels();
     const channel = flattenDiscordChannels(channelGroups).find((item) => item.id === channelId);
     if (!channel) return NextResponse.json({ error: "Choose a valid Discord channel." }, { status: 400 });
 
-    const sent = await sendDiscordMessage({ channelId, content, files });
+    const sent = await sendDiscordMessage({ channelId, content, files, buttons });
     await prisma.auditLog.create({
       data: {
         userId: admin.id,
@@ -48,6 +50,10 @@ export async function POST(req: Request) {
           channelName: channel.name,
           templateId,
           contentLength: content.length,
+          buttons: buttons.map((button) => ({
+            label: button.label,
+            url: button.url,
+          })),
           attachments: files.map((file) => ({
             name: file.name,
             type: file.type,
@@ -78,4 +84,23 @@ export async function POST(req: Request) {
     console.error("[POST /api/admin/discord/messages]", error);
     return NextResponse.json({ error: "Internal error" }, { status: 500 });
   }
+}
+
+function parseButtons(value: FormDataEntryValue | null): DiscordLinkButton[] {
+  if (typeof value !== "string" || !value.trim()) return [];
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(value) as unknown;
+  } catch {
+    throw new DiscordApiError("Invalid Discord button payload.", 400);
+  }
+  if (!Array.isArray(parsed)) return [];
+  return parsed.map((item) => {
+    if (!item || typeof item !== "object") return { label: "", url: "" };
+    const record = item as Record<string, unknown>;
+    return {
+      label: typeof record.label === "string" ? record.label : "",
+      url: typeof record.url === "string" ? record.url : "",
+    };
+  });
 }

@@ -149,4 +149,19 @@ describe("DiscordMarkdownPreview", () => {
     expect(html).toContain('alt=":clipprofit:"');
     expect(html).toContain("&lt;:unknown:999&gt;");
   });
+
+  it("renders URL buttons under the Discord message preview", () => {
+    const html = renderToStaticMarkup(
+      <DiscordMarkdownPreview
+        content="Open the campaign"
+        emojis={emojis}
+        buttons={[{ label: "Join campaign", url: "https://clipprofit.com/campaigns/1" }]}
+        frame="mobile"
+      />,
+    );
+
+    expect(html).toContain("Join campaign");
+    expect(html).toContain('href="https://clipprofit.com/campaigns/1"');
+    expect(html).toContain("bg-[#4e5058]");
+  });
 });

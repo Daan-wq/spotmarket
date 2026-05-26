@@ -18,6 +18,7 @@ import {
   ListOrdered,
   Paperclip,
   Pilcrow,
+  Plus,
   Quote,
   RefreshCw,
   Save,
@@ -37,10 +38,13 @@ import { SectionHeader } from "@/components/ui/page";
 import type { DiscordChannelGroup, DiscordEmoji } from "@/lib/admin/discord";
 import {
   DISCORD_MAX_FILES as MAX_FILES,
+  DISCORD_MAX_LINK_BUTTONS as MAX_BUTTONS,
   DISCORD_MAX_REQUEST_BYTES as MAX_TOTAL_BYTES,
   DISCORD_MESSAGE_MAX_CHARS as MAX_CONTENT,
+  normalizeDiscordLinkButtons,
   getDiscordMessageValidationIssues,
 } from "@/lib/admin/discord-message-validation";
+import type { DiscordLinkButton } from "@/lib/admin/discord-message-validation";
 import {
   escapeDiscordMarkdown,
   isBlockFormatActive,
@@ -59,6 +63,7 @@ interface DiscordTemplate {
   name: string;
   kind: "DRAFT" | "TEMPLATE";
   content: string;
+  buttons: DiscordLinkButton[];
   tags: string[];
   updatedAt: string;
 }
@@ -86,6 +91,7 @@ export function DiscordMessageComposer() {
   const [templates, setTemplates] = useState<DiscordTemplate[]>([]);
   const [selectedChannelId, setSelectedChannelId] = useState("");
   const [content, setContent] = useState("");
+  const [linkButtons, setLinkButtons] = useState<DiscordLinkButton[]>([]);
   const [files, setFiles] = useState<File[]>([]);
   const [templateId, setTemplateId] = useState<string | null>(null);
   const [templateName, setTemplateName] = useState("");
@@ -112,6 +118,7 @@ export function DiscordMessageComposer() {
   const validChannelIds = useMemo(() => allChannels.map((channel) => channel.id), [allChannels]);
   const selectedChannel = allChannels.find((channel) => channel.id === selectedChannelId) ?? null;
   const totalFileSize = files.reduce((sum, file) => sum + file.size, 0);
+  const completeLinkButtons = useMemo(() => normalizeDiscordLinkButtons(linkButtons), [linkButtons]);
   const filteredEmojis = emojis.filter((emoji) =>
     emoji.name.toLowerCase().includes(emojiQuery.trim().toLowerCase()),
   );
@@ -121,9 +128,10 @@ export function DiscordMessageComposer() {
         channelId: selectedChannelId,
         content,
         files,
+        buttons: linkButtons,
         validChannelIds: loading ? undefined : validChannelIds,
       }),
-    [content, files, loading, selectedChannelId, validChannelIds],
+    [content, files, linkButtons, loading, selectedChannelId, validChannelIds],
   );
   const primarySendIssue = loading
     ? { message: "Discord channels and emojis are still loading." }
@@ -226,6 +234,7 @@ export function DiscordMessageComposer() {
       channelId: selectedChannelId,
       content,
       files: next,
+      buttons: linkButtons,
       validChannelIds: loading ? undefined : validChannelIds,
     })[0];
     setError(issue?.message ?? null);
@@ -236,12 +245,31 @@ export function DiscordMessageComposer() {
     setFiles((current) => current.filter((_, fileIndex) => fileIndex !== index));
   }
 
+  function addLinkButton() {
+    if (linkButtons.length >= MAX_BUTTONS) {
+      setError(`Discord accepts up to ${MAX_BUTTONS} URL buttons per message.`);
+      return;
+    }
+    setLinkButtons((current) => [...current, { label: "", url: "" }]);
+  }
+
+  function updateLinkButton(index: number, field: keyof DiscordLinkButton, value: string) {
+    setLinkButtons((current) =>
+      current.map((button, buttonIndex) => (buttonIndex === index ? { ...button, [field]: value } : button)),
+    );
+  }
+
+  function removeLinkButton(index: number) {
+    setLinkButtons((current) => current.filter((_, buttonIndex) => buttonIndex !== index));
+  }
+
   function loadTemplate(template: DiscordTemplate) {
     setTemplateId(template.id);
     setTemplateName(template.name);
     setTemplateKind(template.kind);
     setTemplateTags(template.tags.join(", "));
     setContent(template.content);
+    setLinkButtons(template.buttons ?? []);
     setSelection({ start: 0, end: template.content.length });
     setActiveInlineFormat(null);
     setStatus(`Loaded ${template.name}`);
@@ -253,6 +281,7 @@ export function DiscordMessageComposer() {
     setTemplateTags("");
     setTemplateKind("DRAFT");
     setContent("");
+    setLinkButtons([]);
     setFiles([]);
     setSelection({ start: 0, end: 0 });
     setActiveInlineFormat(null);
@@ -279,6 +308,7 @@ export function DiscordMessageComposer() {
       name: templateName.trim() || `${kind === "DRAFT" ? "Draft" : "Template"} ${new Date().toLocaleDateString()}`,
       kind,
       content,
+      buttons: completeLinkButtons,
       tags: templateTags
         .split(",")
         .map((tag) => tag.trim())
@@ -344,6 +374,7 @@ export function DiscordMessageComposer() {
     const payload = new FormData();
     payload.append("channelId", selectedChannelId);
     payload.append("content", content);
+    payload.append("buttons", JSON.stringify(completeLinkButtons));
     if (templateId) payload.append("templateId", templateId);
     for (const file of files) payload.append("files", file);
 
@@ -449,6 +480,52 @@ export function DiscordMessageComposer() {
             </span>
             <span>{files.length} / {MAX_FILES} files - {formatBytes(totalFileSize)} / {formatBytes(MAX_TOTAL_BYTES)}</span>
           </div>
+
+          <div className="mt-4 rounded-xl border border-neutral-200 bg-neutral-50 p-3">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <div>
+                <p className="text-sm font-semibold text-neutral-950">URL buttons</p>
+                <p className="text-xs text-neutral-500">{completeLinkButtons.length} / {MAX_BUTTONS} buttons ready</p>
+              </div>
+              <button
+                type="button"
+                onClick={addLinkButton}
+                className="inline-flex h-9 items-center gap-2 rounded-lg border border-neutral-200 bg-white px-3 text-xs font-semibold text-neutral-700 transition hover:border-neutral-300 hover:text-neutral-950"
+              >
+                <Plus className="h-4 w-4" />
+                Add URL button
+              </button>
+            </div>
+            {linkButtons.length > 0 ? (
+              <div className="mt-3 space-y-2">
+                {linkButtons.map((button, index) => (
+                  <div key={index} className="grid grid-cols-1 gap-2 md:grid-cols-[minmax(0,180px)_minmax(0,1fr)_34px]">
+                    <input
+                      value={button.label}
+                      onChange={(event) => updateLinkButton(index, "label", event.target.value)}
+                      placeholder="Button label"
+                      maxLength={80}
+                      className="h-10 rounded-lg border border-neutral-200 bg-white px-3 text-sm outline-none focus:border-neutral-500"
+                    />
+                    <input
+                      value={button.url}
+                      onChange={(event) => updateLinkButton(index, "url", event.target.value)}
+                      placeholder="https://example.com"
+                      className="h-10 rounded-lg border border-neutral-200 bg-white px-3 text-sm outline-none focus:border-neutral-500"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => removeLinkButton(index)}
+                      className="flex h-10 items-center justify-center rounded-lg text-neutral-500 transition hover:bg-neutral-200 hover:text-red-600"
+                      aria-label={`Remove URL button ${index + 1}`}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            ) : null}
+          </div>
           <p
             aria-live="polite"
             className={cn(
@@ -505,7 +582,7 @@ export function DiscordMessageComposer() {
 
         <section className="xl:sticky xl:top-4 xl:self-start">
           <SectionHeader title="Live preview" description="Mobile Discord preview. The actual send still uses your raw Markdown." />
-          <DiscordMarkdownPreview content={content} emojis={emojis} frame="mobile" />
+          <DiscordMarkdownPreview content={content} emojis={emojis} buttons={completeLinkButtons} frame="mobile" />
         </section>
         </div>
       </section>
@@ -608,12 +685,19 @@ export function DiscordMessageComposer() {
         }
       >
         <div className="space-y-4">
-          <div className="grid grid-cols-1 gap-3 text-sm md:grid-cols-3">
+          <div className="grid grid-cols-1 gap-3 text-sm md:grid-cols-4">
             <ConfirmStat label="Channel" value={selectedChannel ? `#${selectedChannel.name}` : "-"} />
             <ConfirmStat label="Characters" value={`${content.length} / ${MAX_CONTENT}`} />
             <ConfirmStat label="Files" value={`${files.length} (${formatBytes(totalFileSize)})`} />
+            <ConfirmStat label="Buttons" value={`${completeLinkButtons.length} / ${MAX_BUTTONS}`} />
           </div>
-          <DiscordMarkdownPreview content={content} emojis={emojis} frame="mobile" className="max-h-[520px] overflow-y-auto" />
+          <DiscordMarkdownPreview
+            content={content}
+            emojis={emojis}
+            buttons={completeLinkButtons}
+            frame="mobile"
+            className="max-h-[520px] overflow-y-auto"
+          />
         </div>
       </Dialog>
     </div>

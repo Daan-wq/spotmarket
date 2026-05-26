@@ -25,7 +25,15 @@ describe("/api/admin/discord/templates", () => {
 
   it("lists templates with optional search filters", async () => {
     mocks.prisma.discordMessageTemplate.findMany.mockResolvedValue([
-      { id: "tpl-1", name: "Launch", kind: "TEMPLATE", content: "Hello", tags: ["launch"], updatedAt: new Date("2026-05-26T00:00:00Z") },
+      {
+        id: "tpl-1",
+        name: "Launch",
+        kind: "TEMPLATE",
+        content: "Hello",
+        buttons: [{ label: "Open", url: "https://clipprofit.com" }],
+        tags: ["launch"],
+        updatedAt: new Date("2026-05-26T00:00:00Z"),
+      },
     ]);
 
     const response = await GET(new Request("https://app.test/api/admin/discord/templates?kind=TEMPLATE&q=launch&tag=launch"));
@@ -49,13 +57,20 @@ describe("/api/admin/discord/templates", () => {
       name: "Launch",
       kind: "TEMPLATE",
       content: "**Hello**",
+      buttons: [{ label: "Open", url: "https://clipprofit.com" }],
       tags: ["launch"],
     });
 
     const response = await POST(
       new Request("https://app.test/api/admin/discord/templates", {
         method: "POST",
-        body: JSON.stringify({ name: "Launch", kind: "TEMPLATE", content: "**Hello**", tags: ["launch"] }),
+        body: JSON.stringify({
+          name: "Launch",
+          kind: "TEMPLATE",
+          content: "**Hello**",
+          buttons: [{ label: "Open", url: "https://clipprofit.com" }],
+          tags: ["launch"],
+        }),
       }),
     );
 
@@ -66,6 +81,7 @@ describe("/api/admin/discord/templates", () => {
         name: "Launch",
         kind: "TEMPLATE",
         content: "**Hello**",
+        buttons: [{ label: "Open", url: "https://clipprofit.com" }],
         tags: ["launch"],
       },
     });
@@ -74,6 +90,7 @@ describe("/api/admin/discord/templates", () => {
         name: "Launch",
         kind: "TEMPLATE",
         content: "**Hello**",
+        buttons: [{ label: "Open", url: "https://clipprofit.com" }],
         tags: ["launch"],
         createdByUserId: "admin-db-1",
         updatedByUserId: "admin-db-1",

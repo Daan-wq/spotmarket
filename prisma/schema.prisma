@@ -1152,6 +1152,7 @@ model DiscordMessageTemplate {
   name            String
   kind            DiscordMessageTemplateKind @default(DRAFT)
   content         String                     @db.Text
+  buttons         Json                       @default("[]")
   tags            String[]                   @default([])
   createdByUserId String?
   createdBy       User?                      @relation("DiscordTemplateCreatedBy", fields: [createdByUserId], references: [id], onDelete: SetNull)
