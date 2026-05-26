@@ -11,5 +11,6 @@ describe("DiscordMessageComposer", () => {
 
     expect(sendButton).toBeTruthy();
     expect(sendButton).not.toContain("disabled=\"\"");
+    expect(html).toContain("Discord channels and emojis are still loading.");
   });
 });

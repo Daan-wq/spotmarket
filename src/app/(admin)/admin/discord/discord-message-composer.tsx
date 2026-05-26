@@ -18,6 +18,7 @@ import {
   ListOrdered,
   Paperclip,
   Pilcrow,
+  Plus,
   Quote,
   RefreshCw,
   Save,
@@ -36,6 +37,15 @@ import { Dialog } from "@/components/ui/dialog";
 import { SectionHeader } from "@/components/ui/page";
 import type { DiscordChannelGroup, DiscordEmoji } from "@/lib/admin/discord";
 import {
+  DISCORD_MAX_FILES as MAX_FILES,
+  DISCORD_MAX_LINK_BUTTONS as MAX_BUTTONS,
+  DISCORD_MAX_REQUEST_BYTES as MAX_TOTAL_BYTES,
+  DISCORD_MESSAGE_MAX_CHARS as MAX_CONTENT,
+  normalizeDiscordLinkButtons,
+  getDiscordMessageValidationIssues,
+} from "@/lib/admin/discord-message-validation";
+import type { DiscordLinkButton } from "@/lib/admin/discord-message-validation";
+import {
   escapeDiscordMarkdown,
   isBlockFormatActive,
   isInlineFormatActive,
@@ -53,6 +63,7 @@ interface DiscordTemplate {
   name: string;
   kind: "DRAFT" | "TEMPLATE";
   content: string;
+  buttons: DiscordLinkButton[];
   tags: string[];
   updatedAt: string;
 }
@@ -69,9 +80,6 @@ interface EmojisResponse {
   emojis: DiscordEmoji[];
 }
 
-const MAX_CONTENT = 2000;
-const MAX_FILES = 10;
-const MAX_TOTAL_BYTES = 25 * 1024 * 1024;
 const HEADER_PREFIX_PATTERN = /^#{1,3}\s+/;
 const ORDERED_PREFIX_PATTERN = /^\s*\d+\.\s+/;
 
@@ -83,6 +91,7 @@ export function DiscordMessageComposer() {
   const [templates, setTemplates] = useState<DiscordTemplate[]>([]);
   const [selectedChannelId, setSelectedChannelId] = useState("");
   const [content, setContent] = useState("");
+  const [linkButtons, setLinkButtons] = useState<DiscordLinkButton[]>([]);
   const [files, setFiles] = useState<File[]>([]);
   const [templateId, setTemplateId] = useState<string | null>(null);
   const [templateName, setTemplateName] = useState("");
@@ -106,11 +115,27 @@ export function DiscordMessageComposer() {
     () => channelGroups.flatMap((group) => group.channels.map((channel) => ({ ...channel, groupName: group.name }))),
     [channelGroups],
   );
+  const validChannelIds = useMemo(() => allChannels.map((channel) => channel.id), [allChannels]);
   const selectedChannel = allChannels.find((channel) => channel.id === selectedChannelId) ?? null;
   const totalFileSize = files.reduce((sum, file) => sum + file.size, 0);
+  const completeLinkButtons = useMemo(() => normalizeDiscordLinkButtons(linkButtons), [linkButtons]);
   const filteredEmojis = emojis.filter((emoji) =>
     emoji.name.toLowerCase().includes(emojiQuery.trim().toLowerCase()),
   );
+  const sendValidationIssues = useMemo(
+    () =>
+      getDiscordMessageValidationIssues({
+        channelId: selectedChannelId,
+        content,
+        files,
+        buttons: linkButtons,
+        validChannelIds: loading ? undefined : validChannelIds,
+      }),
+    [content, files, linkButtons, loading, selectedChannelId, validChannelIds],
+  );
+  const primarySendIssue = loading
+    ? { message: "Discord channels and emojis are still loading." }
+    : (sendValidationIssues[0] ?? null);
 
   async function refreshAll() {
     setLoading(true);
@@ -203,13 +228,39 @@ export function DiscordMessageComposer() {
 
   function handleFiles(selected: FileList | null) {
     if (!selected) return;
-    const next = [...files, ...Array.from(selected)].slice(0, MAX_FILES);
+    const next = [...files, ...Array.from(selected)];
     setFiles(next);
+    const issue = getDiscordMessageValidationIssues({
+      channelId: selectedChannelId,
+      content,
+      files: next,
+      buttons: linkButtons,
+      validChannelIds: loading ? undefined : validChannelIds,
+    })[0];
+    setError(issue?.message ?? null);
     if (fileInputRef.current) fileInputRef.current.value = "";
   }
 
   function removeFile(index: number) {
     setFiles((current) => current.filter((_, fileIndex) => fileIndex !== index));
+  }
+
+  function addLinkButton() {
+    if (linkButtons.length >= MAX_BUTTONS) {
+      setError(`Discord accepts up to ${MAX_BUTTONS} URL buttons per message.`);
+      return;
+    }
+    setLinkButtons((current) => [...current, { label: "", url: "" }]);
+  }
+
+  function updateLinkButton(index: number, field: keyof DiscordLinkButton, value: string) {
+    setLinkButtons((current) =>
+      current.map((button, buttonIndex) => (buttonIndex === index ? { ...button, [field]: value } : button)),
+    );
+  }
+
+  function removeLinkButton(index: number) {
+    setLinkButtons((current) => current.filter((_, buttonIndex) => buttonIndex !== index));
   }
 
   function loadTemplate(template: DiscordTemplate) {
@@ -218,6 +269,7 @@ export function DiscordMessageComposer() {
     setTemplateKind(template.kind);
     setTemplateTags(template.tags.join(", "));
     setContent(template.content);
+    setLinkButtons(template.buttons ?? []);
     setSelection({ start: 0, end: template.content.length });
     setActiveInlineFormat(null);
     setStatus(`Loaded ${template.name}`);
@@ -229,6 +281,7 @@ export function DiscordMessageComposer() {
     setTemplateTags("");
     setTemplateKind("DRAFT");
     setContent("");
+    setLinkButtons([]);
     setFiles([]);
     setSelection({ start: 0, end: 0 });
     setActiveInlineFormat(null);
@@ -255,6 +308,7 @@ export function DiscordMessageComposer() {
       name: templateName.trim() || `${kind === "DRAFT" ? "Draft" : "Template"} ${new Date().toLocaleDateString()}`,
       kind,
       content,
+      buttons: completeLinkButtons,
       tags: templateTags
         .split(",")
         .map((tag) => tag.trim())
@@ -305,21 +359,22 @@ export function DiscordMessageComposer() {
 
   function openSendConfirm() {
     setError(null);
-    if (!selectedChannelId) return setError("Choose a Discord channel.");
-    if (!content.trim() && files.length === 0) return setError("Add message content or at least one file.");
-    if (content.length > MAX_CONTENT) return setError("Message content must be 2000 characters or fewer.");
-    if (files.length > MAX_FILES) return setError("Discord accepts up to 10 files per message.");
-    if (totalFileSize > MAX_TOTAL_BYTES) return setError("Discord accepts up to 25 MiB per message.");
+    if (primarySendIssue) return setError(primarySendIssue.message);
     setConfirmOpen(true);
   }
 
   async function sendMessage() {
+    if (primarySendIssue) {
+      setError(primarySendIssue.message);
+      return;
+    }
     setSending(true);
     setError(null);
     setStatus(null);
     const payload = new FormData();
     payload.append("channelId", selectedChannelId);
     payload.append("content", content);
+    payload.append("buttons", JSON.stringify(completeLinkButtons));
     if (templateId) payload.append("templateId", templateId);
     for (const file of files) payload.append("files", file);
 
@@ -423,8 +478,63 @@ export function DiscordMessageComposer() {
             <span className={content.length > MAX_CONTENT ? "font-semibold text-red-600" : undefined}>
               {content.length} / {MAX_CONTENT} characters
             </span>
-            <span>{files.length} files - {formatBytes(totalFileSize)} / {formatBytes(MAX_TOTAL_BYTES)}</span>
+            <span>{files.length} / {MAX_FILES} files - {formatBytes(totalFileSize)} / {formatBytes(MAX_TOTAL_BYTES)}</span>
           </div>
+
+          <div className="mt-4 rounded-xl border border-neutral-200 bg-neutral-50 p-3">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <div>
+                <p className="text-sm font-semibold text-neutral-950">URL buttons</p>
+                <p className="text-xs text-neutral-500">{completeLinkButtons.length} / {MAX_BUTTONS} buttons ready</p>
+              </div>
+              <button
+                type="button"
+                onClick={addLinkButton}
+                className="inline-flex h-9 items-center gap-2 rounded-lg border border-neutral-200 bg-white px-3 text-xs font-semibold text-neutral-700 transition hover:border-neutral-300 hover:text-neutral-950"
+              >
+                <Plus className="h-4 w-4" />
+                Add URL button
+              </button>
+            </div>
+            {linkButtons.length > 0 ? (
+              <div className="mt-3 space-y-2">
+                {linkButtons.map((button, index) => (
+                  <div key={index} className="grid grid-cols-1 gap-2 md:grid-cols-[minmax(0,180px)_minmax(0,1fr)_34px]">
+                    <input
+                      value={button.label}
+                      onChange={(event) => updateLinkButton(index, "label", event.target.value)}
+                      placeholder="Button label"
+                      maxLength={80}
+                      className="h-10 rounded-lg border border-neutral-200 bg-white px-3 text-sm outline-none focus:border-neutral-500"
+                    />
+                    <input
+                      value={button.url}
+                      onChange={(event) => updateLinkButton(index, "url", event.target.value)}
+                      placeholder="https://example.com"
+                      className="h-10 rounded-lg border border-neutral-200 bg-white px-3 text-sm outline-none focus:border-neutral-500"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => removeLinkButton(index)}
+                      className="flex h-10 items-center justify-center rounded-lg text-neutral-500 transition hover:bg-neutral-200 hover:text-red-600"
+                      aria-label={`Remove URL button ${index + 1}`}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            ) : null}
+          </div>
+          <p
+            aria-live="polite"
+            className={cn(
+              "mt-2 rounded-xl px-3 py-2 text-xs font-medium",
+              primarySendIssue ? "bg-amber-50 text-amber-800" : "bg-emerald-50 text-emerald-700",
+            )}
+          >
+            {primarySendIssue?.message ?? "Ready to preview and send."}
+          </p>
 
           <input
             ref={fileInputRef}
@@ -472,7 +582,7 @@ export function DiscordMessageComposer() {
 
         <section className="xl:sticky xl:top-4 xl:self-start">
           <SectionHeader title="Live preview" description="Mobile Discord preview. The actual send still uses your raw Markdown." />
-          <DiscordMarkdownPreview content={content} emojis={emojis} frame="mobile" />
+          <DiscordMarkdownPreview content={content} emojis={emojis} buttons={completeLinkButtons} frame="mobile" />
         </section>
         </div>
       </section>
@@ -575,12 +685,19 @@ export function DiscordMessageComposer() {
         }
       >
         <div className="space-y-4">
-          <div className="grid grid-cols-1 gap-3 text-sm md:grid-cols-3">
+          <div className="grid grid-cols-1 gap-3 text-sm md:grid-cols-4">
             <ConfirmStat label="Channel" value={selectedChannel ? `#${selectedChannel.name}` : "-"} />
             <ConfirmStat label="Characters" value={`${content.length} / ${MAX_CONTENT}`} />
             <ConfirmStat label="Files" value={`${files.length} (${formatBytes(totalFileSize)})`} />
+            <ConfirmStat label="Buttons" value={`${completeLinkButtons.length} / ${MAX_BUTTONS}`} />
           </div>
-          <DiscordMarkdownPreview content={content} emojis={emojis} frame="mobile" className="max-h-[520px] overflow-y-auto" />
+          <DiscordMarkdownPreview
+            content={content}
+            emojis={emojis}
+            buttons={completeLinkButtons}
+            frame="mobile"
+            className="max-h-[520px] overflow-y-auto"
+          />
         </div>
       </Dialog>
     </div>

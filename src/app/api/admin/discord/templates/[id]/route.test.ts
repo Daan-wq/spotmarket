@@ -29,13 +29,18 @@ describe("/api/admin/discord/templates/:id", () => {
       name: "Launch v2",
       kind: "TEMPLATE",
       content: "Updated",
+      buttons: [{ label: "Open", url: "https://clipprofit.com" }],
       tags: [],
     });
 
     const response = await PATCH(
       new Request("https://app.test/api/admin/discord/templates/tpl-1", {
         method: "PATCH",
-        body: JSON.stringify({ name: "Launch v2", content: "Updated" }),
+        body: JSON.stringify({
+          name: "Launch v2",
+          content: "Updated",
+          buttons: [{ label: "Open", url: "https://clipprofit.com" }],
+        }),
       }),
       { params: Promise.resolve({ id: "tpl-1" }) },
     );
@@ -47,12 +52,18 @@ describe("/api/admin/discord/templates/:id", () => {
         name: "Launch v2",
         kind: "TEMPLATE",
         content: "Updated",
+        buttons: [{ label: "Open", url: "https://clipprofit.com" }],
         tags: [],
       },
     });
     expect(mocks.prisma.discordMessageTemplate.update).toHaveBeenCalledWith({
       where: { id: "tpl-1" },
-      data: { name: "Launch v2", content: "Updated", updatedByUserId: "admin-db-1" },
+      data: {
+        name: "Launch v2",
+        content: "Updated",
+        buttons: [{ label: "Open", url: "https://clipprofit.com" }],
+        updatedByUserId: "admin-db-1",
+      },
     });
   });
 

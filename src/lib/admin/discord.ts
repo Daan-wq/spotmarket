@@ -1,8 +1,19 @@
+import { buildDiscordButtonComponents, normalizeDiscordLinkButtons, validateDiscordMessageInput } from "./discord-message-validation";
+import type { DiscordLinkButton } from "./discord-message-validation";
+
 export const DISCORD_API_BASE = "https://discord.com/api/v10";
 export const DISCORD_CDN_BASE = "https://cdn.discordapp.com";
-export const DISCORD_MESSAGE_MAX_CHARS = 2000;
-export const DISCORD_MAX_FILES = 10;
-export const DISCORD_MAX_REQUEST_BYTES = 25 * 1024 * 1024;
+
+export {
+  DISCORD_MAX_FILES,
+  DISCORD_MAX_LINK_BUTTONS,
+  DISCORD_MAX_REQUEST_BYTES,
+  DISCORD_MESSAGE_MAX_CHARS,
+  buildDiscordButtonComponents,
+  getDiscordMessageValidationIssues,
+  normalizeDiscordLinkButtons,
+  validateDiscordMessageInput,
+} from "./discord-message-validation";
 
 const CHANNEL_TYPE_TEXT = 0;
 const CHANNEL_TYPE_CATEGORY = 4;
@@ -42,6 +53,7 @@ export interface DiscordMessageInput {
   channelId: string;
   content: string;
   files: File[];
+  buttons?: DiscordLinkButton[];
 }
 
 interface RawDiscordChannel {
@@ -164,31 +176,17 @@ export async function listDiscordEmojis(): Promise<DiscordEmoji[]> {
     .sort((a, b) => a.name.localeCompare(b.name));
 }
 
-export function validateDiscordMessageInput(input: DiscordMessageInput): string | null {
-  const content = input.content.trim();
-  if (!input.channelId.trim()) return "Choose a Discord channel.";
-  if (input.content.length > DISCORD_MESSAGE_MAX_CHARS) {
-    return "Message content must be 2000 characters or fewer.";
-  }
-  if (!content && input.files.length === 0) return "Add message content or at least one file.";
-  if (input.files.length > DISCORD_MAX_FILES) return "Discord accepts up to 10 files per message.";
-
-  const totalSize = input.files.reduce((sum, file) => sum + file.size, 0);
-  if (totalSize > DISCORD_MAX_REQUEST_BYTES) {
-    return "Discord accepts up to 25 MiB per message.";
-  }
-  return null;
-}
-
 export async function sendDiscordMessage(input: DiscordMessageInput): Promise<DiscordSentMessage> {
   const validationError = validateDiscordMessageInput(input);
   if (validationError) throw new DiscordApiError(validationError, 400);
 
+  const components = buildDiscordButtonComponents(normalizeDiscordLinkButtons(input.buttons ?? []));
   const body = new FormData();
   body.append(
     "payload_json",
     JSON.stringify({
       content: input.content,
+      ...(components.length > 0 ? { components } : {}),
       attachments: input.files.map((file, index) => ({
         id: index,
         filename: file.name,

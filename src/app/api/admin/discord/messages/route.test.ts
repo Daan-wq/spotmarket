@@ -22,9 +22,11 @@ vi.mock("@/lib/admin/discord", () => ({
   discordMessageUrl: (channelId: string, messageId: string) =>
     `https://discord.com/channels/guild-1/${channelId}/${messageId}`,
   sendDiscordMessage: mocks.sendDiscordMessage,
-  validateDiscordMessageInput: vi.fn(({ content, files }) => {
+  validateDiscordMessageInput: vi.fn(({ content, files, buttons }) => {
     if (content.length > 2000) return "Message content must be 2000 characters or fewer.";
-    if (!content.trim() && files.length === 0) return "Add message content or at least one file.";
+    if (!content.trim() && files.length === 0 && buttons.length === 0) {
+      return "Add message content, a file, or a URL button.";
+    }
     return null;
   }),
 }));
@@ -62,6 +64,7 @@ describe("POST /api/admin/discord/messages", () => {
     formData.append("channelId", "channel-1");
     formData.append("content", "Hello Discord");
     formData.append("templateId", "template-1");
+    formData.append("buttons", JSON.stringify([{ label: "Open", url: "https://clipprofit.com" }]));
     formData.append("files", new File(["image"], "image.png", { type: "image/png" }));
 
     const response = await POST(new Request("https://app.test/api/admin/discord/messages", { method: "POST", body: formData }));
@@ -78,6 +81,7 @@ describe("POST /api/admin/discord/messages", () => {
     expect(mocks.sendDiscordMessage).toHaveBeenCalledWith({
       channelId: "channel-1",
       content: "Hello Discord",
+      buttons: [{ label: "Open", url: "https://clipprofit.com" }],
       files: [expect.any(File)],
     });
     expect(mocks.prisma.auditLog.create).toHaveBeenCalledWith({
@@ -87,6 +91,23 @@ describe("POST /api/admin/discord/messages", () => {
         entityType: "DiscordMessage",
         entityId: "message-1",
       }),
+    });
+  });
+
+  it("accepts URL-button-only messages", async () => {
+    const formData = new FormData();
+    formData.append("channelId", "channel-1");
+    formData.append("content", "");
+    formData.append("buttons", JSON.stringify([{ label: "Join campaign", url: "https://clipprofit.com/campaigns/1" }]));
+
+    const response = await POST(new Request("https://app.test/api/admin/discord/messages", { method: "POST", body: formData }));
+
+    expect(response.status).toBe(200);
+    expect(mocks.sendDiscordMessage).toHaveBeenCalledWith({
+      channelId: "channel-1",
+      content: "",
+      buttons: [{ label: "Join campaign", url: "https://clipprofit.com/campaigns/1" }],
+      files: [],
     });
   });
 });

@@ -1,11 +1,14 @@
 /* eslint-disable @next/next/no-img-element */
 import { Fragment, type ReactNode } from "react";
 import type { DiscordEmoji } from "@/lib/admin/discord";
+import type { DiscordLinkButton } from "@/lib/admin/discord-message-validation";
+import { normalizeDiscordLinkButtons } from "@/lib/admin/discord-message-validation";
 import { cn } from "@/lib/cn";
 
 interface DiscordMarkdownPreviewProps {
   content: string;
   emojis: DiscordEmoji[];
+  buttons?: DiscordLinkButton[];
   className?: string;
   frame?: "default" | "mobile";
 }
@@ -73,13 +76,16 @@ const INLINE_FORMATS: InlineFormat[] = [
 export function DiscordMarkdownPreview({
   content,
   emojis,
+  buttons = [],
   className,
   frame = "default",
 }: DiscordMarkdownPreviewProps) {
   const emojiById = new Map(emojis.map((emoji) => [emoji.id, emoji]));
   const blocks = parseDiscordBlocks(content);
+  const linkButtons = normalizeDiscordLinkButtons(buttons);
   const variant: PreviewVariant = frame === "mobile" ? "mobile" : "default";
   const body = renderPreviewBody(blocks, emojiById, variant);
+  const buttonPreview = renderLinkButtons(linkButtons, variant);
 
   if (frame === "mobile") {
     return (
@@ -99,12 +105,15 @@ export function DiscordMarkdownPreview({
                 <span className="text-[#949ba4]">Today at 12:00</span>
               </div>
               <div className="mt-1 min-h-[320px] text-[16px] leading-[1.35] tracking-normal text-[#dbdee1]">
-                {blocks.length === 0 ? (
+                {blocks.length === 0 && linkButtons.length === 0 ? (
                   <div className="rounded-lg border border-white/10 bg-[#2b2d31] p-4 text-sm text-[#b5bac1]">
                     Preview verschijnt hier zodra je begint te typen.
                   </div>
                 ) : (
-                  body
+                  <>
+                    {blocks.length > 0 ? body : null}
+                    {buttonPreview}
+                  </>
                 )}
               </div>
             </div>
@@ -114,7 +123,7 @@ export function DiscordMarkdownPreview({
     );
   }
 
-  if (blocks.length === 0) {
+  if (blocks.length === 0 && linkButtons.length === 0) {
     return (
       <div className={cn("rounded-xl border border-neutral-200 bg-neutral-50 p-4 text-sm text-neutral-400", className)}>
         Preview verschijnt hier zodra je begint te typen.
@@ -124,7 +133,8 @@ export function DiscordMarkdownPreview({
 
   return (
     <div className={cn("discord-preview rounded-xl border border-neutral-200 bg-[#f2f3f5] p-4 text-sm leading-6 text-[#313338]", className)}>
-      {body}
+      {blocks.length > 0 ? body : null}
+      {buttonPreview}
     </div>
   );
 }
@@ -367,6 +377,30 @@ function renderInlineLines(lines: string[], emojiById: Map<string, DiscordEmoji>
 
 function renderInline(text: string, emojiById: Map<string, DiscordEmoji>, variant: PreviewVariant): ReactNode[] {
   return renderInlineSegments(text, emojiById, "inline", variant);
+}
+
+function renderLinkButtons(buttons: DiscordLinkButton[], variant: PreviewVariant): ReactNode {
+  if (buttons.length === 0) return null;
+  return (
+    <div className={cn("mt-3 flex flex-wrap gap-2", variant === "mobile" ? "max-w-[260px]" : "max-w-[520px]")}>
+      {buttons.map((button, index) => (
+        <a
+          key={`${button.url}-${index}`}
+          href={button.url}
+          target="_blank"
+          rel="noreferrer"
+          className={cn(
+            "inline-flex h-8 max-w-full items-center justify-center truncate rounded px-3 text-sm font-medium no-underline",
+            variant === "mobile"
+              ? "bg-[#4e5058] text-[#f2f3f5] hover:bg-[#5c5f66]"
+              : "border border-[#c7ccd1] bg-white text-[#313338] hover:bg-[#e3e5e8]",
+          )}
+        >
+          <span className="truncate">{button.label}</span>
+        </a>
+      ))}
+    </div>
+  );
 }
 
 function renderInlineSegments(text: string, emojiById: Map<string, DiscordEmoji>, keyPrefix: string, variant: PreviewVariant): ReactNode[] {
