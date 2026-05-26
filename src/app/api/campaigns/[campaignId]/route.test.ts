@@ -9,6 +9,7 @@ const routeMocks = vi.hoisted(() => ({
   applicationFindMany: vi.fn(),
   ensureDiscordCampaignResources: vi.fn(),
   removeDiscordCampaignRole: vi.fn(),
+  sendCampaignAnnouncementOnce: vi.fn(),
 }));
 
 vi.mock("@/lib/supabase/server", () => ({
@@ -33,6 +34,10 @@ vi.mock("@/lib/discord-campaign-roles", () => ({
   removeDiscordCampaignRole: routeMocks.removeDiscordCampaignRole,
 }));
 
+vi.mock("@/lib/admin/discord-campaign-announcements", () => ({
+  sendCampaignAnnouncementOnce: routeMocks.sendCampaignAnnouncementOnce,
+}));
+
 const params = { params: Promise.resolve({ campaignId: "campaign-1" }) };
 
 function request(body: unknown) {
@@ -54,6 +59,9 @@ function campaign(status = "active") {
     adminMargin: 0.002,
     discordRoleId: null,
     discordChannelId: null,
+    discordAnnouncementChannelId: null,
+    discordAnnouncementMessageId: null,
+    discordAnnouncementSentAt: null,
   };
 }
 
@@ -76,6 +84,11 @@ describe("PATCH /api/campaigns/[campaignId]", () => {
       channelCreated: true,
     });
     routeMocks.removeDiscordCampaignRole.mockResolvedValue({ skipped: false });
+    routeMocks.sendCampaignAnnouncementOnce.mockResolvedValue({
+      status: "sent",
+      channelId: "campaign-announcements",
+      messageId: "discord-message-1",
+    });
   });
 
   it("removes campaign Discord roles when a campaign is completed", async () => {
@@ -119,9 +132,10 @@ describe("PATCH /api/campaigns/[campaignId]", () => {
     expect(routeMocks.applicationFindMany).not.toHaveBeenCalled();
     expect(routeMocks.removeDiscordCampaignRole).not.toHaveBeenCalled();
     expect(routeMocks.ensureDiscordCampaignResources).not.toHaveBeenCalled();
+    expect(routeMocks.sendCampaignAnnouncementOnce).not.toHaveBeenCalled();
   });
 
-  it("provisions Discord campaign resources when a campaign becomes active", async () => {
+  it("provisions Discord resources and posts an announcement when a campaign becomes active", async () => {
     routeMocks.campaignFindUnique.mockResolvedValueOnce(campaign("draft"));
     routeMocks.campaignUpdate.mockResolvedValueOnce({
       ...campaign("active"),
@@ -149,6 +163,15 @@ describe("PATCH /api/campaigns/[campaignId]", () => {
         }),
       }),
     );
+    expect(routeMocks.sendCampaignAnnouncementOnce).toHaveBeenCalledWith({
+      campaign: expect.objectContaining({
+        id: "campaign-1",
+        status: "active",
+        discordRoleId: "discord-role-1",
+        discordChannelId: "discord-channel-1",
+      }),
+      userId: "admin-user-1",
+    });
     await expect(response.json()).resolves.toEqual(
       expect.objectContaining({
         discordProvisioning: {
@@ -156,6 +179,34 @@ describe("PATCH /api/campaigns/[campaignId]", () => {
           channelId: "discord-channel-1",
           roleCreated: true,
           channelCreated: true,
+        },
+        discordAnnouncement: {
+          status: "sent",
+          channelId: "campaign-announcements",
+          messageId: "discord-message-1",
+        },
+      }),
+    );
+  });
+
+  it("returns an explicit announcement failure when Discord rejects the send", async () => {
+    routeMocks.campaignFindUnique.mockResolvedValueOnce(campaign("draft"));
+    routeMocks.campaignUpdate.mockResolvedValueOnce({
+      ...campaign("active"),
+      discordRoleId: "discord-role-1",
+      discordChannelId: "discord-channel-1",
+    });
+    routeMocks.sendCampaignAnnouncementOnce.mockRejectedValueOnce(new Error("Discord HTTP 403 missing permissions"));
+
+    const response = await PATCH(request({ status: "active" }), params);
+
+    expect(response.status).toBe(502);
+    await expect(response.json()).resolves.toEqual(
+      expect.objectContaining({
+        error: "Discord HTTP 403 missing permissions",
+        discordAnnouncement: {
+          status: "failed",
+          error: "Discord HTTP 403 missing permissions",
         },
       }),
     );

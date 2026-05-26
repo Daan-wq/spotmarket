@@ -4,6 +4,7 @@ import { requireAuth } from "@/lib/auth";
 import type { Niche } from "@prisma/client";
 import { z } from "zod";
 import { ensureDiscordCampaignProvisioning } from "@/lib/discord-campaign-provisioning";
+import { sendCampaignAnnouncementOnce } from "@/lib/admin/discord-campaign-announcements";
 
 const launchCampaignSchema = z.object({
   name: z.string().min(3),
@@ -90,10 +91,28 @@ export async function POST(req: NextRequest) {
       data: { status: "active" },
     });
 
-    return NextResponse.json(
-      { campaign: activeCampaign, discordProvisioning: provisioned.resources },
-      { status: 201 },
-    );
+    try {
+      const discordAnnouncement = await sendCampaignAnnouncementOnce({
+        campaign: activeCampaign,
+        userId: user.id,
+      });
+
+      return NextResponse.json(
+        { campaign: activeCampaign, discordProvisioning: provisioned.resources, discordAnnouncement },
+        { status: 201 },
+      );
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Discord announcement failed";
+      return NextResponse.json(
+        {
+          campaign: activeCampaign,
+          discordProvisioning: provisioned.resources,
+          discordAnnouncement: { status: "failed", error: message },
+          error: message,
+        },
+        { status: 502 },
+      );
+    }
   } catch (err: unknown) {
     console.error("[campaigns launch]", err);
     if (err instanceof z.ZodError) {

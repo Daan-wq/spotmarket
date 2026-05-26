@@ -35,6 +35,17 @@ import { Button } from "@/components/ui/button";
 import { Dialog } from "@/components/ui/dialog";
 import { SectionHeader } from "@/components/ui/page";
 import type { DiscordChannelGroup, DiscordEmoji } from "@/lib/admin/discord";
+import {
+  escapeDiscordMarkdown,
+  isBlockFormatActive,
+  isInlineFormatActive,
+  isLinePrefixActive,
+  toggleBlockFormat,
+  toggleInlineFormat,
+  toggleLinePrefix,
+  type FormattingResult,
+  type SelectionRange,
+} from "@/lib/admin/discord-editor-formatting";
 import { cn } from "@/lib/cn";
 
 interface DiscordTemplate {
@@ -61,6 +72,8 @@ interface EmojisResponse {
 const MAX_CONTENT = 2000;
 const MAX_FILES = 10;
 const MAX_TOTAL_BYTES = 25 * 1024 * 1024;
+const HEADER_PREFIX_PATTERN = /^#{1,3}\s+/;
+const ORDERED_PREFIX_PATTERN = /^\s*\d+\.\s+/;
 
 export function DiscordMessageComposer() {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -82,6 +95,8 @@ export function DiscordMessageComposer() {
   const [saving, setSaving] = useState(false);
   const [sending, setSending] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
+  const [selection, setSelection] = useState<SelectionRange>({ start: 0, end: 0 });
+  const [activeInlineFormat, setActiveInlineFormat] = useState<string | null>(null);
 
   useEffect(() => {
     void refreshAll();
@@ -123,84 +138,50 @@ export function DiscordMessageComposer() {
     }
   }
 
-  function applyWrap(prefix: string, suffix = prefix, fallback = "text") {
+  function currentSelection(): SelectionRange {
     const textarea = textareaRef.current;
-    if (!textarea) {
-      setContent((current) => `${current}${prefix}${fallback}${suffix}`);
-      return;
-    }
-    const start = textarea.selectionStart;
-    const end = textarea.selectionEnd;
-    const selected = content.slice(start, end) || fallback;
-    const next = `${content.slice(0, start)}${prefix}${selected}${suffix}${content.slice(end)}`;
-    setContent(next);
+    if (!textarea) return { start: content.length, end: content.length };
+    return { start: textarea.selectionStart, end: textarea.selectionEnd };
+  }
+
+  function syncSelection() {
+    setSelection(currentSelection());
+  }
+
+  function applyFormatting(result: FormattingResult) {
+    setContent(result.content);
+    setSelection(result.selection);
+    setActiveInlineFormat(result.activeInlineFormat);
     window.setTimeout(() => {
+      const textarea = textareaRef.current;
+      if (!textarea) return;
       textarea.focus();
-      textarea.setSelectionRange(start + prefix.length, start + prefix.length + selected.length);
+      textarea.setSelectionRange(result.selection.start, result.selection.end);
     }, 0);
   }
 
-  function applyLinePrefix(prefix: string) {
-    const textarea = textareaRef.current;
-    if (!textarea) {
-      return setContent((current) => `${current}${current.endsWith("\n") || !current ? "" : "\n"}${prefix}`);
-    }
-    const start = textarea.selectionStart;
-    const end = textarea.selectionEnd;
-    const lineStart = content.lastIndexOf("\n", Math.max(0, start - 1)) + 1;
-    const lineEndCandidate = content.indexOf("\n", Math.max(start, end));
-    const lineEnd = lineEndCandidate === -1 ? content.length : lineEndCandidate;
-    const selectedBlock = content.slice(lineStart, lineEnd);
-    const prefixed = selectedBlock
-      .split("\n")
-      .map((line) => `${prefix}${line}`)
-      .join("\n");
-    const next = `${content.slice(0, lineStart)}${prefixed}${content.slice(lineEnd)}`;
-    setContent(next);
-    window.setTimeout(() => {
-      textarea.focus();
-      textarea.setSelectionRange(lineStart + prefix.length, lineStart + prefixed.length);
-    }, 0);
+  function applyWrap(prefix: string, suffix = prefix, fallback = "text") {
+    applyFormatting(toggleInlineFormat({ content, selection: currentSelection(), prefix, suffix, fallback, activeInlineFormat }));
+  }
+
+  function applyLinePrefix(prefix: string, removePattern?: RegExp) {
+    applyFormatting(toggleLinePrefix({ content, selection: currentSelection(), prefix, removePattern }));
   }
 
   function applyBlockSnippet(prefix: string, suffix: string, fallback: string) {
-    const textarea = textareaRef.current;
-    if (!textarea) {
-      setContent((current) => `${current}${current.endsWith("\n") || !current ? "" : "\n"}${prefix}${fallback}${suffix}`);
-      return;
-    }
-    const start = textarea.selectionStart;
-    const end = textarea.selectionEnd;
-    const selected = content.slice(start, end) || fallback;
-    const leadingBreak = start > 0 && !content.slice(0, start).endsWith("\n") ? "\n" : "";
-    const trailingBreak = end < content.length && !content.slice(end).startsWith("\n") ? "\n" : "";
-    const insert = `${leadingBreak}${prefix}${selected}${suffix}${trailingBreak}`;
-    const next = `${content.slice(0, start)}${insert}${content.slice(end)}`;
-    const selectionStart = start + leadingBreak.length + prefix.length;
-    setContent(next);
-    window.setTimeout(() => {
-      textarea.focus();
-      textarea.setSelectionRange(selectionStart, selectionStart + selected.length);
-    }, 0);
+    applyFormatting(toggleBlockFormat({ content, selection: currentSelection(), prefix, suffix, fallback }));
   }
 
   function escapeMarkdownSelection() {
-    const textarea = textareaRef.current;
     const fallback = "escaped markdown, not bold";
-    if (!textarea) {
-      setContent((current) => `${current}${escapeDiscordMarkdown(fallback)}`);
-      return;
-    }
-    const start = textarea.selectionStart;
-    const end = textarea.selectionEnd;
-    const selected = content.slice(start, end) || fallback;
+    const range = currentSelection();
+    const selected = content.slice(range.start, range.end) || fallback;
     const escaped = escapeDiscordMarkdown(selected);
-    const next = `${content.slice(0, start)}${escaped}${content.slice(end)}`;
-    setContent(next);
-    window.setTimeout(() => {
-      textarea.focus();
-      textarea.setSelectionRange(start, start + escaped.length);
-    }, 0);
+    applyFormatting({
+      content: `${content.slice(0, range.start)}${escaped}${content.slice(range.end)}`,
+      selection: { start: range.start, end: range.start + escaped.length },
+      activeInlineFormat: null,
+    });
   }
 
   function insertText(value: string) {
@@ -213,6 +194,8 @@ export function DiscordMessageComposer() {
     const end = textarea.selectionEnd;
     const next = `${content.slice(0, start)}${value}${content.slice(end)}`;
     setContent(next);
+    setSelection({ start: start + value.length, end: start + value.length });
+    setActiveInlineFormat(null);
     window.setTimeout(() => {
       textarea.focus();
       textarea.setSelectionRange(start + value.length, start + value.length);
@@ -236,6 +219,8 @@ export function DiscordMessageComposer() {
     setTemplateKind(template.kind);
     setTemplateTags(template.tags.join(", "));
     setContent(template.content);
+    setSelection({ start: 0, end: template.content.length });
+    setActiveInlineFormat(null);
     setStatus(`Loaded ${template.name}`);
   }
 
@@ -246,7 +231,21 @@ export function DiscordMessageComposer() {
     setTemplateKind("DRAFT");
     setContent("");
     setFiles([]);
+    setSelection({ start: 0, end: 0 });
+    setActiveInlineFormat(null);
     setStatus("Composer cleared");
+  }
+
+  function inlineActive(prefix: string, suffix = prefix) {
+    return isInlineFormatActive(content, selection, prefix, suffix, activeInlineFormat);
+  }
+
+  function lineActive(prefix: string, removePattern?: RegExp) {
+    return isLinePrefixActive(content, selection, prefix, removePattern);
+  }
+
+  function blockActive(prefix: string, suffix: string) {
+    return isBlockFormatActive(content, selection, prefix, suffix);
   }
 
   async function saveTemplate(kind: "DRAFT" | "TEMPLATE") {
@@ -380,29 +379,29 @@ export function DiscordMessageComposer() {
           </div>
 
           <div className="mt-5 flex flex-wrap items-center gap-2 rounded-xl border border-neutral-200 bg-neutral-50 p-2">
-            <ToolbarButton label="Big header" onClick={() => applyLinePrefix("# ")}><Heading1 className="h-4 w-4" /></ToolbarButton>
-            <ToolbarButton label="Medium header" onClick={() => applyLinePrefix("## ")}><Heading2 className="h-4 w-4" /></ToolbarButton>
-            <ToolbarButton label="Small header" onClick={() => applyLinePrefix("### ")}><Heading3 className="h-4 w-4" /></ToolbarButton>
-            <ToolbarButton label="Subtext" onClick={() => applyLinePrefix("-# ")}><Pilcrow className="h-4 w-4" /></ToolbarButton>
+            <ToolbarButton label="Big header" pressed={lineActive("# ")} onClick={() => applyLinePrefix("# ", HEADER_PREFIX_PATTERN)}><Heading1 className="h-4 w-4" /></ToolbarButton>
+            <ToolbarButton label="Medium header" pressed={lineActive("## ")} onClick={() => applyLinePrefix("## ", HEADER_PREFIX_PATTERN)}><Heading2 className="h-4 w-4" /></ToolbarButton>
+            <ToolbarButton label="Small header" pressed={lineActive("### ")} onClick={() => applyLinePrefix("### ", HEADER_PREFIX_PATTERN)}><Heading3 className="h-4 w-4" /></ToolbarButton>
+            <ToolbarButton label="Subtext" pressed={lineActive("-# ")} onClick={() => applyLinePrefix("-# ")}><Pilcrow className="h-4 w-4" /></ToolbarButton>
             <ToolbarDivider />
-            <ToolbarButton label="Bold" onClick={() => applyWrap("**")}><Bold className="h-4 w-4" /></ToolbarButton>
-            <ToolbarButton label="Italic" onClick={() => applyWrap("*")}><Italic className="h-4 w-4" /></ToolbarButton>
-            <ToolbarButton label="Underline" onClick={() => applyWrap("__")}><Underline className="h-4 w-4" /></ToolbarButton>
-            <ToolbarButton label="Bold italic" onClick={() => applyWrap("***")}><span className="text-[11px] font-black italic">BI</span></ToolbarButton>
-            <ToolbarButton label="Underlined italic" onClick={() => applyWrap("__*", "*__")}><span className="text-[11px] font-semibold italic underline">I</span></ToolbarButton>
-            <ToolbarButton label="Underlined bold" onClick={() => applyWrap("__**", "**__")}><span className="text-[11px] font-black underline">B</span></ToolbarButton>
-            <ToolbarButton label="Underlined bold italic" onClick={() => applyWrap("__***", "***__")}><span className="text-[11px] font-black italic underline">BI</span></ToolbarButton>
-            <ToolbarButton label="Strike" onClick={() => applyWrap("~~")}><Strikethrough className="h-4 w-4" /></ToolbarButton>
-            <ToolbarButton label="Spoiler" onClick={() => applyWrap("||", "||", "spoiler")}><Eye className="h-4 w-4" /></ToolbarButton>
-            <ToolbarButton label="Code" onClick={() => applyWrap("`", "`", "code")}><Code2 className="h-4 w-4" /></ToolbarButton>
-            <ToolbarButton label="Code block" onClick={() => applyBlockSnippet("```js\n", "\n```", "// code block with syntax highlighting\nconsole.log(\"Hello\");")}><CodeXml className="h-4 w-4" /></ToolbarButton>
+            <ToolbarButton label="Bold" pressed={inlineActive("**")} onClick={() => applyWrap("**")}><Bold className="h-4 w-4" /></ToolbarButton>
+            <ToolbarButton label="Italic" pressed={inlineActive("*")} onClick={() => applyWrap("*")}><Italic className="h-4 w-4" /></ToolbarButton>
+            <ToolbarButton label="Underline" pressed={inlineActive("__")} onClick={() => applyWrap("__")}><Underline className="h-4 w-4" /></ToolbarButton>
+            <ToolbarButton label="Bold italic" pressed={inlineActive("***")} onClick={() => applyWrap("***")}><span className="text-[11px] font-black italic">BI</span></ToolbarButton>
+            <ToolbarButton label="Underlined italic" pressed={inlineActive("__*", "*__")} onClick={() => applyWrap("__*", "*__")}><span className="text-[11px] font-semibold italic underline">I</span></ToolbarButton>
+            <ToolbarButton label="Underlined bold" pressed={inlineActive("__**", "**__")} onClick={() => applyWrap("__**", "**__")}><span className="text-[11px] font-black underline">B</span></ToolbarButton>
+            <ToolbarButton label="Underlined bold italic" pressed={inlineActive("__***", "***__")} onClick={() => applyWrap("__***", "***__")}><span className="text-[11px] font-black italic underline">BI</span></ToolbarButton>
+            <ToolbarButton label="Strike" pressed={inlineActive("~~")} onClick={() => applyWrap("~~")}><Strikethrough className="h-4 w-4" /></ToolbarButton>
+            <ToolbarButton label="Spoiler" pressed={inlineActive("||")} onClick={() => applyWrap("||", "||", "spoiler")}><Eye className="h-4 w-4" /></ToolbarButton>
+            <ToolbarButton label="Code" pressed={inlineActive("`")} onClick={() => applyWrap("`", "`", "code")}><Code2 className="h-4 w-4" /></ToolbarButton>
+            <ToolbarButton label="Code block" pressed={blockActive("```js\n", "\n```")} onClick={() => applyBlockSnippet("```js\n", "\n```", "// code block with syntax highlighting\nconsole.log(\"Hello\");")}><CodeXml className="h-4 w-4" /></ToolbarButton>
             <ToolbarDivider />
-            <ToolbarButton label="Quote" onClick={() => applyLinePrefix("> ")}><Quote className="h-4 w-4" /></ToolbarButton>
-            <ToolbarButton label="Multiline quote" onClick={() => applyBlockSnippet(">>> ", "", "multi-line quote\nThis keeps quoting everything after it.")}><TextQuote className="h-4 w-4" /></ToolbarButton>
-            <ToolbarButton label="List" onClick={() => applyLinePrefix("- ")}><List className="h-4 w-4" /></ToolbarButton>
-            <ToolbarButton label="Numbered list" onClick={() => applyLinePrefix("1. ")}><ListOrdered className="h-4 w-4" /></ToolbarButton>
-            <ToolbarButton label="Indented bullet" onClick={() => applyLinePrefix("  - ")}><ListIndentIncrease className="h-4 w-4" /></ToolbarButton>
-            <ToolbarButton label="Link" onClick={() => applyWrap("[", "](https://example.com)", "link")}><Link2 className="h-4 w-4" /></ToolbarButton>
+            <ToolbarButton label="Quote" pressed={lineActive("> ")} onClick={() => applyLinePrefix("> ")}><Quote className="h-4 w-4" /></ToolbarButton>
+            <ToolbarButton label="Multiline quote" pressed={blockActive(">>> ", "")} onClick={() => applyBlockSnippet(">>> ", "", "multi-line quote\nThis keeps quoting everything after it.")}><TextQuote className="h-4 w-4" /></ToolbarButton>
+            <ToolbarButton label="List" pressed={lineActive("- ")} onClick={() => applyLinePrefix("- ")}><List className="h-4 w-4" /></ToolbarButton>
+            <ToolbarButton label="Numbered list" pressed={lineActive("1. ", ORDERED_PREFIX_PATTERN)} onClick={() => applyLinePrefix("1. ", ORDERED_PREFIX_PATTERN)}><ListOrdered className="h-4 w-4" /></ToolbarButton>
+            <ToolbarButton label="Indented bullet" pressed={lineActive("  - ")} onClick={() => applyLinePrefix("  - ")}><ListIndentIncrease className="h-4 w-4" /></ToolbarButton>
+            <ToolbarButton label="Link" pressed={inlineActive("[", "](https://example.com)")} onClick={() => applyWrap("[", "](https://example.com)", "link")}><Link2 className="h-4 w-4" /></ToolbarButton>
             <ToolbarButton label="Escape markdown" onClick={escapeMarkdownSelection}><Slash className="h-4 w-4" /></ToolbarButton>
             <ToolbarButton label="Attach files" onClick={() => fileInputRef.current?.click()}><Paperclip className="h-4 w-4" /></ToolbarButton>
           </div>
@@ -410,7 +409,13 @@ export function DiscordMessageComposer() {
           <textarea
             ref={textareaRef}
             value={content}
-            onChange={(event) => setContent(event.target.value)}
+            onChange={(event) => {
+              setContent(event.target.value);
+              setSelection({ start: event.target.selectionStart, end: event.target.selectionEnd });
+            }}
+            onSelect={syncSelection}
+            onClick={syncSelection}
+            onKeyUp={syncSelection}
             rows={13}
             className="mt-4 w-full resize-y rounded-xl border border-neutral-200 px-4 py-3 text-sm leading-6 outline-none focus:border-neutral-500"
             placeholder="Write Discord Markdown here..."
@@ -586,19 +591,25 @@ export function DiscordMessageComposer() {
 function ToolbarButton({
   label,
   onClick,
+  pressed,
   children,
 }: {
   label: string;
   onClick: () => void;
+  pressed?: boolean;
   children: ReactNode;
 }) {
   return (
     <button
       type="button"
       aria-label={label}
+      aria-pressed={pressed}
       title={label}
       onClick={onClick}
-      className="inline-flex h-9 w-9 items-center justify-center rounded-lg text-neutral-600 transition hover:bg-white hover:text-neutral-950"
+      className={cn(
+        "inline-flex h-9 w-9 items-center justify-center rounded-lg text-neutral-600 transition hover:bg-white hover:text-neutral-950",
+        pressed && "bg-white text-neutral-950 shadow-sm ring-1 ring-neutral-300",
+      )}
     >
       {children}
     </button>
@@ -616,13 +627,6 @@ function ConfirmStat({ label, value }: { label: string; value: string }) {
       <p className="mt-1 truncate text-sm font-semibold text-neutral-950">{value}</p>
     </div>
   );
-}
-
-function escapeDiscordMarkdown(value: string) {
-  const escapable = new Set(["\\", "*", "_", "~", "`", "|", "[", "]", "(", ")", "#", ">", "-"]);
-  return Array.from(value)
-    .map((char) => (escapable.has(char) ? `\\${char}` : char))
-    .join("");
 }
 
 function formatBytes(bytes: number) {
