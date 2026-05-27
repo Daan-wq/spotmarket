@@ -81,6 +81,7 @@ function submission(overrides: Record<string, unknown> = {}) {
     },
     application: {
       id: "application-1",
+      earnedAmount: 0,
     },
     ...overrides,
   };
@@ -166,6 +167,10 @@ describe("POST /api/submissions/[id]/review", () => {
         eligibleViews: 4275,
         viewCount: 5000,
         baselineViews: 725,
+        application: {
+          id: "application-1",
+          earnedAmount: 100,
+        },
       }),
     );
     routeMocks.tx.referralPayout.findFirst.mockResolvedValue({
@@ -203,6 +208,62 @@ describe("POST /api/submissions/[id]/review", () => {
       routeMocks.tx,
       "submission-1",
     );
+  });
+
+  it("clamps legacy application earnings to zero when reversing more than the stored total", async () => {
+    routeMocks.submissionFindUnique.mockResolvedValue(
+      submission({
+        status: "APPROVED",
+        earnedAmount: 42.75,
+        eligibleViews: 4275,
+        application: {
+          id: "application-1",
+          earnedAmount: 10,
+        },
+      }),
+    );
+
+    const response = await POST(
+      reviewRequest({
+        status: "REJECTED",
+        rejectionReason: "BOT_TRAFFIC",
+      }),
+      params,
+    );
+
+    expect(response.status).toBe(200);
+    expect(routeMocks.tx.campaignApplication.update).toHaveBeenCalledWith({
+      where: { id: "application-1" },
+      data: { earnedAmount: { set: 0 } },
+    });
+  });
+
+  it("repairs already-negative legacy application earnings while rejecting an approved submission", async () => {
+    routeMocks.submissionFindUnique.mockResolvedValue(
+      submission({
+        status: "APPROVED",
+        earnedAmount: 42.75,
+        eligibleViews: 4275,
+        application: {
+          id: "application-1",
+          earnedAmount: -43,
+        },
+      }),
+    );
+
+    const response = await POST(
+      reviewRequest({
+        status: "REJECTED",
+        rejectionReason: "BOT_TRAFFIC",
+      }),
+      params,
+    );
+
+    expect(response.status).toBe(200);
+    expect(routeMocks.tx.campaignApplication.update).toHaveBeenCalledWith({
+      where: { id: "application-1" },
+      data: { earnedAmount: { set: 0 } },
+    });
   });
 
   it("blocks rejecting approved submissions that are already paid or locked in a payout run", async () => {
