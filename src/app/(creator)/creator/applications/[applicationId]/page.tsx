@@ -36,6 +36,10 @@ export default async function ApplicationDetailPage({
     where: { applicationId },
     orderBy: { createdAt: "desc" },
   });
+  const totalEarned = submissions.reduce(
+    (sum, submission) => sum + Number(submission.earnedAmount ?? 0),
+    0,
+  );
 
   const getStatusColor = (status: string) => {
     if (status === "APPROVED" || status === "active" || status === "approved") return "#22c55e";
@@ -81,7 +85,7 @@ export default async function ApplicationDetailPage({
             style={{ color: "var(--primary)" }}
             className="text-2xl font-bold"
           >
-            {formatCurrency(Number(application.earnedAmount) / 100, locale)}
+            {formatCurrency(totalEarned, locale)}
           </p>
         </div>
         <div

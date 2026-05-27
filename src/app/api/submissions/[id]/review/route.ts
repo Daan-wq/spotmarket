@@ -184,13 +184,21 @@ export async function POST(
         });
       }
 
-      if (isApprovedRejection && submission.application && previousEarnedAmount > 0) {
-        await tx.campaignApplication.update({
-          where: { id: submission.application.id },
-          data: {
-            earnedAmount: { decrement: Math.round(previousEarnedAmount) },
-          },
-        });
+      if (isApprovedRejection && submission.application) {
+        const legacyApplicationEarnedAmountUpdate =
+          legacyApplicationReversalUpdate(
+            submission.application.earnedAmount,
+            previousEarnedAmount,
+          );
+
+        if (legacyApplicationEarnedAmountUpdate) {
+          await tx.campaignApplication.update({
+            where: { id: submission.application.id },
+            data: {
+              earnedAmount: legacyApplicationEarnedAmountUpdate,
+            },
+          });
+        }
       }
 
       const notificationData =
@@ -259,4 +267,24 @@ function getTrackedViewCount(submission: {
   const parsed = Number(value);
   if (!Number.isFinite(parsed) || parsed < 0) return null;
   return Math.min(Math.trunc(parsed), 2_147_483_647);
+}
+
+function legacyApplicationReversalUpdate(
+  currentEarnedAmount: number | string | { toString(): string } | null | undefined,
+  previousSubmissionEarnedAmount: number,
+) {
+  const current = Math.round(toFiniteNumber(currentEarnedAmount));
+  const reversal = Math.round(previousSubmissionEarnedAmount);
+
+  if (current < 0) return { set: 0 };
+  if (reversal <= 0 || current <= 0) return null;
+  if (current <= reversal) return { set: 0 };
+
+  return { decrement: reversal };
+}
+
+function toFiniteNumber(value: number | string | { toString(): string } | null | undefined) {
+  if (value == null) return 0;
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : 0;
 }
