@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { toast } from "sonner";
 import type { SignalSeverity, SignalType } from "@/lib/contracts/signals";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 
 export interface SignalRowData {
   id: string;
@@ -165,6 +166,10 @@ export function SignalActions({ signal }: { signal: SignalRowData }) {
   const [pending, start] = useTransition();
   const [resolved, setResolved] = useState(!!signal.resolvedAt);
   const [nudging, setNudging] = useState(false);
+  const [rejectDialogOpen, setRejectDialogOpen] = useState(false);
+  const [rejecting, setRejecting] = useState(false);
+
+  const canRejectForBot = signal.type === "BOT_SUSPECTED" && !resolved;
 
   async function resolve() {
     if (pending || resolved) return;
@@ -199,64 +204,136 @@ export function SignalActions({ signal }: { signal: SignalRowData }) {
     }
   }
 
+  async function rejectClipForBotTraffic() {
+    if (rejecting || resolved) return;
+    setRejecting(true);
+    try {
+      const rejectResponse = await fetch(`/api/submissions/${signal.submissionId}/review`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          status: "REJECTED",
+          rejectionReason: "BOT_TRAFFIC",
+          rejectionNote: "Botverkeer gedetecteerd in Signalen-review.",
+        }),
+      });
+
+      if (!rejectResponse.ok) {
+        toast.error(await responseError(rejectResponse, "Clip afwijzen mislukt"));
+        return;
+      }
+
+      const resolveResponse = await fetch(`/api/admin/signals/${signal.id}/resolve`, {
+        method: "POST",
+      });
+      if (!resolveResponse.ok) {
+        setRejectDialogOpen(false);
+        toast.error("Clip afgewezen, maar signaal oplossen mislukt");
+        start(() => router.refresh());
+        return;
+      }
+
+      setResolved(true);
+      setRejectDialogOpen(false);
+      toast.success("Clip afgewezen en signaal opgelost");
+      start(() => router.refresh());
+    } catch {
+      toast.error("Netwerkfout");
+    } finally {
+      setRejecting(false);
+    }
+  }
+
   return (
-    <div className="flex flex-wrap items-center gap-2">
-      {signal.postUrl ? (
-        <a
-          href={signal.postUrl}
-          target="_blank"
-          rel="noopener noreferrer"
+    <>
+      <div className="flex flex-wrap items-center gap-2">
+        {signal.postUrl ? (
+          <a
+            href={signal.postUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="rounded-xl border border-neutral-200 bg-white px-3 py-2 text-xs font-semibold text-neutral-950 hover:bg-neutral-50"
+          >
+            Post
+          </a>
+        ) : null}
+        <Link
+          href={`/admin/submissions?focus=${signal.submissionId}`}
           className="rounded-xl border border-neutral-200 bg-white px-3 py-2 text-xs font-semibold text-neutral-950 hover:bg-neutral-50"
         >
-          Post
-        </a>
-      ) : null}
-      <Link
-        href={`/admin/submissions?focus=${signal.submissionId}`}
-        className="rounded-xl border border-neutral-200 bg-white px-3 py-2 text-xs font-semibold text-neutral-950 hover:bg-neutral-50"
-      >
-        Bekijken
-      </Link>
-      {signal.type === "BOT_SUSPECTED" ? (
-        <Link
-          href={`/admin/signals/${signal.id}`}
-          className="rounded-xl border border-orange-200 bg-orange-50 px-3 py-2 text-xs font-semibold text-orange-700 hover:bg-orange-100"
-        >
-          Bot beoordelen
+          Bekijken
         </Link>
-      ) : null}
-      {signal.creatorProfileId ? (
-        <Link
-          href={`/admin/creators/${signal.creatorProfileId}`}
-          className="rounded-xl border border-neutral-200 bg-white px-3 py-2 text-xs font-semibold text-neutral-950 hover:bg-neutral-50"
-        >
-          Maker
-        </Link>
-      ) : null}
-      {signal.type === "TOKEN_BROKEN" && !resolved ? (
-        <button
-          onClick={nudge}
-          disabled={nudging}
-          className="rounded-xl border border-orange-200 bg-orange-50 px-3 py-2 text-xs font-semibold text-orange-700 disabled:opacity-60"
-        >
-          {nudging ? "..." : "Herinneren"}
-        </button>
-      ) : null}
-      {!resolved ? (
-        <button
-          onClick={resolve}
-          disabled={pending}
-          className="rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs font-semibold text-emerald-700 disabled:opacity-60"
-        >
-          {pending ? "..." : "Oplossen"}
-        </button>
-      ) : (
-        <span className="rounded-full bg-emerald-50 px-2.5 py-1 text-[11px] font-medium text-emerald-700">
-          Opgelost
-        </span>
-      )}
-    </div>
+        {signal.type === "BOT_SUSPECTED" ? (
+          <Link
+            href={`/admin/signals/${signal.id}`}
+            className="rounded-xl border border-orange-200 bg-orange-50 px-3 py-2 text-xs font-semibold text-orange-700 hover:bg-orange-100"
+          >
+            Bot beoordelen
+          </Link>
+        ) : null}
+        {canRejectForBot ? (
+          <button
+            type="button"
+            onClick={() => setRejectDialogOpen(true)}
+            disabled={rejecting}
+            className="rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-xs font-semibold text-red-700 hover:bg-red-100 disabled:opacity-60"
+          >
+            {rejecting ? "..." : "Clip afwijzen"}
+          </button>
+        ) : null}
+        {signal.creatorProfileId ? (
+          <Link
+            href={`/admin/creators/${signal.creatorProfileId}`}
+            className="rounded-xl border border-neutral-200 bg-white px-3 py-2 text-xs font-semibold text-neutral-950 hover:bg-neutral-50"
+          >
+            Maker
+          </Link>
+        ) : null}
+        {signal.type === "TOKEN_BROKEN" && !resolved ? (
+          <button
+            onClick={nudge}
+            disabled={nudging}
+            className="rounded-xl border border-orange-200 bg-orange-50 px-3 py-2 text-xs font-semibold text-orange-700 disabled:opacity-60"
+          >
+            {nudging ? "..." : "Herinneren"}
+          </button>
+        ) : null}
+        {!resolved ? (
+          <button
+            onClick={resolve}
+            disabled={pending}
+            className="rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs font-semibold text-emerald-700 disabled:opacity-60"
+          >
+            {pending ? "..." : "Oplossen"}
+          </button>
+        ) : (
+          <span className="rounded-full bg-emerald-50 px-2.5 py-1 text-[11px] font-medium text-emerald-700">
+            Opgelost
+          </span>
+        )}
+      </div>
+      <ConfirmDialog
+        open={rejectDialogOpen}
+        onClose={() => setRejectDialogOpen(false)}
+        onConfirm={rejectClipForBotTraffic}
+        title="Clip afwijzen?"
+        description="Deze actie zet de inzending op afgewezen met reden Botverkeer en lost dit signaal daarna op."
+        confirmLabel="Afwijzen"
+        cancelLabel="Annuleren"
+        variant="destructive"
+        pending={rejecting}
+      />
+    </>
   );
+}
+
+async function responseError(response: Response, fallback: string) {
+  try {
+    const body = await response.json();
+    return typeof body?.error === "string" ? body.error : fallback;
+  } catch {
+    return fallback;
+  }
 }
 
 function translateSignalReason(reason: string) {

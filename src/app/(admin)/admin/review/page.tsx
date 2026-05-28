@@ -1,4 +1,5 @@
 import Link from "next/link";
+import type { Prisma } from "@prisma/client";
 import { ClipboardCheck } from "@/components/animate-ui/icons/clipboard-check";
 import { ExternalLink } from "@/components/animate-ui/icons/external-link";
 import { Badge } from "@/components/ui/badge";
@@ -10,27 +11,45 @@ import { formatDate, titleCaseEnum } from "@/lib/admin/agency-format";
 
 export const dynamic = "force-dynamic";
 
+const OPEN_SIGNAL_WHERE = {
+  severity: { in: ["WARN", "CRITICAL"] },
+  resolvedAt: null,
+  NOT: { type: "VELOCITY_SPIKE" },
+} satisfies Prisma.SubmissionSignalWhereInput;
+
 export default async function ReviewPage() {
-  const submissions = await prisma.campaignSubmission.findMany({
-    where: { status: { in: ["PENDING", "FLAGGED", "NEEDS_REVISION"] } },
-    orderBy: { createdAt: "asc" },
-    include: {
-      campaign: { select: { id: true, name: true, brand: { select: { name: true } } } },
-      creator: { select: { id: true, email: true } },
-      productionAssignment: {
-        select: {
-          id: true,
-          contentAngle: true,
-          dueAt: true,
-          creatorProfile: { select: { displayName: true } },
+  const [submissions, openSignalGroups] = await Promise.all([
+    prisma.campaignSubmission.findMany({
+      where: { status: { in: ["PENDING", "FLAGGED", "NEEDS_REVISION"] } },
+      orderBy: { createdAt: "asc" },
+      include: {
+        campaign: { select: { id: true, name: true, brand: { select: { name: true } } } },
+        creator: { select: { id: true, email: true } },
+        productionAssignment: {
+          select: {
+            id: true,
+            contentAngle: true,
+            dueAt: true,
+            creatorProfile: { select: { displayName: true } },
+          },
         },
       },
-    },
-    take: 80,
-  });
+      take: 80,
+    }),
+    prisma.submissionSignal.groupBy({
+      by: ["submissionId"],
+      where: OPEN_SIGNAL_WHERE,
+      _count: { _all: true },
+    }),
+  ]);
 
   const revisions = submissions.filter((submission) => submission.status === "NEEDS_REVISION").length;
   const flagged = submissions.filter((submission) => submission.status === "FLAGGED").length;
+  const openSignalClipCount = openSignalGroups.length;
+  const openSignalCount = openSignalGroups.reduce((sum, group) => sum + group._count._all, 0);
+  const hasOpenSignals = openSignalClipCount > 0;
+  const signalNoun = openSignalCount === 1 ? "signal" : "signals";
+  const clipNoun = openSignalClipCount === 1 ? "clip" : "clips";
 
   return (
     <div className="space-y-9">
@@ -54,9 +73,18 @@ export default async function ReviewPage() {
         {submissions.length === 0 ? (
           <EmptyState
             icon={<ClipboardCheck className="h-5 w-5" />}
-            title="Review queue clear"
-            description="No pending, flagged, or revision-needed clips. Keep production moving from the Production page."
-            primaryCta={{ label: "Open production", href: "/admin/production" }}
+            title={hasOpenSignals ? "Clip review clear, signals pending" : "Review queue clear"}
+            description={
+              hasOpenSignals
+                ? `${openSignalClipCount} ${clipNoun} still have ${openSignalCount} open ${signalNoun}. Some can already be approved clips that were flagged later by metrics or fraud checks, so clear Signals before treating review as fully done.`
+                : "No pending, flagged, or revision-needed clips. Keep production moving from the Production page."
+            }
+            primaryCta={
+              hasOpenSignals
+                ? { label: "Open signals", href: "/admin/signals" }
+                : { label: "Open production", href: "/admin/production" }
+            }
+            secondaryCta={hasOpenSignals ? { label: "Open production", href: "/admin/production" } : undefined}
           />
         ) : (
           <div className="space-y-4">
