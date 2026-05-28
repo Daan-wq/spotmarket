@@ -491,7 +491,9 @@ function CampaignCard({ campaign }: { campaign: CampaignData }) {
                   : t("connectPlatforms", { platforms: String(campaign.eligibility.reasonValue ?? "") })}
               </Badge>
             ) : null}
-            <CampaignDeadlineBadge deadline={campaign.deadlineIso} />
+            {!campaign.closedForSubmissions ? (
+              <CampaignDeadlineBadge deadline={campaign.deadlineIso} />
+            ) : null}
           </div>
         </div>
       </div>

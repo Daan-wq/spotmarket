@@ -347,7 +347,9 @@ export default async function CampaignDetailPage({
                   status={campaign.status}
                   deadline={campaign.deadline}
                 />
-                <CampaignDeadlineBadge deadline={campaign.deadline} />
+                {!isClosedForSubmissions ? (
+                  <CampaignDeadlineBadge deadline={campaign.deadline} />
+                ) : null}
                 <CampaignPlatformRow platforms={campaign.platforms} />
               </div>
             </div>
