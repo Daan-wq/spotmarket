@@ -1,7 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
+import { Prisma } from "@prisma/client";
 import { z } from "zod";
 import { requireAuth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { reconcileCampaignBudgetCap } from "@/lib/campaign-budget-cap";
 import { calculatePaidViews } from "@/lib/paid-views";
 import { reconcileReferralPayoutForSubmission } from "@/lib/referral-reconciliation";
 
@@ -134,7 +136,17 @@ export async function POST(
         },
         include: { campaign: true, creator: true },
       });
-      await reconcileReferralPayoutForSubmission(tx, submission.id);
+      const budgetCap = await reconcileCampaignBudgetCap(tx, submission.campaignId);
+      const finalEarnedAmount =
+        budgetCap.allocations.find((allocation) => allocation.id === submission.id)
+          ?.earnedAmount ?? Number(sub.earnedAmount);
+      const referralSubmissionIds = new Set([
+        submission.id,
+        ...budgetCap.changedSubmissionIds,
+      ]);
+      for (const changedSubmissionId of referralSubmissionIds) {
+        await reconcileReferralPayoutForSubmission(tx, changedSubmissionId);
+      }
 
       if (status === "APPROVED") {
         await tx.campaignReferralAttribution.updateMany({
@@ -147,7 +159,7 @@ export async function POST(
         });
       }
 
-      if (status === "APPROVED" && earnedAmount > 0) {
+      if (status === "APPROVED" && finalEarnedAmount > 0) {
         await tx.campaignReferralAttribution.updateMany({
           where: {
             campaignId: submission.campaignId,
@@ -156,7 +168,7 @@ export async function POST(
           },
           data: {
             activeAt: new Date(),
-            firstEarnedAmount: earnedAmount,
+            firstEarnedAmount: finalEarnedAmount,
           },
         });
       }
@@ -165,7 +177,7 @@ export async function POST(
         await tx.campaignApplication.update({
           where: { id: submission.application.id },
           data: {
-            earnedAmount: { increment: Math.round(earnedAmount) },
+            earnedAmount: { increment: Math.round(finalEarnedAmount) },
           },
         });
       }
@@ -184,7 +196,7 @@ export async function POST(
           ? {
               campaignName: submission.campaign.name,
               submissionId: submission.id,
-              earnedAmount,
+              earnedAmount: finalEarnedAmount,
             }
           : {
               campaignName: submission.campaign.name,
@@ -221,8 +233,8 @@ export async function POST(
         });
       }
 
-      return sub;
-    });
+      return { ...sub, earnedAmount: finalEarnedAmount };
+    }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
 
     return NextResponse.json({ submission: updated });
   } catch (err: unknown) {

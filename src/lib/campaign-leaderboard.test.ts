@@ -95,6 +95,14 @@ describe("campaign leaderboard helpers", () => {
     expect(campaignLeaderboardEarnings(submission({ earnedAmount: "12.34" }))).toBe(12.34);
   });
 
+  it("keeps stored zero earnings when positive eligible views are budget-capped", () => {
+    expect(
+      campaignLeaderboardEarnings(
+        submission({ eligibleViews: 10_000, earnedAmount: 0 }),
+      ),
+    ).toBe(0);
+  });
+
   it("aggregates earnings and views per creator", () => {
     const rows = buildCampaignLeaderboardRows([
       submission({ creatorId: "user_1", viewCount: 10_000, earnedAmount: 0 }),

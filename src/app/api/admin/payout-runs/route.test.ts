@@ -13,6 +13,7 @@ const routeMocks = vi.hoisted(() => {
     campaignSubmissionFindMany: vi.fn(),
     payoutRunCreate: vi.fn(),
     auditLogCreate: vi.fn(),
+    reconcileCampaignBudgetCap: vi.fn(),
     reconcileReferralPayoutForSubmission: vi.fn(),
     tx,
   };
@@ -33,6 +34,10 @@ vi.mock("@/lib/prisma", () => ({
 
 vi.mock("@/lib/referral-reconciliation", () => ({
   reconcileReferralPayoutForSubmission: routeMocks.reconcileReferralPayoutForSubmission,
+}));
+
+vi.mock("@/lib/campaign-budget-cap", () => ({
+  reconcileCampaignBudgetCap: routeMocks.reconcileCampaignBudgetCap,
 }));
 
 function postRun() {
@@ -71,6 +76,12 @@ describe("POST /api/admin/payout-runs", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     routeMocks.requireAuth.mockResolvedValue({ userId: "admin-user-1" });
+    routeMocks.reconcileCampaignBudgetCap.mockResolvedValue({
+      totalBudget: 100,
+      totalAllocated: 0,
+      allocations: [],
+      changedSubmissionIds: [],
+    });
     routeMocks.reconcileReferralPayoutForSubmission.mockResolvedValue({
       action: "unchanged",
       amount: 0,
@@ -91,15 +102,17 @@ describe("POST /api/admin/payout-runs", () => {
   });
 
   it("only creates payout items for fraud-cleared positive approved submissions", async () => {
-    routeMocks.tx.campaignSubmission.findMany.mockResolvedValueOnce([
-      approvedSubmission({ id: "clear-submission", earnedAmount: 50 }),
-      approvedSubmission({
-        id: "blocked-submission",
-        earnedAmount: 80,
-        submissionSignals: [{ severity: "WARN", resolvedAt: null }],
-      }),
-      approvedSubmission({ id: "zero-submission", earnedAmount: 0 }),
-    ]);
+    routeMocks.tx.campaignSubmission.findMany
+      .mockResolvedValueOnce([{ campaignId: "campaign-1" }])
+      .mockResolvedValueOnce([
+        approvedSubmission({ id: "clear-submission", earnedAmount: 50 }),
+        approvedSubmission({
+          id: "blocked-submission",
+          earnedAmount: 80,
+          submissionSignals: [{ severity: "WARN", resolvedAt: null }],
+        }),
+        approvedSubmission({ id: "zero-submission", earnedAmount: 0 }),
+      ]);
 
     const response = await postRun();
 
@@ -123,6 +136,10 @@ describe("POST /api/admin/payout-runs", () => {
     expect(routeMocks.reconcileReferralPayoutForSubmission).toHaveBeenCalledWith(
       routeMocks.tx,
       "clear-submission",
+    );
+    expect(routeMocks.reconcileCampaignBudgetCap).toHaveBeenCalledWith(
+      routeMocks.tx,
+      "campaign-1",
     );
   });
 });

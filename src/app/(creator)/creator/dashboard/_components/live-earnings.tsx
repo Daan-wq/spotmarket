@@ -3,8 +3,8 @@
 /**
  * Live Earnings ticker — Subsystem C.
  *
- * Polls /api/clipper/live-earnings every 60s and shows estimated (unsettled,
- * computed from the latest view counts × creatorCpv) vs settled earnings.
+ * Polls /api/clipper/live-earnings every 60s and shows estimated
+ * budget-capped unsettled earnings vs settled earnings.
  *
  * "Estimated" means: views are still being counted; the figure floats up as
  * MetricSnapshots arrive from Subsystem A. "Settled" is locked, paid-or-payable.

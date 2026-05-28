@@ -4,9 +4,8 @@
  * Returns live (estimated) and settled earnings for the current creator.
  *
  * - `settled` — sum of `earnedAmount` on submissions with `settledAt != null`.
- * - `estimated` — for *unsettled* APPROVED submissions: latest `MetricSnapshot.viewCount`
- *   (falling back to submission.viewCount, then claimedViews) × campaign.creatorCpv.
- *   Uses eligibleViews/baselineViews when present so we don't over-count pre-existing views.
+ * - `estimated` - sum of stored, budget-capped `earnedAmount` on unsettled
+ *   APPROVED submissions. Views still refresh separately for reporting.
  *
  * Owner: Subsystem C. Read-only across schema. Polled every 60s by the dashboard ticker.
  */
@@ -41,7 +40,7 @@ export async function GET() {
     _count: { _all: true },
   });
 
-  // Unsettled approved submissions — estimate live based on latest view count.
+  // Unsettled approved submissions use stored earnings; latest views are for reporting.
   const unsettled = await prisma.campaignSubmission.findMany({
     where: {
       creatorId: user.id,
@@ -50,6 +49,7 @@ export async function GET() {
     },
     select: {
       id: true,
+      earnedAmount: true,
       viewCount: true,
       claimedViews: true,
       eligibleViews: true,
@@ -85,7 +85,7 @@ export async function GET() {
     });
     const eligible = paidViews.payableViews;
     const cpv = Number(s.campaign.creatorCpv);
-    const estimated = paidViews.earnedAmount;
+    const estimated = Number(s.earnedAmount ?? 0);
     estimatedTotal += estimated;
     if (latestSnap && (!latestSnapshotAt || latestSnap.capturedAt > latestSnapshotAt)) {
       latestSnapshotAt = latestSnap.capturedAt;

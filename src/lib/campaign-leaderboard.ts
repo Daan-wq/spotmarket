@@ -84,7 +84,9 @@ export function campaignLeaderboardEarnings(
   submission: CampaignLeaderboardSubmission,
 ): number {
   const stored = toNumber(submission.earnedAmount);
-  if (stored > 0) return roundMoney(stored);
+  if (stored > 0 || toNumber(submission.eligibleViews) > 0) {
+    return roundMoney(stored);
+  }
 
   return roundMoney(
     campaignLeaderboardPayableViews(submission) * toNumber(submission.campaign.creatorCpv),

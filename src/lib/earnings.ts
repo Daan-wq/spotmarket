@@ -104,14 +104,12 @@ export interface CreatorTotalEarnings {
 /**
  * Live/estimated earnings helper for the dashboard ticker.
  *
- * Do not use this for creator-facing payable totals: it recalculates approved,
- * unsettled submissions from current campaign CPV, so campaign rate edits can
- * change historical-looking totals. Payable surfaces should use
- * `getCreatorPaymentSummary` from `creator-payment-summary`.
+ * Uses stored, budget-capped `earnedAmount` for approved unsettled
+ * submissions. Views can keep growing after the campaign budget is exhausted,
+ * but this total must stay within the campaign payout cap.
  *
  * - settled: SUM(CampaignSubmission.earnedAmount) where settledAt IS NOT NULL.
- * - estimated: for APPROVED + unsettled submissions, eligibleViews × campaign.creatorCpv
- *   using the latest MetricSnapshot (mirrors /api/clipper/live-earnings).
+ * - estimated: SUM(CampaignSubmission.earnedAmount) for APPROVED + unsettled submissions.
  * - withdrawn: SUM(Withdrawal.amount) for SENT/CONFIRMED — diagnostic only, NOT
  *   included in `total` since `settled` already counts those amounts.
  * - total = settled + estimated.
@@ -131,6 +129,7 @@ export async function getCreatorTotalEarnings(
         settledAt: null,
       },
       select: {
+        earnedAmount: true,
         viewCount: true,
         claimedViews: true,
         eligibleViews: true,
@@ -164,18 +163,7 @@ export async function getCreatorTotalEarnings(
 
   let estimated = 0;
   for (const s of unsettled) {
-    const latestSnap = s.metricSnapshots[0];
-    const snapshotViews = latestSnap ? Number(latestSnap.viewCount) : null;
-    const fallbackViews = s.viewCount ?? s.claimedViews ?? 0;
-    const rawViews = snapshotViews ?? fallbackViews;
-    const paidViews = calculatePaidViews({
-      rawViews,
-      baselineViews: s.baselineViews,
-      minimumPaidViews: s.campaign.minimumPaidViews,
-      maximumPaidViews: s.campaign.maximumPaidViews,
-      creatorCpv: s.campaign.creatorCpv,
-    });
-    estimated += paidViews.earnedAmount;
+    estimated += Number(s.earnedAmount ?? 0);
   }
 
   const withdrawn =
