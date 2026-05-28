@@ -17,6 +17,7 @@ import { Prisma, type $Enums } from "@prisma/client";
 import { publishEvent } from "@/lib/event-bus";
 import { routeMetric } from "./router";
 import { scoreVelocity, type FlagDraft } from "@/lib/velocity-scorer";
+import { reconcileCampaignBudgetCap } from "@/lib/campaign-budget-cap";
 import { calculatePaidViews } from "@/lib/paid-views";
 import { UNAVAILABLE_METRICS } from "@/lib/contracts/metrics";
 import { syncAntiBotSignal } from "./anti-bot-signal";
@@ -185,28 +186,38 @@ export async function pollSubmissions(opts: RunOptions): Promise<PollResult> {
             })
           : null;
 
-        await prisma.campaignSubmission.update({
-          where: { id: sub.id },
-          data: {
-            lastMetricsRefreshAt: snap.capturedAt,
-            metricsRefreshFailures: 0,
-            viewCount: Math.min(cumulativeViews, 2_147_483_647),
-            likeCount: fetched.metricAvailability.likes ? fetched.likeCount : null,
-            commentCount: fetched.metricAvailability.comments ? fetched.commentCount : null,
-            shareCount: fetched.metricAvailability.shares ? fetched.shareCount : null,
-            velocityScore: scored.velocityScore ?? undefined,
-            sourceMethod: "OAUTH",
-            ...(paidViews
-              ? {
-                  eligibleViews: paidViews.payableViews,
-                  earnedAmount: paidViews.earnedAmount,
-                }
-              : {}),
-          },
-        });
-        if (paidViews) {
-          await reconcileReferralPayoutForSubmission(prisma, sub.id);
-        }
+        await prisma.$transaction(async (tx) => {
+          await tx.campaignSubmission.update({
+            where: { id: sub.id },
+            data: {
+              lastMetricsRefreshAt: snap.capturedAt,
+              metricsRefreshFailures: 0,
+              viewCount: Math.min(cumulativeViews, 2_147_483_647),
+              likeCount: fetched.metricAvailability.likes ? fetched.likeCount : null,
+              commentCount: fetched.metricAvailability.comments ? fetched.commentCount : null,
+              shareCount: fetched.metricAvailability.shares ? fetched.shareCount : null,
+              velocityScore: scored.velocityScore ?? undefined,
+              sourceMethod: "OAUTH",
+              ...(paidViews
+                ? {
+                    eligibleViews: paidViews.payableViews,
+                    earnedAmount: paidViews.earnedAmount,
+                  }
+                : {}),
+            },
+          });
+
+          if (!paidViews) return;
+
+          const budgetCap = await reconcileCampaignBudgetCap(tx, sub.campaignId);
+          const referralSubmissionIds = new Set([
+            sub.id,
+            ...budgetCap.changedSubmissionIds,
+          ]);
+          for (const changedSubmissionId of referralSubmissionIds) {
+            await reconcileReferralPayoutForSubmission(tx, changedSubmissionId);
+          }
+        }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
 
         await publishEvent({
           type: "submission.metrics.updated",

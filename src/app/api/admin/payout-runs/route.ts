@@ -1,8 +1,10 @@
 import { NextResponse } from "next/server";
+import { Prisma } from "@prisma/client";
 import { z } from "zod";
 import { requireAuth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { jsonError, isoDate, serialize } from "@/lib/admin/agency-api";
+import { reconcileCampaignBudgetCap } from "@/lib/campaign-budget-cap";
 import { isSubmissionPayoutEligible } from "@/lib/financial-eligibility";
 import { reconcileReferralPayoutForSubmission } from "@/lib/referral-reconciliation";
 
@@ -66,6 +68,20 @@ export async function POST(req: Request) {
     const currency = data.currency ?? "EUR";
 
     const run = await prisma.$transaction(async (tx) => {
+      const campaignRows = await tx.campaignSubmission.findMany({
+        where: {
+          status: "APPROVED",
+          reviewedAt: { gte: periodStart, lte: periodEnd },
+          settledAt: null,
+          payoutRunItems: { none: {} },
+        },
+        select: { campaignId: true },
+        distinct: ["campaignId"],
+      });
+      for (const row of campaignRows) {
+        await reconcileCampaignBudgetCap(tx, row.campaignId);
+      }
+
       const approvedSubmissions = await tx.campaignSubmission.findMany({
         where: {
           status: "APPROVED",
@@ -161,7 +177,7 @@ export async function POST(req: Request) {
       });
 
       return createdRun;
-    });
+    }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
 
     return NextResponse.json(serialize(run), { status: 201 });
   } catch (error) {

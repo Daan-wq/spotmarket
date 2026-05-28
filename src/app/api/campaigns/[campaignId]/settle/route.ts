@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
+import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { requireAuth } from "@/lib/auth";
+import { reconcileCampaignBudgetCap } from "@/lib/campaign-budget-cap";
 import { isSubmissionPayoutEligible } from "@/lib/financial-eligibility";
 import { reconcileReferralPayoutForSubmission } from "@/lib/referral-reconciliation";
 
@@ -20,46 +22,45 @@ export async function POST(
       return NextResponse.json({ error: "Campaign not found" }, { status: 404 });
     }
 
-    // Find all approved, unsettled submissions for this campaign
-    const submissions = await prisma.campaignSubmission.findMany({
-      where: {
-        campaignId,
-        status: "APPROVED",
-        settledAt: null,
-        earnedAmount: { gt: 0 },
-        payoutRunItems: { none: {} },
-        submissionSignals: {
-          none: {
-            resolvedAt: null,
-            severity: { in: ["WARN", "CRITICAL"] },
-          },
-        },
-      },
-      include: {
-        creator: true,
-        payoutRunItems: {
-          select: {
-            id: true,
-            payout: { select: { status: true } },
-          },
-        },
-        submissionSignals: {
-          where: {
-            resolvedAt: null,
-            severity: { in: ["WARN", "CRITICAL"] },
-          },
-          select: { severity: true, resolvedAt: true },
-        },
-      },
-    });
-
-    const eligibleSubmissions = submissions.filter(isSubmissionPayoutEligible);
-
-    if (eligibleSubmissions.length === 0) {
-      return NextResponse.json({ error: "No unsettled approved submissions" }, { status: 400 });
-    }
-
     const result = await prisma.$transaction(async (tx) => {
+      await reconcileCampaignBudgetCap(tx, campaignId);
+
+      // Find all approved, unsettled submissions for this campaign after the cap is applied.
+      const submissions = await tx.campaignSubmission.findMany({
+        where: {
+          campaignId,
+          status: "APPROVED",
+          settledAt: null,
+          earnedAmount: { gt: 0 },
+          payoutRunItems: { none: {} },
+          submissionSignals: {
+            none: {
+              resolvedAt: null,
+              severity: { in: ["WARN", "CRITICAL"] },
+            },
+          },
+        },
+        include: {
+          creator: true,
+          payoutRunItems: {
+            select: {
+              id: true,
+              payout: { select: { status: true } },
+            },
+          },
+          submissionSignals: {
+            where: {
+              resolvedAt: null,
+              severity: { in: ["WARN", "CRITICAL"] },
+            },
+            select: { severity: true, resolvedAt: true },
+          },
+        },
+      });
+
+      const eligibleSubmissions = submissions.filter(isSubmissionPayoutEligible);
+      if (eligibleSubmissions.length === 0) return null;
+
       let totalSettled = 0;
       const settledCreators: string[] = [];
 
@@ -105,7 +106,11 @@ export async function POST(
         creatorsCount: settledCreators.length,
         submissionsCount: eligibleSubmissions.length,
       };
-    });
+    }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
+
+    if (!result) {
+      return NextResponse.json({ error: "No unsettled approved submissions" }, { status: 400 });
+    }
 
     return NextResponse.json({
       message: "Campaign settled",
