@@ -29,7 +29,11 @@ import {
 import { AnimateIcon } from "@/components/animate-ui/icons/icon";
 import { ChevronLeft } from "@/components/animate-ui/icons/chevron-left";
 import { evaluateCampaignJoinEligibility } from "@/lib/campaign-eligibility";
-import { isCampaignClosedForSubmissions } from "@/lib/campaign-submission-state";
+import {
+  campaignClosedForSubmissionsReason,
+  isCampaignClosedForSubmissions,
+  isCampaignPubliclyVisible,
+} from "@/lib/campaign-submission-state";
 import { buildCreatorCampaignConfigSections } from "@/lib/creator-campaign-display";
 import { buildCampaignLeaderboardRows } from "@/lib/campaign-leaderboard";
 import {
@@ -72,7 +76,7 @@ export default async function CampaignDetailPage({
       },
     },
   });
-  if (!campaign || campaign.status !== "active") notFound();
+  if (!campaign || !isCampaignPubliclyVisible(campaign.status)) notFound();
 
   const user = await prisma.user.findUnique({
     where: { supabaseId: userId },
@@ -187,6 +191,9 @@ export default async function CampaignDetailPage({
   const isClosedForSubmissions = isCampaignClosedForSubmissions({
     status: campaign.status,
     deadline: campaign.deadline,
+  });
+  const closedForSubmissionsReason = campaignClosedForSubmissionsReason({
+    status: campaign.status,
   });
   const canApply =
     eligibility.eligible &&
@@ -364,6 +371,7 @@ export default async function CampaignDetailPage({
         missingPlatformLabels={eligibility.missingPlatformLabels}
         hasDiscord={hasDiscord}
         isClosedForSubmissions={isClosedForSubmissions}
+        closedForSubmissionsReason={closedForSubmissionsReason}
       />
 
       {campaignReferralUrl ? (

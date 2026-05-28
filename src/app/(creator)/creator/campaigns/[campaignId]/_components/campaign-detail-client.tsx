@@ -17,6 +17,7 @@ interface CampaignDetailClientProps {
   missingPlatformLabels: string[];
   hasDiscord: boolean;
   isClosedForSubmissions: boolean;
+  closedForSubmissionsReason: "paused" | "ended";
 }
 
 export function CampaignDetailClient({
@@ -27,6 +28,7 @@ export function CampaignDetailClient({
   missingPlatformLabels,
   hasDiscord,
   isClosedForSubmissions,
+  closedForSubmissionsReason,
 }: CampaignDetailClientProps) {
   const t = useTranslations("creator.campaigns.apply");
   const locale = useLocale();
@@ -71,7 +73,7 @@ export function CampaignDetailClient({
     }
   };
 
-  if (hasRequiredPlatform && !hasDiscord && !hasApplication) {
+  if (hasRequiredPlatform && !hasDiscord && !hasApplication && !isClosedForSubmissions) {
     return (
       <div
         className="mb-6 p-4 rounded-xl flex items-center justify-between"
@@ -100,6 +102,10 @@ export function CampaignDetailClient({
     t,
   );
   const disabled = loading || isClosedForSubmissions;
+  const closedDescription =
+    closedForSubmissionsReason === "paused"
+      ? t("pausedDescription")
+      : t("endedDescription");
 
   return (
     <div className="mb-6 space-y-3">
@@ -122,6 +128,8 @@ export function CampaignDetailClient({
       >
         {loading ? (
           t("processing")
+        ) : isClosedForSubmissions ? (
+          t("closed")
         ) : hasApplication ? (
           <>
             <svg
@@ -160,7 +168,7 @@ export function CampaignDetailClient({
       </button>
       {isClosedForSubmissions ? (
         <p className="text-center text-sm text-neutral-500">
-          {t("closedDescription")}
+          {closedDescription}
         </p>
       ) : null}
       <Dialog

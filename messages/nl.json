@@ -841,7 +841,7 @@
       "page": {
         "eyebrow": "Campagnes",
         "title": "Campagnes",
-        "description": "{count, plural, one {# campagne beschikbaar} other {# campagnes beschikbaar}}",
+        "description": "{count, plural, one {# campagne zichtbaar} other {# campagnes zichtbaar}}",
         "marketplace": "Alle Campagnes",
         "joined": "Gejoinde campagnes",
         "searchLabel": "Campagnes zoeken",
@@ -849,8 +849,8 @@
         "platform": "Platform",
         "type": "Type",
         "sort": "Sorteren",
-        "marketplaceDescription": "Campagnes standaard gesorteerd op geschiktheid en payout.",
-        "joinedDescription": "Campagnes waarop je nu actie kunt nemen."
+        "marketplaceDescription": "Actieve campagnes eerst, daarna eerdere campagnes.",
+        "joinedDescription": "Campagnes die je hebt gejoind, inclusief gesloten campagnes."
       },
       "guide": {
         "intro": "Nieuw met campagnes? Leer hoe ze werken.",
@@ -879,6 +879,8 @@
         "payout": "Payout",
         "youQualify": "Je komt in aanmerking",
         "submitClosed": "Inzendingen gesloten",
+        "pausedDescription": "Deze campagne is gepauzeerd en accepteert tijdelijk geen joins of inzendingen.",
+        "endedDescription": "Deze campagne is succesvol beëindigd en accepteert geen joins of inzendingen meer.",
         "connectPlatforms": "Koppel {platforms}",
         "needFollowers": "{count} volgers nodig"
       },
@@ -984,6 +986,8 @@
         "connectDiscord": "Discord koppelen",
         "closed": "Inzendingen zijn gesloten",
         "closedDescription": "Deze campagne is afgelopen en accepteert geen inzendingen meer.",
+        "pausedDescription": "Deze campagne is gepauzeerd en accepteert tijdelijk geen joins of inzendingen.",
+        "endedDescription": "Deze campagne is succesvol beëindigd en accepteert geen joins of inzendingen meer.",
         "applying": "Joinen...",
         "processing": "Verwerken...",
         "error": "Campagne joinen is mislukt.",

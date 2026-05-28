@@ -1,9 +1,21 @@
 type CampaignSubmissionStatus = string | null | undefined;
 
+export const PUBLIC_CAMPAIGN_STATUSES = [
+  "active",
+  "paused",
+  "completed",
+  "cancelled",
+] as const;
+
 export const CAMPAIGN_CLOSED_FOR_SUBMISSIONS_MESSAGE =
   "This campaign has ended and no longer accepts submissions.";
 export const CAMPAIGN_PAUSED_FOR_SUBMISSIONS_MESSAGE =
   "This campaign is paused and temporarily does not accept submissions.";
+
+export function isCampaignPubliclyVisible(status: CampaignSubmissionStatus) {
+  const normalized = (status ?? "").toLowerCase();
+  return PUBLIC_CAMPAIGN_STATUSES.some((publicStatus) => publicStatus === normalized);
+}
 
 export function getCampaignDeadlineState(
   deadline: Date | string | null | undefined,
@@ -53,7 +65,7 @@ export function campaignClosedForSubmissionsReason({
   status,
 }: {
   status: CampaignSubmissionStatus;
-}) {
+}): "paused" | "ended" {
   return (status ?? "").toLowerCase() === "paused" ? "paused" : "ended";
 }
 
@@ -71,4 +83,12 @@ export function campaignCanAcceptSubmissions(args: {
   now?: Date;
 }) {
   return !isCampaignClosedForSubmissions(args);
+}
+
+export function isCampaignUsableForCreator(args: {
+  status: CampaignSubmissionStatus;
+  deadline: Date | string | null | undefined;
+  now?: Date;
+}) {
+  return campaignCanAcceptSubmissions(args);
 }

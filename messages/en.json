@@ -841,7 +841,7 @@
       "page": {
         "eyebrow": "Campaigns",
         "title": "Campaigns",
-        "description": "{count, plural, one {# campaign available} other {# campaigns available}}",
+        "description": "{count, plural, one {# campaign visible} other {# campaigns visible}}",
         "marketplace": "Marketplace",
         "joined": "Joined campaigns",
         "searchLabel": "Search campaigns",
@@ -849,8 +849,8 @@
         "platform": "Platform",
         "type": "Type",
         "sort": "Sort",
-        "marketplaceDescription": "Campaigns sorted by eligibility and payout by default.",
-        "joinedDescription": "Campaigns you can act on next."
+        "marketplaceDescription": "Active campaigns first, followed by previous campaigns.",
+        "joinedDescription": "Campaigns you joined, including closed campaigns."
       },
       "guide": {
         "intro": "New to campaigns? Learn how they work.",
@@ -879,6 +879,8 @@
         "payout": "Payout",
         "youQualify": "You qualify",
         "submitClosed": "Submissions closed",
+        "pausedDescription": "This campaign is paused and temporarily does not accept joins or submissions.",
+        "endedDescription": "This campaign was successfully completed and no longer accepts joins or submissions.",
         "connectPlatforms": "Connect {platforms}",
         "needFollowers": "Need {count} followers"
       },
@@ -984,6 +986,8 @@
         "connectDiscord": "Connect Discord",
         "closed": "Submissions are closed",
         "closedDescription": "This campaign has ended and no longer accepts submissions.",
+        "pausedDescription": "This campaign is paused and temporarily does not accept joins or submissions.",
+        "endedDescription": "This campaign was successfully completed and no longer accepts joins or submissions.",
         "applying": "Joining...",
         "processing": "Processing...",
         "error": "Could not join campaign.",
