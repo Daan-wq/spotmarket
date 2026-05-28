@@ -186,6 +186,74 @@ summary {
   .button-hover-highlight:focus-visible {
     background: var(--button-hover-highlight);
   }
+
+  .report-input {
+    width: 100%;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: #ffffff;
+    padding: 0.625rem 0.75rem;
+    font-size: 0.875rem;
+    color: var(--text-primary);
+    outline: none;
+    transition:
+      border-color var(--transition-fast),
+      box-shadow var(--transition-fast);
+  }
+
+  .report-input:focus {
+    border-color: #a1a1aa;
+    box-shadow: 0 0 0 3px rgba(24, 24, 27, 0.08);
+  }
+}
+
+@page {
+  size: A4;
+  margin: 12mm;
+}
+
+@media print {
+  body {
+    background: #ffffff !important;
+  }
+
+  body * {
+    visibility: hidden !important;
+  }
+
+  .report-print-root,
+  .report-print-root * {
+    visibility: visible !important;
+  }
+
+  .report-print-root {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    background: #ffffff;
+  }
+
+  .report-print-scroll {
+    display: block !important;
+    overflow: visible !important;
+  }
+
+  .report-print-page {
+    width: 100% !important;
+    max-width: none !important;
+    min-height: auto !important;
+    margin: 0 0 12mm !important;
+    border: 0 !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+    break-after: page;
+    page-break-after: always;
+  }
+
+  .report-print-page:last-child {
+    break-after: auto;
+    page-break-after: auto;
+  }
 }
 
 @keyframes fadeInUp {
