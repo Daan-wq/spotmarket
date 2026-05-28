@@ -4,6 +4,7 @@ import { POST } from "./route";
 const routeMocks = vi.hoisted(() => {
   const tx = {
     user: { findUnique: vi.fn(), update: vi.fn() },
+    campaign: { findUnique: vi.fn() },
     referralPayout: {
       aggregate: vi.fn(),
       create: vi.fn(),
@@ -99,6 +100,7 @@ describe("POST /api/submissions/[id]/review", () => {
     routeMocks.tx.referralPayout.aggregate.mockResolvedValue({ _sum: { amount: 0 } });
     routeMocks.tx.referralPayout.findFirst.mockResolvedValue(null);
     routeMocks.tx.referralPayout.deleteMany.mockResolvedValue({ count: 0 });
+    routeMocks.tx.campaign.findUnique.mockResolvedValue(null);
     routeMocks.tx.campaignSubmission.update.mockResolvedValue({
       id: "submission-1",
       status: "REJECTED",
@@ -342,6 +344,158 @@ describe("POST /api/submissions/[id]/review", () => {
         }),
       }),
     );
+  });
+
+  it("caps the crossing approval at the remaining campaign budget while keeping eligible views", async () => {
+    routeMocks.submissionFindUnique.mockResolvedValue(
+      submission({
+        baselineViews: 0,
+        metricSnapshots: [{ viewCount: BigInt(5000) }],
+        campaign: {
+          id: "campaign-1",
+          name: "Spring Campaign",
+          totalBudget: 100,
+          creatorCpv: 0.01,
+          minimumPaidViews: 0,
+          maximumPaidViews: null,
+        },
+      }),
+    );
+    routeMocks.tx.campaign.findUnique.mockResolvedValue({
+      totalBudget: 100,
+      creatorCpv: 0.01,
+      campaignSubmissions: [
+        {
+          id: "older-submission",
+          eligibleViews: 9500,
+          earnedAmount: 95,
+          reviewedAt: new Date("2026-05-20T09:00:00.000Z"),
+          createdAt: new Date("2026-05-20T08:00:00.000Z"),
+          settledAt: null,
+          payoutRunItems: [],
+        },
+        {
+          id: "submission-1",
+          eligibleViews: 5000,
+          earnedAmount: 50,
+          reviewedAt: new Date("2026-05-20T10:00:00.000Z"),
+          createdAt: new Date("2026-05-20T10:00:00.000Z"),
+          settledAt: null,
+          payoutRunItems: [],
+        },
+      ],
+    });
+    routeMocks.tx.campaignSubmission.update
+      .mockResolvedValueOnce({ id: "submission-1", status: "APPROVED", earnedAmount: 50 })
+      .mockResolvedValueOnce({ id: "submission-1", status: "APPROVED", earnedAmount: 5 });
+
+    const response = await POST(
+      reviewRequest({ status: "APPROVED" }),
+      params,
+    );
+
+    expect(response.status).toBe(200);
+    expect(routeMocks.tx.campaignSubmission.update).toHaveBeenNthCalledWith(
+      1,
+      expect.objectContaining({
+        data: expect.objectContaining({
+          status: "APPROVED",
+          viewCount: 5000,
+          eligibleViews: 5000,
+          earnedAmount: 50,
+        }),
+      }),
+    );
+    expect(routeMocks.tx.campaignSubmission.update).toHaveBeenNthCalledWith(
+      2,
+      {
+        where: { id: "submission-1" },
+        data: { earnedAmount: 5 },
+      },
+    );
+    expect(routeMocks.tx.notification.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        type: "SUBMISSION_APPROVED",
+        data: expect.objectContaining({ earnedAmount: 5 }),
+      }),
+    });
+    expect(routeMocks.tx.campaignApplication.update).toHaveBeenCalledWith({
+      where: { id: "application-1" },
+      data: { earnedAmount: { increment: 5 } },
+    });
+  });
+
+  it("stores zero earnings after the campaign budget is exhausted while keeping eligible views", async () => {
+    routeMocks.submissionFindUnique.mockResolvedValue(
+      submission({
+        baselineViews: 0,
+        metricSnapshots: [{ viewCount: BigInt(5000) }],
+        campaign: {
+          id: "campaign-1",
+          name: "Spring Campaign",
+          totalBudget: 100,
+          creatorCpv: 0.01,
+          minimumPaidViews: 0,
+          maximumPaidViews: null,
+        },
+      }),
+    );
+    routeMocks.tx.campaign.findUnique.mockResolvedValue({
+      totalBudget: 100,
+      creatorCpv: 0.01,
+      campaignSubmissions: [
+        {
+          id: "older-submission",
+          eligibleViews: 10_000,
+          earnedAmount: 100,
+          reviewedAt: new Date("2026-05-20T09:00:00.000Z"),
+          createdAt: new Date("2026-05-20T08:00:00.000Z"),
+          settledAt: null,
+          payoutRunItems: [],
+        },
+        {
+          id: "submission-1",
+          eligibleViews: 5000,
+          earnedAmount: 50,
+          reviewedAt: new Date("2026-05-20T10:00:00.000Z"),
+          createdAt: new Date("2026-05-20T10:00:00.000Z"),
+          settledAt: null,
+          payoutRunItems: [],
+        },
+      ],
+    });
+    routeMocks.tx.campaignSubmission.update
+      .mockResolvedValueOnce({ id: "submission-1", status: "APPROVED", earnedAmount: 50 })
+      .mockResolvedValueOnce({ id: "submission-1", status: "APPROVED", earnedAmount: 0 });
+
+    const response = await POST(
+      reviewRequest({ status: "APPROVED" }),
+      params,
+    );
+
+    expect(response.status).toBe(200);
+    expect(routeMocks.tx.campaignSubmission.update).toHaveBeenNthCalledWith(
+      1,
+      expect.objectContaining({
+        data: expect.objectContaining({
+          eligibleViews: 5000,
+          earnedAmount: 50,
+        }),
+      }),
+    );
+    expect(routeMocks.tx.campaignSubmission.update).toHaveBeenNthCalledWith(
+      2,
+      {
+        where: { id: "submission-1" },
+        data: { earnedAmount: 0 },
+      },
+    );
+    expect(routeMocks.tx.notification.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        type: "SUBMISSION_APPROVED",
+        data: expect.objectContaining({ earnedAmount: 0 }),
+      }),
+    });
   });
 
   it("approves without manual views and leaves earnings at zero until metrics exist", async () => {

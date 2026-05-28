@@ -5,6 +5,8 @@ const createSignalMock = vi.fn();
 const updateSignalMock = vi.fn();
 const findManySubmissionMock = vi.fn();
 const updateSubmissionMock = vi.fn();
+const findUniqueCampaignMock = vi.fn();
+const transactionMock = vi.fn();
 const createMetricSnapshotMock = vi.fn();
 const findManyMetricSnapshotMock = vi.fn();
 const findFirstCampaignBenchmarkMock = vi.fn();
@@ -30,6 +32,10 @@ const availableCoreMetrics = {
 
 vi.mock("@/lib/prisma", () => ({
   prisma: {
+    $transaction: (...args: unknown[]) => transactionMock(...args),
+    campaign: {
+      findUnique: (...args: unknown[]) => findUniqueCampaignMock(...args),
+    },
     campaignSubmission: {
       findMany: (...args: unknown[]) => findManySubmissionMock(...args),
       update: (...args: unknown[]) => updateSubmissionMock(...args),
@@ -81,6 +87,8 @@ beforeEach(() => {
   updateSignalMock.mockReset();
   findManySubmissionMock.mockReset();
   updateSubmissionMock.mockReset();
+  findUniqueCampaignMock.mockReset();
+  transactionMock.mockReset();
   createMetricSnapshotMock.mockReset();
   findManyMetricSnapshotMock.mockReset();
   findFirstCampaignBenchmarkMock.mockReset();
@@ -101,6 +109,13 @@ beforeEach(() => {
   findFirstPlatformAccountSnapshotMock.mockResolvedValue(null);
   findManySubmissionMock.mockResolvedValue([]);
   updateSubmissionMock.mockResolvedValue({});
+  findUniqueCampaignMock.mockResolvedValue(null);
+  transactionMock.mockImplementation(async (callback) =>
+    callback({
+      campaign: { findUnique: (...args: unknown[]) => findUniqueCampaignMock(...args) },
+      campaignSubmission: { update: (...args: unknown[]) => updateSubmissionMock(...args) },
+    }),
+  );
   createMetricSnapshotMock.mockResolvedValue({
     id: "snap_1",
     viewCount: BigInt(0),
@@ -264,6 +279,107 @@ describe("pollSubmissions earnings refresh", () => {
           earnedAmount: 50,
         }),
       }),
+    );
+    expect(reconcileReferralPayoutForSubmissionMock).toHaveBeenCalledWith(
+      expect.any(Object),
+      "sub_1",
+    );
+  });
+
+  it("keeps refreshed views but caps refreshed earnings at the remaining campaign budget", async () => {
+    const capturedAt = new Date("2026-05-12T10:00:00.000Z");
+    findManySubmissionMock.mockResolvedValueOnce([
+      {
+        id: "sub_1",
+        postUrl: "https://www.instagram.com/reel/test",
+        creatorId: "creator_1",
+        campaignId: "campaign_1",
+        status: "APPROVED",
+        sourceConnectionType: "IG",
+        sourceConnectionId: "ig-conn-1",
+        baselineViews: 0,
+        settledAt: null,
+        payoutRunItems: [],
+        campaign: {
+          creatorCpv: 0.01,
+          minimumPaidViews: 0,
+          maximumPaidViews: null,
+        },
+      },
+    ]);
+    routeMetricMock.mockResolvedValueOnce({
+      ok: true,
+      source: "OAUTH_IG",
+      viewCount: BigInt(5000),
+      likeCount: 100,
+      commentCount: 10,
+      shareCount: 5,
+      saveCount: null,
+      watchTimeSec: null,
+      reachCount: null,
+      metricAvailability: availableCoreMetrics,
+      raw: null,
+      connection: { type: "IG", id: "conn_1" },
+    });
+    createMetricSnapshotMock.mockResolvedValueOnce({
+      id: "snap_1",
+      viewCount: BigInt(5000),
+      capturedAt,
+    });
+    findManyMetricSnapshotMock.mockResolvedValueOnce([
+      {
+        capturedAt,
+        viewCount: BigInt(5000),
+        likeCount: 100,
+        commentCount: 10,
+        shareCount: 5,
+      },
+    ]);
+    findUniqueCampaignMock.mockResolvedValueOnce({
+      totalBudget: 60,
+      creatorCpv: 0.01,
+      campaignSubmissions: [
+        {
+          id: "older_sub",
+          eligibleViews: 5000,
+          earnedAmount: 50,
+          reviewedAt: new Date("2026-05-12T08:00:00.000Z"),
+          createdAt: new Date("2026-05-12T07:55:00.000Z"),
+          settledAt: null,
+          payoutRunItems: [],
+        },
+        {
+          id: "sub_1",
+          eligibleViews: 5000,
+          earnedAmount: 50,
+          reviewedAt: new Date("2026-05-12T09:00:00.000Z"),
+          createdAt: new Date("2026-05-12T08:55:00.000Z"),
+          settledAt: null,
+          payoutRunItems: [],
+        },
+      ],
+    });
+
+    const result = await pollSubmissions({ tier: "hot", limit: 1 });
+
+    expect(result.succeeded).toBe(1);
+    expect(updateSubmissionMock).toHaveBeenNthCalledWith(
+      1,
+      expect.objectContaining({
+        where: { id: "sub_1" },
+        data: expect.objectContaining({
+          viewCount: 5000,
+          eligibleViews: 5000,
+          earnedAmount: 50,
+        }),
+      }),
+    );
+    expect(updateSubmissionMock).toHaveBeenNthCalledWith(
+      2,
+      {
+        where: { id: "sub_1" },
+        data: { earnedAmount: 10 },
+      },
     );
     expect(reconcileReferralPayoutForSubmissionMock).toHaveBeenCalledWith(
       expect.any(Object),
