@@ -377,6 +377,7 @@ model Brand {
   convertedLeads        BrandLead[]            @relation("ConvertedBrand")
   productionAssignments ProductionAssignment[]
   contractDocuments     ContractDocument[]
+  campaignReports       CampaignReport[]
 
   @@index([status])
   @@index([owner])
@@ -567,6 +568,7 @@ model Campaign {
   referralAttributions  CampaignReferralAttribution[]
   productionAssignments ProductionAssignment[]
   contractDocuments     ContractDocument[]
+  reports               CampaignReport[]
 
   @@index([status])
   @@index([deadline])
@@ -593,6 +595,36 @@ enum Platform {
   YOUTUBE_SHORTS
   FACEBOOK
   X
+}
+
+model CampaignReport {
+  id                          String               @id @default(cuid())
+  title                       String
+  status                      CampaignReportStatus @default(DRAFT)
+  brandId                     String?
+  brand                       Brand?               @relation(fields: [brandId], references: [id], onDelete: SetNull)
+  campaignId                  String
+  campaign                    Campaign             @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  periodStart                 DateTime?
+  periodEnd                   DateTime?
+  executiveSummary            String               @db.Text
+  keyTakeaways                Json                 @default("[]")
+  learnings                   Json                 @default("[]")
+  nextCampaignRecommendations Json                 @default("[]")
+  sectionSettings             Json                 @default("{}")
+  createdBy                   String?
+  createdAt                   DateTime             @default(now())
+  updatedAt                   DateTime             @updatedAt
+
+  @@index([status, updatedAt])
+  @@index([brandId])
+  @@index([campaignId])
+  @@index([periodStart, periodEnd])
+}
+
+enum CampaignReportStatus {
+  DRAFT
+  FINAL
 }
 
 // ─────────────────────────────────────────
