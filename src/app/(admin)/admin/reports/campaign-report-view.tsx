@@ -6,7 +6,6 @@ import {
   DollarSign,
   FileText,
   RefreshCw,
-  ShieldCheck,
   Sparkles,
   Target,
   Users,
@@ -74,11 +73,12 @@ export function CampaignReportView({
     { label: "Goedgekeurde views", value: formatNumber(liveData.performance.approvedViews, "nl"), detail: percentOrDash(liveData.performance.goalCompletion, "van doel") },
     { label: "Doelvoortgang", value: percentOrDash(liveData.performance.goalCompletion), detail: liveData.performance.pacingStatus },
     { label: "Budget gebruikt", value: formatCurrency(liveData.performance.budgetUsed, "EUR", "nl"), detail: percentOrDash(liveData.performance.budgetUsedPercent, "verbruikt") },
-    { label: "Effectieve CPV", value: formatCpv(liveData.financial.effectiveCpv), detail: "goedgekeurde prestatie" },
+    { label: "Effectieve CPM", value: formatCpm(liveData.financial.effectiveCpm), detail: "per 1.000 goedgekeurde views" },
+    { label: "Overdelivery", value: formatNumber(liveData.financial.overdeliveryViews, "nl"), detail: overdeliveryDetail(liveData.financial.overdeliveryRate) },
     { label: "Goedgekeurde clips", value: formatNumber(liveData.performance.approvedClips, "nl"), detail: `${formatNumber(liveData.performance.totalSubmissions, "nl")} inzendingen` },
-    { label: "Actieve creators", value: formatNumber(liveData.performance.activeCreators, "nl"), detail: "campagnebijdragers" },
+    { label: "Unieke creators", value: formatNumber(liveData.performance.uniqueCreators, "nl"), detail: "creators met inzendingen" },
+    { label: "Unieke pages", value: formatNumber(liveData.performance.uniquePages, "nl"), detail: "pages met inzendingen" },
     { label: "Topplatform", value: topPlatform?.platform ?? "-", detail: topPlatform ? `${formatNumber(topPlatform.views, "nl")} views` : "onvoldoende data" },
-    { label: "Traffickwaliteit", value: liveData.quality.trafficQualityStatus, detail: "geldige views gecontroleerd" },
   ];
 
   return (
@@ -127,8 +127,9 @@ export function CampaignReportView({
             <div className={cn("mt-7 grid gap-4", widthMode === "full" ? "md:grid-cols-4" : "md:grid-cols-2")}>
               <SetupRow label="Campagnetype" value={editorialContent.campaignType || liveData.campaign.contentType || "Awareness"} />
               <SetupRow label="Platforms" value={liveData.campaign.platforms.join(", ") || "-"} />
-              <SetupRow label="Doelviews" value={liveData.campaign.goalViews ? formatNumber(liveData.campaign.goalViews, "nl") : "-"} />
+              <SetupRow label="Doelviews" value={formatGoalViews(liveData.campaign.goalViews, liveData.campaign.goalViewsSource)} />
               <SetupRow label="Budget" value={formatCurrency(liveData.campaign.totalBudget, "EUR", "nl")} />
+              <SetupRow label="Business CPM" value={formatCpm(liveData.campaign.businessCpm)} />
               <SetupRow label="Doelland" value={liveData.campaign.target.country ?? "-"} />
               <SetupRow label="Creatorcriteria" value={`${formatNumber(liveData.campaign.target.minFollowers, "nl")} min. volgers`} />
               <SetupRow label="Uitbetalingsregels" value={`${formatNumber(liveData.campaign.minimumPaidViews, "nl")} - ${liveData.campaign.maximumPaidViews ? formatNumber(liveData.campaign.maximumPaidViews, "nl") : "zonder limiet"} betaalde views`} />
@@ -152,7 +153,7 @@ export function CampaignReportView({
             <ReportHeading icon={<BarChart3 className="h-5 w-5" />} kicker="Businessresultaat" title="Prestatieoverzicht" />
             <div className={cn("mt-7 grid gap-3", widthMode === "full" ? "md:grid-cols-4" : "md:grid-cols-2")}>
               <MetricCard label="Goedgekeurde views" value={formatNumber(liveData.performance.approvedViews, "nl")} detail={percentOrDash(liveData.performance.goalCompletion, "van doel")} />
-              <MetricCard label="Pacingstatus" value={liveData.performance.pacingStatus} detail="doelvoortgang vs verstreken tijd" />
+              <MetricCard label="Pacingstatus" value={liveData.performance.pacingStatus} detail={pacingDetail(liveData.performance.pacingStatus)} />
               <MetricCard label="Goedgekeurde clips" value={formatNumber(liveData.performance.approvedClips, "nl")} detail={percentOrDash(liveData.performance.approvalRate, "goedkeuringspercentage")} />
               <MetricCard label="Engagement" value={formatNumber(liveData.platformBreakdown.reduce((sum, row) => sum + row.engagement, 0), "nl")} detail="likes, comments en shares" />
             </div>
@@ -169,12 +170,14 @@ export function CampaignReportView({
               <MetricCard label="Totaalbudget" value={formatCurrency(liveData.financial.totalBudget, "EUR", "nl")} detail="campagneallocatie" />
               <MetricCard label="Budget gebruikt" value={formatCurrency(liveData.financial.budgetUsed, "EUR", "nl")} detail={percentOrDash(liveData.performance.budgetUsedPercent, "gebruikt")} />
               <MetricCard label="Resterend budget" value={formatCurrency(liveData.financial.budgetRemaining, "EUR", "nl")} detail="beschikbaar na goedgekeurde delivery" />
-              <MetricCard label="Effectieve CPV" value={formatCpv(liveData.financial.effectiveCpv)} detail="goedgekeurde betaalbare views" />
+              <MetricCard label="Effectieve CPM" value={formatCpm(liveData.financial.effectiveCpm)} detail="per 1.000 goedgekeurde views" />
               <MetricCard label="Kosten per clip" value={formatNullableCurrency(liveData.financial.costPerApprovedClip)} detail="goedgekeurde clips" />
-              <MetricCard label="Kosten per actieve creator" value={formatNullableCurrency(liveData.financial.costPerActiveCreator)} detail="actieve creatorbasis" />
-              <MetricCard label="Betaalbare views" value={formatNumber(liveData.financial.approvedPayableViews, "nl")} detail="geldige goedgekeurde views" />
+              <MetricCard label="Kosten per unieke creator" value={formatNullableCurrency(liveData.financial.costPerActiveCreator)} detail="creators met inzendingen" />
+              <MetricCard label="Betaalde viewbasis" value={formatNumber(liveData.financial.approvedPayableViews, "nl")} detail="views volgens CPM-spend" />
+              <MetricCard label="Overdelivery" value={formatNumber(liveData.financial.overdeliveryViews, "nl")} detail={overdeliveryDetail(liveData.financial.overdeliveryRate)} />
               <MetricCard label="Forecast views" value={liveData.financial.forecastApprovedViews == null ? "-" : formatNumber(liveData.financial.forecastApprovedViews, "nl")} detail="lineaire voortzetting" />
             </div>
+            <OverdeliveryBlock financial={liveData.financial} />
             <InsightNote text={editorialContent.financialNote || liveData.financial.unusedBudgetExplanation} />
           </ReportPage>
         ) : null}
@@ -183,7 +186,7 @@ export function CampaignReportView({
           <ReportPage widthMode={widthMode}>
             <ReportHeading icon={<Target className="h-5 w-5" />} kicker="Kanaaldelivery" title="Platformprestaties" />
             <PlatformPerformance rows={liveData.platformBreakdown} recommendations={editorialContent.platformRecommendations} />
-            <InsightNote text={topPlatform ? `${topPlatform.platform} is momenteel het sterkste schaalkanaal. Vergelijk CPV en engagementpercentage voordat je de volgende budgetsplit verschuift.` : "Er is nog niet genoeg goedgekeurde platformdata om een budgetverschuiving aan te bevelen."} />
+            <InsightNote text={topPlatform ? `${topPlatform.platform} is momenteel het sterkste schaalkanaal. Vergelijk CPM en engagementpercentage voordat je de volgende budgetsplit verschuift.` : "Er is nog niet genoeg goedgekeurde platformdata om een budgetverschuiving aan te bevelen."} />
           </ReportPage>
         ) : null}
 
@@ -205,7 +208,7 @@ export function CampaignReportView({
 
         {enabled("creatorPerformance") ? (
           <ReportPage widthMode={widthMode}>
-            <ReportHeading icon={<Users className="h-5 w-5" />} kicker={`${liveData.performance.activeCreators} actieve creators`} title="Creatorprestaties" />
+            <ReportHeading icon={<Users className="h-5 w-5" />} kicker={`${liveData.performance.uniqueCreators} unieke creators`} title="Creatorprestaties" />
             <CreatorTable rows={liveData.creators.slice(0, 10)} />
             <div className="mt-6">
               <h3 className="text-sm font-semibold text-neutral-950">Aanbevolen creatorpool</h3>
@@ -232,22 +235,6 @@ export function CampaignReportView({
             <ReportHeading icon={<Users className="h-5 w-5" />} kicker="Communitygroei" title="Communityactivatie" />
             <CommunityActivation data={liveData} />
             <InsightNote text="Communityactivatie is het meest nuttig wanneer creatorwerving of referraldistributie een expliciet campagnedoel is." />
-          </ReportPage>
-        ) : null}
-
-        {enabled("quality") ? (
-          <ReportPage widthMode={widthMode}>
-            <ReportHeading icon={<ShieldCheck className="h-5 w-5" />} kicker="Goedgekeurde prestaties" title="Kwaliteit en compliance" />
-            <div className={cn("mt-7 grid gap-3", widthMode === "full" ? "md:grid-cols-4" : "md:grid-cols-2")}>
-              <MetricCard label="Traffickwaliteit" value={liveData.quality.trafficQualityStatus} detail="gecontroleerd voor rapportage" />
-              <MetricCard label="Goedgekeurde clips" value={formatNumber(liveData.performance.approvedClips, "nl")} detail="opgenomen in rapportage" />
-              <MetricCard label="Uitgesloten clips" value={formatNumber(liveData.quality.excludedClips, "nl")} detail="tellen niet mee in goedgekeurde views" />
-              <MetricCard label="Uitgesloten views" value={formatNumber(liveData.quality.excludedViews, "nl")} detail="niet-kwalificerende activiteit" />
-            </div>
-            <p className="mt-6 rounded-lg border border-neutral-200 bg-neutral-50 p-4 text-sm leading-6 text-neutral-700">
-              {editorialContent.qualityNote || liveData.quality.clientSummary}
-            </p>
-            <InsightNote text="Alleen goedgekeurde prestaties tellen mee in campagneresultaten, uitbetalingsberekeningen en klanttotalen." />
           </ReportPage>
         ) : null}
 
@@ -388,10 +375,11 @@ function TimelineChart({ rows }: { rows: CampaignReportLiveData["timeline"] }) {
       {visible.length === 0 ? (
         <EmptyPreviewLine text="Geen metricsnapshots in deze periode." />
       ) : (
-        <div className="flex h-36 items-end gap-1">
+        <div className="flex h-44 items-end gap-1">
           {visible.map((row) => (
-            <div key={row.date} className="flex min-w-0 flex-1 flex-col items-center gap-2">
-              <div className="w-full rounded-t bg-neutral-900" style={{ height: `${Math.max(6, (row.views / max) * 128)}px` }} title={`${row.date}: ${formatNumber(row.views, "nl")} views`} />
+            <div key={row.date} className="flex min-w-0 flex-1 flex-col items-center justify-end gap-1">
+              <span className="w-full truncate text-center text-[10px] font-semibold tabular-nums text-neutral-700">{formatNumber(row.views, "nl")}</span>
+              <div className="w-full rounded-t bg-neutral-900" style={{ height: `${Math.max(6, (row.views / max) * 112)}px` }} title={`${row.date}: ${formatNumber(row.views, "nl")} views`} />
               <span className="w-full truncate text-center text-[10px] text-neutral-400">{new Date(row.date).getDate()}</span>
             </div>
           ))}
@@ -436,7 +424,7 @@ function PlatformPerformance({
             <MiniStat label="Views" value={formatNumber(row.views, "nl")} />
             <MiniStat label="Clips" value={formatNumber(row.clips, "nl")} />
             <MiniStat label="Gem. views" value={formatNumber(row.averageViewsPerClip, "nl")} />
-            <MiniStat label="CPV" value={formatCpv(row.effectiveCpv)} />
+            <MiniStat label="CPM" value={formatCpm(row.effectiveCpm)} />
             <MiniStat label="Eng. %" value={formatPercent(row.engagementRate)} />
           </div>
         </div>
@@ -595,14 +583,44 @@ function percentOrDash(value: number | null | undefined, label?: string) {
   return label ? `${formatPercent(value)} ${label}` : formatPercent(value);
 }
 
-function formatCpv(value: number | null | undefined) {
+function pacingDetail(status: CampaignReportLiveData["performance"]["pacingStatus"]) {
+  if (status === "Tijdschema ontbreekt") return "startdatum of deadline ontbreekt";
+  return "doelvoortgang vs verstreken tijd";
+}
+
+function overdeliveryDetail(value: number | null | undefined) {
+  if (value == null || value <= 0) return "boven betaalde viewbasis";
+  return `${formatPercent(value)} boven betaalde viewbasis`;
+}
+
+function formatCpm(value: number | null | undefined) {
   if (value == null) return "-";
   return new Intl.NumberFormat("nl-NL", {
     style: "currency",
     currency: "EUR",
-    minimumFractionDigits: 4,
-    maximumFractionDigits: 4,
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
   }).format(value);
+}
+
+function OverdeliveryBlock({ financial }: { financial: CampaignReportLiveData["financial"] }) {
+  return (
+    <div className="mt-6 rounded-lg border border-neutral-200 p-4">
+      <p className="text-xs font-semibold uppercase tracking-[0.12em] text-neutral-400">Overdelivery</p>
+      <p className="mt-2 text-sm leading-6 text-neutral-700">
+        {financial.overdeliveryExplanation}
+        {financial.overdeliveryValue && financial.overdeliveryValue > 0
+          ? ` De extra mediawaarde op basis van de campagne-CPM is ${formatCurrency(financial.overdeliveryValue, "EUR", "nl")}.`
+          : ""}
+      </p>
+    </div>
+  );
+}
+
+function formatGoalViews(value: number | null | undefined, source: CampaignReportLiveData["campaign"]["goalViewsSource"]) {
+  if (!value) return "-";
+  const suffix = source === "budget_cpm" ? " (berekend)" : "";
+  return `${formatNumber(value, "nl")}${suffix}`;
 }
 
 function formatNullableCurrency(value: number | null | undefined) {

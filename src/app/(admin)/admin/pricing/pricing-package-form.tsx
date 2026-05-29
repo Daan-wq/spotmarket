@@ -32,7 +32,7 @@ export function PricingPackageForm() {
       includedClips: Number(formData.get("includedClips") || 0),
       includedViews: Number(formData.get("includedViews") || 0),
       creatorRatePerClip: Number(formData.get("creatorRatePerClip") || 0),
-      businessCpv: Number(formData.get("businessCpv") || 0),
+      businessCpv: Number(formData.get("businessCpm") || 0) / 1000,
       marginPercent: Number(formData.get("marginPercent") || 0),
       isActive: true,
       notes: String(formData.get("notes") ?? ""),
@@ -81,8 +81,8 @@ export function PricingPackageForm() {
           <input name="creatorRatePerClip" type="number" min="0" step="0.01" className="mt-2 h-11 w-full rounded-xl border border-neutral-200 px-3 text-sm outline-none focus:border-neutral-500" placeholder="35" />
         </label>
         <label>
-          <span className="text-xs font-semibold uppercase tracking-[0.14em] text-neutral-500">Business CPV</span>
-          <input name="businessCpv" type="number" min="0" step="0.000001" className="mt-2 h-11 w-full rounded-xl border border-neutral-200 px-3 text-sm outline-none focus:border-neutral-500" placeholder="0.008" />
+          <span className="text-xs font-semibold uppercase tracking-[0.14em] text-neutral-500">Business CPM</span>
+          <input name="businessCpm" type="number" min="0" step="0.01" className="mt-2 h-11 w-full rounded-xl border border-neutral-200 px-3 text-sm outline-none focus:border-neutral-500" placeholder="0.40" />
         </label>
         <label>
           <span className="text-xs font-semibold uppercase tracking-[0.14em] text-neutral-500">Marge %</span>

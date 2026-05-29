@@ -73,13 +73,21 @@ function numberOrZero(value: string): number {
   return numberOrNull(value) ?? 0;
 }
 
+export function calculateGoalViewsFromBudgetAndCpm(totalBudget: number, businessRatePerK: number): number | null {
+  if (totalBudget <= 0 || businessRatePerK <= 0) return null;
+  return Math.max(1, Math.round((totalBudget / businessRatePerK) * THOUSAND));
+}
+
 function dateOrNull(value: string): string | null {
   return value ? new Date(value).toISOString() : null;
 }
 
 export function buildCampaignEditPayload(state: CampaignEditFormState) {
+  const totalBudget = numberOrZero(state.totalBudget);
   const creatorRatePerK = numberOrZero(state.creatorRatePerK);
   const adminMarginPerK = numberOrZero(state.adminMarginPerK);
+  const businessRatePerK = creatorRatePerK + adminMarginPerK;
+  const goalViews = calculateGoalViewsFromBudgetAndCpm(totalBudget, businessRatePerK) ?? numberOrNull(state.goalViews);
 
   return {
     name: state.name.trim(),
@@ -110,8 +118,8 @@ export function buildCampaignEditPayload(state: CampaignEditFormState) {
     minEngagementRate: numberOrZero(state.minEngagementRate),
     bioRequirement: emptyToNull(state.bioRequirement),
     linkInBioRequired: emptyToNull(state.linkInBioRequired),
-    totalBudget: numberOrZero(state.totalBudget),
-    goalViews: numberOrNull(state.goalViews),
+    totalBudget,
+    goalViews,
     minimumPaidViews: numberOrZero(state.minimumPaidViews),
     maximumPaidViews: numberOrNull(state.maximumPaidViews),
     creatorRatePerK,

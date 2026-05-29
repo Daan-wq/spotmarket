@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   buildCampaignEditPayload,
+  calculateGoalViewsFromBudgetAndCpm,
   cpvToRatePerK,
   emptyToNull,
   parseLines,
@@ -53,6 +54,7 @@ describe("campaign edit helpers", () => {
   it("converts rate per thousand views to CPV and back", () => {
     expect(ratePerKToCpv(0.35)).toBe(0.00035);
     expect(cpvToRatePerK("0.00035")).toBe(0.35);
+    expect(calculateGoalViewsFromBudgetAndCpm(10_000, 0.45)).toBe(22_222_222);
   });
 
   it("parses newline-delimited arrays", () => {
@@ -79,7 +81,7 @@ describe("campaign edit helpers", () => {
       minFollowers: 0,
       minEngagementRate: 2.5,
       totalBudget: 10000,
-      goalViews: 5000000,
+      goalViews: 22222222,
       minimumPaidViews: 2000,
       maximumPaidViews: 100000,
       creatorRatePerK: 0.35,

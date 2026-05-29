@@ -32,7 +32,7 @@ export const DEFAULT_CAMPAIGN_REPORT_SECTIONS: CampaignReportSectionSettings = {
   creatorPerformance: true,
   audience: true,
   communityActivation: false,
-  quality: true,
+  quality: false,
   keyLearnings: true,
   nextCampaign: true,
   appendix: false,

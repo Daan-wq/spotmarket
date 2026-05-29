@@ -41,7 +41,11 @@ describe("buildCampaignReportLiveData", () => {
           creatorId: "creator-1",
           creatorLabel: "Alice",
           postUrl: "https://tiktok.com/@alice/video/1",
+          normalizedPlatform: "TIKTOK",
           sourcePlatform: "TIKTOK",
+          authorHandle: "alice",
+          sourceConnectionType: "TT",
+          sourceConnectionId: "tt-alice",
           status: "APPROVED",
           createdAt: new Date("2026-05-02T00:00:00.000Z"),
           eligibleViews: 400_000,
@@ -62,13 +66,19 @@ describe("buildCampaignReportLiveData", () => {
           creatorId: "creator-2",
           creatorLabel: "Bob",
           postUrl: "https://instagram.com/reel/2",
+          normalizedPlatform: "INSTAGRAM",
           sourcePlatform: "INSTAGRAM",
+          authorHandle: "bob",
+          sourceConnectionType: "IG",
+          sourceConnectionId: "ig-bob",
           status: "REJECTED",
           createdAt: new Date("2026-05-02T00:00:00.000Z"),
           viewCount: 90_000,
           claimedViews: 100_000,
           earnedAmount: 0,
-          metricSnapshots: [],
+          metricSnapshots: [
+            { capturedAt: new Date("2026-05-03T00:00:00.000Z"), source: "OAUTH_FAILED", viewCount: 90_000, likeCount: 0, commentCount: 0, shareCount: 0 },
+          ],
           signals: [{ type: "LOGO_MISSING", severity: "WARN", resolvedAt: new Date("2026-05-04T00:00:00.000Z") }],
           qcReviews: [{ decision: "REJECTED", brandFitScore: 3 }],
         },
@@ -78,6 +88,7 @@ describe("buildCampaignReportLiveData", () => {
           creatorLabel: "Alice",
           postUrl: "https://instagram.com/reel/3",
           sourcePlatform: "INSTAGRAM",
+          authorHandle: "alice-fruit",
           status: "NEEDS_REVISION",
           createdAt: new Date("2026-05-03T00:00:00.000Z"),
           claimedViews: 40_000,
@@ -127,6 +138,9 @@ describe("buildCampaignReportLiveData", () => {
     expect(report.performance.budgetUsed).toBe(320);
     expect(report.performance.budgetUsedPercent).toBe(0.32);
     expect(report.performance.costPerThousandViews).toBe(0.8);
+    expect(report.performance.uniqueCreators).toBe(2);
+    expect(report.performance.uniquePages).toBe(3);
+    expect(report.campaign.goalViewsSource).toBe("manual");
     expect(report.performance.approvalRate).toBeCloseTo(1 / 3);
     expect(report.platformBreakdown).toEqual([
       expect.objectContaining({
@@ -137,39 +151,123 @@ describe("buildCampaignReportLiveData", () => {
         cost: 320,
         averageViewsPerClip: 400_000,
         effectiveCpv: 0.0008,
+        effectiveCpm: 0.8,
         engagementRate: 0.0525,
       }),
     ]);
-    expect(report.topContent[1]).toMatchObject({ id: "sub-2", views: 90_000 });
-    expect(report.performance.pacingStatus).toBe("Behind pace");
+    expect(report.topContent[1]).toMatchObject({ id: "sub-2", platform: "Instagram", views: 90_000 });
+    expect(report.platformBreakdown.some((row) => row.platform === "Oauth Failed")).toBe(false);
+    expect(report.performance.pacingStatus).toBe("Achter op schema");
     expect(report.financial).toMatchObject({
       totalBudget: 1000,
       budgetUsed: 320,
       budgetRemaining: 680,
       approvedPayableViews: 400_000,
+      overdeliveryViews: 0,
       effectiveCpv: 0.0008,
+      effectiveCpm: 0.8,
       costPerApprovedClip: 320,
       costPerActiveCreator: 160,
     });
     expect(report.quality.openSignals).toBe(1);
     expect(report.quality.resolvedSignals).toBe(1);
-    expect(report.quality.trafficQualityStatus).toBe("Passed with exclusions");
+    expect(report.quality.trafficQualityStatus).toBe("Goedgekeurd met uitsluitingen");
     expect(report.quality.excludedClips).toBe(2);
     expect(report.quality.excludedViews).toBe(130_000);
     expect(report.audience.sampleCount).toBe(1);
     expect(report.audience.ageBuckets["18-24"]).toBe(60);
-    expect(report.audience.fitStatus).toBe("Strong match");
+    expect(report.audience.fitStatus).toBe("Sterke match");
     expect(report.creators[0]).toMatchObject({
       creator: "Alice",
       approvalRate: 0.5,
-      reliabilityStatus: "Needs review",
+      reliabilityStatus: "Controleren",
     });
     expect(report.referral.inviteCount).toBe(1);
     expect(report.defaults.editorialContent.campaignType).toBe("Awareness");
     expect(report.defaults.editorialContent.contentInsights.length).toBeGreaterThan(0);
     expect(report.defaults.title).toBe("Bram's Fruit campagnerapport");
     expect(report.defaults.executiveSummary).toContain("goedgekeurde views");
+    expect(report.defaults.executiveSummary).toContain("effectieve CPM");
+    expect(report.defaults.executiveSummary).not.toContain("CPV");
+    expect(report.defaults.editorialContent.platformRecommendations.TikTok).not.toContain("reach-tests");
+    expect(report.defaults.editorialContent.platformRecommendations.TikTok).toContain("effectieve CPM");
+    expect(report.defaults.editorialContent.financialNote).toContain("Overdelivery");
     expect(report.defaults.keyTakeaways.length).toBeGreaterThanOrEqual(3);
+  });
+
+  it("shows overdelivery when approved views exceed the paid CPM view basis", () => {
+    const report = buildCampaignReportLiveData({
+      campaign,
+      periodStart: new Date("2026-05-01T00:00:00.000Z"),
+      periodEnd: new Date("2026-05-31T00:00:00.000Z"),
+      generatedAt: new Date("2026-05-10T00:00:00.000Z"),
+      submissions: [
+        {
+          id: "sub-overdelivery",
+          creatorId: "creator-1",
+          creatorLabel: "Alice",
+          postUrl: "https://tiktok.com/@alice/video/1",
+          normalizedPlatform: "TIKTOK",
+          sourcePlatform: "TIKTOK",
+          authorHandle: "alice",
+          sourceConnectionType: "TT",
+          sourceConnectionId: "tt-alice",
+          status: "APPROVED",
+          createdAt: new Date("2026-05-02T00:00:00.000Z"),
+          eligibleViews: 250_000,
+          viewCount: 400_000,
+          earnedAmount: 200,
+          metricSnapshots: [],
+          signals: [],
+          qcReviews: [],
+        },
+      ],
+      attributions: [],
+      audienceSnapshots: [],
+    });
+
+    expect(report.performance.approvedViews).toBe(400_000);
+    expect(report.financial.approvedPayableViews).toBe(250_000);
+    expect(report.financial.overdeliveryViews).toBe(150_000);
+    expect(report.financial.overdeliveryRate).toBe(0.6);
+    expect(report.financial.overdeliveryValue).toBe(120);
+    expect(report.financial.overdeliveryExplanation).toContain("extra views");
+    expect(report.defaults.keyTakeaways.some((takeaway) => takeaway.includes("overdelivery"))).toBe(true);
+  });
+
+  it("calculates a fixed goal view target from budget and business CPM when no manual target exists", () => {
+    const report = buildCampaignReportLiveData({
+      campaign: { ...campaign, goalViews: null },
+      periodStart: new Date("2026-05-01T00:00:00.000Z"),
+      periodEnd: new Date("2026-05-31T00:00:00.000Z"),
+      generatedAt: new Date("2026-05-29T00:00:00.000Z"),
+      submissions: [
+        {
+          id: "sub-1",
+          creatorId: "creator-1",
+          creatorLabel: "Alice",
+          postUrl: "https://tiktok.com/@alice/video/1",
+          normalizedPlatform: "TIKTOK",
+          sourcePlatform: "TIKTOK",
+          authorHandle: "alice",
+          sourceConnectionType: "TT",
+          sourceConnectionId: "tt-alice",
+          status: "APPROVED",
+          createdAt: new Date("2026-05-02T00:00:00.000Z"),
+          eligibleViews: 400_000,
+          earnedAmount: 320,
+          metricSnapshots: [],
+          signals: [],
+          qcReviews: [],
+        },
+      ],
+      attributions: [],
+      audienceSnapshots: [],
+    });
+
+    expect(report.campaign.goalViews).toBe(1_250_000);
+    expect(report.campaign.goalViewsSource).toBe("budget_cpm");
+    expect(report.performance.goalCompletion).toBeCloseTo(0.32);
   });
 });
 

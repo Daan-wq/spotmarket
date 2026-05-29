@@ -21,12 +21,12 @@ export default async function AdminStatsPage({ searchParams }: PageProps) {
     <div className="w-full p-6 space-y-6">
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
-          <Breadcrumbs items={[{ label: "Stats" }]} />
+          <Breadcrumbs items={[{ label: "Statistieken" }]} />
           <h1 className="text-2xl font-bold mt-2" style={{ color: "var(--text-primary)" }}>
-            Fleet performance
+            Fleetprestaties
           </h1>
           <p className="text-sm mt-1" style={{ color: "var(--text-secondary)" }}>
-            {range.label} across all creators and platforms
+            {range.label} over alle creators en platformen
           </p>
         </div>
         <TimeRangeSelector value={range.key} />
@@ -40,13 +40,13 @@ export default async function AdminStatsPage({ searchParams }: PageProps) {
           hint={range.label}
         />
         <KpiCard
-          label="Actieve creators"
+          label="Unieke creators"
           value={stats.activeCreators.value.toLocaleString("nl-NL")}
-          hint="≥1 verified connection"
+          hint="minimaal 1 geverifieerde koppeling"
         />
         <KpiCard
-          label="Effectieve CPV"
-          value={`€${stats.effectiveCpv.value.toFixed(6)}`}
+          label="Effectieve CPM"
+          value={`€${(stats.effectiveCpv.value * 1_000).toFixed(2)}`}
           trend={stats.effectiveCpv.delta}
           hint={range.label}
         />

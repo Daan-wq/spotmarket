@@ -45,7 +45,7 @@ export function KpiCard({ label, value, hint, trend, tone = "default", href }: K
           className="text-[11px] mt-1 font-medium"
           style={{ color: trend > 0 ? "var(--success-text)" : trend < 0 ? "var(--error-text)" : "var(--text-secondary)" }}
         >
-          {trend > 0 ? "▲" : trend < 0 ? "▼" : "→"} {Math.abs(trend).toFixed(1)}% vs prior
+          {trend > 0 ? "▲" : trend < 0 ? "▼" : "→"} {Math.abs(trend).toFixed(1)}% vs vorige periode
         </p>
       )}
     </div>

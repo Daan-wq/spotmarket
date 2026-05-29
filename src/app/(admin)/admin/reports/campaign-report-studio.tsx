@@ -11,7 +11,6 @@ import {
   RefreshCw,
   Save,
   Search,
-  ShieldCheck,
   SlidersHorizontal,
   Sparkles,
   Users,
@@ -22,7 +21,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Tabs } from "@/components/ui/tabs";
-import { formatCurrency, formatDate, formatNumber, titleCaseEnum } from "@/lib/admin/agency-format";
+import { formatCurrency, formatDate, formatNumber } from "@/lib/admin/agency-format";
 import {
   CAMPAIGN_REPORT_SECTION_KEYS,
   DEFAULT_CAMPAIGN_REPORT_SECTIONS,
@@ -117,6 +116,8 @@ const SECTION_LABELS: Record<CampaignReportSectionKey, string> = {
   nextCampaign: "Aanbevelingen voor volgende campagne",
   appendix: "Appendix",
 };
+
+const EDITABLE_SECTION_KEYS = CAMPAIGN_REPORT_SECTION_KEYS.filter((sectionKey) => sectionKey !== "quality");
 
 const STATUS_TABS: Array<{ label: string; value: ReportFilters["status"] }> = [
   { label: "Alles", value: "ALL" },
@@ -361,8 +362,8 @@ export function CampaignReportStudio({
       <div className="report-studio-chrome flex items-center justify-between gap-3">
         <Tabs
           items={[
-            { key: "edit", label: "Edit" },
-            { key: "report", label: "Full report" },
+            { key: "edit", label: "Bewerken" },
+            { key: "report", label: "Rapport" },
           ]}
           value={activeTab}
           onChange={(key) => switchTab(key as ReportStudioTab)}
@@ -675,10 +676,7 @@ function EditorPanel({
         </Field>
       </EditorSection>
 
-      <EditorSection title="Kwaliteit, learnings en volgende plan">
-        <Field label="Kwaliteitsnotitie">
-          <textarea value={editorialContent.qualityNote} onChange={(event) => updateEditorial("qualityNote", event.target.value)} rows={4} className="report-input resize-y leading-6" />
-        </Field>
+      <EditorSection title="Learnings en volgend plan">
         <Field label="Belangrijkste learnings">
           <textarea
             value={editorialContent.keyLearnings.join("\n")}
@@ -714,7 +712,7 @@ function EditorPanel({
           <Eye className="h-4 w-4 text-neutral-400" />
         </div>
         <div className="space-y-1.5">
-          {CAMPAIGN_REPORT_SECTION_KEYS.map((sectionKey) => (
+          {EDITABLE_SECTION_KEYS.map((sectionKey) => (
             <label key={sectionKey} className="flex items-center justify-between gap-3 rounded-lg border border-neutral-200 px-3 py-2 text-sm">
               <span className="font-medium text-neutral-700">{SECTION_LABELS[sectionKey]}</span>
               <input
@@ -770,7 +768,8 @@ function ReportPreview({
     { label: "Goedgekeurde views", value: formatNumber(liveData.performance.approvedViews, "nl"), detail: percentOrDash(liveData.performance.goalCompletion, "van doel") },
     { label: "Budget gebruikt", value: formatCurrency(liveData.performance.budgetUsed, "EUR", "nl"), detail: percentOrDash(liveData.performance.budgetUsedPercent, "verbruikt") },
     { label: "Goedgekeurde clips", value: formatNumber(liveData.performance.approvedClips, "nl"), detail: `${formatNumber(liveData.performance.totalSubmissions, "nl")} inzendingen` },
-    { label: "CPM", value: liveData.performance.costPerThousandViews == null ? "-" : formatCurrency(liveData.performance.costPerThousandViews, "EUR", "nl"), detail: "betaalbare views" },
+    { label: "CPM", value: liveData.financial.effectiveCpm == null ? "-" : formatCurrency(liveData.financial.effectiveCpm, "EUR", "nl"), detail: "per 1.000 goedgekeurde views" },
+    { label: "Overdelivery", value: formatNumber(liveData.financial.overdeliveryViews, "nl"), detail: overdeliveryDetail(liveData.financial.overdeliveryRate) },
   ];
 
   return (
@@ -810,9 +809,9 @@ function ReportPreview({
             <ReportHeading icon={<CalendarDays className="h-5 w-5" />} kicker={reportPeriod} title="Campagne-inrichting" />
             <div className="mt-7 grid gap-4 md:grid-cols-2">
               <SetupRow label="Platforms" value={liveData.campaign.platforms.join(", ") || "-"} />
-              <SetupRow label="Doelviews" value={liveData.campaign.goalViews ? formatNumber(liveData.campaign.goalViews, "nl") : "-"} />
+              <SetupRow label="Doelviews" value={formatGoalViews(liveData.campaign.goalViews, liveData.campaign.goalViewsSource)} />
               <SetupRow label="Budget" value={formatCurrency(liveData.campaign.totalBudget, "EUR", "nl")} />
-              <SetupRow label="Business CPV" value={formatCurrency(liveData.campaign.businessCpv, "EUR", "nl")} />
+              <SetupRow label="Business CPM" value={formatCurrency(liveData.campaign.businessCpm, "EUR", "nl")} />
               <SetupRow label="Min. volgers" value={formatNumber(liveData.campaign.target.minFollowers, "nl")} />
               <SetupRow label="Doelland" value={liveData.campaign.target.country ?? "-"} />
             </div>
@@ -864,7 +863,7 @@ function ReportPreview({
 
         {enabled("creatorPerformance") ? (
           <ReportPage>
-            <ReportHeading icon={<Users className="h-5 w-5" />} kicker={`${liveData.performance.activeCreators} actieve creators`} title="Creatorprestaties" />
+            <ReportHeading icon={<Users className="h-5 w-5" />} kicker={`${liveData.performance.uniqueCreators} unieke creators`} title="Creatorprestaties" />
             <CreatorTable rows={liveData.creators.slice(0, 10)} />
             <ReferralSummary data={liveData} />
           </ReportPage>
@@ -877,21 +876,6 @@ function ReportPreview({
               <Distribution title="Toplanden" rows={liveData.audience.topCountries.map((row) => ({ label: row.code, value: row.share }))} suffix="%" />
               <Distribution title="Leeftijdsgroepen" rows={objectRows(liveData.audience.ageBuckets)} suffix="%" />
               <Distribution title="Genderverdeling" rows={objectRows(liveData.audience.genderSplit)} suffix="%" />
-            </div>
-          </ReportPage>
-        ) : null}
-
-        {enabled("quality") ? (
-          <ReportPage>
-            <ReportHeading icon={<ShieldCheck className="h-5 w-5" />} kicker="QC en signalen" title="Kwaliteit en compliance" />
-            <div className="mt-7 grid gap-4 md:grid-cols-3">
-              <QualityMetric label="Open signalen" value={liveData.quality.openSignals} />
-              <QualityMetric label="Kritieke signalen" value={liveData.quality.criticalSignals} />
-              <QualityMetric label="Opgeloste signalen" value={liveData.quality.resolvedSignals} />
-            </div>
-            <div className="mt-6 grid gap-6 md:grid-cols-2">
-              <Distribution title="Signaaltypes" rows={objectRows(liveData.quality.signalCounts)} />
-              <Distribution title="QC-beslissingen" rows={objectRows(liveData.quality.qcDecisionCounts)} />
             </div>
           </ReportPage>
         ) : null}
@@ -1003,10 +987,11 @@ function TimelineChart({ rows }: { rows: CampaignReportLiveData["timeline"] }) {
       {visible.length === 0 ? (
         <EmptyPreviewLine text="Geen metricsnapshots in deze periode." />
       ) : (
-        <div className="flex h-36 items-end gap-1">
+        <div className="flex h-44 items-end gap-1">
           {visible.map((row) => (
-            <div key={row.date} className="flex min-w-0 flex-1 flex-col items-center gap-2">
-              <div className="w-full rounded-t bg-neutral-900" style={{ height: `${Math.max(6, (row.views / max) * 128)}px` }} title={`${row.date}: ${formatNumber(row.views, "nl")} views`} />
+            <div key={row.date} className="flex min-w-0 flex-1 flex-col items-center justify-end gap-1">
+              <span className="w-full truncate text-center text-[10px] font-semibold tabular-nums text-neutral-700">{formatNumber(row.views, "nl")}</span>
+              <div className="w-full rounded-t bg-neutral-900" style={{ height: `${Math.max(6, (row.views / max) * 112)}px` }} title={`${row.date}: ${formatNumber(row.views, "nl")} views`} />
               <span className="w-full truncate text-center text-[10px] text-neutral-400">{new Date(row.date).getDate()}</span>
             </div>
           ))}
@@ -1151,15 +1136,6 @@ function Distribution({ title, rows, suffix = "" }: { title: string; rows: Array
   );
 }
 
-function QualityMetric({ label, value }: { label: string; value: number }) {
-  return (
-    <div className="rounded-lg border border-neutral-200 p-5">
-      <p className="text-xs font-semibold uppercase tracking-[0.12em] text-neutral-400">{label}</p>
-      <p className="mt-3 text-3xl font-semibold text-neutral-950">{formatNumber(value, "nl")}</p>
-    </div>
-  );
-}
-
 function BulletList({ items }: { items: string[] }) {
   if (items.length === 0) return <p className="mt-3 text-sm text-neutral-500">Geen items.</p>;
   return (
@@ -1212,6 +1188,17 @@ function formatPercent(value: number | null | undefined) {
 function percentOrDash(value: number | null | undefined, label: string) {
   if (value == null) return "-";
   return `${formatPercent(value)} ${label}`;
+}
+
+function overdeliveryDetail(value: number | null | undefined) {
+  if (value == null || value <= 0) return "boven betaalde viewbasis";
+  return `${formatPercent(value)} boven betaalde viewbasis`;
+}
+
+function formatGoalViews(value: number | null | undefined, source: CampaignReportLiveData["campaign"]["goalViewsSource"]) {
+  if (!value) return "-";
+  const suffix = source === "budget_cpm" ? " (berekend)" : "";
+  return `${formatNumber(value, "nl")}${suffix}`;
 }
 
 function reportStatusLabel(status: CampaignReportStatusValue) {

@@ -155,7 +155,7 @@ export function CampaignCreateForm() {
   const [statValues, setStatValues] = useState<Record<string, string>>({});
 
   // — Full details (revealed after approval) —
-  const [goalViewsRaw, setGoalViewsRaw] = useState("");
+  const [businessCpmRaw, setBusinessCpmRaw] = useState("");
   const [minimumPaidViewsRaw, setMinimumPaidViewsRaw] = useState("");
   const [maximumPaidViewsRaw, setMaximumPaidViewsRaw] = useState("");
   const [adminMarginPerK, setAdminMarginPerK] = useState("0.03");
@@ -178,12 +178,12 @@ export function CampaignCreateForm() {
   const [maxSlots, setMaxSlots] = useState("");
 
   const budget = parseFloat(totalBudget) || 0;
-  const goalViews = parseViews(goalViewsRaw);
+  const businessPerK = parseFloat(businessCpmRaw) || 0;
+  const goalViews = budget > 0 && businessPerK > 0 ? Math.max(1, Math.round((budget / businessPerK) * 1_000)) : null;
   const minimumPaidViews = minimumPaidViewsRaw.trim() ? parseViews(minimumPaidViewsRaw) : 0;
   const maximumPaidViews = maximumPaidViewsRaw.trim() ? parseViews(maximumPaidViewsRaw) : null;
   const margin = parseFloat(adminMarginPerK) || 0;
-  const businessPerK = goalViews && budget > 0 ? (budget / goalViews) * 1_000 : null;
-  const creatorPerK = businessPerK !== null ? businessPerK - margin : null;
+  const creatorPerK = businessPerK > 0 ? businessPerK - margin : null;
 
   function toggleContentType(ct: string) {
     setSelectedContentTypes((prev) =>
@@ -228,6 +228,7 @@ export function CampaignCreateForm() {
 
     if (!name.trim()) { setError("Campagnenaam is verplicht"); return; }
     if (!budget || budget <= 0) { setError("Budget moet een positief getal zijn"); return; }
+    if (!businessPerK || businessPerK <= 0 || !goalViews) { setError("Business CPM moet hoger zijn dan 0"); return; }
     if (!deadline) { setError("Deadline is verplicht"); return; }
     if (creatorPerK !== null && creatorPerK < 0) { setError("Marge is te hoog - creatortarief zou negatief worden"); return; }
     if (minimumPaidViewsRaw.trim() && minimumPaidViews === null) { setError("Minimum betaalde views moet een heel getal zijn"); return; }
@@ -569,17 +570,21 @@ export function CampaignCreateForm() {
 
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
           <div>
-            <label style={labelStyle}>Doelviews</label>
+            <label style={labelStyle}>Business CPM</label>
             <input
               style={inputStyle}
-              value={goalViewsRaw}
-              onChange={(e) => setGoalViewsRaw(e.target.value)}
-              placeholder="e.g. 200m, 500k"
+              type="number"
+              min="0"
+              step="0.01"
+              value={businessCpmRaw}
+              onChange={(e) => setBusinessCpmRaw(e.target.value)}
+              placeholder="0.40"
             />
             {goalViews ? (
-              <p style={{ fontSize: "11px", marginTop: "4px", color: "var(--text-muted, var(--text-secondary))" }}>{fmtViews(goalViews)}</p>
-            ) : goalViewsRaw ? (
-              <p style={{ fontSize: "11px", marginTop: "4px", color: "var(--error, #dc2626)" }}>Invalid — try: 200m, 500k</p>
+              <p style={{ fontSize: "11px", marginTop: "4px", color: "var(--text-muted, var(--text-secondary))" }}>Doelviews: {fmtViews(goalViews)}</p>
+            ) : null}
+            {!goalViews && businessCpmRaw ? (
+              <p style={{ fontSize: "11px", marginTop: "4px", color: "var(--error, #dc2626)" }}>Vul een budget en Business CPM hoger dan 0 in</p>
             ) : null}
           </div>
           <div>
@@ -623,7 +628,7 @@ export function CampaignCreateForm() {
         </div>
 
         {/* Economics preview */}
-        {businessPerK !== null && creatorPerK !== null && goalViews && (
+        {businessPerK > 0 && creatorPerK !== null && goalViews && (
           <div style={{ borderRadius: "8px", padding: "12px 14px", background: "var(--bg-secondary, var(--bg-primary))", border: "1px solid var(--border)", fontSize: "13px", display: "flex", flexDirection: "column", gap: "6px" }}>
             <div style={{ display: "flex", justifyContent: "space-between", color: "var(--text-secondary)" }}>
               <span>Klant betaalt (per 1K views)</span>

@@ -48,6 +48,10 @@ const BLOCKED_COPY_PATTERNS = [
   /\bWeekly Numbers\b/,
   /\bContent Production\b/,
   /\bSubmission\b/,
+  /\bCPV\b/,
+  /\bOauth Failed\b/,
+  /\bInsufficient data\b/,
+  /\breach-tests\b/,
 ] as const;
 
 const BLOCKED_VISIBLE_FIELD_PATTERNS = [

@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { CampaignImageUploadField } from "@/components/campaigns/campaign-image-upload-field";
 import {
   buildCampaignEditPayload,
+  calculateGoalViewsFromBudgetAndCpm,
   cpvToRatePerK,
   type CampaignEditFormState,
 } from "@/lib/campaign-edit";
@@ -206,6 +207,7 @@ export function CampaignEditForm({
   const creatorRate = numberValue(form.creatorRatePerK);
   const adminMargin = numberValue(form.adminMarginPerK);
   const businessRate = creatorRate + adminMargin;
+  const derivedGoalViews = calculateGoalViewsFromBudgetAndCpm(numberValue(form.totalBudget), businessRate);
 
   function setField<K extends keyof CampaignEditFormState>(
     field: K,
@@ -243,14 +245,14 @@ export function CampaignEditForm({
 
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
-        throw new Error(data.error ?? "Failed to update campaign");
+        throw new Error(data.error ?? "Campagne bijwerken mislukt");
       }
 
       setSuccess(true);
       router.refresh();
       setTimeout(() => router.push(backUrl), 700);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Something went wrong");
+      setError(err instanceof Error ? err.message : "Er ging iets mis");
     } finally {
       setLoading(false);
     }
@@ -259,9 +261,9 @@ export function CampaignEditForm({
   return (
     <div className="max-w-4xl">
       <div className="space-y-8">
-        <Section title="Campaign Setup">
+        <Section title="Campagne-inrichting">
           <div className="grid gap-4 md:grid-cols-2">
-            <Field label="Campaign name *">
+            <Field label="Campagnenaam *">
               <input
                 className={controlClass}
                 style={inputStyle}
@@ -608,9 +610,9 @@ export function CampaignEditForm({
           </div>
         </Section>
 
-        <Section title="Budget, Payout, Timeline">
+        <Section title="Budget, uitbetaling en planning">
           <div className="grid gap-4 md:grid-cols-2">
-            <Field label="Total budget (EUR) *">
+            <Field label="Totaalbudget (EUR) *">
               <NumberInput
                 value={form.totalBudget}
                 onChange={(value) => setField("totalBudget", value)}
@@ -619,12 +621,12 @@ export function CampaignEditForm({
               />
             </Field>
 
-            <Field label="Goal views">
-              <NumberInput
-                value={form.goalViews}
-                onChange={(value) => setField("goalViews", value)}
-                min={1}
-                step={1}
+            <Field label="Berekende doelviews">
+              <input
+                className={controlClass}
+                style={inputStyle}
+                value={derivedGoalViews ? derivedGoalViews.toLocaleString("nl-NL") : "-"}
+                readOnly
               />
             </Field>
 
@@ -646,7 +648,7 @@ export function CampaignEditForm({
               />
             </Field>
 
-            <Field label="Creator payout / 1K views">
+            <Field label="Creator CPM">
               <NumberInput
                 value={form.creatorRatePerK}
                 onChange={(value) => setField("creatorRatePerK", value)}
@@ -655,7 +657,7 @@ export function CampaignEditForm({
               />
             </Field>
 
-            <Field label="Admin margin / 1K views">
+            <Field label="Adminmarge CPM">
               <NumberInput
                 value={form.adminMarginPerK}
                 onChange={(value) => setField("adminMarginPerK", value)}
@@ -670,7 +672,7 @@ export function CampaignEditForm({
             style={{ background: "var(--bg-secondary, var(--bg-primary))", border: "1px solid var(--border)" }}
           >
             <div className="flex flex-wrap items-center justify-between gap-2">
-              <span style={{ color: "var(--text-secondary)" }}>Client / business rate</span>
+              <span style={{ color: "var(--text-secondary)" }}>Business CPM</span>
               <span className="font-semibold tabular-nums" style={{ color: "var(--text-primary)" }}>
                 €{businessRate.toFixed(2)} per 1K views
               </span>
@@ -794,61 +796,61 @@ function NumberInput({
 }
 
 function validateForm(state: CampaignEditFormState): string | null {
-  if (!state.name.trim()) return "Campaign name is required";
-  if (state.platforms.length === 0) return "Select at least one platform";
-  if (!state.deadline) return "Deadline is required";
+  if (!state.name.trim()) return "Campagnenaam is verplicht";
+  if (state.platforms.length === 0) return "Selecteer minimaal een platform";
+  if (!state.deadline) return "Deadline is verplicht";
 
-  const positiveChecks: Array<[string, string]> = [["Total budget", state.totalBudget]];
+  const positiveChecks: Array<[string, string]> = [["Totaalbudget", state.totalBudget]];
   for (const [label, value] of positiveChecks) {
     const parsed = Number(value);
-    if (!Number.isFinite(parsed) || parsed <= 0) return `${label} must be greater than 0`;
+    if (!Number.isFinite(parsed) || parsed <= 0) return `${label} moet hoger zijn dan 0`;
   }
 
   const percentageChecks: Array<[string, string]> = [
-    ["Target country audience", state.targetCountryPercent],
-    ["Target 18+ audience", state.targetMinAge18Percent],
-    ["Target male audience", state.targetMalePercent],
-    ["Minimum engagement rate", state.minEngagementRate],
+    ["Doellandpubliek", state.targetCountryPercent],
+    ["18+ publiek", state.targetMinAge18Percent],
+    ["Mannelijk publiek", state.targetMalePercent],
+    ["Minimale engagementrate", state.minEngagementRate],
   ];
   for (const [label, value] of percentageChecks) {
     if (!value.trim()) continue;
     const parsed = Number(value);
     if (!Number.isFinite(parsed) || parsed < 0 || parsed > 100) {
-      return `${label} must be between 0 and 100`;
+      return `${label} moet tussen 0 en 100 liggen`;
     }
   }
 
   const nonNegativeChecks: Array<[string, string]> = [
-    ["Minimum followers", state.minFollowers],
-    ["Minimum paid views", state.minimumPaidViews],
-    ["Maximum paid views", state.maximumPaidViews],
-    ["Creator payout", state.creatorRatePerK],
-    ["Admin margin", state.adminMarginPerK],
+    ["Minimum volgers", state.minFollowers],
+    ["Minimum betaalde views", state.minimumPaidViews],
+    ["Maximum betaalde views", state.maximumPaidViews],
+    ["Creator CPM", state.creatorRatePerK],
+    ["Adminmarge CPM", state.adminMarginPerK],
   ];
   for (const [label, value] of nonNegativeChecks) {
     if (!value.trim()) continue;
     const parsed = Number(value);
-    if (!Number.isFinite(parsed) || parsed < 0) return `${label} cannot be negative`;
+    if (!Number.isFinite(parsed) || parsed < 0) return `${label} mag niet negatief zijn`;
   }
 
   const wholeNumberChecks: Array<[string, string]> = [
-    ["Minimum paid views", state.minimumPaidViews],
-    ["Maximum paid views", state.maximumPaidViews],
+    ["Minimum betaalde views", state.minimumPaidViews],
+    ["Maximum betaalde views", state.maximumPaidViews],
   ];
   for (const [label, value] of wholeNumberChecks) {
     if (!value.trim()) continue;
     const parsed = Number(value);
-    if (!Number.isInteger(parsed)) return `${label} must be a whole number`;
+    if (!Number.isInteger(parsed)) return `${label} moet een heel getal zijn`;
   }
 
   const positiveOptionalChecks: Array<[string, string]> = [
-    ["Goal views", state.goalViews],
-    ["Max creators", state.maxSlots],
+    ["Doelviews", state.goalViews],
+    ["Maximum aantal creators", state.maxSlots],
   ];
   for (const [label, value] of positiveOptionalChecks) {
     if (!value.trim()) continue;
     const parsed = Number(value);
-    if (!Number.isFinite(parsed) || parsed <= 0) return `${label} must be greater than 0`;
+    if (!Number.isFinite(parsed) || parsed <= 0) return `${label} moet hoger zijn dan 0`;
   }
 
   if (state.maximumPaidViews.trim()) {
@@ -861,7 +863,7 @@ function validateForm(state: CampaignEditFormState): string | null {
       Number.isFinite(minimumPaidViews) &&
       maximumPaidViews < minimumPaidViews
     ) {
-      return "Maximum paid views must be blank or greater than or equal to minimum paid views";
+      return "Maximum betaalde views moet leeg zijn of minimaal gelijk zijn aan minimum betaalde views";
     }
   }
 
