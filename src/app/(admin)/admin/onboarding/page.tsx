@@ -9,21 +9,21 @@ import { formatCurrency, formatDate } from "@/lib/admin/agency-format";
 export const dynamic = "force-dynamic";
 
 const CHECKLIST = [
-  { key: "packageName", label: "Package selected" },
-  { key: "monthlyPrice", label: "Monthly price set" },
-  { key: "contractSigned", label: "Contract signed" },
-  { key: "paymentReceived", label: "Payment received" },
-  { key: "kickoffCallDone", label: "Kickoff call done" },
-  { key: "brandBriefReceived", label: "Brief received" },
-  { key: "contentExamplesReceived", label: "Examples received" },
-  { key: "driveFolderCreated", label: "Drive folder created" },
-  { key: "targetAudience", label: "Target audience" },
-  { key: "mainProductOrService", label: "Product/service" },
+  { key: "packageName", label: "Pakket geselecteerd" },
+  { key: "monthlyPrice", label: "Maandprijs ingesteld" },
+  { key: "contractSigned", label: "Contract getekend" },
+  { key: "paymentReceived", label: "Betaling ontvangen" },
+  { key: "kickoffCallDone", label: "Kickoffcall gedaan" },
+  { key: "brandBriefReceived", label: "Brief ontvangen" },
+  { key: "contentExamplesReceived", label: "Voorbeelden ontvangen" },
+  { key: "driveFolderCreated", label: "Drive-map gemaakt" },
+  { key: "targetAudience", label: "Doelpubliek" },
+  { key: "mainProductOrService", label: "Product/dienst" },
   { key: "hooksAngles", label: "Hooks/angles" },
   { key: "dosAndDonts", label: "Do/don'ts" },
-  { key: "assignedClipperIds", label: "Assigned clippers" },
-  { key: "startDate", label: "Start date" },
-  { key: "accountManager", label: "Account manager" },
+  { key: "assignedClipperIds", label: "Toegewezen clippers" },
+  { key: "startDate", label: "Startdatum" },
+  { key: "accountManager", label: "Accountmanager" },
 ] as const;
 
 type ChecklistKey = (typeof CHECKLIST)[number]["key"];
@@ -51,25 +51,25 @@ export default async function OnboardingPage() {
   return (
     <div className="space-y-9">
       <PageHeader
-        eyebrow="Client Start"
-        title="Brand Onboarding"
-        description="Admin checklist behavior: every brand stays blocked until package, payment, contract, brief, assets, audience, angles, assigned clippers, start date, and owner are complete."
+        eyebrow="Klantstart"
+        title="Merkonboarding"
+        description="Adminchecklist: elk merk blijft geblokkeerd tot pakket, betaling, contract, brief, assets, publiek, angles, toegewezen clippers, startdatum en eigenaar compleet zijn."
       />
 
       <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
-        <StatCard label="Onboarding records" value={String(records.length)} detail="Brands with checklist" />
-        <StatCard label="Ready for production" value={String(ready.length)} detail="All checklist items complete" tone={ready.length > 0 ? "success" : "neutral"} />
-        <StatCard label="Blocked" value={String(incomplete.length)} detail="Shown in command center" tone={incomplete.length > 0 ? "warning" : "neutral"} />
-        <StatCard label="Missing clippers" value={String(noClippers.length)} detail="No assigned-brand visibility yet" tone={noClippers.length > 0 ? "danger" : "neutral"} />
+        <StatCard label="Onboardingrecords" value={String(records.length)} detail="Merken met checklist" />
+        <StatCard label="Klaar voor productie" value={String(ready.length)} detail="Alle checklistitems compleet" tone={ready.length > 0 ? "success" : "neutral"} />
+        <StatCard label="Geblokkeerd" value={String(incomplete.length)} detail="Getoond in command center" tone={incomplete.length > 0 ? "warning" : "neutral"} />
+        <StatCard label="Clippers ontbreken" value={String(noClippers.length)} detail="Nog geen zichtbaarheid op toegewezen merken" tone={noClippers.length > 0 ? "danger" : "neutral"} />
       </div>
 
       <section>
-        <SectionHeader title="Checklist Cards" description="Operator scans blockers first, then assigns clippers before production starts." />
+        <SectionHeader title="Checklistkaarten" description="De operator scant eerst blokkades en wijst daarna clippers toe voordat productie start." />
         {records.length === 0 ? (
           <EmptyState
             icon={<ListChecks className="h-5 w-5" />}
-            title="No onboarding checklists yet"
-            description="Convert a won CRM lead or create a brand onboarding record through the API. The checklist model is now in place."
+            title="Nog geen onboardingchecklists"
+            description="Zet een gewonnen CRM-lead om of maak een merkonboardingrecord via de API. Het checklistmodel staat klaar."
           />
         ) : (
           <div className="grid grid-cols-1 gap-5 xl:grid-cols-2">
@@ -82,7 +82,7 @@ export default async function OnboardingPage() {
                     <div>
                       <p className="text-lg font-semibold text-neutral-950">{record.brand.name}</p>
                       <p className="mt-1 text-sm text-neutral-500">
-                        {record.packageName || "No package"} · {formatCurrency(record.monthlyPrice, record.brand.currency)} · starts {formatDate(record.startDate)}
+                        {record.packageName || "Geen pakket"} - {formatCurrency(record.monthlyPrice, record.brand.currency)} - start {formatDate(record.startDate)}
                       </p>
                     </div>
                     <Badge variant={progress.done === progress.total ? "verified" : "pending"}>
@@ -103,10 +103,10 @@ export default async function OnboardingPage() {
                   </div>
 
                   <div className="mt-5 grid grid-cols-1 gap-3 md:grid-cols-2">
-                    <InfoBlock label="Account manager" value={record.accountManager || "-"} />
-                    <InfoBlock label="Assigned clippers" value={assignedNames.length > 0 ? assignedNames.join(", ") : "None assigned"} />
-                    <InfoBlock label="Target audience" value={record.targetAudience || "-"} />
-                    <InfoBlock label="Product/service" value={record.mainProductOrService || "-"} />
+                    <InfoBlock label="Accountmanager" value={record.accountManager || "-"} />
+                    <InfoBlock label="Toegewezen clippers" value={assignedNames.length > 0 ? assignedNames.join(", ") : "Niemand toegewezen"} />
+                    <InfoBlock label="Doelpubliek" value={record.targetAudience || "-"} />
+                    <InfoBlock label="Product/dienst" value={record.mainProductOrService || "-"} />
                   </div>
                 </article>
               );

@@ -135,6 +135,8 @@ describe("buildCampaignReportLiveData", () => {
     expect(report.audience.sampleCount).toBe(1);
     expect(report.audience.ageBuckets["18-24"]).toBe(60);
     expect(report.referral.inviteCount).toBe(1);
+    expect(report.defaults.title).toBe("Bram's Fruit campagnerapport");
+    expect(report.defaults.executiveSummary).toContain("goedgekeurde views");
     expect(report.defaults.keyTakeaways.length).toBeGreaterThanOrEqual(3);
   });
 });

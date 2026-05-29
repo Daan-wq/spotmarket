@@ -115,7 +115,7 @@ export async function listDiscordChannels(): Promise<DiscordChannelGroup[]> {
   const guildId = getDiscordGuildId();
   const response = await discordFetch(`/guilds/${guildId}/channels`);
   if (!response.ok) {
-    throw new DiscordApiError(await discordErrorMessage(response, "Could not fetch Discord channels"), response.status);
+    throw new DiscordApiError(await discordErrorMessage(response, "Discord-kanalen konden niet worden opgehaald"), response.status);
   }
 
   const raw = (await response.json()) as RawDiscordChannel[];
@@ -162,7 +162,7 @@ export async function listDiscordEmojis(): Promise<DiscordEmoji[]> {
   const guildId = getDiscordGuildId();
   const response = await discordFetch(`/guilds/${guildId}/emojis`);
   if (!response.ok) {
-    throw new DiscordApiError(await discordErrorMessage(response, "Could not fetch Discord emojis"), response.status);
+    throw new DiscordApiError(await discordErrorMessage(response, "Discord-emoji's konden niet worden opgehaald"), response.status);
   }
 
   const raw = (await response.json()) as RawDiscordEmoji[];
@@ -214,7 +214,7 @@ export async function sendDiscordMessage(input: DiscordMessageInput): Promise<Di
   });
 
   if (!response.ok) {
-    throw new DiscordApiError(await discordErrorMessage(response, "Could not send Discord message"), response.status);
+    throw new DiscordApiError(await discordErrorMessage(response, "Discord-bericht kon niet worden verzonden"), response.status);
   }
 
   const sent = (await response.json()) as { id?: unknown; channel_id?: unknown };

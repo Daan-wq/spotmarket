@@ -9,7 +9,7 @@ export default function Loading() {
     <div className="p-8">
       <PageHeaderSkeleton />
       <StatGridSkeleton count={6} />
-      <TableSkeleton columns={4} rows={8} title="Recent Submissions" />
+      <TableSkeleton columns={4} rows={8} title="Recente inzendingen" />
     </div>
   );
 }

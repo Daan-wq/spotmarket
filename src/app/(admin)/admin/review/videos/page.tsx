@@ -31,9 +31,7 @@ export default async function VideoReviewPage() {
         <h1 className="text-3xl font-bold mb-1" style={{ color: "var(--text-primary)" }}>
           Video review
         </h1>
-        <p style={{ color: "var(--text-secondary)" }}>
-          Open each submitted post, then approve or reject. Rejections require a reason.
-        </p>
+        <p style={{ color: "var(--text-secondary)" }}>Open elke ingezonden post en keur daarna goed of wijs af. Afwijzingen vereisen een reden.</p>
       </div>
 
       {submissions.length === 0 ? (
@@ -41,12 +39,8 @@ export default async function VideoReviewPage() {
           className="rounded-xl p-12 text-center"
           style={{ background: "var(--bg-card)", border: "1px solid var(--border)" }}
         >
-          <p className="text-lg font-medium" style={{ color: "var(--text-primary)" }}>
-            All caught up
-          </p>
-          <p className="text-sm mt-1" style={{ color: "var(--text-secondary)" }}>
-            No pending or flagged submissions to review.
-          </p>
+          <p className="text-lg font-medium" style={{ color: "var(--text-primary)" }}>Alles bijgewerkt</p>
+          <p className="text-sm mt-1" style={{ color: "var(--text-secondary)" }}>Geen open of gemarkeerde inzendingen om te reviewen.</p>
         </div>
       ) : (
         <div className="space-y-4">
@@ -77,7 +71,7 @@ export default async function VideoReviewPage() {
                         {s.creator.email}
                       </Link>
                       {" · "}
-                      submitted {s.createdAt.toLocaleDateString()}
+                      submitted {s.createdAt.toLocaleDateString("nl-NL")}
                       {platform ? ` · ${platform.toLowerCase()}` : ""}
                       {s.authorHandle ? ` · @${s.authorHandle}` : ""}
                     </p>
@@ -115,18 +109,14 @@ export default async function VideoReviewPage() {
                     className="rounded-lg p-4"
                     style={{ background: "var(--bg-primary)", border: "1px solid var(--border)" }}
                   >
-                    <p className="text-[11px] uppercase tracking-wide font-semibold mb-2" style={{ color: "var(--text-secondary)" }}>
-                      Submitted post
-                    </p>
+                    <p className="text-[11px] uppercase tracking-wide font-semibold mb-2" style={{ color: "var(--text-secondary)" }}>Ingezonden post</p>
                     <a
                       href={s.postUrl}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="text-sm font-semibold underline"
                       style={{ color: "var(--primary)" }}
-                    >
-                      Open post
-                    </a>
+                    >Post openen</a>
                   </div>
                   <div
                     className="rounded-lg p-3"

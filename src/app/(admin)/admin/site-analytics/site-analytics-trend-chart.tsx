@@ -15,7 +15,7 @@ export function SiteAnalyticsTrendChart({ data }: { data: SiteAnalyticsTimePoint
   if (data.length === 0) {
     return (
       <div className="rounded-2xl border border-neutral-200 bg-white p-5">
-        <p className="text-sm text-neutral-500">No timeline data yet.</p>
+        <p className="text-sm text-neutral-500">Nog geen tijdlijndata.</p>
       </div>
     );
   }

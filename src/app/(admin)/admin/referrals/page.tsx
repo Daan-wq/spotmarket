@@ -229,7 +229,7 @@ export default async function AdminReferralsPage({ searchParams }: PageProps) {
       <PageHeader
         eyebrow="ClipProfit"
         title="Referral rapportage"
-        description="Campagne-attributie voor persoonlijke bio-links: clicks, onboarding-invites, submissions en approved/earned signalen."
+        description="Campagne-attributie voor persoonlijke bio-links: clicks, onboarding-invites, inzendingen en goedgekeurde/verdiende signalen."
       />
 
       <form action="/admin/referrals" className="flex flex-col gap-3 rounded-2xl border border-neutral-200 bg-white p-4 md:flex-row md:items-center">
@@ -258,15 +258,15 @@ export default async function AdminReferralsPage({ searchParams }: PageProps) {
       <div className="grid grid-cols-1 gap-4 md:grid-cols-5">
         <StatCard label="Clicks" value={formatNumber(report.totalClicks)} detail="Alle persoonlijke linkbezoeken" />
         <StatCard label="Invites" value={formatNumber(report.inviteCount)} detail="Onboarding afgerond" />
-        <StatCard label="Active clippers" value={formatNumber(report.activeClipperCount)} detail="Minimaal 1 submission" tone={report.activeClipperCount > 0 ? "success" : "neutral"} />
-        <StatCard label="Inactive" value={formatNumber(report.inactiveClipperCount)} detail="Onboarded zonder submission" tone={report.inactiveClipperCount > 0 ? "warning" : "neutral"} />
-        <StatCard label="Clicked only" value={formatNumber(report.clickedOnlyCount)} detail="Geen onboarding afgerond" />
+        <StatCard label="Actieve clippers" value={formatNumber(report.activeClipperCount)} detail="Minimaal 1 inzending" tone={report.activeClipperCount > 0 ? "success" : "neutral"} />
+        <StatCard label="Inactief" value={formatNumber(report.inactiveClipperCount)} detail="Onboarded zonder inzending" tone={report.inactiveClipperCount > 0 ? "warning" : "neutral"} />
+        <StatCard label="Alleen geklikt" value={formatNumber(report.clickedOnlyCount)} detail="Geen onboarding afgerond" />
       </div>
 
       <section>
         <SectionHeader
           title="Creators"
-          description={`Default scope: ${campaign?.name ?? "ClipProfit"} campagne. Active clipper = onboarding afgerond en minimaal 1 submission.`}
+          description={`Standaardscope: ${campaign?.name ?? "ClipProfit"} campagne. Actieve clipper = onboarding afgerond en minimaal 1 inzending.`}
         />
         <DataTable
           rows={referrerRows}
@@ -287,11 +287,11 @@ export default async function AdminReferralsPage({ searchParams }: PageProps) {
             { key: "code", header: "Code", cell: (row) => <code className="text-xs font-semibold text-neutral-700">{row.referralCode || "-"}</code> },
             { key: "clicks", header: "Clicks", align: "right", cell: (row) => formatNumber(row.clicks) },
             { key: "invites", header: "Invites", align: "right", cell: (row) => formatNumber(row.inviteCount) },
-            { key: "active", header: "Active", align: "right", cell: (row) => formatNumber(row.activeClipperCount) },
-            { key: "inactive", header: "Inactive", align: "right", cell: (row) => formatNumber(row.inactiveClipperCount) },
-            { key: "submissions", header: "Submissions", align: "right", cell: (row) => formatNumber(row.submissionCount) },
-            { key: "activation", header: "Activation", align: "right", cell: (row) => `${Math.round(row.activationRate * 100)}%` },
-            { key: "last", header: "Last activity", cell: (row) => formatShortDate(row.lastActivityAt, "nl") },
+            { key: "active", header: "Actief", align: "right", cell: (row) => formatNumber(row.activeClipperCount) },
+            { key: "inactive", header: "Inactief", align: "right", cell: (row) => formatNumber(row.inactiveClipperCount) },
+            { key: "submissions", header: "Inzendingen", align: "right", cell: (row) => formatNumber(row.submissionCount) },
+            { key: "activation", header: "Activatie", align: "right", cell: (row) => `${Math.round(row.activationRate * 100)}%` },
+            { key: "last", header: "Laatste activiteit", cell: (row) => formatShortDate(row.lastActivityAt, "nl") },
           ]}
         />
       </section>
@@ -300,28 +300,28 @@ export default async function AdminReferralsPage({ searchParams }: PageProps) {
         <section>
           <SectionHeader
             title={`Drilldown: ${selectedReferrer.referrerLabel}`}
-            description="Buckets laten exact zien waar elke invite vastzit: alleen klik, onboarding zonder submission, of actief met submission."
+            description="Buckets laten exact zien waar elke invite vastzit: alleen klik, onboarding zonder inzending, of actief met inzending."
           />
           <div className="mb-5 grid grid-cols-1 gap-4 md:grid-cols-3">
-            <StatCard label="Clicked only" value={formatNumber(selectedBuckets.clickedOnly.length)} detail="Klik of signup start, geen onboarding" />
-            <StatCard label="Inactive invite" value={formatNumber(selectedBuckets.inactiveInvite.length)} detail="Onboarding afgerond, geen submission" tone={selectedBuckets.inactiveInvite.length > 0 ? "warning" : "neutral"} />
-            <StatCard label="Active invite" value={formatNumber(selectedBuckets.activeInvite.length)} detail="Onboarding plus submission" tone={selectedBuckets.activeInvite.length > 0 ? "success" : "neutral"} />
+            <StatCard label="Alleen geklikt" value={formatNumber(selectedBuckets.clickedOnly.length)} detail="Klik of signup gestart, geen onboarding" />
+            <StatCard label="Inactieve invite" value={formatNumber(selectedBuckets.inactiveInvite.length)} detail="Onboarding afgerond, geen inzending" tone={selectedBuckets.inactiveInvite.length > 0 ? "warning" : "neutral"} />
+            <StatCard label="Actieve invite" value={formatNumber(selectedBuckets.activeInvite.length)} detail="Onboarding plus inzending" tone={selectedBuckets.activeInvite.length > 0 ? "success" : "neutral"} />
           </div>
 
           <BucketTable
-            title="Clicked only"
+            title="Alleen geklikt"
             bucket="clicked_only"
             rows={selectedBuckets.clickedOnly}
             submissionStatsByCreator={submissionStatsByCreator}
           />
           <BucketTable
-            title="Inactive invites"
+            title="Inactieve invites"
             bucket="inactive_invite"
             rows={selectedBuckets.inactiveInvite}
             submissionStatsByCreator={submissionStatsByCreator}
           />
           <BucketTable
-            title="Active invites"
+            title="Actieve invites"
             bucket="active_invite"
             rows={selectedBuckets.activeInvite}
             submissionStatsByCreator={submissionStatsByCreator}
@@ -362,14 +362,14 @@ function BucketTable({
             ),
           },
           { key: "status", header: "Bucket", cell: () => <BucketBadge bucket={bucket} /> },
-          { key: "clicked", header: "Clicked", cell: (row) => formatDate(row.clickedAt, "nl") },
+          { key: "clicked", header: "Geklikt", cell: (row) => formatDate(row.clickedAt, "nl") },
           { key: "signup", header: "Signup started", cell: (row) => formatDate(row.signedUpAt, "nl") },
           { key: "onboarded", header: "Onboarded", cell: (row) => formatDate(row.onboardedAt, "nl") },
           { key: "discord", header: "Discord", cell: (row) => formatDate(row.discordLinkedAt, "nl") },
           { key: "firstSubmission", header: "First submission", cell: (row) => formatDate(row.firstSubmissionAt, "nl") },
           {
             key: "submissions",
-            header: "Submissions",
+            header: "Inzendingen",
             align: "right",
             cell: (row) =>
               formatNumber(
@@ -394,7 +394,7 @@ function BucketTable({
                   {formatCurrency(earnedAmount, "EUR", "nl")}
                 </Badge>
               ) : (
-                <Badge variant="neutral">Geen approved earning</Badge>
+                <Badge variant="neutral">Geen goedgekeurde earning</Badge>
               );
             },
           },
@@ -406,14 +406,14 @@ function BucketTable({
 
 function BucketBadge({ bucket }: { bucket: CampaignReferralBucket }) {
   if (bucket === "active_invite") {
-    return <Badge variant="verified">Active invite</Badge>;
+    return <Badge variant="verified">Actieve invite</Badge>;
   }
 
   if (bucket === "inactive_invite") {
-    return <Badge variant="pending">Inactive invite</Badge>;
+    return <Badge variant="pending">Inactieve invite</Badge>;
   }
 
-  return <Badge variant="neutral">Clicked only</Badge>;
+  return <Badge variant="neutral">Alleen geklikt</Badge>;
 }
 
 function matchesReferrerSearch(attribution: AttributionRow, query: string) {

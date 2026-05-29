@@ -124,7 +124,7 @@ export default async function SignalsPage({ searchParams }: PageProps) {
             >
               <div className="space-y-5">
                 <FilterGroup label="Status">
-                  <FilterChip label="Open" active={statusFilter === "open"} href={buildHref({ status: "open" })} />
+                  <FilterChip label="Openen" active={statusFilter === "open"} href={buildHref({ status: "open" })} />
                   <FilterChip label="Opgelost" active={statusFilter === "resolved"} href={buildHref({ status: "resolved" })} />
                   <FilterChip label="Alles" active={statusFilter === "all"} href={buildHref({ status: "all" })} />
                 </FilterGroup>

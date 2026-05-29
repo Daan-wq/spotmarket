@@ -5,7 +5,7 @@ import type { SiteAnalyticsDashboard } from "@/lib/site-analytics/dashboard";
 import { SiteAnalyticsTrendChart } from "./site-analytics-trend-chart";
 
 function formatCompact(value: number) {
-  return new Intl.NumberFormat("en", { notation: "compact", maximumFractionDigits: 1 }).format(value);
+  return new Intl.NumberFormat("nl-NL", { notation: "compact", maximumFractionDigits: 1 }).format(value);
 }
 
 function formatPercent(value: number) {
@@ -13,8 +13,8 @@ function formatPercent(value: number) {
 }
 
 function formatDate(value: Date | null) {
-  if (!value) return "Never synced";
-  return new Intl.DateTimeFormat("en", {
+  if (!value) return "Nooit gesynchroniseerd";
+  return new Intl.DateTimeFormat("nl-NL", {
     dateStyle: "medium",
     timeStyle: "short",
     timeZone: "UTC",
@@ -46,15 +46,15 @@ export function SiteAnalyticsView({
   return (
     <div className="space-y-9">
       <PageHeader
-        eyebrow="Product analytics"
-        title="Site analytics"
-        description="Usage signals from PostHog snapshots, excluding admin traffic from the primary numbers."
+        eyebrow="Productanalytics"
+        title="Site-analytics"
+        description="Gebruikssignalen uit PostHog-snapshots, waarbij adminverkeer buiten de primaire cijfers blijft."
         actions={[]}
       />
 
       <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-neutral-200 bg-white px-4 py-3">
         <p className="text-sm text-neutral-500">
-          Last sync: <span className="font-medium text-neutral-800">{formatDate(dashboard.lastSyncedAt)}</span>
+          Laatste sync: <span className="font-medium text-neutral-800">{formatDate(dashboard.lastSyncedAt)}</span>
         </p>
         <div className="flex items-center gap-2">
           <RangeLink days={14} active={dashboard.rangeDays === 14} />
@@ -64,36 +64,36 @@ export function SiteAnalyticsView({
 
       {!dashboard.hasData ? (
         <section className="rounded-2xl border border-dashed border-neutral-300 bg-neutral-50 p-8">
-          <h2 className="text-lg font-semibold text-neutral-950">No site analytics yet</h2>
+          <h2 className="text-lg font-semibold text-neutral-950">Nog geen site analytics</h2>
           <p className="mt-2 max-w-2xl text-sm leading-6 text-neutral-500">
-            This page will populate after the first `/api/cron/sync-site-analytics` run and after PostHog receives
-            pageviews or signup/onboarding events from the new ClipProfit project.
+            Deze pagina wordt gevuld na de eerste `/api/cron/sync-site-analytics` run en nadat PostHog pageviews of
+            signup-/onboarding-events uit het nieuwe ClipProfit-project ontvangt.
           </p>
         </section>
       ) : null}
 
       <section>
-        <SectionHeader title="Usage essentials" description={`Primary site usage over the last ${dashboard.rangeDays} days.`} />
+        <SectionHeader title="Gebruiksbasis" description={`Primair sitegebruik over de laatste ${dashboard.rangeDays} dagen.`} />
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-5">
-          <StatCard label="Visitors" value={formatCompact(metrics.visitors)} detail="Non-admin distinct users" />
-          <StatCard label="Sessions" value={formatCompact(metrics.sessions)} detail="PostHog session ids" />
-          <StatCard label="Pageviews" value={formatCompact(metrics.pageviews)} detail="Tracked route views" />
-          <StatCard label="Signup conversion" value={formatPercent(metrics.signupConversionRate)} detail={`${metrics.signups} signup events`} />
-          <StatCard label="Onboarding" value={formatPercent(metrics.onboardingCompletionRate)} detail={`${metrics.onboardingCompletions} completions`} />
+          <StatCard label="Bezoekers" value={formatCompact(metrics.visitors)} detail="Unieke niet-admingebruikers" />
+          <StatCard label="Sessies" value={formatCompact(metrics.sessions)} detail="PostHog-sessie-ID's" />
+          <StatCard label="Pageviews" value={formatCompact(metrics.pageviews)} detail="Gemeten routeviews" />
+          <StatCard label="Signupconversie" value={formatPercent(metrics.signupConversionRate)} detail={`${metrics.signups} signup-events`} />
+          <StatCard label="Onboarding" value={formatPercent(metrics.onboardingCompletionRate)} detail={`${metrics.onboardingCompletions} voltooiingen`} />
         </div>
       </section>
 
       <section>
-        <SectionHeader title="Timeline" description="Daily pageviews and signups from stored snapshots." />
+        <SectionHeader title="Tijdlijn" description="Dagelijkse pageviews en signups uit opgeslagen snapshots." />
         {showChart ? <SiteAnalyticsTrendChart data={dashboard.timeSeries} /> : null}
       </section>
 
       <section className="grid grid-cols-1 gap-4 xl:grid-cols-2">
         <div>
-          <SectionHeader title="Top pages" />
+          <SectionHeader title="Toppagina's" />
           <div className="overflow-hidden rounded-2xl border border-neutral-200 bg-white">
             {dashboard.topPages.length === 0 ? (
-              <p className="p-5 text-sm text-neutral-500">No page data yet.</p>
+              <p className="p-5 text-sm text-neutral-500">Nog geen paginadata.</p>
             ) : (
               <div className="divide-y divide-neutral-100">
                 {dashboard.topPages.map((page) => (
@@ -108,10 +108,10 @@ export function SiteAnalyticsView({
         </div>
 
         <div>
-          <SectionHeader title="Referrers and UTMs" />
+          <SectionHeader title="Referrers en UTM's" />
           <div className="overflow-hidden rounded-2xl border border-neutral-200 bg-white">
             {dashboard.referrers.length === 0 ? (
-              <p className="p-5 text-sm text-neutral-500">No referrer data yet.</p>
+              <p className="p-5 text-sm text-neutral-500">Nog geen referrerdata.</p>
             ) : (
               <div className="divide-y divide-neutral-100">
                 {dashboard.referrers.map((referrer) => (
@@ -128,7 +128,7 @@ export function SiteAnalyticsView({
 
       <section className="grid grid-cols-1 gap-4 xl:grid-cols-2">
         <div>
-          <SectionHeader title="Signup funnel" />
+          <SectionHeader title="Signupfunnel" />
           <div className="rounded-2xl border border-neutral-200 bg-white p-5">
             <div className="space-y-3">
               {dashboard.funnel.map((step) => (
@@ -149,10 +149,10 @@ export function SiteAnalyticsView({
         </div>
 
         <div>
-          <SectionHeader title="Recent recordings" />
+          <SectionHeader title="Recente opnames" />
           <div className="overflow-hidden rounded-2xl border border-neutral-200 bg-white">
             {dashboard.recordings.length === 0 ? (
-              <p className="p-5 text-sm text-neutral-500">No session recording links yet.</p>
+              <p className="p-5 text-sm text-neutral-500">Nog geen sessierecordinglinks.</p>
             ) : (
               <div className="divide-y divide-neutral-100">
                 {dashboard.recordings.map((recording) => (

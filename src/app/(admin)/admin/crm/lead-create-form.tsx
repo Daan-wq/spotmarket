@@ -33,7 +33,7 @@ export function LeadCreateForm() {
       });
       if (!response.ok) {
         const body = await response.json().catch(() => ({}));
-        setError(body.error ?? "Could not create lead.");
+        setError(body.error ?? "Lead kon niet worden gemaakt.");
         return;
       }
       router.refresh();
@@ -43,30 +43,30 @@ export function LeadCreateForm() {
   return (
     <form action={onSubmit} className="rounded-2xl border border-neutral-200 bg-white p-5">
       <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
-        <input name="brandName" required placeholder="Brand name" className="h-11 rounded-xl border border-neutral-200 px-3 text-sm outline-none focus:border-neutral-500 md:col-span-2" />
-        <input name="contactName" placeholder="Contact name" className="h-11 rounded-xl border border-neutral-200 px-3 text-sm outline-none focus:border-neutral-500" />
+        <input name="brandName" required placeholder="Merknaam" className="h-11 rounded-xl border border-neutral-200 px-3 text-sm outline-none focus:border-neutral-500 md:col-span-2" />
+        <input name="contactName" placeholder="Contactnaam" className="h-11 rounded-xl border border-neutral-200 px-3 text-sm outline-none focus:border-neutral-500" />
         <input name="contactEmail" type="email" placeholder="Email" className="h-11 rounded-xl border border-neutral-200 px-3 text-sm outline-none focus:border-neutral-500" />
         <select name="stage" defaultValue="LEAD" className="h-11 rounded-xl border border-neutral-200 bg-white px-3 text-sm outline-none focus:border-neutral-500">
           <option value="LEAD">Lead</option>
-          <option value="CONTACTED">Contacted</option>
-          <option value="REPLIED">Replied</option>
-          <option value="CALL_BOOKED">Call booked</option>
-          <option value="PROPOSAL_SENT">Proposal sent</option>
+          <option value="CONTACTED">Gecontacteerd</option>
+          <option value="REPLIED">Gereageerd</option>
+          <option value="CALL_BOOKED">Call geboekt</option>
+          <option value="PROPOSAL_SENT">Voorstel verstuurd</option>
         </select>
         <select name="priority" defaultValue="MEDIUM" className="h-11 rounded-xl border border-neutral-200 bg-white px-3 text-sm outline-none focus:border-neutral-500">
-          <option value="LOW">Low</option>
-          <option value="MEDIUM">Medium</option>
-          <option value="HIGH">High</option>
+          <option value="LOW">Laag</option>
+          <option value="MEDIUM">Middel</option>
+          <option value="HIGH">Hoog</option>
         </select>
-        <input name="estimatedValue" type="number" min="0" placeholder="Value" className="h-11 rounded-xl border border-neutral-200 px-3 text-sm outline-none focus:border-neutral-500" />
-        <input name="probability" type="number" min="0" max="100" placeholder="Probability %" className="h-11 rounded-xl border border-neutral-200 px-3 text-sm outline-none focus:border-neutral-500" />
+        <input name="estimatedValue" type="number" min="0" placeholder="Waarde" className="h-11 rounded-xl border border-neutral-200 px-3 text-sm outline-none focus:border-neutral-500" />
+        <input name="probability" type="number" min="0" max="100" placeholder="Kans %" className="h-11 rounded-xl border border-neutral-200 px-3 text-sm outline-none focus:border-neutral-500" />
         <input name="nextFollowUpAt" type="date" className="h-11 rounded-xl border border-neutral-200 px-3 text-sm outline-none focus:border-neutral-500" />
-        <input name="source" placeholder="Source" className="h-11 rounded-xl border border-neutral-200 px-3 text-sm outline-none focus:border-neutral-500" />
-        <input name="owner" placeholder="Owner" className="h-11 rounded-xl border border-neutral-200 px-3 text-sm outline-none focus:border-neutral-500" />
-        <input name="notes" placeholder="Next step notes" className="h-11 rounded-xl border border-neutral-200 px-3 text-sm outline-none focus:border-neutral-500 md:col-span-2" />
+        <input name="source" placeholder="Bron" className="h-11 rounded-xl border border-neutral-200 px-3 text-sm outline-none focus:border-neutral-500" />
+        <input name="owner" placeholder="Eigenaar" className="h-11 rounded-xl border border-neutral-200 px-3 text-sm outline-none focus:border-neutral-500" />
+        <input name="notes" placeholder="Notities volgende stap" className="h-11 rounded-xl border border-neutral-200 px-3 text-sm outline-none focus:border-neutral-500 md:col-span-2" />
       </div>
       {error ? <p className="mt-3 text-sm text-red-600">{error}</p> : null}
-      <Button type="submit" isPending={isPending} className="mt-4">Create lead</Button>
+      <Button type="submit" isPending={isPending} className="mt-4">Lead maken</Button>
     </form>
   );
 }

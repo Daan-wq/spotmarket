@@ -521,7 +521,7 @@ function generateDefaultEditorial(data: Omit<CampaignReportLiveData, "defaults">
       : "Er is nog onvoldoende platformdata om een kanaalwinnaar te kiezen.",
     `De campagne activeerde ${data.performance.activeCreators} creators en leverde ${data.performance.approvedClips} goedgekeurde clips op.`,
     `De effectieve CPV kwam uit op ${cpvText}.`,
-    `De traffic en contentkwaliteit is gecontroleerd ${qualityText}.`,
+    `De traffic en contentkwaliteit zijn gecontroleerd ${qualityText}.`,
   ];
 
   const learnings = [
@@ -546,7 +546,7 @@ function generateDefaultEditorial(data: Omit<CampaignReportLiveData, "defaults">
   ];
 
   return {
-    title: `${data.campaign.brandName} Campaign Report`,
+    title: `${data.campaign.brandName} campagnerapport`,
     executiveSummary: `${data.campaign.brandName} behaalde ${formatNumber(data.performance.approvedViews)} goedgekeurde views met ${data.performance.approvedClips} goedgekeurde clips. ${topPlatform ? `${topPlatform.platform} was het sterkste bereikskanaal.` : "Er is nog geen duidelijke platformwinnaar."} Voor de volgende campagne adviseren we de best presterende creators opnieuw te activeren, de winnende hooks expliciet in de brief te zetten en het budget te verschuiven naar de kanalen met de laagste effectieve CPV.`,
     keyTakeaways,
     learnings,
@@ -747,7 +747,7 @@ function latestSnapshot(submission: CampaignReportSubmissionInput) {
 
 function inferPlatform(submission: CampaignReportSubmissionInput) {
   const snapshotSource = latestSnapshot(submission)?.source;
-  return platformLabel(snapshotSource ?? submission.sourcePlatform ?? "Unknown");
+  return platformLabel(snapshotSource ?? submission.sourcePlatform ?? "Onbekend");
 }
 
 function platformLabel(value: string | null | undefined) {

@@ -50,73 +50,71 @@ export default async function CrmPage() {
       <PageHeader
         eyebrow="Sales"
         title="Leads"
-        description="Lead pipeline, owners, value, probability, and follow-ups. This feeds the command center."
-        actions={[{ label: "Create lead", href: "/admin/crm?new=1", icon: Plus }]}
+        description="Leadpipeline, eigenaren, waarde, kans en follow-ups. Dit voedt het command center."
+        actions={[{ label: "Lead maken", href: "/admin/crm?new=1", icon: Plus }]}
       />
 
       <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
-        <StatCard label="Open pipeline" value={String(inPipeline.length)} detail="Not won or lost" />
-        <StatCard label="Pipeline value" value={formatCurrency(totals._sum.estimatedValue)} detail="Weighted manually by probability" />
-        <StatCard label="Follow-ups due" value={String(due.length)} detail="Visible in command center" tone={due.length > 0 ? "warning" : "neutral"} />
-        <StatCard label="Won leads" value={String(won.length)} detail="Converted into brands" />
+        <StatCard label="Open pipeline" value={String(inPipeline.length)} detail="Niet gewonnen of verloren" />
+        <StatCard label="Pipelinewaarde" value={formatCurrency(totals._sum.estimatedValue)} detail="Handmatig gewogen op kans" />
+        <StatCard label="Follow-ups nodig" value={String(due.length)} detail="Zichtbaar in command center" tone={due.length > 0 ? "warning" : "neutral"} />
+        <StatCard label="Gewonnen leads" value={String(won.length)} detail="Omgezet naar merken" />
       </div>
 
       <section>
-        <SectionHeader title="Create lead" description="Add a brand lead and the next follow-up date in one step." />
+        <SectionHeader title="Lead maken" description="Voeg een merklead en volgende follow-updatum in een stap toe." />
         <LeadCreateForm />
       </section>
 
       <section>
         <SectionHeader
-          title="Follow-Up Queue"
-          description="Only leads with a due or overdue next follow-up."
+          title="Follow-upwachtrij"
+          description="Alleen leads met een volgende follow-up die nu of eerder gepland stond."
         />
         {due.length === 0 ? (
           <EmptyState
-            title="No lead follow-ups due"
-            description="Add next follow-up dates to leads so the command center can tell the operator what to do first."
+            title="Geen lead-follow-ups nodig"
+            description="Voeg volgende follow-updatums toe aan leads zodat het command center de eerste operatoractie kan tonen."
           />
         ) : (
           <DataTable
             rows={due}
             rowKey={(lead) => lead.id}
             columns={[
-              { key: "brand", header: "Brand", cell: (lead) => <LeadName lead={lead} /> },
-              { key: "stage", header: "Stage", cell: (lead) => <Badge variant="neutral">{titleCaseEnum(lead.stage)}</Badge> },
-              { key: "owner", header: "Owner", cell: (lead) => lead.owner || "-" },
-              { key: "value", header: "Value", align: "right", cell: (lead) => formatCurrency(lead.estimatedValue) },
-              { key: "next", header: "Next follow-up", cell: (lead) => formatDate(lead.nextFollowUpAt) },
+              { key: "brand", header: "Merk", cell: (lead) => <LeadName lead={lead} /> },
+              { key: "stage", header: "Fase", cell: (lead) => <Badge variant="neutral">{titleCaseEnum(lead.stage)}</Badge> },
+              { key: "owner", header: "Eigenaar", cell: (lead) => lead.owner || "-" },
+              { key: "value", header: "Waarde", align: "right", cell: (lead) => formatCurrency(lead.estimatedValue) },
+              { key: "next", header: "Volgende follow-up", cell: (lead) => formatDate(lead.nextFollowUpAt) },
             ]}
           />
         )}
       </section>
 
       <section>
-        <SectionHeader title="Lead list" description="Full lead list, including won, lost, and nurture-later records." />
+        <SectionHeader title="Leadlijst" description="Volledige leadlijst, inclusief gewonnen, verloren en later-opvolgen records." />
         <DataTable
           rows={leads}
           rowKey={(lead) => lead.id}
-          emptyState={<EmptyState title="No brand leads yet" description="Create the first lead above so follow-ups can appear in the command center." />}
+          emptyState={<EmptyState title="Nog geen merkleads" description="Maak hierboven de eerste lead zodat follow-ups in het command center kunnen verschijnen." />}
           columns={[
-            { key: "brand", header: "Brand", cell: (lead) => <LeadName lead={lead} /> },
+            { key: "brand", header: "Merk", cell: (lead) => <LeadName lead={lead} /> },
             { key: "contact", header: "Contact", cell: (lead) => lead.contactEmail || lead.contactName || "-" },
-            { key: "stage", header: "Stage", cell: (lead) => <Badge variant={lead.stage === "WON" ? "verified" : lead.stage === "LOST" ? "failed" : "neutral"}>{titleCaseEnum(lead.stage)}</Badge> },
-            { key: "priority", header: "Priority", cell: (lead) => <Badge variant={lead.priority === "HIGH" ? "pending" : "neutral"}>{titleCaseEnum(lead.priority)}</Badge> },
-            { key: "value", header: "Value", align: "right", cell: (lead) => formatCurrency(lead.estimatedValue) },
-            { key: "prob", header: "Prob.", align: "right", cell: (lead) => `${lead.probability}%` },
-            { key: "next", header: "Next follow-up", cell: (lead) => formatDate(lead.nextFollowUpAt) },
+            { key: "stage", header: "Fase", cell: (lead) => <Badge variant={lead.stage === "WON" ? "verified" : lead.stage === "LOST" ? "failed" : "neutral"}>{titleCaseEnum(lead.stage)}</Badge> },
+            { key: "priority", header: "Prioriteit", cell: (lead) => <Badge variant={lead.priority === "HIGH" ? "pending" : "neutral"}>{titleCaseEnum(lead.priority)}</Badge> },
+            { key: "value", header: "Waarde", align: "right", cell: (lead) => formatCurrency(lead.estimatedValue) },
+            { key: "prob", header: "Kans", align: "right", cell: (lead) => `${lead.probability}%` },
+            { key: "next", header: "Volgende follow-up", cell: (lead) => formatDate(lead.nextFollowUpAt) },
             {
               key: "converted",
-              header: "Brand",
+              header: "Merk",
               cell: (lead) => lead.convertedBrand ? (
                 <Link href={`/admin/brands?focus=${lead.convertedBrand.id}`} className="text-sm font-semibold text-neutral-950 underline underline-offset-2">
                   {lead.convertedBrand.name}
                 </Link>
               ) : (
                 <span className="inline-flex items-center gap-1 text-xs text-neutral-400">
-                  <RotateCw className="h-3 w-3" />
-                  Open
-                </span>
+                  <RotateCw className="h-3 w-3" />Openen</span>
               ),
             },
           ]}
@@ -124,7 +122,7 @@ export default async function CrmPage() {
       </section>
 
       <section>
-        <SectionHeader title="Stage counts" description="Simple count of where leads sit today." />
+        <SectionHeader title="Fasetellingen" description="Eenvoudige telling van waar leads vandaag staan." />
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
           {STAGES.map((stage) => (
             <div key={stage} className="rounded-2xl border border-neutral-200 bg-white p-4">
@@ -142,7 +140,7 @@ function LeadName({ lead }: { lead: { brandName: string; source: string | null; 
   return (
     <div>
       <p className="font-semibold text-neutral-950">{lead.brandName}</p>
-      <p className="mt-1 text-xs text-neutral-500">{lead.source || lead.notes || "No source noted"}</p>
+      <p className="mt-1 text-xs text-neutral-500">{lead.source || lead.notes || "Geen bron genoteerd"}</p>
     </div>
   );
 }

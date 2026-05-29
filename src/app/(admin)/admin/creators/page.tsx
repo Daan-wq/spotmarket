@@ -33,26 +33,26 @@ export default async function CreatorsPage() {
       <PageHeader
         eyebrow="Creators"
         title="Creators"
-        description="Creator accounts, verification state, audience size, and active campaign load."
+        description="Creatoraccounts, verificatiestatus, publieksgrootte en actieve campagneload."
       />
 
       <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
-        <StatCard label="Creators" value={String(creators.length)} detail="Total profiles" />
-        <StatCard label="Verified accounts" value={`${verified}/${creators.length || 0}`} detail="OAuth-ready creators" />
-        <StatCard label="Followers" value={totalFollowers.toLocaleString()} detail="Total tracked audience" />
-        <StatCard label="Active slots" value={String(activeCampaignSlots)} detail="Active campaign applications" />
+        <StatCard label="Creators" value={String(creators.length)} detail="Totaal profielen" />
+        <StatCard label="Geverifieerde accounts" value={`${verified}/${creators.length || 0}`} detail="OAuth-klare creators" />
+        <StatCard label="Volgers" value={totalFollowers.toLocaleString("nl-NL")} detail="Totaal gemeten publiek" />
+        <StatCard label="Actieve slots" value={String(activeCampaignSlots)} detail="Actieve campagneaanmeldingen" />
       </div>
 
       <section>
-        <SectionHeader title="Creator Table" description="Open a creator for the detailed operational view." />
+        <SectionHeader title="Creatortabel" description="Open een creator voor de gedetailleerde operationele weergave." />
         <DataTable
           rows={creators}
           rowKey={(creator) => creator.id}
-          emptyState={<EmptyState title="No creators yet" description="Creator profiles will appear here after onboarding." />}
+          emptyState={<EmptyState title="Nog geen creators" description="Creatorprofielen verschijnen hier na onboarding." />}
           columns={[
             {
               key: "name",
-              header: "Name",
+              header: "Naam",
               cell: (creator) => (
                 <Link href={`/admin/creators/${creator.id}`} className="font-semibold text-neutral-950 underline-offset-2 hover:underline">
                   {creator.displayName}
@@ -62,7 +62,7 @@ export default async function CreatorsPage() {
             { key: "ig", header: "Instagram", cell: (creator) => creator.igConnections[0]?.igUsername || "-" },
             {
               key: "verified",
-              header: "Verified accounts",
+              header: "Geverifieerde accounts",
               cell: (creator) => {
                 const state = verifiedStateForCreator(creator);
                 const status = getCreatorAccountStatusCopy(state);
@@ -73,8 +73,8 @@ export default async function CreatorsPage() {
                 );
               },
             },
-            { key: "followers", header: "Followers", align: "right", cell: (creator) => creator.totalFollowers.toLocaleString() },
-            { key: "active", header: "Active campaigns", align: "right", cell: (creator) => creator.applications.length },
+            { key: "followers", header: "Volgers", align: "right", cell: (creator) => creator.totalFollowers.toLocaleString("nl-NL") },
+            { key: "active", header: "Actieve campagnes", align: "right", cell: (creator) => creator.applications.length },
           ]}
         />
       </section>

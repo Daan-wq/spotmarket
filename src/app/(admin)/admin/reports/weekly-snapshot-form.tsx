@@ -33,7 +33,7 @@ export function WeeklySnapshotForm() {
       });
       if (!response.ok) {
         const body = await response.json().catch(() => ({}));
-        setError(body.error ?? "Could not save weekly numbers.");
+        setError(body.error ?? "Weekcijfers konden niet worden opgeslagen.");
         return;
       }
       router.refresh();
@@ -44,18 +44,18 @@ export function WeeklySnapshotForm() {
     <form action={onSubmit} className="rounded-2xl border border-neutral-200 bg-white p-5">
       <div className="grid grid-cols-1 gap-4 md:grid-cols-[180px_180px_1fr_auto] md:items-end">
         <label>
-          <span className="text-xs font-semibold uppercase tracking-[0.14em] text-neutral-500">Week start</span>
+          <span className="text-xs font-semibold uppercase tracking-[0.14em] text-neutral-500">Weekstart</span>
           <input name="weekStart" type="date" defaultValue={toDateInput(weekStart)} required className="mt-2 h-11 w-full rounded-xl border border-neutral-200 px-3 text-sm outline-none focus:border-neutral-500" />
         </label>
         <label>
-          <span className="text-xs font-semibold uppercase tracking-[0.14em] text-neutral-500">Week end</span>
+          <span className="text-xs font-semibold uppercase tracking-[0.14em] text-neutral-500">Weekeinde</span>
           <input name="weekEnd" type="date" defaultValue={toDateInput(today)} required className="mt-2 h-11 w-full rounded-xl border border-neutral-200 px-3 text-sm outline-none focus:border-neutral-500" />
         </label>
         <label>
-          <span className="text-xs font-semibold uppercase tracking-[0.14em] text-neutral-500">Notes</span>
-          <input name="notes" className="mt-2 h-11 w-full rounded-xl border border-neutral-200 px-3 text-sm outline-none focus:border-neutral-500" placeholder="What changed this week?" />
+          <span className="text-xs font-semibold uppercase tracking-[0.14em] text-neutral-500">Notities</span>
+          <input name="notes" className="mt-2 h-11 w-full rounded-xl border border-neutral-200 px-3 text-sm outline-none focus:border-neutral-500" placeholder="Wat is er deze week veranderd?" />
         </label>
-        <Button type="submit" isPending={isPending}>Save snapshot</Button>
+        <Button type="submit" isPending={isPending}>Snapshot opslaan</Button>
       </div>
       {error ? <p className="mt-3 text-sm text-red-600">{error}</p> : null}
     </form>

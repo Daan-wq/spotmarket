@@ -13,16 +13,16 @@ export function PublishButton({ campaignId }: { campaignId: string }) {
       const res = await fetch(`/api/admin/campaigns/${campaignId}/publish`, { method: "POST" });
       if (!res.ok) {
         const body = await res.json().catch(() => ({}));
-        toast.error(body.error ?? "Failed to post to Discord");
+        toast.error(body.error ?? "Plaatsen op Discord mislukt");
         setState("idle");
         return;
       }
       setState("done");
-      toast.success("Posted to Discord");
+      toast.success("Geplaatst op Discord");
       setTimeout(() => setState("idle"), 3000);
     } catch (err) {
       console.error("[PublishButton]", err);
-      toast.error("Network error");
+      toast.error("Netwerkfout");
       setState("idle");
     }
   }

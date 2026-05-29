@@ -49,10 +49,10 @@ export default async function NetworksPage() {
           className="text-3xl font-bold mb-1"
           style={{ color: "var(--text-primary)" }}
         >
-          Networks
+          Netwerken
         </h1>
         <p style={{ color: "var(--text-secondary)" }}>
-          Track referrers, referrals, and revenue share
+          Volg verwijzers, verwijzingen en revenue share
         </p>
       </div>
 
@@ -69,7 +69,7 @@ export default async function NetworksPage() {
             className="text-sm font-medium mb-2"
             style={{ color: "var(--text-secondary)" }}
           >
-            Total Referrers
+            Totaal verwijzers
           </p>
           <p
             className="text-2xl font-bold"
@@ -90,7 +90,7 @@ export default async function NetworksPage() {
             className="text-sm font-medium mb-2"
             style={{ color: "var(--text-secondary)" }}
           >
-            Total Referrals
+            Totaal verwijzingen
           </p>
           <p
             className="text-2xl font-bold"
@@ -111,7 +111,7 @@ export default async function NetworksPage() {
             className="text-sm font-medium mb-2"
             style={{ color: "var(--text-secondary)" }}
           >
-            Total Revenue Shared
+            Totale revenue share
           </p>
           <p
             className="text-2xl font-bold"
@@ -122,7 +122,7 @@ export default async function NetworksPage() {
         </div>
       </div>
 
-      {/* Referrers Table */}
+      {/* Referrerstabel */}
       <div
         className="rounded-xl overflow-hidden"
         style={{
@@ -137,7 +137,7 @@ export default async function NetworksPage() {
                 className="px-6 py-3 text-left text-xs font-semibold"
                 style={{ color: "var(--text-secondary)" }}
               >
-                Name
+                Naam
               </th>
               <th
                 className="px-6 py-3 text-left text-xs font-semibold"
@@ -149,32 +149,28 @@ export default async function NetworksPage() {
                 className="px-6 py-3 text-left text-xs font-semibold"
                 style={{ color: "var(--text-secondary)" }}
               >
-                Referral Code
+                Referralcode
               </th>
               <th
                 className="px-6 py-3 text-left text-xs font-semibold"
                 style={{ color: "var(--text-secondary)" }}
               >
-                Referrals
+                Verwijzingen
               </th>
               <th
                 className="px-6 py-3 text-left text-xs font-semibold"
                 style={{ color: "var(--text-secondary)" }}
               >
-                Total Earnings
+                    Totale inkomsten
               </th>
               <th
                 className="px-6 py-3 text-left text-xs font-semibold"
                 style={{ color: "var(--text-secondary)" }}
-              >
-                Payouts
-              </th>
+              >Uitbetalingen</th>
               <th
                 className="px-6 py-3 text-left text-xs font-semibold"
                 style={{ color: "var(--text-secondary)" }}
-              >
-                Details
-              </th>
+              >Details</th>
             </tr>
           </thead>
           <tbody>
@@ -235,7 +231,7 @@ export default async function NetworksPage() {
                       cursor: "pointer",
                     }}
                   >
-                    View
+                    Bekijken
                   </Link>
                 </td>
               </tr>
@@ -248,7 +244,7 @@ export default async function NetworksPage() {
             className="px-6 py-8 text-center"
             style={{ color: "var(--text-secondary)" }}
           >
-            <p>No referrers with active referral codes yet.</p>
+            <p>Nog geen referrers met actieve referralcodes.</p>
           </div>
         )}
       </div>

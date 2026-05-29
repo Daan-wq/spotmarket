@@ -6,30 +6,30 @@ vi.mock("next/navigation", () => ({ usePathname: () => "/admin/discord" }));
 vi.mock("next-intl", () => ({
   useTranslations: () => (key: string) => {
     const labels: Record<string, string> = {
-      operate: "Operate",
-      delivery: "Delivery",
-      control: "Control",
-      commandCenter: "Command Center",
-      campaigns: "Campaigns",
-      referrals: "Referrals",
+      operate: "Operatie",
+      delivery: "Levering",
+      control: "Controle",
+      commandCenter: "Commandcenter",
+      campaigns: "Campagnes",
+      referrals: "Referralnetwerk",
       clippers: "Clippers",
-      clipReview: "Clip review",
+      clipReview: "Clipreview",
       leads: "Leads",
-      brands: "Brands",
-      payouts: "Payouts",
-      reports: "Reports",
-      siteAnalytics: "Site analytics",
-      signals: "Signals",
+      brands: "Merken",
+      payouts: "Uitbetalingen",
+      reports: "Rapportages",
+      siteAnalytics: "Site-analytics",
+      signals: "Signalen",
       discord: "Discord",
-      search: "Search",
-      signOut: "Log out",
+      search: "Zoeken",
+      signOut: "Uitloggen",
     };
     return labels[key] ?? key;
   },
 }));
 
 describe("AdminSidebar", () => {
-  it("renders the Discord admin navigation item", () => {
+  it("rendert het Discord-item in de adminnavigatie", () => {
     const html = renderToStaticMarkup(<AdminSidebar initials="A" email="admin@test.com" />);
 
     expect(html).toContain("/admin/discord");

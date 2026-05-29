@@ -36,9 +36,9 @@ export async function reviewTikTokDemographic(
       },
     },
   });
-  if (!submission) throw new Error("Submission not found");
+  if (!submission) throw new Error("Inzending niet gevonden");
   if (submission.status !== VerificationStatus.PENDING) {
-    throw new Error("Submission has already been reviewed");
+    throw new Error("Inzending is al gereviewd");
   }
 
   const newStatus =

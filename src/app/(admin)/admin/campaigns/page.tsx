@@ -43,29 +43,29 @@ export default async function CampaignsPage() {
   return (
     <div className="space-y-9">
       <PageHeader
-        eyebrow="Campaign Ops"
-        title="Campaigns"
-        description="Campaigns now sit in the brand-to-production flow. Brand link, assignments, submissions, and publish actions stay visible."
-        actions={[{ label: "Create campaign", href: "/admin/campaigns/new", icon: Plus }]}
+        eyebrow="Campagne-ops"
+        title="Campagnes"
+        description="Campagnes zitten nu in de flow van merk naar productie. Merklink, opdrachten, inzendingen en publicatieacties blijven zichtbaar."
+        actions={[{ label: "Campagne maken", href: "/admin/campaigns/new", icon: Plus }]}
       />
 
       <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
-        <StatCard label="Campaigns" value={String(campaigns.length)} detail="All statuses" />
-        <StatCard label="Active" value={String(active.length)} detail="Live creator work" />
-        <StatCard label="Pipeline" value={String(draft.length)} detail="Draft, payment, review" tone={draft.length > 0 ? "warning" : "neutral"} />
-        <StatCard label="Approved views" value={formatNumber(approvedViews)} detail={`${formatCurrencyPrecise(budget)} total budget`} />
+        <StatCard label="Campagnes" value={String(campaigns.length)} detail="Alle statussen" />
+        <StatCard label="Actief" value={String(active.length)} detail="Live creatorwerk" />
+        <StatCard label="Pipeline" value={String(draft.length)} detail="Concept, betaling, review" tone={draft.length > 0 ? "warning" : "neutral"} />
+        <StatCard label="Goedgekeurde views" value={formatNumber(approvedViews)} detail={`${formatCurrencyPrecise(budget)} totaalbudget`} />
       </div>
 
       <section>
-        <SectionHeader title="Campaign Table" description="Dense admin view with brand ownership and production pressure." />
+        <SectionHeader title="Campagnetabel" description="Compacte adminweergave met merkeigenaarschap en productiedruk." />
         <DataTable
           rows={campaigns}
           rowKey={(campaign) => campaign.id}
-          emptyState={<EmptyState title="No campaigns yet" description="Create the first campaign once a brand is onboarded." primaryCta={{ label: "Create campaign", href: "/admin/campaigns/new" }} />}
+          emptyState={<EmptyState title="Nog geen campagnes" description="Maak de eerste campagne zodra een merk is onboarded." primaryCta={{ label: "Campagne maken", href: "/admin/campaigns/new" }} />}
           columns={[
             {
               key: "name",
-              header: "Campaign",
+              header: "Campagne",
               cell: (campaign) => (
                 <div className="flex items-center gap-3">
                   <CampaignAvatar name={campaign.name} imageUrl={campaign.bannerUrl} size="sm" />
@@ -73,7 +73,7 @@ export default async function CampaignsPage() {
                     <Link href={`/admin/campaigns/${campaign.id}`} className="block truncate font-semibold text-neutral-950 underline-offset-2 hover:underline">
                       {campaign.name}
                     </Link>
-                    <p className="mt-1 truncate text-xs text-neutral-500">{campaign.brand?.name || campaign.createdBy?.email || "No brand linked"}</p>
+                  <p className="mt-1 truncate text-xs text-neutral-500">{campaign.brand?.name || campaign.createdBy?.email || "Geen merk gekoppeld"}</p>
                   </div>
                 </div>
               ),
@@ -83,37 +83,37 @@ export default async function CampaignsPage() {
             { key: "creators", header: "Creators", align: "right", cell: (campaign) => campaign.applications.length },
             {
               key: "assignments",
-              header: "Assignments",
+              header: "Opdrachten",
               align: "right",
               cell: (campaign) => campaign.productionAssignments.filter((assignment) => !["APPROVED", "POSTED", "PAID", "REJECTED"].includes(assignment.status)).length,
             },
-            { key: "submissions", header: "Submissions", align: "right", cell: (campaign) => campaign.campaignSubmissions.length },
+            { key: "submissions", header: "Inzendingen", align: "right", cell: (campaign) => campaign.campaignSubmissions.length },
             { key: "deadline", header: "Deadline", cell: (campaign) => <CampaignDeadlineBadge deadline={campaign.deadline} /> },
             {
               key: "actions",
-              header: "Actions",
+              header: "Acties",
               cell: (campaign) => (
                 <ProgressiveActionDrawer
-                  triggerLabel="Manage"
+                  triggerLabel="Beheren"
                   title={campaign.name}
-                  description="Campaign actions"
+                  description="Campagneacties"
                   variant="outline"
                   size="sm"
                   showIcon={false}
                 >
                   <div className="space-y-3">
                     <Link href={`/admin/campaigns/${campaign.id}`} className="inline-flex h-10 w-full items-center justify-center rounded-xl border border-neutral-200 bg-white px-4 text-sm font-semibold text-neutral-950 transition hover:bg-neutral-50">
-                      Open campaign
+                      Campagne openen
                     </Link>
                     <Link href={`/admin/campaigns/${campaign.id}/edit`} className="inline-flex h-10 w-full items-center justify-center rounded-xl border border-neutral-200 bg-white px-4 text-sm font-semibold text-neutral-950 transition hover:bg-neutral-50">
-                      Edit campaign
+                      Campagne bewerken
                     </Link>
                     <div className="rounded-2xl border border-neutral-200 bg-neutral-50 p-4">
-                      <p className="mb-3 text-xs font-semibold uppercase tracking-[0.14em] text-neutral-400">Publish</p>
+                      <p className="mb-3 text-xs font-semibold uppercase tracking-[0.14em] text-neutral-400">Publiceren</p>
                       <PublishButton campaignId={campaign.id} />
                     </div>
                     <div className="rounded-2xl border border-neutral-200 bg-neutral-50 p-4">
-                      <p className="mb-3 text-xs font-semibold uppercase tracking-[0.14em] text-neutral-400">Status and cleanup</p>
+                      <p className="mb-3 text-xs font-semibold uppercase tracking-[0.14em] text-neutral-400">Status en opschonen</p>
                       <CampaignActions campaignId={campaign.id} status={campaign.status} />
                     </div>
                   </div>

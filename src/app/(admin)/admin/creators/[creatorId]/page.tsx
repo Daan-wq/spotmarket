@@ -106,23 +106,23 @@ export default async function CreatorProfilePage({ params, searchParams }: PageP
   return (
     <div className="space-y-9">
       <PageHeader
-        eyebrow="Clipper analytics"
+        eyebrow="Clipperanalytics"
         title={profile.displayName}
-        description={`${profile.user.email} - joined ${formatDate(profile.user.createdAt)} - ${accountStatus.value}`}
-        actions={[{ label: "All clippers", href: "/admin/clippers" }]}
+        description={`${profile.user.email} - lid sinds ${formatDate(profile.user.createdAt)} - ${accountStatus.value}`}
+        actions={[{ label: "Alle clippers", href: "/admin/clippers" }]}
       />
 
       <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
         <StatCard label="Views" value={formatNumber(stats.totalViews.value)} detail={range.label} />
-        <StatCard label="Engagement" value={formatNumber(stats.totalEngagement.value)} detail="Likes + comments + shares" />
-        <StatCard label="Earnings" value={formatCurrencyPrecise(stats.totalEarnings.value)} detail={range.label} />
-        <StatCard label="Accounts" value={`${verifiedAccounts}/${accountCount || 0}`} detail={`${platformVerification.verifiedCount}/${platformVerification.connectedCount || 0} platforms verified`} tone={verifiedAccounts > 0 ? "success" : "warning"} />
+        <StatCard label="Engagement" value={formatNumber(stats.totalEngagement.value)} detail="Likes + reacties + shares" />
+        <StatCard label="Inkomsten" value={formatCurrencyPrecise(stats.totalEarnings.value)} detail={range.label} />
+        <StatCard label="Accounts" value={`${verifiedAccounts}/${accountCount || 0}`} detail={`${platformVerification.verifiedCount}/${platformVerification.connectedCount || 0} platforms geverifieerd`} tone={verifiedAccounts > 0 ? "success" : "warning"} />
       </div>
 
       <section>
         <SectionHeader
-          title="Account Analytics"
-          description="The same analytics workspace the creator sees, scoped to this clipper and shown read-only for admins."
+          title="Accountanalytics"
+          description="Dezelfde analyticsworkspace die de creator ziet, gescoped naar deze clipper en read-only voor admins."
         />
         <AccountsAnalyticsWorkspace
           mode="admin"
@@ -135,24 +135,24 @@ export default async function CreatorProfilePage({ params, searchParams }: PageP
 
       <section>
         <SectionHeader
-          title="Campaign Operations"
-          description="Campaign, payout, review, account-health, and signal context for running active campaigns."
+          title="Campagne-operatie"
+          description="Campagne-, uitbetalings-, review-, accountgezondheids- en signaalcontext voor actieve campagnes."
         />
         <div className="grid grid-cols-1 gap-4 xl:grid-cols-3">
-          <AdminPanel title="Payout summary">
+          <AdminPanel title="Uitbetalingsoverzicht">
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-3 xl:grid-cols-1">
-              <MiniStat label="Estimated" value={formatCurrencyPrecise(payouts.totalEarnings)} />
-              <MiniStat label="Pending/final" value={formatCurrencyPrecise(payouts.availableBalance)} tone={payouts.hasUnpaidBalance ? "warning" : "neutral"} />
-              <MiniStat label="Paid" value={formatCurrencyPrecise(payouts.totalPaid)} />
+              <MiniStat label="Geschat" value={formatCurrencyPrecise(payouts.totalEarnings)} />
+              <MiniStat label="In behandeling/definitief" value={formatCurrencyPrecise(payouts.availableBalance)} tone={payouts.hasUnpaidBalance ? "warning" : "neutral"} />
+              <MiniStat label="Betaald" value={formatCurrencyPrecise(payouts.totalPaid)} />
             </div>
           </AdminPanel>
 
-          <AdminPanel title="Operational snapshot">
+          <AdminPanel title="Operationele snapshot">
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-1">
-              <MiniStat label="Active campaigns" value={String(activeCampaigns.length)} />
-              <MiniStat label="Pending submissions" value={String(pendingSubmissions)} tone={pendingSubmissions > 0 ? "warning" : "neutral"} />
-              <MiniStat label="Ops status" value={profile.operationalProfile ? titleCaseEnum(profile.operationalProfile.status) : "No ops"} tone={profile.operationalProfile ? "neutral" : "warning"} />
-              <MiniStat label="Weekly capacity" value={String(profile.operationalProfile?.maxClipsPerWeek ?? "-")} />
+              <MiniStat label="Actieve campagnes" value={String(activeCampaigns.length)} />
+              <MiniStat label="Inzendingen in behandeling" value={String(pendingSubmissions)} tone={pendingSubmissions > 0 ? "warning" : "neutral"} />
+              <MiniStat label="Ops-status" value={profile.operationalProfile ? titleCaseEnum(profile.operationalProfile.status) : "Geen ops"} tone={profile.operationalProfile ? "neutral" : "warning"} />
+              <MiniStat label="Weekcapaciteit" value={String(profile.operationalProfile?.maxClipsPerWeek ?? "-")} />
             </div>
           </AdminPanel>
 
@@ -161,9 +161,9 @@ export default async function CreatorProfilePage({ params, searchParams }: PageP
       </section>
 
       <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
-        <AdminPanel title="Active campaigns">
+        <AdminPanel title="Actieve campagnes">
           {activeCampaigns.length === 0 ? (
-            <EmptyLine>No active campaigns.</EmptyLine>
+            <EmptyLine>Geen actieve campagnes.</EmptyLine>
           ) : (
             <ul className="divide-y divide-neutral-100">
               {activeCampaigns.map((application) => (
@@ -173,7 +173,7 @@ export default async function CreatorProfilePage({ params, searchParams }: PageP
                       {application.campaign.name}
                     </Link>
                     <p className="mt-1 text-xs text-neutral-500">
-                      {formatCurrencyPrecise(Number(application.campaign.creatorCpv) * 1_000_000)} CPM - due {formatShortDate(application.campaign.deadline)}
+                      {formatCurrencyPrecise(Number(application.campaign.creatorCpv) * 1_000_000)} CPM - deadline {formatShortDate(application.campaign.deadline)}
                     </p>
                   </div>
                   <Badge variant={application.status === "active" ? "verified" : "neutral"}>{application.status}</Badge>
@@ -183,9 +183,9 @@ export default async function CreatorProfilePage({ params, searchParams }: PageP
           )}
         </AdminPanel>
 
-        <AdminPanel title="Account health">
+        <AdminPanel title="Accountgezondheid">
           {accounts.length === 0 ? (
-            <EmptyLine>No platform accounts connected.</EmptyLine>
+            <EmptyLine>Geen platformaccounts gekoppeld.</EmptyLine>
           ) : (
             <ul className="divide-y divide-neutral-100">
               {accounts.map((account) => {
@@ -200,12 +200,12 @@ export default async function CreatorProfilePage({ params, searchParams }: PageP
                         {account.handle}
                       </p>
                       <p className="mt-1 text-xs text-neutral-500">
-                        {account.audienceCount != null ? `${formatNumber(account.audienceCount)} ${account.countLabel}` : "No audience snapshot"}
-                        {account.lastSuccessfulRefreshAt ? ` - last refreshed ${formatShortDate(account.lastSuccessfulRefreshAt)}` : ""}
+                        {account.audienceCount != null ? `${formatNumber(account.audienceCount)} ${account.countLabel}` : "Geen publieksnapshot"}
+                        {account.lastSuccessfulRefreshAt ? ` - laatst ververst ${formatShortDate(account.lastSuccessfulRefreshAt)}` : ""}
                       </p>
                       {account.accountRefreshStatus === "FAILED" ? (
                         <p className="mt-1 text-xs text-red-600">
-                          Refresh failed{account.lastRefreshErrorMessage ? `: ${account.lastRefreshErrorMessage}` : ""}
+                          Verversen mislukt{account.lastRefreshErrorMessage ? `: ${account.lastRefreshErrorMessage}` : ""}
                         </p>
                       ) : null}
                     </div>
@@ -219,9 +219,9 @@ export default async function CreatorProfilePage({ params, searchParams }: PageP
       </div>
 
       <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
-        <AdminPanel title="Recent submissions">
+        <AdminPanel title="Recente inzendingen">
           {recentSubmissions.length === 0 ? (
-            <EmptyLine>No submissions yet.</EmptyLine>
+            <EmptyLine>Nog geen inzendingen.</EmptyLine>
           ) : (
             <ul className="divide-y divide-neutral-100">
               {recentSubmissions.slice(0, 20).map((submission) => (
@@ -232,7 +232,7 @@ export default async function CreatorProfilePage({ params, searchParams }: PageP
                     </Link>
                     <p className="mt-1 text-xs text-neutral-500">
                       {formatShortDate(submission.createdAt)}
-                      {submission.submissionSignals.length > 0 ? ` - ${submission.submissionSignals.length} signals` : ""}
+                      {submission.submissionSignals.length > 0 ? ` - ${submission.submissionSignals.length} signalen` : ""}
                     </p>
                   </div>
                   <div className="shrink-0 text-right">
@@ -250,9 +250,9 @@ export default async function CreatorProfilePage({ params, searchParams }: PageP
           )}
         </AdminPanel>
 
-        <AdminPanel title="Signal history">
+        <AdminPanel title="Signaalhistorie">
           {allSignals.length === 0 ? (
-            <EmptyLine>No submission signals fired.</EmptyLine>
+            <EmptyLine>Geen inzendingssignalen geactiveerd.</EmptyLine>
           ) : (
             <ul className="divide-y divide-neutral-100">
               {allSignals.slice(0, 30).map((signal) => (
@@ -263,7 +263,7 @@ export default async function CreatorProfilePage({ params, searchParams }: PageP
                     </p>
                     <p className="mt-1 text-xs text-neutral-500">
                       {signal.campaignName} - {formatShortDate(signal.createdAt)}
-                      {signal.resolvedAt ? ` - resolved ${formatShortDate(signal.resolvedAt)}` : ""}
+                      {signal.resolvedAt ? ` - opgelost ${formatShortDate(signal.resolvedAt)}` : ""}
                     </p>
                   </div>
                   <Badge variant={signal.severity === "CRITICAL" ? "failed" : signal.severity === "WARN" ? "pending" : "neutral"}>
@@ -332,7 +332,7 @@ function buildAccounts(accounts: SocialAccountsByPlatform) {
 
 function tokenHealth(expiresAt: Date | null): { label: string; variant: "verified" | "pending" | "failed" | "neutral" } {
   if (!expiresAt) return { label: "Unknown", variant: "neutral" };
-  if (expiresAt.getTime() < Date.now()) return { label: "Expired", variant: "failed" };
+  if (expiresAt.getTime() < Date.now()) return { label: "Verlopen", variant: "failed" };
   const days = (expiresAt.getTime() - Date.now()) / (1000 * 60 * 60 * 24);
   if (days < 7) return { label: `${Math.max(0, Math.round(days))}d left`, variant: "pending" };
   return { label: "Healthy", variant: "verified" };

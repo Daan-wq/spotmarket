@@ -48,43 +48,43 @@ export default async function ReviewPage() {
   const openSignalClipCount = openSignalGroups.length;
   const openSignalCount = openSignalGroups.reduce((sum, group) => sum + group._count._all, 0);
   const hasOpenSignals = openSignalClipCount > 0;
-  const signalNoun = openSignalCount === 1 ? "signal" : "signals";
+  const signalNoun = openSignalCount === 1 ? "signaal" : "signalen";
   const clipNoun = openSignalClipCount === 1 ? "clip" : "clips";
 
   return (
     <div className="space-y-9">
       <PageHeader
-        eyebrow="Clip review"
-        title="Clip review"
-        description="Open each submitted post, then approve or reject. Rejections require a reason."
+        eyebrow="Clipreview"
+        title="Clipreview"
+        description="Open elke ingezonden post en keur daarna goed of wijs af. Afwijzingen vereisen een reden."
       />
 
       <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-        <StatCard label="Needs review" value={String(submissions.length)} detail="Pending, flagged, or revision" tone={submissions.length > 0 ? "warning" : "neutral"} />
-        <StatCard label="Revision needed" value={String(revisions)} detail="Creator should revise before approval" tone={revisions > 0 ? "warning" : "neutral"} />
-        <StatCard label="Flagged" value={String(flagged)} detail="Risk or tracking issue" tone={flagged > 0 ? "danger" : "neutral"} />
+        <StatCard label="Review nodig" value={String(submissions.length)} detail="In behandeling, gemarkeerd of aanpassing" tone={submissions.length > 0 ? "warning" : "neutral"} />
+        <StatCard label="Aanpassing nodig" value={String(revisions)} detail="Creator moet aanpassen voor goedkeuring" tone={revisions > 0 ? "warning" : "neutral"} />
+        <StatCard label="Gemarkeerd" value={String(flagged)} detail="Risico- of trackingissue" tone={flagged > 0 ? "danger" : "neutral"} />
       </div>
 
       <section>
         <SectionHeader
-          title="Review queue"
-          description="Open the post, then make the final call."
+          title="Reviewwachtrij"
+          description="Open de post en neem daarna de beslissing."
         />
         {submissions.length === 0 ? (
           <EmptyState
             icon={<ClipboardCheck className="h-5 w-5" />}
-            title={hasOpenSignals ? "Clip review clear, signals pending" : "Review queue clear"}
+            title={hasOpenSignals ? "Clipreview leeg, signalen open" : "Reviewwachtrij leeg"}
             description={
               hasOpenSignals
-                ? `${openSignalClipCount} ${clipNoun} still have ${openSignalCount} open ${signalNoun}. Some can already be approved clips that were flagged later by metrics or fraud checks, so clear Signals before treating review as fully done.`
-                : "No pending, flagged, or revision-needed clips. Keep production moving from the Production page."
+                ? `${openSignalClipCount} ${clipNoun} hebben nog ${openSignalCount} open ${signalNoun}. Sommige kunnen al goedgekeurde clips zijn die later door metrics of fraudechecks zijn gemarkeerd, dus rond Signalen af voordat je review als volledig klaar ziet.`
+                : "Geen clips in behandeling, gemarkeerd of met revisie nodig. Houd productie lopend via de productiepagina."
             }
             primaryCta={
               hasOpenSignals
-                ? { label: "Open signals", href: "/admin/signals" }
-                : { label: "Open production", href: "/admin/production" }
+                ? { label: "Signalen openen", href: "/admin/signals" }
+                : { label: "Productie openen", href: "/admin/production" }
             }
-            secondaryCta={hasOpenSignals ? { label: "Open production", href: "/admin/production" } : undefined}
+            secondaryCta={hasOpenSignals ? { label: "Productie openen", href: "/admin/production" } : undefined}
           />
         ) : (
           <div className="space-y-4">
@@ -96,11 +96,11 @@ export default async function ReviewPage() {
                       {submission.campaign.name}
                     </Link>
                     <p className="mt-1 text-xs text-neutral-500">
-                      {submission.campaign.brand?.name || "Unlinked brand"} - {submission.creator.email} - submitted {formatDate(submission.createdAt)}
+                      {submission.campaign.brand?.name || "Niet gekoppeld merk"} - {submission.creator.email} - ingediend {formatDate(submission.createdAt)}
                     </p>
                     {submission.productionAssignment ? (
                       <p className="mt-1 text-xs text-neutral-500">
-                        Assignment: {submission.productionAssignment.contentAngle || "No angle"} - due {formatDate(submission.productionAssignment.dueAt)}
+                        Opdracht: {submission.productionAssignment.contentAngle || "Geen contenthoek"} - deadline {formatDate(submission.productionAssignment.dueAt)}
                       </p>
                     ) : null}
                   </div>
@@ -116,9 +116,7 @@ export default async function ReviewPage() {
                     rel="noreferrer"
                     className="inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-neutral-200 bg-white px-4 text-sm font-semibold text-neutral-950 transition hover:bg-neutral-50"
                   >
-                    <ExternalLink className="h-4 w-4" animateOnHover />
-                    Open post
-                  </a>
+                    <ExternalLink className="h-4 w-4" animateOnHover />Post openen</a>
                   <SubmissionActions
                     id={submission.id}
                     status={submission.status}

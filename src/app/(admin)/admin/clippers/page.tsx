@@ -66,25 +66,25 @@ export default async function ClippersPage() {
   return (
     <div className="space-y-9">
       <PageHeader
-        eyebrow="Creator Operations"
+        eyebrow="Creatoroperatie"
         title="Clippers"
-        description="Clipper analytics and operations: tracked views, engagement, clips, earnings, accounts, and recent activity."
+        description="Clipperanalytics en operatie: gemeten views, engagement, clips, inkomsten, accounts en recente activiteit."
       />
 
       <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
-        <StatCard label="Tracked views" value={formatNumber(totalTrackedViews)} detail={`${formatNumber(totalTrackedPosts)} submitted clips`} />
-        <StatCard label="Creator earnings" value={formatCurrencyPrecise(totalEarnings)} detail="Approved/submitted earnings" />
-        <StatCard label="Accounts" value={String(totalAccounts)} detail="Verified connected accounts" />
-        <StatCard label="Missing ops profile" value={String(missingOps.length)} detail={`${active.length} active, ${totalCapacity} clips/week capacity`} tone={missingOps.length > 0 ? "warning" : "neutral"} />
+        <StatCard label="Gemeten views" value={formatNumber(totalTrackedViews)} detail={`${formatNumber(totalTrackedPosts)} ingediende clips`} />
+        <StatCard label="Creatorinkomsten" value={formatCurrencyPrecise(totalEarnings)} detail="Goedgekeurde/ingediende inkomsten" />
+        <StatCard label="Accounts" value={String(totalAccounts)} detail="Geverifieerde gekoppelde accounts" />
+        <StatCard label="Ops-profiel ontbreekt" value={String(missingOps.length)} detail={`${active.length} actief, ${totalCapacity} clips/week capaciteit`} tone={missingOps.length > 0 ? "warning" : "neutral"} />
       </div>
 
       <section>
-        <SectionHeader title="Clipper Analytics" description="Open a clipper to inspect their account analytics, posts, campaign activity, and payout context." />
+        <SectionHeader title="Clipperanalytics" description="Open een clipper om accountanalytics, posts, campagneactiviteit en uitbetalingscontext te bekijken." />
         <DataTable
           rows={clippers}
           rowKey={(clipper) => clipper.id}
           rowHref={(clipper) => `/admin/creators/${clipper.id}`}
-          emptyState={<EmptyState icon={<Users className="h-5 w-5" />} title="No clippers yet" description="Creator profiles will appear here. Add operational profiles to turn creators into a production database." />}
+          emptyState={<EmptyState icon={<Users className="h-5 w-5" />} title="Nog geen clippers" description="Creatorprofielen verschijnen hier. Voeg operationele profielen toe om creators naar een productiedatabase te brengen." />}
           columns={[
             {
               key: "clipper",
@@ -92,7 +92,7 @@ export default async function ClippersPage() {
               cell: (clipper) => (
                 <div>
                   <p className="font-semibold text-neutral-950">{clipper.displayName}</p>
-                  <p className="mt-1 text-xs text-neutral-500">{clipper.user?.email || "No email"}</p>
+                  <p className="mt-1 text-xs text-neutral-500">{clipper.user?.email || "Geen email"}</p>
                 </div>
               ),
             },
@@ -119,7 +119,7 @@ export default async function ClippersPage() {
             },
             {
               key: "earnings",
-              header: "Earned",
+              header: "Verdiend",
               align: "right",
               cell: (clipper) => formatCurrencyPrecise(analyticsByProfileId.get(clipper.id)?.earnings ?? 0),
             },
@@ -131,7 +131,7 @@ export default async function ClippersPage() {
             },
             {
               key: "last",
-              header: "Last clip",
+              header: "Laatste clip",
               cell: (clipper) => formatShortDate(analyticsByProfileId.get(clipper.id)?.lastSubmissionAt),
             },
           ]}

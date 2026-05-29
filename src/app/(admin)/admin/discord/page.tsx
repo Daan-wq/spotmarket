@@ -9,7 +9,7 @@ export default function AdminDiscordPage() {
       <PageHeader
         eyebrow="Admin"
         title="Discord"
-        description="Compose, preview, template, and send Discord messages from the ClipProfit bot."
+        description="Stel Discord-berichten op, preview ze, maak templates en verzend ze vanuit de ClipProfit-bot."
       />
       <DiscordMessageComposer />
     </div>

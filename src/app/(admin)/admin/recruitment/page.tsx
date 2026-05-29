@@ -36,20 +36,20 @@ export default async function RecruitmentPage() {
   return (
     <div className="space-y-9">
       <PageHeader
-        eyebrow="Staffing"
+        eyebrow="Bezetting"
         title="Recruitment"
-        description="Applicant pipeline from found creators to trial, approval, and database entry."
+        description="Kandidatenpipeline van gevonden creators naar trial, goedkeuring en database-entry."
       />
 
       <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
-        <StatCard label="Candidates" value={String(candidates.length)} detail="All recruitment records" />
-        <StatCard label="Trials due" value={String(trialDue.length)} detail="Due or overdue trial work" tone={trialDue.length > 0 ? "warning" : "neutral"} />
-        <StatCard label="Approved" value={String(approved.length)} detail="Approved or added to database" />
-        <StatCard label="Avg score" value={avgScore ? avgScore.toFixed(1) : "-"} detail="Trial score average" />
+        <StatCard label="Kandidaten" value={String(candidates.length)} detail="Alle recruitmentrecords" />
+        <StatCard label="Trials nodig" value={String(trialDue.length)} detail="Trialwerk dat nu of eerder klaar moet zijn" tone={trialDue.length > 0 ? "warning" : "neutral"} />
+        <StatCard label="Goedgekeurd" value={String(approved.length)} detail="Goedgekeurd of toegevoegd aan database" />
+        <StatCard label="Gem. score" value={avgScore ? avgScore.toFixed(1) : "-"} detail="Gemiddelde trialscore" />
       </div>
 
       <section>
-        <SectionHeader title="Recruitment Pipeline" description="Found to database, without hiding trial dates or scores." />
+        <SectionHeader title="Recruitmentpipeline" description="Van gevonden naar database, zonder trialdatums of scores te verbergen." />
         <div className="grid grid-cols-2 gap-3 md:grid-cols-4 xl:grid-cols-8">
           {STAGES.map((stage) => (
             <div key={stage} className="rounded-2xl border border-neutral-200 bg-white p-4">
@@ -61,39 +61,37 @@ export default async function RecruitmentPage() {
       </section>
 
       <section>
-        <SectionHeader title="Candidate Table" description="Recruitment source, contact, portfolio, trial state, score, and approved profile." />
+        <SectionHeader title="Kandidatentabel" description="Recruitmentbron, contact, portfolio, trialstatus, score en goedgekeurd profiel." />
         <DataTable
           rows={candidates}
           rowKey={(candidate) => candidate.id}
-          emptyState={<EmptyState icon={<Sparkles className="h-5 w-5" />} title="No candidates yet" description="Add candidates through the recruitment API to start staffing the clipper database." />}
+          emptyState={<EmptyState icon={<Sparkles className="h-5 w-5" />} title="Nog geen kandidaten" description="Voeg kandidaten toe via de recruitment-API om de clipperdatabase te vullen." />}
           columns={[
             {
               key: "name",
-              header: "Candidate",
+              header: "Kandidaat",
               cell: (candidate) => (
                 <div>
                   <p className="font-semibold text-neutral-950">{candidate.name}</p>
-                  <p className="mt-1 text-xs text-neutral-500">{candidate.source || candidate.contact || "No source"}</p>
+                  <p className="mt-1 text-xs text-neutral-500">{candidate.source || candidate.contact || "Geen bron"}</p>
                 </div>
               ),
             },
-            { key: "stage", header: "Stage", cell: (candidate) => <Badge variant={candidate.stage === "REJECTED" ? "failed" : candidate.stage === "APPROVED" || candidate.stage === "ADDED_TO_DATABASE" ? "verified" : "neutral"}>{titleCaseEnum(candidate.stage)}</Badge> },
+            { key: "stage", header: "Fase", cell: (candidate) => <Badge variant={candidate.stage === "REJECTED" ? "failed" : candidate.stage === "APPROVED" || candidate.stage === "ADDED_TO_DATABASE" ? "verified" : "neutral"}>{titleCaseEnum(candidate.stage)}</Badge> },
             { key: "contact", header: "Contact", cell: (candidate) => candidate.contact || "-" },
             {
               key: "portfolio",
               header: "Portfolio",
               cell: (candidate) => candidate.portfolioUrl ? (
-                <a href={candidate.portfolioUrl} target="_blank" rel="noreferrer" className="font-semibold text-neutral-950 underline underline-offset-2">
-                  Open
-                </a>
+                <a href={candidate.portfolioUrl} target="_blank" rel="noreferrer" className="font-semibold text-neutral-950 underline underline-offset-2">Openen</a>
               ) : "-",
             },
-            { key: "trialSent", header: "Trial sent", cell: (candidate) => formatDate(candidate.trialSentAt) },
-            { key: "trialDue", header: "Trial due", cell: (candidate) => formatDate(candidate.trialDueAt) },
+            { key: "trialSent", header: "Trial verstuurd", cell: (candidate) => formatDate(candidate.trialSentAt) },
+            { key: "trialDue", header: "Trialdeadline", cell: (candidate) => formatDate(candidate.trialDueAt) },
             { key: "score", header: "Score", align: "right", cell: (candidate) => candidate.score ?? "-" },
             {
               key: "approved",
-              header: "Approved profile",
+              header: "Goedgekeurd profiel",
               cell: (candidate) => candidate.approvedCreatorProfile ? (
                 <Link href={`/admin/creators/${candidate.approvedCreatorProfile.id}`} className="font-semibold text-neutral-950 underline underline-offset-2">
                   {candidate.approvedCreatorProfile.displayName}

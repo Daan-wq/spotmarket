@@ -23,26 +23,26 @@ export default async function VerificationsPage() {
   return (
     <div className="space-y-9">
       <PageHeader
-        eyebrow="Verifications"
-        title="Verifications"
-        description="Review creator Instagram verification status and take action only when needed."
+        eyebrow="Verificaties"
+        title="Verificaties"
+        description="Review de Instagram-verificatiestatus van creators en grijp alleen in wanneer nodig."
       />
 
       <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-        <StatCard label="Verified" value={String(verified)} detail="Ready accounts" />
-        <StatCard label="Pending" value={String(pending)} detail="Awaiting decision" tone={pending > 0 ? "warning" : "neutral"} />
-        <StatCard label="Failed" value={String(failed)} detail="Rejected proofs" tone={failed > 0 ? "danger" : "neutral"} />
+        <StatCard label="Geverifieerd" value={String(verified)} detail="Accounts klaar" />
+        <StatCard label="In behandeling" value={String(pending)} detail="Wacht op beslissing" tone={pending > 0 ? "warning" : "neutral"} />
+        <StatCard label="Mislukt" value={String(failed)} detail="Afgewezen bewijzen" tone={failed > 0 ? "danger" : "neutral"} />
       </div>
 
       <section>
-        <SectionHeader title="Verification Table" description="Action controls open from the Manage drawer." />
+        <SectionHeader title="Verificatietabel" description="Actieknoppen openen vanuit de beheerdrawer." />
         <DataTable
           rows={connections}
           rowKey={(connection) => connection.id}
-          emptyState={<EmptyState title="No verification records yet" description="Instagram connections will appear here after creators start connecting accounts." />}
+          emptyState={<EmptyState title="Nog geen verificatierecords" description="Instagramkoppelingen verschijnen hier zodra creators accounts gaan koppelen." />}
           columns={[
             { key: "creator", header: "Creator", cell: (connection) => connection.creatorProfile.displayName },
-            { key: "username", header: "IG username", cell: (connection) => connection.igUsername },
+            { key: "username", header: "IG-gebruikersnaam", cell: (connection) => connection.igUsername },
             {
               key: "status",
               header: "Status",
@@ -52,15 +52,15 @@ export default async function VerificationsPage() {
                 return <Badge variant={connection.isVerified ? "verified" : bio?.status === "FAILED" ? "failed" : "pending"}>{titleCaseEnum(label)}</Badge>;
               },
             },
-            { key: "checked", header: "Last proof", cell: (connection) => formatDate(connection.bioVerifications[0]?.createdAt) },
+            { key: "checked", header: "Laatste bewijs", cell: (connection) => formatDate(connection.bioVerifications[0]?.createdAt) },
             {
               key: "actions",
-              header: "Actions",
+              header: "Acties",
               cell: (connection) => (
                 <ProgressiveActionDrawer
-                  triggerLabel="Manage"
+                  triggerLabel="Beheren"
                   title={connection.igUsername}
-                  description="Verification decision"
+                  description="Verificatiebeslissing"
                   variant="outline"
                   size="sm"
                   showIcon={false}

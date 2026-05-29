@@ -34,24 +34,24 @@ export default async function AdminStatsPage({ searchParams }: PageProps) {
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         <KpiCard
-          label="Fleet views"
-          value={stats.fleetViews.value.toLocaleString()}
+          label="Fleetviews"
+          value={stats.fleetViews.value.toLocaleString("nl-NL")}
           trend={stats.fleetViews.delta}
           hint={range.label}
         />
         <KpiCard
-          label="Active creators"
-          value={stats.activeCreators.value.toLocaleString()}
+          label="Actieve creators"
+          value={stats.activeCreators.value.toLocaleString("nl-NL")}
           hint="≥1 verified connection"
         />
         <KpiCard
-          label="Effective CPV"
+          label="Effectieve CPV"
           value={`€${stats.effectiveCpv.value.toFixed(6)}`}
           trend={stats.effectiveCpv.delta}
           hint={range.label}
         />
         <KpiCard
-          label="Account connection success"
+          label="Accountkoppelingssucces"
           value={`${stats.oauthSuccessRate.value.toFixed(1)}%`}
           trend={stats.oauthSuccessRate.delta}
           tone={stats.oauthSuccessRate.value < 80 ? "warning" : "success"}

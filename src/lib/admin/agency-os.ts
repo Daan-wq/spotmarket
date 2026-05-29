@@ -5,18 +5,18 @@ const DAY_MS = 24 * 60 * 60 * 1000;
 
 export const PIPELINE_CAMPAIGN_STATUSES: CampaignStatus[] = ["draft", "pending_payment", "pending_review"];
 export const LIVE_OPERATING_AREAS = new Set([
-  "Command Center",
+  "Commandcenter",
   "Leads",
-  "Brand Onboarding",
-  "Clipper Database",
-  "Recruitment Pipeline",
-  "Content Production",
-  "Clip Review",
-  "Payouts",
-  "Pricing",
-  "Documents",
-  "Guides",
-  "Weekly Numbers",
+  "Merkonboarding",
+  "Clipperdatabase",
+  "Recruitmentpipeline",
+  "Contentproductie",
+  "Clipreview",
+  "Uitbetalingen",
+  "Prijzen",
+  "Documenten",
+  "Handleidingen",
+  "Weekcijfers",
 ]);
 
 export interface AgencyOsDateWindows {
@@ -147,18 +147,18 @@ export function calculateApprovalRate(approved: number, rejectedOrRevised: numbe
 
 export function buildOperatingAreas(): OperatingArea[] {
   const areas: Array<Omit<OperatingArea, "status">> = [
-    { name: "Command Center", detail: "Today first view of work, money, and risk", href: "/admin" },
-    { name: "Leads", detail: "Lead pipeline, follow-ups, owner, and value", href: "/admin/crm" },
-    { name: "Brand Onboarding", detail: "Contract, payment, brief, assets, and assigned clippers", href: "/admin/onboarding" },
-    { name: "Clipper Database", detail: "Creator profiles, operations, capacity, and assigned brands", href: "/admin/clippers" },
-    { name: "Recruitment Pipeline", detail: "Candidates, trials, scores, and approvals", href: "/admin/recruitment" },
-    { name: "Content Production", detail: "Assignments, due dates, revisions, and submissions", href: "/admin/production" },
-    { name: "Clip Review", detail: "Scorecards, logo review, approvals, and signals", href: "/admin/review" },
-    { name: "Payouts", detail: "Creator payout obligations and history", href: "/admin/payouts" },
-    { name: "Pricing", detail: "Reusable package templates for brand and campaign planning", href: "/admin/pricing" },
-    { name: "Documents", detail: "Contracts, briefs, owners, links, and renewal dates", href: "/admin/documents" },
-    { name: "Guides", detail: "Searchable operating guides with review owners", href: "/admin/sops" },
-    { name: "Weekly Numbers", detail: "Saved weekly review snapshots from live data", href: "/admin/reports" },
+    { name: "Commandcenter", detail: "Eerste dagoverzicht van werk, geld en risico", href: "/admin" },
+    { name: "Leads", detail: "Leadpipeline, follow-ups, eigenaar en waarde", href: "/admin/crm" },
+    { name: "Merkonboarding", detail: "Contract, betaling, brief, assets en toegewezen clippers", href: "/admin/onboarding" },
+    { name: "Clipperdatabase", detail: "Creatorprofielen, operatie, capaciteit en toegewezen merken", href: "/admin/clippers" },
+    { name: "Recruitmentpipeline", detail: "Kandidaten, trials, scores en goedkeuringen", href: "/admin/recruitment" },
+    { name: "Contentproductie", detail: "Opdrachten, deadlines, revisies en inzendingen", href: "/admin/production" },
+    { name: "Clipreview", detail: "Scorecards, logoreview, goedkeuringen en signalen", href: "/admin/review" },
+    { name: "Uitbetalingen", detail: "Uitbetalingsverplichtingen en historie van creators", href: "/admin/payouts" },
+    { name: "Prijzen", detail: "Herbruikbare pakketten voor merk- en campagneplanning", href: "/admin/pricing" },
+    { name: "Documenten", detail: "Contracten, briefs, eigenaren, links en verlengdatums", href: "/admin/documents" },
+    { name: "Handleidingen", detail: "Doorzoekbare operationele handleidingen met review-eigenaren", href: "/admin/sops" },
+    { name: "Weekcijfers", detail: "Opgeslagen wekelijkse reviewsnapshots uit live data", href: "/admin/reports" },
   ];
 
   return areas.map((area) => ({

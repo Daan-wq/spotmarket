@@ -62,10 +62,10 @@ const GEO_OPTIONS = [
 
 const PAGE_STAT_OPTIONS: readonly { key: string; label: string; placeholder: string; suffix?: string }[] = [
   { key: "minAge", label: "Minimum age", placeholder: "e.g. 25+" },
-  { key: "minEngagement", label: "Min. engagement rate", placeholder: "e.g. 3", suffix: "%" },
-  { key: "minFollowers", label: "Min. followers", placeholder: "e.g. 10k" },
-  { key: "malePercent", label: "Male audience", placeholder: "e.g. 60", suffix: "%" },
-  { key: "countryPercent", label: "Country audience", placeholder: "e.g. 50", suffix: "%" },
+  { key: "minEngagement", label: "Min. engagementrate", placeholder: "bijv. 3", suffix: "%" },
+  { key: "minFollowers", label: "Min. volgers", placeholder: "bijv. 10k" },
+  { key: "malePercent", label: "Mannelijk publiek", placeholder: "bijv. 60", suffix: "%" },
+  { key: "countryPercent", label: "Landpubliek", placeholder: "bijv. 50", suffix: "%" },
 ];
 
 interface CountryEntry {
@@ -226,14 +226,14 @@ export function CampaignCreateForm() {
   async function handleSubmit(status: "draft" | "active") {
     setError(null);
 
-    if (!name.trim()) { setError("Campaign name is required"); return; }
-    if (!budget || budget <= 0) { setError("Budget must be a positive number"); return; }
-    if (!deadline) { setError("Deadline is required"); return; }
-    if (creatorPerK !== null && creatorPerK < 0) { setError("Margin too high - creator rate would be negative"); return; }
-    if (minimumPaidViewsRaw.trim() && minimumPaidViews === null) { setError("Minimum paid views must be a whole number"); return; }
-    if (maximumPaidViewsRaw.trim() && maximumPaidViews === null) { setError("Maximum paid views must be a whole number or blank"); return; }
+    if (!name.trim()) { setError("Campagnenaam is verplicht"); return; }
+    if (!budget || budget <= 0) { setError("Budget moet een positief getal zijn"); return; }
+    if (!deadline) { setError("Deadline is verplicht"); return; }
+    if (creatorPerK !== null && creatorPerK < 0) { setError("Marge is te hoog - creatortarief zou negatief worden"); return; }
+    if (minimumPaidViewsRaw.trim() && minimumPaidViews === null) { setError("Minimum betaalde views moet een heel getal zijn"); return; }
+    if (maximumPaidViewsRaw.trim() && maximumPaidViews === null) { setError("Maximum betaalde views moet een heel getal zijn of leeg blijven"); return; }
     if (maximumPaidViews !== null && minimumPaidViews !== null && maximumPaidViews < minimumPaidViews) {
-      setError("Maximum paid views must be blank or greater than or equal to minimum paid views");
+      setError("Maximum betaalde views moet leeg zijn of groter dan of gelijk aan minimum betaalde views");
       return;
     }
 
@@ -300,7 +300,7 @@ export function CampaignCreateForm() {
 
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
-        throw new Error(data.error ?? "Failed to create campaign");
+        throw new Error(data.error ?? "Campagne maken mislukt");
       }
 
       const campaign = await res.json();
@@ -316,7 +316,7 @@ export function CampaignCreateForm() {
       router.push("/admin/campaigns");
       router.refresh();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Something went wrong");
+      setError(err instanceof Error ? err.message : "Er ging iets mis");
     } finally {
       setLoading(false);
     }
@@ -337,7 +337,7 @@ export function CampaignCreateForm() {
         </div>
 
         <div>
-          <label style={labelStyle}>Campaign name *</label>
+          <label style={labelStyle}>Campagnenaam *</label>
           <input
             style={inputStyle}
             value={name}
@@ -349,8 +349,8 @@ export function CampaignCreateForm() {
         <CampaignImageUploadField
           value={bannerUrl}
           onChange={setBannerUrl}
-          label="Campaign image"
-          campaignName={name || "Campaign"}
+          label="Campagneafbeelding"
+          campaignName={name || "Campagne"}
           disabled={loading}
         />
 
@@ -368,13 +368,13 @@ export function CampaignCreateForm() {
         </div>
 
         <div>
-          <label style={labelStyle}>Countries</label>
+          <label style={labelStyle}>Landen</label>
           <div style={{ position: "relative" }}>
             <input
               style={inputStyle}
               value={countrySearch}
               onChange={(e) => setCountrySearch(e.target.value)}
-              placeholder="Search and add countries..."
+              placeholder="Zoek en voeg landen toe..."
             />
             {filteredCountries.length > 0 && (
               <div style={{
@@ -461,7 +461,7 @@ export function CampaignCreateForm() {
         </div>
 
         <div>
-          <label style={labelStyle}>Content types</label>
+          <label style={labelStyle}>Contenttypes</label>
           <div style={{ display: "flex", flexWrap: "wrap", gap: "8px" }}>
             {CONTENT_TYPE_OPTIONS.map((ct) => (
               <button
@@ -486,19 +486,19 @@ export function CampaignCreateForm() {
         </div>
 
         <div>
-          <label style={labelStyle}>Description</label>
+          <label style={labelStyle}>Beschrijving</label>
           <textarea
             style={{ ...inputStyle, minHeight: "80px", resize: "vertical" }}
             value={description}
             onChange={(e) => setDescription(e.target.value)}
-            placeholder="Short public campaign description"
+            placeholder="Korte publieke campagnebeschrijving"
           />
         </div>
 
         <div>
-          <label style={labelStyle}>Page statistics</label>
+          <label style={labelStyle}>Paginastatistieken</label>
           <p style={{ fontSize: "11px", color: "var(--text-secondary)", marginBottom: "8px" }}>
-            Toggle the stats you want to require. Optionally set a minimum value.
+            Kies de statistieken die verplicht zijn. Stel eventueel een minimumwaarde in.
           </p>
           <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
             {PAGE_STAT_OPTIONS.map((stat) => (
@@ -536,7 +536,7 @@ export function CampaignCreateForm() {
         </div>
 
         <div>
-          <label style={labelStyle}>Requirements (one per line)</label>
+          <label style={labelStyle}>Vereisten (een per regel)</label>
           <textarea
             style={{ ...inputStyle, minHeight: "80px", resize: "vertical" }}
             value={requirements}
@@ -546,7 +546,7 @@ export function CampaignCreateForm() {
         </div>
 
         <div>
-          <label style={labelStyle}>Required hashtags</label>
+          <label style={labelStyle}>Verplichte hashtags</label>
           <textarea
             style={{ ...inputStyle, minHeight: "72px", resize: "vertical" }}
             value={requiredHashtagsText}
@@ -569,7 +569,7 @@ export function CampaignCreateForm() {
 
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
           <div>
-            <label style={labelStyle}>Goal views</label>
+            <label style={labelStyle}>Doelviews</label>
             <input
               style={inputStyle}
               value={goalViewsRaw}
@@ -583,7 +583,7 @@ export function CampaignCreateForm() {
             ) : null}
           </div>
           <div>
-            <label style={labelStyle}>Your margin (€/1K views)</label>
+            <label style={labelStyle}>Jouw marge (€/1K views)</label>
             <input
               style={inputStyle}
               type="number"
@@ -597,7 +597,7 @@ export function CampaignCreateForm() {
 
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
           <div>
-            <label style={labelStyle}>Minimum paid views</label>
+            <label style={labelStyle}>Minimum betaalde views</label>
             <input
               style={inputStyle}
               value={minimumPaidViewsRaw}
@@ -609,12 +609,12 @@ export function CampaignCreateForm() {
             ) : null}
           </div>
           <div>
-            <label style={labelStyle}>Maximum paid views</label>
+            <label style={labelStyle}>Maximum betaalde views</label>
             <input
               style={inputStyle}
               value={maximumPaidViewsRaw}
               onChange={(e) => setMaximumPaidViewsRaw(e.target.value)}
-              placeholder="Blank for unlimited"
+              placeholder="Leeg laten voor onbeperkt"
             />
             {maximumPaidViewsRaw && maximumPaidViews === null ? (
               <p style={{ fontSize: "11px", marginTop: "4px", color: "var(--error, #dc2626)" }}>Invalid - try: 100k, 500000</p>
@@ -626,26 +626,26 @@ export function CampaignCreateForm() {
         {businessPerK !== null && creatorPerK !== null && goalViews && (
           <div style={{ borderRadius: "8px", padding: "12px 14px", background: "var(--bg-secondary, var(--bg-primary))", border: "1px solid var(--border)", fontSize: "13px", display: "flex", flexDirection: "column", gap: "6px" }}>
             <div style={{ display: "flex", justifyContent: "space-between", color: "var(--text-secondary)" }}>
-              <span>Client pays (per 1K views)</span>
+              <span>Klant betaalt (per 1K views)</span>
               <span style={{ fontWeight: 500, color: "var(--text-primary)" }}>€{businessPerK.toFixed(2)}</span>
             </div>
             <div style={{ display: "flex", justifyContent: "space-between", color: "var(--error, #dc2626)" }}>
-              <span>Your margin</span>
+              <span>Jouw marge</span>
               <span>−€{margin.toFixed(2)}</span>
             </div>
             <div style={{ display: "flex", justifyContent: "space-between", borderTop: "1px solid var(--border)", paddingTop: "6px" }}>
-              <span style={{ color: "var(--text-secondary)" }}>Creator earns (per 1K views)</span>
+              <span style={{ color: "var(--text-secondary)" }}>Creator verdient (per 1K views)</span>
               <span style={{ fontWeight: 600, color: "var(--text-primary)" }}>€{creatorPerK.toFixed(2)}</span>
             </div>
             <div style={{ display: "flex", justifyContent: "space-between", fontWeight: 600, color: "var(--accent, #534AB7)" }}>
-              <span>Your revenue</span>
+              <span>Jouw omzet</span>
               <span>€{((margin / 1_000) * goalViews).toFixed(2)}</span>
             </div>
           </div>
         )}
 
         <div>
-          <label style={labelStyle}>Referral / tracking link</label>
+          <label style={labelStyle}>Referral- / trackinglink</label>
           <input
             style={inputStyle}
             type="url"
@@ -656,12 +656,12 @@ export function CampaignCreateForm() {
         </div>
 
         <div>
-          <label style={labelStyle}>Content guidelines</label>
+          <label style={labelStyle}>Contentrichtlijnen</label>
           <textarea
             style={{ ...inputStyle, minHeight: "80px", resize: "vertical" }}
             value={contentGuidelines}
             onChange={(e) => setContentGuidelines(e.target.value)}
-            placeholder="What creators must include: CTAs, hashtags, dos/don'ts..."
+            placeholder="Wat creators moeten opnemen: CTA's, hashtags, do's/don'ts..."
           />
         </div>
 
@@ -676,7 +676,7 @@ export function CampaignCreateForm() {
             />
           </div>
           <div>
-            <label style={labelStyle}>Start date</label>
+            <label style={labelStyle}>Startdatum</label>
             <input
               style={inputStyle}
               type="date"
@@ -685,7 +685,7 @@ export function CampaignCreateForm() {
             />
           </div>
           <div>
-            <label style={labelStyle}>Max creators</label>
+            <label style={labelStyle}>Max. creators</label>
             <input
               style={inputStyle}
               type="number"
@@ -710,7 +710,7 @@ export function CampaignCreateForm() {
 
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
           <div>
-            <label style={labelStyle}>Banner video URL</label>
+            <label style={labelStyle}>Bannervideo-URL</label>
             <input
               style={inputStyle}
               type="url"
@@ -720,7 +720,7 @@ export function CampaignCreateForm() {
             />
           </div>
           <div>
-            <label style={labelStyle}>Brief asset URL</label>
+            <label style={labelStyle}>Brief-asset-URL</label>
             <input
               style={inputStyle}
               type="url"
@@ -730,7 +730,7 @@ export function CampaignCreateForm() {
             />
           </div>
           <div>
-            <label style={labelStyle}>Guidelines URL</label>
+            <label style={labelStyle}>Richtlijnen-URL</label>
             <input
               style={inputStyle}
               type="url"
@@ -740,12 +740,12 @@ export function CampaignCreateForm() {
             />
           </div>
           <div>
-            <label style={labelStyle}>Content asset URLs</label>
+            <label style={labelStyle}>Contentasset-URL's</label>
             <textarea
               style={{ ...inputStyle, minHeight: "88px", resize: "vertical" }}
               value={contentAssetUrlsText}
               onChange={(e) => setContentAssetUrlsText(e.target.value)}
-              placeholder="One URL per line"
+              placeholder="Een URL per regel"
             />
           </div>
         </div>
@@ -757,19 +757,19 @@ export function CampaignCreateForm() {
             Targeting
           </p>
           <p style={{ fontSize: "12px", color: "var(--text-secondary)" }}>
-            Audience requirements creators should be able to check before applying.
+            Publiekseisen die creators moeten kunnen controleren voordat ze zich aanmelden.
           </p>
         </div>
 
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
           <div>
-            <label style={labelStyle}>Target country</label>
+            <label style={labelStyle}>Doelland</label>
             <select
               style={inputStyle}
               value={targetCountry}
               onChange={(e) => setTargetCountry(e.target.value)}
             >
-              <option value="">No target country</option>
+              <option value="">Geen doelland</option>
               {GEO_OPTIONS.map((country) => (
                 <option key={country} value={country}>
                   {country}
@@ -778,7 +778,7 @@ export function CampaignCreateForm() {
             </select>
           </div>
           <div>
-            <label style={labelStyle}>Target country audience (%)</label>
+            <label style={labelStyle}>Doelland-publiek (%)</label>
             <input
               style={inputStyle}
               type="number"
@@ -789,7 +789,7 @@ export function CampaignCreateForm() {
             />
           </div>
           <div>
-            <label style={labelStyle}>Target 18+ audience (%)</label>
+            <label style={labelStyle}>Doelpubliek 18+ (%)</label>
             <input
               style={inputStyle}
               type="number"
@@ -800,7 +800,7 @@ export function CampaignCreateForm() {
             />
           </div>
           <div>
-            <label style={labelStyle}>Target male audience (%)</label>
+            <label style={labelStyle}>Doelpubliek man (%)</label>
             <input
               style={inputStyle}
               type="number"
@@ -811,7 +811,7 @@ export function CampaignCreateForm() {
             />
           </div>
           <div>
-            <label style={labelStyle}>Minimum followers</label>
+            <label style={labelStyle}>Minimum volgers</label>
             <input
               style={inputStyle}
               type="number"
@@ -822,7 +822,7 @@ export function CampaignCreateForm() {
             />
           </div>
           <div>
-            <label style={labelStyle}>Minimum engagement rate (%)</label>
+            <label style={labelStyle}>Minimum engagementrate (%)</label>
             <input
               style={inputStyle}
               type="number"
@@ -834,7 +834,7 @@ export function CampaignCreateForm() {
             />
           </div>
           <div>
-            <label style={labelStyle}>Bio requirement</label>
+            <label style={labelStyle}>Biovereiste</label>
             <input
               style={inputStyle}
               value={bioRequirement}
@@ -842,7 +842,7 @@ export function CampaignCreateForm() {
             />
           </div>
           <div>
-            <label style={labelStyle}>Link in bio requirement</label>
+            <label style={labelStyle}>Link-in-bio-vereiste</label>
             <input
               style={inputStyle}
               value={linkInBioRequired}
@@ -876,7 +876,7 @@ export function CampaignCreateForm() {
             opacity: loading ? 0.7 : 1,
           }}
         >
-          Save as draft
+          Opslaan als concept
         </button>
         <button
           type="button"
@@ -895,7 +895,7 @@ export function CampaignCreateForm() {
             opacity: loading ? 0.7 : 1,
           }}
         >
-          {loading ? "Creating…" : "Launch campaign"}
+          {loading ? "Maken..." : "Campagne lanceren"}
         </button>
         <button
           type="button"
@@ -910,9 +910,7 @@ export function CampaignCreateForm() {
             fontSize: "14px",
             cursor: "pointer",
           }}
-        >
-          Cancel
-        </button>
+        >Annuleren</button>
       </div>
     </div>
   );
