@@ -17,6 +17,7 @@ const campaign = {
   deadline: new Date("2026-05-31T00:00:00.000Z"),
   requirements: "#bramsfruit\nMention the shirt",
   contentGuidelines: "Show the product early.",
+  contentType: "Awareness",
   requiredHashtags: ["#bramsfruit"],
   targetCountry: "NL",
   targetCountryPercent: 60,
@@ -33,6 +34,7 @@ describe("buildCampaignReportLiveData", () => {
       campaign,
       periodStart: new Date("2026-05-01T00:00:00.000Z"),
       periodEnd: new Date("2026-05-31T00:00:00.000Z"),
+      generatedAt: new Date("2026-05-29T00:00:00.000Z"),
       submissions: [
         {
           id: "sub-1",
@@ -127,14 +129,44 @@ describe("buildCampaignReportLiveData", () => {
     expect(report.performance.costPerThousandViews).toBe(0.8);
     expect(report.performance.approvalRate).toBeCloseTo(1 / 3);
     expect(report.platformBreakdown).toEqual([
-      { platform: "TikTok", views: 400_000, clips: 1, engagement: 21_000, cost: 320 },
+      expect.objectContaining({
+        platform: "TikTok",
+        views: 400_000,
+        clips: 1,
+        engagement: 21_000,
+        cost: 320,
+        averageViewsPerClip: 400_000,
+        effectiveCpv: 0.0008,
+        engagementRate: 0.0525,
+      }),
     ]);
     expect(report.topContent[1]).toMatchObject({ id: "sub-2", views: 90_000 });
+    expect(report.performance.pacingStatus).toBe("Behind pace");
+    expect(report.financial).toMatchObject({
+      totalBudget: 1000,
+      budgetUsed: 320,
+      budgetRemaining: 680,
+      approvedPayableViews: 400_000,
+      effectiveCpv: 0.0008,
+      costPerApprovedClip: 320,
+      costPerActiveCreator: 160,
+    });
     expect(report.quality.openSignals).toBe(1);
     expect(report.quality.resolvedSignals).toBe(1);
+    expect(report.quality.trafficQualityStatus).toBe("Passed with exclusions");
+    expect(report.quality.excludedClips).toBe(2);
+    expect(report.quality.excludedViews).toBe(130_000);
     expect(report.audience.sampleCount).toBe(1);
     expect(report.audience.ageBuckets["18-24"]).toBe(60);
+    expect(report.audience.fitStatus).toBe("Strong match");
+    expect(report.creators[0]).toMatchObject({
+      creator: "Alice",
+      approvalRate: 0.5,
+      reliabilityStatus: "Needs review",
+    });
     expect(report.referral.inviteCount).toBe(1);
+    expect(report.defaults.editorialContent.campaignType).toBe("Awareness");
+    expect(report.defaults.editorialContent.contentInsights.length).toBeGreaterThan(0);
     expect(report.defaults.keyTakeaways.length).toBeGreaterThanOrEqual(3);
   });
 });

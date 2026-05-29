@@ -49,6 +49,11 @@ const report = {
   learnings: ["Open with product earlier."],
   nextCampaignRecommendations: ["Invite top creators again."],
   sectionSettings: { audience: true },
+  editorialContent: {
+    campaignType: "Awareness",
+    contentInsights: ["Fast hooks worked best."],
+    qualityNote: "Quality review passed.",
+  },
   createdBy: "admin-1",
   createdAt: new Date("2026-05-29T08:00:00.000Z"),
   updatedAt: new Date("2026-05-29T09:00:00.000Z"),
@@ -71,6 +76,18 @@ const liveData = {
     learnings: ["Default learning"],
     nextCampaignRecommendations: ["Default recommendation"],
     sectionSettings: { audience: true },
+    editorialContent: {
+      campaignType: "Awareness",
+      financialNote: "Budget was used for approved views.",
+      contentInsights: ["Default content insight"],
+      topContentNotes: {},
+      platformRecommendations: {},
+      creatorRecommendations: ["Reactivate Alice."],
+      qualityNote: "Quality review passed.",
+      keyLearnings: ["Default learning"],
+      nextCampaignPlan: ["Default recommendation"],
+      appendixNote: "",
+    },
   },
 };
 
@@ -167,6 +184,10 @@ describe("POST /api/admin/campaign-reports", () => {
           status: "DRAFT",
           executiveSummary: "Default generated summary.",
           keyTakeaways: ["Default takeaway"],
+          editorialContent: expect.objectContaining({
+            campaignType: "Awareness",
+            contentInsights: ["Default content insight"],
+          }),
           createdBy: "admin-1",
         }),
       }),
@@ -227,6 +248,7 @@ describe("PATCH /api/admin/campaign-reports/[id]", () => {
           status: "FINAL",
           executiveSummary: "Client ready summary.",
           keyTakeaways: ["Best delivery came from TikTok."],
+          editorialContent: { campaignType: "Launch", contentInsights: ["Product-first clips won."] },
         }),
       }),
       { params: Promise.resolve({ id: "report-1" }) },
@@ -240,6 +262,10 @@ describe("PATCH /api/admin/campaign-reports/[id]", () => {
           status: "FINAL",
           executiveSummary: "Client ready summary.",
           keyTakeaways: ["Best delivery came from TikTok."],
+          editorialContent: expect.objectContaining({
+            campaignType: "Launch",
+            contentInsights: ["Product-first clips won."],
+          }),
         },
       }),
     );

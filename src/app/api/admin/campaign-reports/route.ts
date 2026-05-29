@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import type { Prisma } from "@prisma/client";
 import { requireAuth } from "@/lib/auth";
 import { jsonError, serialize } from "@/lib/admin/agency-api";
 import { campaignReportCreateSchema } from "@/lib/admin/campaign-report-validation";
@@ -75,6 +76,7 @@ export async function POST(req: Request) {
         learnings: parsed.learnings ?? defaults.learnings,
         nextCampaignRecommendations: parsed.nextCampaignRecommendations ?? defaults.nextCampaignRecommendations,
         sectionSettings: parsed.sectionSettings ?? defaults.sectionSettings,
+        editorialContent: (parsed.editorialContent ?? defaults.editorialContent) as unknown as Prisma.InputJsonValue,
         createdBy: userId,
       },
       include: reportInclude,

@@ -21,9 +21,12 @@ import { formatDate, titleCaseEnum } from "@/lib/admin/agency-format";
 import {
   CAMPAIGN_REPORT_SECTION_KEYS,
   DEFAULT_CAMPAIGN_REPORT_SECTIONS,
+  createEmptyEditorialContent,
+  normalizeEditorialContent,
   normalizeSectionSettings,
   normalizeTextList,
   type CampaignReportEditorial,
+  type CampaignReportEditorialContent,
   type CampaignReportSectionKey,
   type CampaignReportSectionSettings,
   type CampaignReportStatusValue,
@@ -77,6 +80,7 @@ export interface CampaignReportRecord extends ReportHistoryItem {
   learnings: string[];
   nextCampaignRecommendations: string[];
   sectionSettings: CampaignReportSectionSettings;
+  editorialContent: CampaignReportEditorialContent;
 }
 
 interface CampaignReportStudioProps {
@@ -96,12 +100,17 @@ const SECTION_LABELS: Record<CampaignReportSectionKey, string> = {
   executiveSummary: "Executive Summary",
   campaignSetup: "Campaign Setup",
   performance: "Performance Overview",
+  financialOverview: "Financial Overview",
   platformBreakdown: "Platform Breakdown",
   topContent: "Top Content",
+  contentInsights: "Content Insights",
   creatorPerformance: "Creator Performance",
   audience: "Audience & Reach Quality",
+  communityActivation: "Community Activation Performance",
   quality: "Quality & Compliance",
-  nextCampaign: "Next Campaign",
+  keyLearnings: "Key Learnings",
+  nextCampaign: "Next Campaign Recommendations",
+  appendix: "Appendix",
 };
 
 const STATUS_TABS: Array<{ label: string; value: ReportFilters["status"] }> = [
@@ -129,6 +138,9 @@ export function CampaignReportStudio({
   const [keyTakeaways, setKeyTakeaways] = useState(baseEditorial.keyTakeaways);
   const [learnings, setLearnings] = useState(baseEditorial.learnings);
   const [nextCampaignRecommendations, setNextCampaignRecommendations] = useState(baseEditorial.nextCampaignRecommendations);
+  const [editorialContent, setEditorialContent] = useState<CampaignReportEditorialContent>(
+    normalizeEditorialContent(baseEditorial.editorialContent),
+  );
   const [sectionSettings, setSectionSettings] = useState<CampaignReportSectionSettings>(
     normalizeSectionSettings(baseEditorial.sectionSettings),
   );
@@ -146,6 +158,7 @@ export function CampaignReportStudio({
     setKeyTakeaways(normalizeTextList(next.keyTakeaways));
     setLearnings(normalizeTextList(next.learnings));
     setNextCampaignRecommendations(normalizeTextList(next.nextCampaignRecommendations));
+    setEditorialContent(normalizeEditorialContent(next.editorialContent));
     setSectionSettings(normalizeSectionSettings(next.sectionSettings));
     setPeriodStart(dateInputValue(selectedReport?.periodStart ?? liveData?.period.start ?? liveData?.campaign.startsAt ?? null));
     setPeriodEnd(dateInputValue(selectedReport?.periodEnd ?? liveData?.period.end ?? liveData?.campaign.deadline ?? null));
@@ -220,9 +233,12 @@ export function CampaignReportStudio({
       periodEnd: periodEnd || null,
       executiveSummary,
       keyTakeaways,
-      learnings,
-      nextCampaignRecommendations,
+      learnings: editorialContent.keyLearnings.length > 0 ? editorialContent.keyLearnings : learnings,
+      nextCampaignRecommendations: editorialContent.nextCampaignPlan.length > 0
+        ? editorialContent.nextCampaignPlan
+        : nextCampaignRecommendations,
       sectionSettings,
+      editorialContent,
     };
 
     const response = await fetch(
@@ -349,6 +365,8 @@ export function CampaignReportStudio({
               setLearnings={setLearnings}
               nextCampaignRecommendations={nextCampaignRecommendations}
               setNextCampaignRecommendations={setNextCampaignRecommendations}
+              editorialContent={editorialContent}
+              setEditorialContent={setEditorialContent}
               periodStart={periodStart}
               setPeriodStart={setPeriodStart}
               periodEnd={periodEnd}
@@ -368,6 +386,7 @@ export function CampaignReportStudio({
             keyTakeaways={keyTakeaways}
             learnings={learnings}
             recommendations={nextCampaignRecommendations}
+            editorialContent={editorialContent}
             sectionSettings={sectionSettings}
             status={selectedReport?.status ?? "DRAFT"}
             periodStart={periodStart}
@@ -504,6 +523,8 @@ function EditorPanel({
   setLearnings,
   nextCampaignRecommendations,
   setNextCampaignRecommendations,
+  editorialContent,
+  setEditorialContent,
   periodStart,
   setPeriodStart,
   periodEnd,
@@ -522,6 +543,8 @@ function EditorPanel({
   setLearnings: (value: string[]) => void;
   nextCampaignRecommendations: string[];
   setNextCampaignRecommendations: (value: string[]) => void;
+  editorialContent: CampaignReportEditorialContent;
+  setEditorialContent: (value: CampaignReportEditorialContent) => void;
   periodStart: string;
   setPeriodStart: (value: string) => void;
   periodEnd: string;
@@ -530,6 +553,15 @@ function EditorPanel({
   setSectionSettings: (value: CampaignReportSectionSettings) => void;
   liveData: CampaignReportLiveData | null;
 }) {
+  const updateEditorial = <K extends keyof CampaignReportEditorialContent>(
+    key: K,
+    value: CampaignReportEditorialContent[K],
+  ) => {
+    setEditorialContent({ ...editorialContent, [key]: value });
+  };
+  const topContentRows = liveData?.topContent.slice(0, 5) ?? [];
+  const platformRows = liveData?.platformBreakdown ?? [];
+
   return (
     <div className="space-y-4 rounded-lg border border-neutral-200 bg-white p-4">
       <div className="flex items-center justify-between gap-3">
@@ -540,34 +572,110 @@ function EditorPanel({
         <Sparkles className="h-4 w-4 text-neutral-400" />
       </div>
 
-      <Field label="Title">
-        <input value={title} onChange={(event) => setTitle(event.target.value)} className="report-input h-10" />
-      </Field>
-
-      <div className="grid grid-cols-2 gap-3">
-        <Field label="Period start">
-          <input type="date" value={periodStart} onChange={(event) => setPeriodStart(event.target.value)} className="report-input h-10" />
+      <EditorSection title="Report setup">
+        <Field label="Title">
+          <input value={title} onChange={(event) => setTitle(event.target.value)} className="report-input h-10" />
         </Field>
-        <Field label="Period end">
-          <input type="date" value={periodEnd} onChange={(event) => setPeriodEnd(event.target.value)} className="report-input h-10" />
+        <Field label="Campaign type">
+          <input value={editorialContent.campaignType} onChange={(event) => updateEditorial("campaignType", event.target.value)} className="report-input h-10" placeholder="Awareness, launch, traffic..." />
         </Field>
-      </div>
+        <div className="grid grid-cols-2 gap-3">
+          <Field label="Period start">
+            <input type="date" value={periodStart} onChange={(event) => setPeriodStart(event.target.value)} className="report-input h-10" />
+          </Field>
+          <Field label="Period end">
+            <input type="date" value={periodEnd} onChange={(event) => setPeriodEnd(event.target.value)} className="report-input h-10" />
+          </Field>
+        </div>
+      </EditorSection>
 
-      <Field label="Executive summary">
-        <textarea value={executiveSummary} onChange={(event) => setExecutiveSummary(event.target.value)} rows={7} className="report-input resize-y leading-6" />
-      </Field>
+      <EditorSection title="Executive summary">
+        <Field label="Summary">
+          <textarea value={executiveSummary} onChange={(event) => setExecutiveSummary(event.target.value)} rows={7} className="report-input resize-y leading-6" />
+        </Field>
+        <Field label="Key takeaways">
+          <textarea value={keyTakeaways.join("\n")} onChange={(event) => setKeyTakeaways(textAreaToList(event.target.value))} rows={5} className="report-input resize-y leading-6" />
+        </Field>
+      </EditorSection>
 
-      <Field label="Key takeaways">
-        <textarea value={keyTakeaways.join("\n")} onChange={(event) => setKeyTakeaways(textAreaToList(event.target.value))} rows={5} className="report-input resize-y leading-6" />
-      </Field>
+      <EditorSection title="Financial overview">
+        <Field label="Financial note">
+          <textarea value={editorialContent.financialNote} onChange={(event) => updateEditorial("financialNote", event.target.value)} rows={4} className="report-input resize-y leading-6" />
+        </Field>
+      </EditorSection>
 
-      <Field label="Learnings">
-        <textarea value={learnings.join("\n")} onChange={(event) => setLearnings(textAreaToList(event.target.value))} rows={5} className="report-input resize-y leading-6" />
-      </Field>
+      <EditorSection title="Content insights">
+        <Field label="Content insights">
+          <textarea value={editorialContent.contentInsights.join("\n")} onChange={(event) => updateEditorial("contentInsights", textAreaToList(event.target.value))} rows={5} className="report-input resize-y leading-6" />
+        </Field>
+        {topContentRows.length > 0 ? (
+          <div className="space-y-3">
+            {topContentRows.map((clip) => (
+              <Field key={clip.id} label={`${clip.platform} / ${clip.creator}`}>
+                <textarea
+                  value={editorialContent.topContentNotes[clip.id] ?? ""}
+                  onChange={(event) => updateEditorial("topContentNotes", { ...editorialContent.topContentNotes, [clip.id]: event.target.value })}
+                  rows={3}
+                  className="report-input resize-y leading-6"
+                />
+              </Field>
+            ))}
+          </div>
+        ) : null}
+      </EditorSection>
 
-      <Field label="Next campaign recommendations">
-        <textarea value={nextCampaignRecommendations.join("\n")} onChange={(event) => setNextCampaignRecommendations(textAreaToList(event.target.value))} rows={5} className="report-input resize-y leading-6" />
-      </Field>
+      <EditorSection title="Platform & creator recommendations">
+        {platformRows.length > 0 ? (
+          <div className="space-y-3">
+            {platformRows.map((platform) => (
+              <Field key={platform.platform} label={`${platform.platform} recommendation`}>
+                <textarea
+                  value={editorialContent.platformRecommendations[platform.platform] ?? ""}
+                  onChange={(event) => updateEditorial("platformRecommendations", { ...editorialContent.platformRecommendations, [platform.platform]: event.target.value })}
+                  rows={3}
+                  className="report-input resize-y leading-6"
+                />
+              </Field>
+            ))}
+          </div>
+        ) : null}
+        <Field label="Recommended creator pool">
+          <textarea value={editorialContent.creatorRecommendations.join("\n")} onChange={(event) => updateEditorial("creatorRecommendations", textAreaToList(event.target.value))} rows={5} className="report-input resize-y leading-6" />
+        </Field>
+      </EditorSection>
+
+      <EditorSection title="Quality, learnings & next plan">
+        <Field label="Quality review note">
+          <textarea value={editorialContent.qualityNote} onChange={(event) => updateEditorial("qualityNote", event.target.value)} rows={4} className="report-input resize-y leading-6" />
+        </Field>
+        <Field label="Key learnings">
+          <textarea
+            value={editorialContent.keyLearnings.join("\n")}
+            onChange={(event) => {
+              const next = textAreaToList(event.target.value);
+              updateEditorial("keyLearnings", next);
+              setLearnings(next);
+            }}
+            rows={5}
+            className="report-input resize-y leading-6"
+          />
+        </Field>
+        <Field label="Next campaign plan">
+          <textarea
+            value={editorialContent.nextCampaignPlan.join("\n")}
+            onChange={(event) => {
+              const next = textAreaToList(event.target.value);
+              updateEditorial("nextCampaignPlan", next);
+              setNextCampaignRecommendations(next);
+            }}
+            rows={5}
+            className="report-input resize-y leading-6"
+          />
+        </Field>
+        <Field label="Appendix note">
+          <textarea value={editorialContent.appendixNote} onChange={(event) => updateEditorial("appendixNote", event.target.value)} rows={3} className="report-input resize-y leading-6" />
+        </Field>
+      </EditorSection>
 
       <div>
         <div className="mb-2 flex items-center justify-between">
@@ -601,6 +709,15 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
   );
 }
 
+function EditorSection({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <section className="space-y-3 rounded-lg border border-neutral-200 bg-neutral-50/60 p-3">
+      <h3 className="text-xs font-semibold uppercase tracking-[0.16em] text-neutral-500">{title}</h3>
+      {children}
+    </section>
+  );
+}
+
 function createEmptyEditorial(campaignName: string): CampaignReportEditorial {
   return {
     title: `${campaignName} Campaign Report`,
@@ -609,6 +726,7 @@ function createEmptyEditorial(campaignName: string): CampaignReportEditorial {
     learnings: [],
     nextCampaignRecommendations: [],
     sectionSettings: { ...DEFAULT_CAMPAIGN_REPORT_SECTIONS },
+    editorialContent: createEmptyEditorialContent(),
   };
 }
 
