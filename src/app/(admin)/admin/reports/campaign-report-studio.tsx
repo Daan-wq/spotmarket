@@ -153,6 +153,8 @@ export function CampaignReportStudio({
 
   useEffect(() => {
     const next = initialEditorial ?? liveData?.defaults ?? createEmptyEditorial(selectedCampaign?.name ?? "Campaign");
+    // Intentionally reset the editor when the selected report/campaign changes.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setTitle(next.title);
     setExecutiveSummary(next.executiveSummary);
     setKeyTakeaways(normalizeTextList(next.keyTakeaways));
@@ -166,6 +168,8 @@ export function CampaignReportStudio({
   }, [initialEditorial, liveData?.campaign.id, selectedCampaign?.name, selectedReport?.id, selectedReport?.periodEnd, selectedReport?.periodStart]);
 
   useEffect(() => {
+    // Keep the tab state aligned with URL filters after navigation.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setActiveTab(filters.tab);
   }, [filters.tab]);
 
