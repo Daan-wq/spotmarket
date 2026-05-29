@@ -18,6 +18,7 @@ import {
   type CampaignReportRecord,
   type ReportFilters,
   type ReportHistoryItem,
+  type ReportStudioTab,
 } from "./campaign-report-studio";
 
 export const dynamic = "force-dynamic";
@@ -31,6 +32,7 @@ interface PageProps {
     q?: string;
     dateFrom?: string;
     dateTo?: string;
+    tab?: string;
   }>;
 }
 
@@ -44,6 +46,7 @@ type ReportWithRelations = Prisma.CampaignReportGetPayload<{ include: typeof rep
 export default async function ReportsPage({ searchParams }: PageProps) {
   const sp = await searchParams;
   const statusFilter: ReportFilters["status"] = sp.status === "DRAFT" || sp.status === "FINAL" ? sp.status : "ALL";
+  const tab: ReportStudioTab = sp.tab === "report" ? "report" : "edit";
   const filters: ReportFilters = {
     brandId: sp.brandId || "",
     campaignId: sp.campaignId || "",
@@ -51,6 +54,7 @@ export default async function ReportsPage({ searchParams }: PageProps) {
     q: sp.q || "",
     dateFrom: normalizeDateInput(sp.dateFrom),
     dateTo: normalizeDateInput(sp.dateTo),
+    tab,
   };
 
   const reportWhere = buildReportWhere(filters);
