@@ -386,8 +386,15 @@ model Brand {
 model BrandLead {
   id               String         @id @default(cuid())
   brandName        String
+  leadGroupId      String?
+  leadGroup        LeadGroup?     @relation(fields: [leadGroupId], references: [id], onDelete: SetNull)
+  category         String?
+  subcategory      String?
   contactName      String?
   contactEmail     String?
+  contactPhone     String?
+  contactLinkedIn  String?
+  website          String?
   source           String?
   stage            BrandLeadStage @default(LEAD)
   priority         LeadPriority   @default(MEDIUM)
@@ -406,6 +413,21 @@ model BrandLead {
   @@index([priority])
   @@index([nextFollowUpAt])
   @@index([convertedBrandId])
+  @@index([leadGroupId])
+  @@index([category])
+  @@index([subcategory])
+}
+
+model LeadGroup {
+  id        String      @id @default(cuid())
+  name      String      @unique
+  owner     String?
+  notes     String?     @db.Text
+  leads     BrandLead[]
+  createdAt DateTime    @default(now())
+  updatedAt DateTime    @updatedAt
+
+  @@index([owner])
 }
 
 model BrandOnboarding {
