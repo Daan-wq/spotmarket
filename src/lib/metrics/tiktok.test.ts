@@ -14,6 +14,15 @@ vi.mock("@/lib/token-refresh", () => ({
 vi.mock("./raw-storage", () => ({
   recordRawApiResponse: (...a: unknown[]) => recordRawMock(...a),
 }));
+vi.mock("./router", () => ({
+  failure: (reason: string, message: string, connection: unknown) => ({
+    ok: false,
+    source: "OAUTH_FAILED",
+    reason,
+    message,
+    connection,
+  }),
+}));
 
 import { fetchTikTokMetric } from "./tiktok";
 
