@@ -5,9 +5,12 @@ import {
   type CampaignReportLiveData,
 } from "@/lib/admin/campaign-reporting";
 import {
+  mergeEditorialContent,
+  normalizeEditorialContent,
   normalizeSectionSettings,
   normalizeTextList,
   type CampaignReportEditorial,
+  type CampaignReportEditorialContent,
   type CampaignReportStatusValue,
 } from "@/lib/admin/campaign-report-shared";
 import { prisma } from "@/lib/prisma";
@@ -143,6 +146,7 @@ function buildInitialEditorial(
 ): CampaignReportEditorial | null {
   if (!report && !liveData) return null;
   if (!report) return liveData?.defaults ?? null;
+  const defaultEditorialContent = liveData?.defaults.editorialContent ?? normalizeEditorialContent(null);
 
   return {
     title: report.title,
@@ -151,6 +155,7 @@ function buildInitialEditorial(
     learnings: normalizeTextList(report.learnings),
     nextCampaignRecommendations: normalizeTextList(report.nextCampaignRecommendations),
     sectionSettings: normalizeSectionSettings(report.sectionSettings),
+    editorialContent: mergeEditorialContent(defaultEditorialContent, report.editorialContent),
   };
 }
 
@@ -171,6 +176,7 @@ function toReportRecord(report: ReportWithRelations): CampaignReportRecord {
     learnings: normalizeTextList(report.learnings),
     nextCampaignRecommendations: normalizeTextList(report.nextCampaignRecommendations),
     sectionSettings: normalizeSectionSettings(report.sectionSettings),
+    editorialContent: normalizeEditorialContent(report.editorialContent) as CampaignReportEditorialContent,
   };
 }
 

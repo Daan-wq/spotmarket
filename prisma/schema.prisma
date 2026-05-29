@@ -612,6 +612,7 @@ model CampaignReport {
   learnings                   Json                 @default("[]")
   nextCampaignRecommendations Json                 @default("[]")
   sectionSettings             Json                 @default("{}")
+  editorialContent            Json                 @default("{}")
   createdBy                   String?
   createdAt                   DateTime             @default(now())
   updatedAt                   DateTime             @updatedAt

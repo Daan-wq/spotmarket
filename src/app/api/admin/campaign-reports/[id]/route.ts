@@ -52,6 +52,7 @@ export async function PATCH(req: Request, { params }: RouteContext) {
       "learnings",
       "nextCampaignRecommendations",
       "sectionSettings",
+      "editorialContent",
     ] as const) {
       if (parsed[key] !== undefined) data[key] = parsed[key];
     }

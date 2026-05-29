@@ -2,6 +2,7 @@ import { calculateCampaignReferralReport, type CampaignReferralReport } from "@/
 import {
   DEFAULT_CAMPAIGN_REPORT_SECTIONS,
   type CampaignReportEditorial,
+  type CampaignReportEditorialContent,
   type CampaignReportSectionSettings,
 } from "@/lib/admin/campaign-report-shared";
 import { prisma } from "@/lib/prisma";
@@ -10,9 +11,11 @@ import { computeDayDeltas } from "@/lib/stats/trends";
 export {
   CAMPAIGN_REPORT_SECTION_KEYS,
   DEFAULT_CAMPAIGN_REPORT_SECTIONS,
+  createEmptyEditorialContent,
   normalizeSectionSettings,
   normalizeTextList,
   type CampaignReportEditorial,
+  type CampaignReportEditorialContent,
   type CampaignReportSectionKey,
   type CampaignReportSectionSettings,
   type CampaignReportStatusValue,
@@ -30,6 +33,10 @@ const PLATFORM_LABELS: Record<string, string> = {
   OAUTH_FB: "Facebook",
 };
 
+export type CampaignReportPacingStatus = "Ahead of pace" | "On pace" | "Behind pace" | "Insufficient data";
+export type CampaignReportAudienceFitStatus = "Strong match" | "Partial match" | "Needs improvement" | "Insufficient data";
+export type CampaignReportTrafficQualityStatus = "Passed" | "Passed with exclusions" | "Needs attention";
+
 export interface CampaignReportCampaignInput {
   id: string;
   name: string;
@@ -46,6 +53,7 @@ export interface CampaignReportCampaignInput {
   deadline: Date | string;
   requirements?: string | null;
   contentGuidelines?: string | null;
+  contentType?: string | null;
   requiredHashtags: string[];
   targetCountry?: string | null;
   targetCountryPercent?: number | null;
@@ -157,6 +165,7 @@ export interface CampaignReportLiveData {
     deadline: string;
     requirements: string | null;
     contentGuidelines: string | null;
+    contentType: string | null;
     requiredHashtags: string[];
     target: {
       country: string | null;
@@ -177,7 +186,20 @@ export interface CampaignReportLiveData {
     approvedClips: number;
     activeCreators: number;
     approvalRate: number | null;
+    pacingStatus: CampaignReportPacingStatus;
     statusCounts: Record<string, number>;
+  };
+  financial: {
+    totalBudget: number;
+    budgetUsed: number;
+    budgetRemaining: number;
+    approvedPayableViews: number;
+    effectiveCpv: number | null;
+    costPerApprovedClip: number | null;
+    costPerActiveCreator: number | null;
+    forecastApprovedViews: number | null;
+    forecastBudgetUsed: number | null;
+    unusedBudgetExplanation: string;
   };
   timeline: Array<{ date: string; views: number; likes: number; comments: number; shares: number }>;
   platformBreakdown: Array<{
@@ -186,6 +208,9 @@ export interface CampaignReportLiveData {
     clips: number;
     engagement: number;
     cost: number;
+    averageViewsPerClip: number;
+    effectiveCpv: number | null;
+    engagementRate: number | null;
   }>;
   topContent: Array<{
     id: string;
@@ -205,6 +230,10 @@ export interface CampaignReportLiveData {
     views: number;
     earnedAmount: number;
     flagged: number;
+    approvalRate: number | null;
+    averageViewsPerApprovedClip: number | null;
+    reliabilityStatus: "Recommended" | "Monitor" | "Needs review";
+    recommendedForNextCampaign: boolean;
   }>;
   referral: CampaignReferralReport;
   quality: {
@@ -214,17 +243,23 @@ export interface CampaignReportLiveData {
     resolvedSignals: number;
     qcDecisionCounts: Record<string, number>;
     approvedQcReviews: number;
+    excludedClips: number;
+    excludedViews: number;
+    trafficQualityStatus: CampaignReportTrafficQualityStatus;
+    clientSummary: string;
   };
   audience: {
     sampleCount: number;
     ageBuckets: Record<string, number>;
     genderSplit: Record<string, number>;
     topCountries: Array<{ code: string; share: number }>;
+    fitStatus: CampaignReportAudienceFitStatus;
   };
   defaults: CampaignReportEditorial;
 }
 
 export function buildCampaignReportLiveData(input: CampaignReportBuildInput): CampaignReportLiveData {
+  const generatedAt = input.generatedAt ?? new Date();
   const totalBudget = toNumber(input.campaign.totalBudget);
   const goalViews = input.campaign.goalViews == null ? null : Number(input.campaign.goalViews);
   const submissions = input.submissions;
@@ -239,7 +274,24 @@ export function buildCampaignReportLiveData(input: CampaignReportBuildInput): Ca
   const topContent = buildTopContent(submissions);
   const creators = buildCreatorLeaderboard(submissions);
   const quality = buildQualitySummary(submissions);
-  const audience = buildAudienceSummary(input.audienceSnapshots);
+  const audience = buildAudienceSummary(input.audienceSnapshots, input.campaign);
+  const pacingStatus = buildPacingStatus({
+    goalCompletion: goalViews && goalViews > 0 ? approvedViews / goalViews : null,
+    start: input.periodStart ?? input.campaign.startsAt,
+    end: input.periodEnd ?? input.campaign.deadline,
+    generatedAt,
+  });
+  const financial = buildFinancialSummary({
+    totalBudget,
+    budgetUsed,
+    approvedViews,
+    approvedClips: approved.length,
+    activeCreators,
+    timeline,
+    periodStart: input.periodStart ?? input.campaign.startsAt,
+    periodEnd: input.periodEnd ?? input.campaign.deadline,
+    generatedAt,
+  });
   const referral = calculateCampaignReferralReport({
     totalBudget,
     attributions: input.attributions.map((attribution) => ({
@@ -251,7 +303,7 @@ export function buildCampaignReportLiveData(input: CampaignReportBuildInput): Ca
   });
 
   const dataWithoutDefaults = {
-    generatedAt: toIso(input.generatedAt ?? new Date()),
+    generatedAt: toIso(generatedAt),
     period: {
       start: input.periodStart ? toIso(input.periodStart) : null,
       end: input.periodEnd ? toIso(input.periodEnd) : null,
@@ -274,6 +326,7 @@ export function buildCampaignReportLiveData(input: CampaignReportBuildInput): Ca
       deadline: toIso(input.campaign.deadline),
       requirements: input.campaign.requirements ?? null,
       contentGuidelines: input.campaign.contentGuidelines ?? null,
+      contentType: input.campaign.contentType ?? null,
       requiredHashtags: input.campaign.requiredHashtags,
       target: {
         country: input.campaign.targetCountry ?? null,
@@ -294,8 +347,10 @@ export function buildCampaignReportLiveData(input: CampaignReportBuildInput): Ca
       approvedClips: approved.length,
       activeCreators,
       approvalRate: reviewed.length > 0 ? approved.length / reviewed.length : null,
+      pacingStatus,
       statusCounts,
     },
+    financial,
     timeline,
     platformBreakdown,
     topContent,
@@ -339,6 +394,7 @@ export async function getCampaignReportLiveData({
       deadline: true,
       requirements: true,
       contentGuidelines: true,
+      contentType: true,
       requiredHashtags: true,
       targetCountry: true,
       targetCountryPercent: true,
@@ -504,32 +560,32 @@ export async function getCampaignReportLiveData({
 
 function generateDefaultEditorial(data: Omit<CampaignReportLiveData, "defaults">): CampaignReportEditorial {
   const topPlatform = data.platformBreakdown[0];
+  const topClip = data.topContent[0];
+  const recommendedCreators = data.creators.filter((creator) => creator.recommendedForNextCampaign).slice(0, 8);
+  const hasCommunityData = data.referral.totalClicks > 0 || data.referral.inviteCount > 0 || data.referral.activeClipperCount > 0;
   const goalText = data.performance.goalCompletion == null
     ? "zonder vast viewdoel"
     : `${formatPercent(data.performance.goalCompletion)} van het viewdoel`;
-  const qualityText = data.quality.criticalSignals === 0
-    ? "zonder open kritieke kwaliteitsissues"
-    : `met ${data.quality.criticalSignals} kritieke signalen die aandacht vragen`;
-  const cpvText = data.performance.costPerThousandViews == null
+  const cpvText = data.financial.effectiveCpv == null
     ? "n.v.t."
-    : `EUR ${data.performance.costPerThousandViews.toFixed(2)} per 1.000 views`;
+    : `EUR ${data.financial.effectiveCpv.toFixed(4)} per approved view`;
 
   const keyTakeaways = [
-    `${data.campaign.brandName} behaalde ${formatNumber(data.performance.approvedViews)} goedgekeurde views, ${goalText}.`,
+    `${data.campaign.brandName} behaalde ${formatNumber(data.performance.approvedViews)} approved views, ${goalText}.`,
     topPlatform
-      ? `${topPlatform.platform} leverde het grootste bereik met ${formatNumber(topPlatform.views)} views.`
+      ? `${topPlatform.platform} leverde het grootste bereik met ${formatNumber(topPlatform.views)} approved views en een effectieve CPV van ${topPlatform.effectiveCpv == null ? "n.v.t." : `EUR ${topPlatform.effectiveCpv.toFixed(4)}`}.`
       : "Er is nog onvoldoende platformdata om een kanaalwinnaar te kiezen.",
     `De campagne activeerde ${data.performance.activeCreators} creators en leverde ${data.performance.approvedClips} goedgekeurde clips op.`,
-    `De effectieve CPV kwam uit op ${cpvText}.`,
-    `De traffic en contentkwaliteit is gecontroleerd ${qualityText}.`,
+    `Budget pacing staat op ${data.performance.pacingStatus.toLowerCase()} met ${formatPercent(data.performance.budgetUsedPercent ?? 0)} budget used.`,
+    `Traffic Quality Status: ${data.quality.trafficQualityStatus}.`,
   ];
 
   const learnings = [
     topPlatform
       ? `Verdubbel op formats die op ${topPlatform.platform} vroeg aandacht trekken en snel de brand zichtbaar maken.`
       : "Zorg dat de eerste ronde clips voldoende platformvolume oplevert om duidelijke kanaallearnings te kunnen trekken.",
-    data.topContent[0]
-      ? `Gebruik de beste clip van ${data.topContent[0].creator} als referentie voor hook, tempo en visuele brand placement.`
+    topClip
+      ? `Gebruik de beste clip van ${topClip.creator} als referentie voor hook, tempo en visuele brand placement.`
       : "Voeg voorbeeldclips toe zodra de eerste goedgekeurde posts live zijn.",
     data.performance.approvalRate != null && data.performance.approvalRate < 0.7
       ? "Maak requirements en do's/don'ts scherper om revision-rate te verlagen."
@@ -544,6 +600,40 @@ function generateDefaultEditorial(data: Omit<CampaignReportLiveData, "defaults">
     "Maak 3 concrete hook-angles en voeg voorbeeldclips toe aan de creator brief.",
     "Houd quality checks actief op logo/brand placement, duplicate content en afwijkende engagementratio's.",
   ];
+  const contentInsights = [
+    topClip
+      ? `Best performer: ${topClip.platform} clip by ${topClip.creator} with ${formatNumber(topClip.views)} approved views. Strong first-second hook, native pacing, and clear product integration should be used as reference.`
+      : "Er is nog geen top clip beschikbaar; voeg clip-level learnings toe zodra approved content binnenkomt.",
+    topPlatform
+      ? `${topPlatform.platform} showed the clearest scale signal. Use this as the reach channel and compare other platforms on engagement quality.`
+      : "Platform-level content patterns need more approved delivery before a confident conclusion can be drawn.",
+  ];
+  const platformRecommendations = Object.fromEntries(
+    data.platformBreakdown.map((row) => [
+      row.platform,
+      `${row.platform} delivered ${formatNumber(row.views)} approved views at ${row.effectiveCpv == null ? "n/a" : `EUR ${row.effectiveCpv.toFixed(4)} CPV`}. ${row.engagementRate != null && row.engagementRate > 0.05 ? "Keep this channel for high-fit creators and engagement quality." : "Use this channel primarily for controlled reach testing."}`,
+    ]),
+  );
+  const creatorRecommendations = recommendedCreators.length > 0
+    ? recommendedCreators.map((creator) => `Reactivate ${creator.creator}: ${formatNumber(creator.views)} approved views, ${formatPercent(creator.approvalRate ?? 0)} approval rate.`)
+    : ["Reactivate creators with approved delivery, clean quality review, and strong brand fit once more data is available."];
+  const editorialContent: CampaignReportEditorialContent = {
+    campaignType: data.campaign.contentType || "Awareness",
+    financialNote: `Budget was used only for approved, eligible views. Current effective CPV is ${cpvText}. ${data.financial.unusedBudgetExplanation}`,
+    contentInsights,
+    topContentNotes: Object.fromEntries(
+      data.topContent.slice(0, 8).map((clip) => [
+        clip.id,
+        `Worked because the clip combined a native ${clip.platform} format with fast context and clear brand visibility.`,
+      ]),
+    ),
+    platformRecommendations,
+    creatorRecommendations,
+    qualityNote: data.quality.clientSummary,
+    keyLearnings: learnings,
+    nextCampaignPlan: nextCampaignRecommendations,
+    appendixNote: "Appendix is reserved for raw operational data when a client asks for supporting detail.",
+  };
 
   return {
     title: `${data.campaign.brandName} Campaign Report`,
@@ -551,7 +641,8 @@ function generateDefaultEditorial(data: Omit<CampaignReportLiveData, "defaults">
     keyTakeaways,
     learnings,
     nextCampaignRecommendations,
-    sectionSettings: { ...DEFAULT_CAMPAIGN_REPORT_SECTIONS },
+    sectionSettings: { ...DEFAULT_CAMPAIGN_REPORT_SECTIONS, communityActivation: hasCommunityData },
+    editorialContent,
   };
 }
 
@@ -589,7 +680,14 @@ function buildPlatformBreakdown(submissions: CampaignReportSubmissionInput[]) {
     current.cost += toNumber(submission.earnedAmount);
     rows.set(platform, current);
   }
-  return Array.from(rows.values()).sort((a, b) => b.views - a.views);
+  return Array.from(rows.values())
+    .map((row) => ({
+      ...row,
+      averageViewsPerClip: row.clips > 0 ? row.views / row.clips : 0,
+      effectiveCpv: row.views > 0 ? row.cost / row.views : null,
+      engagementRate: row.views > 0 ? row.engagement / row.views : null,
+    }))
+    .sort((a, b) => b.views - a.views);
 }
 
 function buildTopContent(submissions: CampaignReportSubmissionInput[]) {
@@ -610,42 +708,89 @@ function buildTopContent(submissions: CampaignReportSubmissionInput[]) {
 }
 
 function buildCreatorLeaderboard(submissions: CampaignReportSubmissionInput[]) {
-  const rows = new Map<string, { creatorId: string; creator: string; submissions: number; views: number; earnedAmount: number; flagged: number }>();
+  const rows = new Map<string, {
+    creatorId: string;
+    creator: string;
+    submissions: number;
+    approvedSubmissions: number;
+    reviewedSubmissions: number;
+    views: number;
+    earnedAmount: number;
+    flagged: number;
+  }>();
   for (const submission of submissions) {
     const current = rows.get(submission.creatorId) ?? {
       creatorId: submission.creatorId,
       creator: submission.creatorLabel,
       submissions: 0,
+      approvedSubmissions: 0,
+      reviewedSubmissions: 0,
       views: 0,
       earnedAmount: 0,
       flagged: 0,
     };
     current.submissions += 1;
+    if (["APPROVED", "REJECTED", "NEEDS_REVISION", "FLAGGED"].includes(submission.status)) {
+      current.reviewedSubmissions += 1;
+    }
     if (submission.status === "APPROVED") {
+      current.approvedSubmissions += 1;
       current.views += submissionViews(submission);
       current.earnedAmount += toNumber(submission.earnedAmount);
     }
     current.flagged += submission.signals.some((signal) => !signal.resolvedAt && ["WARN", "CRITICAL"].includes(signal.severity)) ? 1 : 0;
     rows.set(submission.creatorId, current);
   }
-  return Array.from(rows.values()).sort((a, b) => b.views - a.views).slice(0, 20);
+  return Array.from(rows.values())
+    .map((row) => {
+      const approvalRate = row.reviewedSubmissions > 0 ? row.approvedSubmissions / row.reviewedSubmissions : null;
+      const averageViewsPerApprovedClip = row.approvedSubmissions > 0 ? row.views / row.approvedSubmissions : null;
+      const reliabilityStatus = creatorReliabilityStatus(approvalRate, row.flagged, row.views);
+      return {
+        creatorId: row.creatorId,
+        creator: row.creator,
+        submissions: row.submissions,
+        views: row.views,
+        earnedAmount: row.earnedAmount,
+        flagged: row.flagged,
+        approvalRate,
+        averageViewsPerApprovedClip,
+        reliabilityStatus,
+        recommendedForNextCampaign: reliabilityStatus === "Recommended",
+      };
+    })
+    .sort((a, b) => b.views - a.views)
+    .slice(0, 20);
 }
 
 function buildQualitySummary(submissions: CampaignReportSubmissionInput[]) {
   const signals = submissions.flatMap((submission) => submission.signals);
   const openSignals = signals.filter((signal) => !signal.resolvedAt && ["WARN", "CRITICAL"].includes(signal.severity));
   const qcReviews = submissions.flatMap((submission) => submission.qcReviews);
+  const excluded = submissions.filter((submission) => ["REJECTED", "NEEDS_REVISION", "FLAGGED"].includes(submission.status));
+  const excludedViews = excluded.reduce((sum, submission) => sum + submissionViews(submission), 0);
+  const criticalSignals = openSignals.filter((signal) => signal.severity === "CRITICAL").length;
+  const trafficQualityStatus = trafficQualityStatusFor({
+    criticalSignals,
+    openSignals: openSignals.length,
+    excludedClips: excluded.length,
+    resolvedSignals: signals.filter((signal) => Boolean(signal.resolvedAt)).length,
+  });
   return {
     openSignals: openSignals.length,
-    criticalSignals: openSignals.filter((signal) => signal.severity === "CRITICAL").length,
+    criticalSignals,
     signalCounts: countBy(openSignals, (signal) => signal.type),
     resolvedSignals: signals.filter((signal) => Boolean(signal.resolvedAt)).length,
     qcDecisionCounts: countBy(qcReviews, (review) => review.decision),
     approvedQcReviews: qcReviews.filter((review) => review.decision === "APPROVED").length,
+    excludedClips: excluded.length,
+    excludedViews,
+    trafficQualityStatus,
+    clientSummary: trafficQualityClientSummary(trafficQualityStatus, excluded.length),
   };
 }
 
-function buildAudienceSummary(snapshots: CampaignReportAudienceSnapshotInput[]) {
+function buildAudienceSummary(snapshots: CampaignReportAudienceSnapshotInput[], campaign: CampaignReportCampaignInput) {
   const latest = latestAudienceSnapshots(snapshots);
   const ageBuckets: Record<string, number> = {};
   const genderSplit: Record<string, number> = {};
@@ -671,7 +816,145 @@ function buildAudienceSummary(snapshots: CampaignReportAudienceSnapshotInput[]) 
       .sort((a, b) => b[1] - a[1])
       .slice(0, 8)
       .map(([code, share]) => ({ code, share })),
+    fitStatus: audienceFitStatus({
+      sampleCount: latest.length,
+      topCountries: countryTotals,
+      genderSplit,
+      campaign,
+    }),
   };
+}
+
+function buildFinancialSummary({
+  totalBudget,
+  budgetUsed,
+  approvedViews,
+  approvedClips,
+  activeCreators,
+  timeline,
+  periodStart,
+  periodEnd,
+  generatedAt,
+}: {
+  totalBudget: number;
+  budgetUsed: number;
+  approvedViews: number;
+  approvedClips: number;
+  activeCreators: number;
+  timeline: CampaignReportLiveData["timeline"];
+  periodStart?: Date | string | null;
+  periodEnd?: Date | string | null;
+  generatedAt: Date | string;
+}): CampaignReportLiveData["financial"] {
+  const progress = periodProgress(periodStart, periodEnd, generatedAt);
+  const forecastApprovedViews = progress && progress > 0 ? Math.round(approvedViews / progress) : null;
+  const forecastBudgetUsed = progress && progress > 0 ? budgetUsed / progress : null;
+  return {
+    totalBudget,
+    budgetUsed,
+    budgetRemaining: Math.max(0, totalBudget - budgetUsed),
+    approvedPayableViews: approvedViews,
+    effectiveCpv: approvedViews > 0 ? budgetUsed / approvedViews : null,
+    costPerApprovedClip: approvedClips > 0 ? budgetUsed / approvedClips : null,
+    costPerActiveCreator: activeCreators > 0 ? budgetUsed / activeCreators : null,
+    forecastApprovedViews: timeline.length >= 2 ? forecastApprovedViews : null,
+    forecastBudgetUsed: timeline.length >= 2 ? forecastBudgetUsed : null,
+    unusedBudgetExplanation: totalBudget > budgetUsed
+      ? "Budget remained available because only approved, eligible campaign performance is counted toward payable delivery."
+      : "The campaign budget was fully allocated to approved, eligible performance.",
+  };
+}
+
+function buildPacingStatus({
+  goalCompletion,
+  start,
+  end,
+  generatedAt,
+}: {
+  goalCompletion: number | null;
+  start?: Date | string | null;
+  end?: Date | string | null;
+  generatedAt: Date | string;
+}): CampaignReportPacingStatus {
+  const progress = periodProgress(start, end, generatedAt);
+  if (goalCompletion == null || progress == null) return "Insufficient data";
+  if (goalCompletion >= progress + 0.08) return "Ahead of pace";
+  if (goalCompletion <= progress - 0.08) return "Behind pace";
+  return "On pace";
+}
+
+function periodProgress(start: Date | string | null | undefined, end: Date | string | null | undefined, generatedAt: Date | string) {
+  if (!start || !end) return null;
+  const startMs = toDate(start).getTime();
+  const endMs = toDate(end).getTime();
+  const currentMs = toDate(generatedAt).getTime();
+  const duration = endMs - startMs;
+  if (duration <= 0) return null;
+  return Math.min(1, Math.max(0, (currentMs - startMs) / duration));
+}
+
+function creatorReliabilityStatus(
+  approvalRate: number | null,
+  flagged: number,
+  views: number,
+): "Recommended" | "Monitor" | "Needs review" {
+  if (flagged > 0 || (approvalRate != null && approvalRate < 0.5)) return "Needs review";
+  if (views > 0 && (approvalRate == null || approvalRate >= 0.75)) return "Recommended";
+  return "Monitor";
+}
+
+function trafficQualityStatusFor({
+  criticalSignals,
+  openSignals,
+  excludedClips,
+  resolvedSignals,
+}: {
+  criticalSignals: number;
+  openSignals: number;
+  excludedClips: number;
+  resolvedSignals: number;
+}): CampaignReportTrafficQualityStatus {
+  if (criticalSignals > 0) return "Needs attention";
+  if (openSignals > 0 || excludedClips > 0 || resolvedSignals > 0) return "Passed with exclusions";
+  return "Passed";
+}
+
+function trafficQualityClientSummary(status: CampaignReportTrafficQualityStatus, excludedClips: number) {
+  if (status === "Needs attention") {
+    return "Traffic quality is being reviewed before final performance is used for reporting or payout.";
+  }
+  if (status === "Passed with exclusions") {
+    return `${excludedClips} clip${excludedClips === 1 ? "" : "s"} or view sources were excluded or monitored after quality review. Only approved performance is included.`;
+  }
+  return "All eligible views were checked for traffic quality, duplicate activity, engagement ratios, and campaign compliance.";
+}
+
+function audienceFitStatus({
+  sampleCount,
+  topCountries,
+  genderSplit,
+  campaign,
+}: {
+  sampleCount: number;
+  topCountries: Record<string, number>;
+  genderSplit: Record<string, number>;
+  campaign: CampaignReportCampaignInput;
+}): CampaignReportAudienceFitStatus {
+  if (sampleCount === 0) return "Insufficient data";
+  const scores: number[] = [];
+  if (campaign.targetCountry && campaign.targetCountryPercent != null) {
+    const targetShare = topCountries[campaign.targetCountry.toUpperCase()] ?? topCountries[campaign.targetCountry] ?? 0;
+    scores.push(targetShare / Math.max(1, campaign.targetCountryPercent));
+  }
+  if (campaign.targetMalePercent != null) {
+    const maleShare = genderSplit.male ?? genderSplit.MALE ?? 0;
+    scores.push(1 - Math.abs(maleShare - campaign.targetMalePercent) / 100);
+  }
+  if (scores.length === 0) return "Insufficient data";
+  const average = scores.reduce((sum, score) => sum + score, 0) / scores.length;
+  if (average >= 0.9) return "Strong match";
+  if (average >= 0.7) return "Partial match";
+  return "Needs improvement";
 }
 
 function latestAudienceSnapshots(snapshots: CampaignReportAudienceSnapshotInput[]) {
