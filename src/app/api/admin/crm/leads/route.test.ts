@@ -6,6 +6,7 @@ const routeMocks = vi.hoisted(() => ({
   brandLeadFindMany: vi.fn(),
   brandLeadCreate: vi.fn(),
   leadGroupUpsert: vi.fn(),
+  userFindFirst: vi.fn(),
   auditLogCreate: vi.fn(),
   transaction: vi.fn(),
 }));
@@ -22,6 +23,9 @@ vi.mock("@/lib/prisma", () => ({
     },
     leadGroup: {
       upsert: routeMocks.leadGroupUpsert,
+    },
+    user: {
+      findFirst: routeMocks.userFindFirst,
     },
     auditLog: {
       create: routeMocks.auditLogCreate,
@@ -64,9 +68,11 @@ describe("/api/admin/crm/leads", () => {
       callback({
         brandLead: { create: routeMocks.brandLeadCreate },
         leadGroup: { upsert: routeMocks.leadGroupUpsert },
+        user: { findFirst: routeMocks.userFindFirst },
         auditLog: { create: routeMocks.auditLogCreate },
       }),
     );
+    routeMocks.userFindFirst.mockResolvedValue({ id: "db-admin-1" });
     routeMocks.auditLogCreate.mockResolvedValue({});
   });
 
@@ -124,13 +130,28 @@ describe("/api/admin/crm/leads", () => {
     });
     expect(routeMocks.auditLogCreate).toHaveBeenCalledWith({
       data: expect.objectContaining({
-        userId: "admin-1",
+        userId: "db-admin-1",
         action: "crm.lead.create",
         entityType: "BrandLead",
         entityId: "lead-1",
         metadata: { brandName: "Merry in the Jungle", groupName: null },
       }),
     });
+  });
+
+  it("does not fail lead creation when the audit user is missing", async () => {
+    routeMocks.userFindFirst.mockResolvedValue(null);
+    routeMocks.brandLeadCreate.mockResolvedValue(lead);
+
+    const response = await POST(
+      new Request("https://app.test/api/admin/crm/leads", {
+        method: "POST",
+        body: JSON.stringify({ brandName: "No audit lead" }),
+      }),
+    );
+
+    expect(response.status).toBe(201);
+    expect(routeMocks.auditLogCreate).not.toHaveBeenCalled();
   });
 
   it("creates or reuses a lead group from groupName", async () => {

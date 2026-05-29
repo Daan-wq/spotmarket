@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { requireAuth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { jsonError, serialize } from "@/lib/admin/agency-api";
+import { createCrmAuditLog } from "../audit";
 import { leadUpdateSchema } from "../schema";
 
 export async function PATCH(
@@ -40,14 +41,11 @@ export async function PATCH(
         include: { leadGroup: true },
       });
 
-      await tx.auditLog.create({
-        data: {
-          userId,
-          action: "crm.lead.update",
-          entityType: "BrandLead",
-          entityId: updatedLead.id,
-          metadata: { brandName: updatedLead.brandName, groupName: updatedLead.leadGroup?.name ?? null },
-        },
+      await createCrmAuditLog(tx, {
+        authUserId: userId,
+        action: "crm.lead.update",
+        entityId: updatedLead.id,
+        metadata: { brandName: updatedLead.brandName, groupName: updatedLead.leadGroup?.name ?? null },
       });
 
       return updatedLead;

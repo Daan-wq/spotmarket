@@ -6,6 +6,7 @@ const routeMocks = vi.hoisted(() => ({
   brandLeadFindUnique: vi.fn(),
   brandLeadUpdate: vi.fn(),
   leadGroupUpsert: vi.fn(),
+  userFindFirst: vi.fn(),
   auditLogCreate: vi.fn(),
   transaction: vi.fn(),
 }));
@@ -22,6 +23,9 @@ vi.mock("@/lib/prisma", () => ({
     },
     leadGroup: {
       upsert: routeMocks.leadGroupUpsert,
+    },
+    user: {
+      findFirst: routeMocks.userFindFirst,
     },
     auditLog: {
       create: routeMocks.auditLogCreate,
@@ -69,10 +73,12 @@ describe("/api/admin/crm/leads/[id]", () => {
           update: routeMocks.brandLeadUpdate,
         },
         leadGroup: { upsert: routeMocks.leadGroupUpsert },
+        user: { findFirst: routeMocks.userFindFirst },
         auditLog: { create: routeMocks.auditLogCreate },
       }),
     );
     routeMocks.brandLeadFindUnique.mockResolvedValue({ id: "lead-1" });
+    routeMocks.userFindFirst.mockResolvedValue({ id: "db-admin-1" });
     routeMocks.auditLogCreate.mockResolvedValue({});
   });
 
@@ -119,12 +125,32 @@ describe("/api/admin/crm/leads/[id]", () => {
     });
     expect(routeMocks.auditLogCreate).toHaveBeenCalledWith({
       data: expect.objectContaining({
-        userId: "admin-1",
+        userId: "db-admin-1",
         action: "crm.lead.update",
         entityId: "lead-1",
         metadata: { brandName: "Merry in the Jungle", groupName: "Solomon owner cluster" },
       }),
     });
+  });
+
+  it("still saves the lead when the audit user cannot be resolved", async () => {
+    routeMocks.userFindFirst.mockResolvedValue(null);
+    routeMocks.brandLeadUpdate.mockResolvedValue(updatedLead);
+
+    const response = await PATCH(
+      new Request("https://app.test/api/admin/crm/leads/lead-1", {
+        method: "PATCH",
+        body: JSON.stringify({
+          brandName: "Merry in the Jungle",
+          groupName: "Solomon owner cluster",
+        }),
+      }),
+      params,
+    );
+
+    expect(response.status).toBe(200);
+    expect(routeMocks.brandLeadUpdate).toHaveBeenCalled();
+    expect(routeMocks.auditLogCreate).not.toHaveBeenCalled();
   });
 
   it("clears the group when groupName is blank", async () => {

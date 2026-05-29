@@ -3,6 +3,7 @@ import { z } from "zod";
 import { requireAuth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { jsonError, serialize } from "@/lib/admin/agency-api";
+import { createCrmAuditLog } from "../../audit";
 
 const convertSchema = z.object({
   niche: z.string().max(120).optional().nullable(),
@@ -56,14 +57,11 @@ export async function POST(
         data: { stage: "WON", convertedBrandId: brand.id },
       });
 
-      await tx.auditLog.create({
-        data: {
-          userId,
-          action: "crm.lead.convert",
-          entityType: "BrandLead",
-          entityId: id,
-          metadata: { brandId: brand.id },
-        },
+      await createCrmAuditLog(tx, {
+        authUserId: userId,
+        action: "crm.lead.convert",
+        entityId: id,
+        metadata: { brandId: brand.id },
       });
 
       return { brand, onboarding, lead: convertedLead };
