@@ -2,10 +2,9 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { PageHeader, SectionHeader } from "@/components/ui/page";
 import { prisma } from "@/lib/prisma";
 import { LeadCreateForm } from "./lead-create-form";
+import { LeadTable, type LeadTableLead } from "./lead-table";
 
 export const dynamic = "force-dynamic";
-
-const contactLinkClass = "break-all text-sm font-medium text-neutral-950 underline underline-offset-2";
 
 async function loadLeads() {
   return prisma.brandLead.findMany({
@@ -15,12 +14,10 @@ async function loadLeads() {
   });
 }
 
-type LeadRow = Awaited<ReturnType<typeof loadLeads>>[number];
-
 export default async function CrmPage() {
-  const leads = await loadLeads();
-  const grouped = new Map<string, { name: string; owner: string | null; leads: LeadRow[] }>();
-  const ungrouped: LeadRow[] = [];
+  const leads = (await loadLeads()).map(toLeadTableLead);
+  const grouped = new Map<string, { name: string; owner: string | null; leads: LeadTableLead[] }>();
+  const ungrouped: LeadTableLead[] = [];
   const categories = new Set(leads.map((lead) => lead.category).filter(Boolean));
 
   for (const lead of leads) {
@@ -45,8 +42,7 @@ export default async function CrmPage() {
         description="Companies, groups, categories, contacts, and notes in one simple table."
       />
 
-      <section>
-        <SectionHeader title="Add lead" />
+      <section className="flex justify-end">
         <LeadCreateForm />
       </section>
 
@@ -59,7 +55,7 @@ export default async function CrmPage() {
       <section>
         <SectionHeader title="Lead table" />
         {leads.length === 0 ? (
-          <EmptyState title="No leads yet" description="Add the first company or contact above." />
+          <EmptyState title="No leads yet" description="Add the first company or contact from the button above." />
         ) : (
           <div className="space-y-3">
             {Array.from(grouped.entries()).map(([id, group]) => (
@@ -68,7 +64,7 @@ export default async function CrmPage() {
                   <div>
                     <p className="text-sm font-semibold text-neutral-950">{group.name}</p>
                     <p className="mt-0.5 text-xs text-neutral-500">
-                      {group.owner ? `${group.owner} · ` : ""}
+                      {group.owner ? `${group.owner} / ` : ""}
                       {group.leads.length} {group.leads.length === 1 ? "lead" : "leads"}
                     </p>
                   </div>
@@ -106,69 +102,28 @@ function DatabaseMetric({ label, value }: { label: string; value: number }) {
   );
 }
 
-function LeadTable({ groupName, leads }: { groupName: string; leads: LeadRow[] }) {
-  return (
-    <div className="overflow-x-auto">
-      <table className="w-full min-w-[980px] text-sm">
-        <thead>
-          <tr className="border-b border-neutral-100 text-left text-[11px] uppercase tracking-[0.14em] text-neutral-500">
-            <th className="px-4 py-3 font-semibold">Group</th>
-            <th className="px-4 py-3 font-semibold">Company / lead</th>
-            <th className="px-4 py-3 font-semibold">Category</th>
-            <th className="px-4 py-3 font-semibold">Subcategory</th>
-            <th className="px-4 py-3 font-semibold">Contact person</th>
-            <th className="px-4 py-3 font-semibold">Contact details</th>
-            <th className="px-4 py-3 font-semibold">Owner</th>
-            <th className="px-4 py-3 font-semibold">Notes</th>
-          </tr>
-        </thead>
-        <tbody>
-          {leads.map((lead) => (
-            <tr key={lead.id} className="border-b border-neutral-100 last:border-0">
-              <td className="px-4 py-3 align-top text-neutral-500">{groupName}</td>
-              <td className="px-4 py-3 align-top">
-                <p className="font-semibold text-neutral-950">{lead.brandName}</p>
-                {lead.website ? <ContactLink href={lead.website} label={lead.website} /> : null}
-              </td>
-              <td className="px-4 py-3 align-top text-neutral-700">{lead.category || "-"}</td>
-              <td className="px-4 py-3 align-top text-neutral-700">{lead.subcategory || "-"}</td>
-              <td className="px-4 py-3 align-top text-neutral-700">{lead.contactName || "-"}</td>
-              <td className="px-4 py-3 align-top">
-                <ContactDetails lead={lead} />
-              </td>
-              <td className="px-4 py-3 align-top text-neutral-700">{lead.owner || lead.leadGroup?.owner || "-"}</td>
-              <td className="max-w-xs px-4 py-3 align-top text-neutral-600">
-                <p className="line-clamp-3">{[lead.source, lead.notes].filter(Boolean).join(" · ") || "-"}</p>
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
-  );
-}
-
-function ContactDetails({ lead }: { lead: LeadRow }) {
-  const items = [
-    lead.contactEmail ? <a key="email" href={`mailto:${lead.contactEmail}`} className={contactLinkClass}>{lead.contactEmail}</a> : null,
-    lead.contactPhone ? <a key="phone" href={`tel:${lead.contactPhone}`} className={contactLinkClass}>{lead.contactPhone}</a> : null,
-    lead.contactLinkedIn ? <ContactLink key="linkedin" href={lead.contactLinkedIn} label={lead.contactLinkedIn} /> : null,
-  ].filter(Boolean);
-
-  if (items.length === 0) return <span className="text-neutral-400">-</span>;
-
-  return <div className="flex flex-col items-start gap-1">{items}</div>;
-}
-
-function ContactLink({ href, label }: { href: string; label: string }) {
-  return (
-    <a href={externalHref(href)} target="_blank" rel="noreferrer" className={contactLinkClass}>
-      {label}
-    </a>
-  );
-}
-
-function externalHref(value: string) {
-  if (/^https?:\/\//i.test(value)) return value;
-  return `https://${value}`;
+function toLeadTableLead(lead: Awaited<ReturnType<typeof loadLeads>>[number]): LeadTableLead {
+  return {
+    id: lead.id,
+    brandName: lead.brandName,
+    leadGroupId: lead.leadGroupId,
+    leadGroup: lead.leadGroup
+      ? {
+          id: lead.leadGroup.id,
+          name: lead.leadGroup.name,
+          owner: lead.leadGroup.owner,
+          notes: lead.leadGroup.notes,
+        }
+      : null,
+    category: lead.category,
+    subcategory: lead.subcategory,
+    contactName: lead.contactName,
+    contactEmail: lead.contactEmail,
+    contactPhone: lead.contactPhone,
+    contactLinkedIn: lead.contactLinkedIn,
+    website: lead.website,
+    source: lead.source,
+    owner: lead.owner,
+    notes: lead.notes,
+  };
 }
