@@ -52,7 +52,7 @@ export function PayoutActionsRow({
   function markSent() {
     if (isPending) return;
     if (!txHash.trim()) {
-      toast.error("Enter a transaction hash before marking as sent.");
+      toast.error("Vul een transactiehash in voordat je als verzonden markeert.");
       return;
     }
 
@@ -66,14 +66,14 @@ export function PayoutActionsRow({
           body: JSON.stringify({ status: "sent", txHash: txHash.trim() }),
         });
         if (!res.ok) {
-          toast.error("Failed to mark payout as sent — reverting");
+          toast.error("Uitbetaling als verzonden markeren mislukt - teruggedraaid");
           return;
         }
-        toast.success("Payout marked as sent");
+        toast.success("Uitbetaling gemarkeerd als verzonden");
         router.refresh();
       } catch (err) {
         console.error("[markSent]", err);
-        toast.error("Network error — reverting");
+        toast.error("Netwerkfout - teruggedraaid");
       }
     });
   }
@@ -90,14 +90,14 @@ export function PayoutActionsRow({
           body: JSON.stringify({ status: "confirmed" }),
         });
         if (!res.ok) {
-          toast.error("Failed to confirm payout — reverting");
+          toast.error("Uitbetaling bevestigen mislukt - teruggedraaid");
           return;
         }
-        toast.success("Payout confirmed");
+        toast.success("Uitbetaling bevestigd");
         router.refresh();
       } catch (err) {
         console.error("[markConfirmed]", err);
-        toast.error("Network error — reverting");
+        toast.error("Netwerkfout - teruggedraaid");
       }
     });
   }
@@ -156,7 +156,7 @@ export function PayoutActionsRow({
                     type="text"
                     value={txHash}
                     onChange={(e) => setTxHash(e.target.value)}
-                    placeholder="Paste transaction hash..."
+                    placeholder="Plak transactiehash..."
                     className="flex-1 px-3 py-1.5 rounded-lg text-xs font-mono outline-none transition-all"
                     style={{ border: "1px solid var(--border)", background: "var(--bg-primary)", color: "var(--text-primary)" }}
                     onFocus={(e) => { e.currentTarget.style.borderColor = "var(--accent)"; e.currentTarget.style.boxShadow = "0 0 0 3px var(--accent-bg)"; }}
@@ -197,7 +197,7 @@ export function PayoutActionsRow({
           <p className="text-xs" style={{ color: "var(--text-muted)" }}>{payout.currency}</p>
           {payout.verifiedViews && (
             <p className="text-xs mt-1" style={{ color: "var(--text-muted)" }}>
-              {payout.verifiedViews.toLocaleString()} views
+              {payout.verifiedViews.toLocaleString("nl-NL")} views
             </p>
           )}
         </div>

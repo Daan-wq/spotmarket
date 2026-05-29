@@ -130,11 +130,11 @@ export default async function AdminConnectionStatsPage({ params, searchParams }:
     const breakdowns = await getYtBreakdowns([connectionId], range);
     trendsContent = (
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        <DimensionalBreakdown title="Traffic source" data={breakdowns.trafficSourceBreakdown} />
-        <DimensionalBreakdown title="Playback location" data={breakdowns.playbackLocationBreakdown} />
-        <DimensionalBreakdown title="Device type" data={breakdowns.deviceTypeBreakdown} />
-        <DimensionalBreakdown title="Content type" data={breakdowns.contentTypeBreakdown} />
-        <DimensionalBreakdown title="Subscribed status" data={breakdowns.subscribedStatusBreakdown} />
+        <DimensionalBreakdown title="Verkeersbron" data={breakdowns.trafficSourceBreakdown} />
+        <DimensionalBreakdown title="Afspeellocatie" data={breakdowns.playbackLocationBreakdown} />
+        <DimensionalBreakdown title="Apparaattype" data={breakdowns.deviceTypeBreakdown} />
+        <DimensionalBreakdown title="Contenttype" data={breakdowns.contentTypeBreakdown} />
+        <DimensionalBreakdown title="Abonneestatus" data={breakdowns.subscribedStatusBreakdown} />
       </div>
     );
   } else if (platform === "ig") {
@@ -163,7 +163,7 @@ export default async function AdminConnectionStatsPage({ params, searchParams }:
     trendsContent = (
       <div className="rounded-xl p-5" style={{ background: "var(--bg-card)", border: "1px solid var(--border)" }}>
         <p className="text-sm" style={{ color: "var(--text-secondary)" }}>
-          No platform-specific trends for TikTok beyond audience and content tabs.
+          Geen platformspecifieke TikTok-trends buiten de publiek- en contenttabs.
         </p>
       </div>
     );
@@ -172,13 +172,13 @@ export default async function AdminConnectionStatsPage({ params, searchParams }:
   const overviewTab = (
     <div className="space-y-5">
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        <KpiCard label="Followers" value={meta.followerCount?.toLocaleString() ?? "—"} hint="Latest snapshot" />
-        <KpiCard label="Posts in range" value={contentRows.length.toLocaleString()} hint={range.label} />
+        <KpiCard label="Volgers" value={meta.followerCount?.toLocaleString("nl-NL") ?? "—"} hint="Laatste snapshot" />
+        <KpiCard label="Posts in periode" value={contentRows.length.toLocaleString("nl-NL")} hint={range.label} />
         <KpiCard
-          label="Total views (range)"
-          value={contentRows.reduce((s, r) => s + r.views, 0).toLocaleString()}
+          label="Totaal views (periode)"
+          value={contentRows.reduce((s, r) => s + r.views, 0).toLocaleString("nl-NL")}
         />
-        <KpiCard label="Status" value={meta.isVerified ? "Verified" : "Unverified"} tone={meta.isVerified ? "success" : "warning"} />
+        <KpiCard label="Status" value={meta.isVerified ? "Geverifieerd" : "Niet geverifieerd"} tone={meta.isVerified ? "success" : "warning"} />
       </div>
       <DailyViewsChart data={dailySeries} />
     </div>
@@ -217,7 +217,7 @@ export default async function AdminConnectionStatsPage({ params, searchParams }:
               {meta.creatorDisplayName}
             </a>
             {meta.handle && <span> · {meta.handle}</span>}
-            {meta.lastSyncedAt && <span> - Last refreshed {new Date(meta.lastSyncedAt).toLocaleDateString()}</span>}
+            {meta.lastSyncedAt && <span> - Last refreshed {new Date(meta.lastSyncedAt).toLocaleDateString("nl-NL")}</span>}
           </p>
         </div>
         <TimeRangeSelector value={range.key} />
@@ -225,9 +225,9 @@ export default async function AdminConnectionStatsPage({ params, searchParams }:
 
       <StatsTabs
         tabs={[
-          { id: "overview", label: "Overview", content: overviewTab },
+          { id: "overview", label: "Overzicht", content: overviewTab },
           { id: "content", label: "Content", content: contentTab },
-          { id: "audience", label: "Audience", content: audienceTab },
+          { id: "audience", label: "Publiek", content: audienceTab },
           { id: "trends", label: "Trends", content: trendsContent },
         ]}
       />

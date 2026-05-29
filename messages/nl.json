@@ -279,9 +279,9 @@
       "operate": "Operatie",
       "delivery": "Levering",
       "control": "Controle",
-      "commandCenter": "Command center",
+      "commandCenter": "Commandcenter",
       "campaigns": "Campagnes",
-      "referrals": "Referrals",
+      "referrals": "Referralnetwerk",
       "clippers": "Clippers",
       "production": "Productie",
       "clipReview": "Clipreview",
@@ -294,7 +294,7 @@
       "pricing": "Prijzen",
       "documents": "Documenten",
       "reports": "Rapportages",
-      "siteAnalytics": "Site analytics",
+      "siteAnalytics": "Site-analytics",
       "guides": "Handleidingen",
       "signals": "Signalen",
       "search": "Zoeken",
@@ -526,8 +526,8 @@
     },
     "admin": {
       "header": {
-        "eyebrow": "Agency OS",
-        "title": "Command center",
+        "eyebrow": "Bureau OS",
+        "title": "Commandcenter",
         "description": "Begin hier voor de volgende operationele stap en open details alleen wanneer je ze nodig hebt.",
         "newLead": "Nieuwe lead"
       },
@@ -551,15 +551,15 @@
           "leads": "Leads",
           "onboarding": "Onboarding",
           "production": "Productie",
-          "review": "Review",
+          "review": "Beoordeling",
           "money": "Geld",
           "guide": "Handleiding",
           "risk": "Risico",
           "clear": "Schoon"
         },
         "followUps": {
-          "title": "{count, plural, one {Volg # brand lead op} other {Volg # brand leads op}}",
-          "detail": "Lead follow-ups zijn nu nodig. Verplaats de lead, plan de call of houd hem warm."
+          "title": "{count, plural, one {Volg # merklead op} other {Volg # merkleads op}}",
+          "detail": "Lead-follow-ups zijn nu nodig. Verplaats de lead, plan de call of houd hem warm."
         },
         "onboarding": {
           "title": "{count, plural, one {# onboardingchecklist geblokkeerd} other {# onboardingchecklists geblokkeerd}}",
@@ -570,7 +570,7 @@
           "detail": "Productie start bij de toegewezen clip, niet pas nadat de creator inzendt. Werk te late taken eerst weg."
         },
         "review": {
-          "title": "{count, plural, one {Review # clip} other {Review # clips}}",
+          "title": "{count, plural, one {Beoordeel # clip} other {Beoordeel # clips}}",
           "detail": "{missingLogo, plural, one {# item zonder logo} other {# items zonder logo}}, {revisionAssignments, plural, one {# revisieopdracht} other {# revisieopdrachten}}."
         },
         "payout": {
@@ -601,7 +601,7 @@
         },
         "activeBrands": {
           "label": "Actieve merken",
-          "detail": "{amount} open pipeline"
+          "detail": "{amount} open pijplijn"
         },
         "activeClippers": {
           "label": "Actieve clippers",
@@ -635,7 +635,7 @@
         "reports": "Rapportages"
       },
       "drillIns": {
-        "pipelineTitle": "Pipeline",
+        "pipelineTitle": "Pijplijn",
         "usefulAreasTitle": "Nuttige gebieden",
         "deliveryRiskTitle": "Leveringsrisico",
         "noRisk": "Geen campagnerisico's voor tempo in de komende 7 dagen.",
@@ -648,7 +648,7 @@
       },
       "operatingAreas": {
         "commandCenter": {
-          "name": "Command center",
+          "name": "Commandcenter",
           "detail": "Eerste dagbeeld van werk, geld en risico"
         },
         "leads": {

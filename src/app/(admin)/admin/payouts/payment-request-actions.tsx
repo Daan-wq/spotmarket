@@ -31,17 +31,21 @@ export function PaymentRequestActions({
     const details = isCrypto ? walletAddress : [accountName, iban].filter(Boolean).join("\n");
     if (!details) return;
     navigator.clipboard.writeText(details);
-    toast.success(isCrypto ? "Wallet address copied" : "Bank details copied");
+    toast.success(isCrypto ? "Walletadres gekopieerd" : "Bankgegevens gekopieerd");
   }
 
   function updateStatus(status: "confirmed" | "failed") {
     if (isPending) return;
     if (!isCrypto && status === "confirmed" && !bankReference.trim()) {
-      toast.error("Add a bank reference before marking as paid.");
+      toast.error("Voeg een bankreferentie toe voordat je als betaald markeert.");
       return;
     }
     if (isCrypto && status === "confirmed" && !txHash.trim()) {
-      toast.error("Add a Solana transaction hash before marking as paid.");
+      toast.error("Voeg een Solana-transactiehash toe voordat je als betaald markeert.");
+      return;
+    }
+    if (status === "failed" && !rejectionReason.trim()) {
+      toast.error("Voeg een interne afwijsreden toe voordat je afwijst.");
       return;
     }
     if (status === "failed" && !rejectionReason.trim()) {
@@ -69,13 +73,13 @@ export function PaymentRequestActions({
         });
         const body = await response.json().catch(() => ({}));
         if (!response.ok) {
-          toast.error(body.error ?? "Could not update request.");
+          toast.error(body.error ?? "Verzoek kon niet worden bijgewerkt.");
           return;
         }
-        toast.success(status === "confirmed" ? "Payment marked paid" : "Payment request rejected");
+        toast.success(status === "confirmed" ? "Betaling gemarkeerd als betaald" : "Betaalverzoek afgewezen");
         router.refresh();
       } catch {
-        toast.error("Network error while updating request.");
+        toast.error("Netwerkfout tijdens bijwerken van verzoek.");
       }
     });
   }
@@ -87,7 +91,7 @@ export function PaymentRequestActions({
         onClick={copyPayoutDetails}
         className="self-start text-xs font-semibold text-neutral-600 underline underline-offset-2 hover:text-neutral-950"
       >
-        {isCrypto ? "Copy wallet address" : "Copy bank details"}
+        {isCrypto ? "Walletadres kopieren" : "Bankgegevens kopieren"}
       </button>
       <input
         type="text"
@@ -96,13 +100,13 @@ export function PaymentRequestActions({
           if (isCrypto) setTxHash(event.target.value);
           else setBankReference(event.target.value);
         }}
-        placeholder={isCrypto ? "Solana transaction hash" : "Bank reference or note"}
+        placeholder={isCrypto ? "Solana-transactiehash" : "Bankreferentie of notitie"}
         className="h-9 rounded-lg border border-neutral-200 bg-white px-3 text-xs text-neutral-950 outline-none transition placeholder:text-neutral-400 focus:border-neutral-400"
       />
       <textarea
         value={rejectionReason}
         onChange={(event) => setRejectionReason(event.target.value)}
-        placeholder="Internal rejection reason"
+        placeholder="Interne afwijsreden"
         className="min-h-16 rounded-lg border border-neutral-200 bg-white px-3 py-2 text-xs text-neutral-950 outline-none transition placeholder:text-neutral-400 focus:border-neutral-400"
       />
       <div className="flex flex-wrap gap-2">
@@ -112,7 +116,7 @@ export function PaymentRequestActions({
           isPending={isPending}
           onClick={() => updateStatus("confirmed")}
         >
-          Mark paid
+          Markeer betaald
         </Button>
         <Button
           type="button"
@@ -121,7 +125,7 @@ export function PaymentRequestActions({
           disabled={isPending}
           onClick={() => updateStatus("failed")}
         >
-          Reject
+          Afwijzen
         </Button>
       </div>
     </div>

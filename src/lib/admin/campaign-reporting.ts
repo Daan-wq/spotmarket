@@ -566,18 +566,21 @@ function generateDefaultEditorial(data: Omit<CampaignReportLiveData, "defaults">
   const goalText = data.performance.goalCompletion == null
     ? "zonder vast viewdoel"
     : `${formatPercent(data.performance.goalCompletion)} van het viewdoel`;
+  const qualityText = data.quality.criticalSignals === 0
+    ? "zonder open kritieke kwaliteitsissues"
+    : `met ${data.quality.criticalSignals} kritieke signalen die aandacht vragen`;
   const cpvText = data.financial.effectiveCpv == null
     ? "n.v.t."
-    : `EUR ${data.financial.effectiveCpv.toFixed(4)} per approved view`;
+    : `EUR ${data.financial.effectiveCpv.toFixed(4)} per goedgekeurde view`;
 
   const keyTakeaways = [
-    `${data.campaign.brandName} behaalde ${formatNumber(data.performance.approvedViews)} approved views, ${goalText}.`,
+    `${data.campaign.brandName} behaalde ${formatNumber(data.performance.approvedViews)} goedgekeurde views, ${goalText}.`,
     topPlatform
-      ? `${topPlatform.platform} leverde het grootste bereik met ${formatNumber(topPlatform.views)} approved views en een effectieve CPV van ${topPlatform.effectiveCpv == null ? "n.v.t." : `EUR ${topPlatform.effectiveCpv.toFixed(4)}`}.`
+      ? `${topPlatform.platform} leverde het grootste bereik met ${formatNumber(topPlatform.views)} goedgekeurde views en een effectieve CPV van ${topPlatform.effectiveCpv == null ? "n.v.t." : `EUR ${topPlatform.effectiveCpv.toFixed(4)}`}.`
       : "Er is nog onvoldoende platformdata om een kanaalwinnaar te kiezen.",
     `De campagne activeerde ${data.performance.activeCreators} creators en leverde ${data.performance.approvedClips} goedgekeurde clips op.`,
-    `Budget pacing staat op ${data.performance.pacingStatus.toLowerCase()} met ${formatPercent(data.performance.budgetUsedPercent ?? 0)} budget used.`,
-    `Traffic Quality Status: ${data.quality.trafficQualityStatus}.`,
+    `De effectieve CPV kwam uit op ${cpvText}.`,
+    `De traffic en contentkwaliteit zijn gecontroleerd ${qualityText}.`,
   ];
 
   const learnings = [
@@ -602,29 +605,29 @@ function generateDefaultEditorial(data: Omit<CampaignReportLiveData, "defaults">
   ];
   const contentInsights = [
     topClip
-      ? `Best performer: ${topClip.platform} clip by ${topClip.creator} with ${formatNumber(topClip.views)} approved views. Strong first-second hook, native pacing, and clear product integration should be used as reference.`
-      : "Er is nog geen top clip beschikbaar; voeg clip-level learnings toe zodra approved content binnenkomt.",
+      ? `Best presterende clip: ${topClip.platform}-clip van ${topClip.creator} met ${formatNumber(topClip.views)} goedgekeurde views. Gebruik de sterke eerste-seconde hook, native pacing en duidelijke productintegratie als referentie.`
+      : "Er is nog geen topclip beschikbaar; voeg clip-level learnings toe zodra goedgekeurde content binnenkomt.",
     topPlatform
-      ? `${topPlatform.platform} showed the clearest scale signal. Use this as the reach channel and compare other platforms on engagement quality.`
-      : "Platform-level content patterns need more approved delivery before a confident conclusion can be drawn.",
+      ? `${topPlatform.platform} gaf het duidelijkste schaalsignaal. Gebruik dit als reach-kanaal en vergelijk andere platformen op engagementkwaliteit.`
+      : "Contentpatronen per platform hebben meer goedgekeurde delivery nodig voordat er een stevige conclusie mogelijk is.",
   ];
   const platformRecommendations = Object.fromEntries(
     data.platformBreakdown.map((row) => [
       row.platform,
-      `${row.platform} delivered ${formatNumber(row.views)} approved views at ${row.effectiveCpv == null ? "n/a" : `EUR ${row.effectiveCpv.toFixed(4)} CPV`}. ${row.engagementRate != null && row.engagementRate > 0.05 ? "Keep this channel for high-fit creators and engagement quality." : "Use this channel primarily for controlled reach testing."}`,
+      `${row.platform} leverde ${formatNumber(row.views)} goedgekeurde views tegen ${row.effectiveCpv == null ? "n.v.t." : `EUR ${row.effectiveCpv.toFixed(4)} CPV`}. ${row.engagementRate != null && row.engagementRate > 0.05 ? "Behoud dit kanaal voor creators met sterke fit en engagementkwaliteit." : "Gebruik dit kanaal vooral voor gecontroleerde reach-tests."}`,
     ]),
   );
   const creatorRecommendations = recommendedCreators.length > 0
-    ? recommendedCreators.map((creator) => `Reactivate ${creator.creator}: ${formatNumber(creator.views)} approved views, ${formatPercent(creator.approvalRate ?? 0)} approval rate.`)
-    : ["Reactivate creators with approved delivery, clean quality review, and strong brand fit once more data is available."];
+    ? recommendedCreators.map((creator) => `Activeer ${creator.creator} opnieuw: ${formatNumber(creator.views)} goedgekeurde views, ${formatPercent(creator.approvalRate ?? 0)} goedkeuringspercentage.`)
+    : ["Activeer creators opnieuw zodra er goedgekeurde delivery, schone kwaliteitsreview en sterke brand fit beschikbaar zijn."];
   const editorialContent: CampaignReportEditorialContent = {
     campaignType: data.campaign.contentType || "Awareness",
-    financialNote: `Budget was used only for approved, eligible views. Current effective CPV is ${cpvText}. ${data.financial.unusedBudgetExplanation}`,
+    financialNote: `Budget is alleen besteed aan goedgekeurde, geldige views. De huidige effectieve CPV is ${cpvText}. ${data.financial.unusedBudgetExplanation}`,
     contentInsights,
     topContentNotes: Object.fromEntries(
       data.topContent.slice(0, 8).map((clip) => [
         clip.id,
-        `Worked because the clip combined a native ${clip.platform} format with fast context and clear brand visibility.`,
+        `Werkte omdat de clip een native ${clip.platform}-format combineerde met snelle context en duidelijke brand-zichtbaarheid.`,
       ]),
     ),
     platformRecommendations,
@@ -632,11 +635,11 @@ function generateDefaultEditorial(data: Omit<CampaignReportLiveData, "defaults">
     qualityNote: data.quality.clientSummary,
     keyLearnings: learnings,
     nextCampaignPlan: nextCampaignRecommendations,
-    appendixNote: "Appendix is reserved for raw operational data when a client asks for supporting detail.",
+    appendixNote: "De appendix is gereserveerd voor ruwe operationele data wanneer een klant om onderbouwing vraagt.",
   };
 
   return {
-    title: `${data.campaign.brandName} Campaign Report`,
+    title: `${data.campaign.brandName} campagnerapport`,
     executiveSummary: `${data.campaign.brandName} behaalde ${formatNumber(data.performance.approvedViews)} goedgekeurde views met ${data.performance.approvedClips} goedgekeurde clips. ${topPlatform ? `${topPlatform.platform} was het sterkste bereikskanaal.` : "Er is nog geen duidelijke platformwinnaar."} Voor de volgende campagne adviseren we de best presterende creators opnieuw te activeren, de winnende hooks expliciet in de brief te zetten en het budget te verschuiven naar de kanalen met de laagste effectieve CPV.`,
     keyTakeaways,
     learnings,
@@ -1030,7 +1033,7 @@ function latestSnapshot(submission: CampaignReportSubmissionInput) {
 
 function inferPlatform(submission: CampaignReportSubmissionInput) {
   const snapshotSource = latestSnapshot(submission)?.source;
-  return platformLabel(snapshotSource ?? submission.sourcePlatform ?? "Unknown");
+  return platformLabel(snapshotSource ?? submission.sourcePlatform ?? "Onbekend");
 }
 
 function platformLabel(value: string | null | undefined) {

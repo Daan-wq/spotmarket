@@ -34,25 +34,25 @@ export default async function SopLibraryPage() {
   return (
     <div className="space-y-9">
       <PageHeader
-        eyebrow="Operating Knowledge"
-        title="Guides"
-        description="Searchable admin guide library for sales, brand onboarding, clipper recruitment, production, clip review, payouts, and reporting."
+        eyebrow="Operationele kennis"
+        title="Handleidingen"
+        description="Doorzoekbare adminbibliotheek voor sales, merkonboarding, clipperrecruitment, productie, clipreview, uitbetalingen en rapportage."
       />
 
       <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
-        <StatCard label="Guides" value={String(docs.length)} detail="All saved guide records" />
-        <StatCard label="Active" value={String(active.length)} detail="Current operating procedures" />
-        <StatCard label="Needs review" value={String(needsReview.length)} detail="Feeds command center" tone={needsReview.length > 0 ? "warning" : "neutral"} />
-        <StatCard label="Owners" value={String(owners.size)} detail="Assigned reviewers" />
+        <StatCard label="Handleidingen" value={String(docs.length)} detail="Alle opgeslagen handleidingen" />
+        <StatCard label="Actief" value={String(active.length)} detail="Actuele operationele procedures" />
+        <StatCard label="Review nodig" value={String(needsReview.length)} detail="Voedt het command center" tone={needsReview.length > 0 ? "warning" : "neutral"} />
+        <StatCard label="Eigenaren" value={String(owners.size)} detail="Toegewezen reviewers" />
       </div>
 
       <section>
-        <SectionHeader title="Create guide" description="Save a playbook the team can review and keep current." />
+        <SectionHeader title="Handleiding maken" description="Sla een playbook op dat het team kan reviewen en actueel houden." />
         <GuideForm />
       </section>
 
       <section>
-        <SectionHeader title="Categories" description="The library mirrors the admin operating flow." />
+        <SectionHeader title="Categorieen" description="De bibliotheek volgt de operationele adminflow." />
         <div className="grid grid-cols-2 gap-3 md:grid-cols-4 xl:grid-cols-7">
           {CATEGORIES.map((category) => (
             <div key={category} className="rounded-2xl border border-neutral-200 bg-white p-4">
@@ -66,24 +66,24 @@ export default async function SopLibraryPage() {
       </section>
 
       <section>
-        <SectionHeader title="Needs review queue" description="Outdated or explicitly flagged guides." />
+        <SectionHeader title="Reviewwachtrij" description="Verouderde of expliciet gemarkeerde handleidingen." />
         {needsReview.length === 0 ? (
           <EmptyState
             icon={<BookOpen className="h-5 w-5" />}
-            title="No guides need review"
-            description="When a guide review date passes, it appears here and in the command center."
+            title="Geen handleidingen hoeven review"
+            description="Wanneer een reviewdatum van een handleiding is verstreken, verschijnt die hier en in het command center."
           />
         ) : (
           <DataTable
             rows={needsReview}
             rowKey={(doc) => doc.id}
             columns={[
-              { key: "title", header: "Title", cell: (doc) => <DocTitle doc={doc} /> },
-              { key: "category", header: "Category", cell: (doc) => titleCaseEnum(doc.category) },
-              { key: "owner", header: "Owner", cell: (doc) => doc.owner || "-" },
+              { key: "title", header: "Titel", cell: (doc) => <DocTitle doc={doc} /> },
+              { key: "category", header: "Categorie", cell: (doc) => titleCaseEnum(doc.category) },
+              { key: "owner", header: "Eigenaar", cell: (doc) => doc.owner || "-" },
               { key: "status", header: "Status", cell: (doc) => <Badge variant="pending">{titleCaseEnum(doc.status)}</Badge> },
-              { key: "last", header: "Last reviewed", cell: (doc) => formatDate(doc.lastReviewedAt) },
-              { key: "next", header: "Next review", cell: (doc) => formatDate(doc.nextReviewAt) },
+              { key: "last", header: "Laatst gereviewd", cell: (doc) => formatDate(doc.lastReviewedAt) },
+              { key: "next", header: "Volgende review", cell: (doc) => formatDate(doc.nextReviewAt) },
             ]}
           />
         )}
@@ -91,24 +91,24 @@ export default async function SopLibraryPage() {
 
       <section>
         <SectionHeader
-          title="Guide documents"
-          description="Search and create are available here; updates are backed by the admin guide API."
+          title="Handleidingen"
+          description="Zoeken en aanmaken kan hier; updates lopen via de adminhandleidingen-API."
         />
         <div className="mb-4 inline-flex h-10 items-center gap-2 rounded-xl border border-neutral-200 bg-white px-3 text-sm text-neutral-500">
           <Search className="h-4 w-4" />
-          Searchable guide records
+          Doorzoekbare handleidingrecords
         </div>
         <DataTable
           rows={docs}
           rowKey={(doc) => doc.id}
-          emptyState={<EmptyState icon={<BookOpen className="h-5 w-5" />} title="No guides yet" description="Create the first guide above. Categories, owner, status, body, and review dates are saved." />}
+          emptyState={<EmptyState icon={<BookOpen className="h-5 w-5" />} title="Nog geen handleidingen" description="Maak hierboven de eerste handleiding. Categorie, eigenaar, status, inhoud en reviewdatums worden opgeslagen." />}
           columns={[
-            { key: "title", header: "Title", cell: (doc) => <DocTitle doc={doc} /> },
-            { key: "category", header: "Category", cell: (doc) => titleCaseEnum(doc.category) },
-            { key: "owner", header: "Owner", cell: (doc) => doc.owner || "-" },
+            { key: "title", header: "Titel", cell: (doc) => <DocTitle doc={doc} /> },
+            { key: "category", header: "Categorie", cell: (doc) => titleCaseEnum(doc.category) },
+            { key: "owner", header: "Eigenaar", cell: (doc) => doc.owner || "-" },
             { key: "status", header: "Status", cell: (doc) => <Badge variant={doc.status === "ACTIVE" ? "verified" : doc.status === "ARCHIVED" ? "neutral" : "pending"}>{titleCaseEnum(doc.status)}</Badge> },
-            { key: "last", header: "Last reviewed", cell: (doc) => formatDate(doc.lastReviewedAt) },
-            { key: "next", header: "Next review", cell: (doc) => formatDate(doc.nextReviewAt) },
+            { key: "last", header: "Laatst gereviewd", cell: (doc) => formatDate(doc.lastReviewedAt) },
+            { key: "next", header: "Volgende review", cell: (doc) => formatDate(doc.nextReviewAt) },
           ]}
         />
       </section>
@@ -120,7 +120,7 @@ function DocTitle({ doc }: { doc: { title: string; summary: string | null } }) {
   return (
     <div>
       <p className="font-semibold text-neutral-950">{doc.title}</p>
-      <p className="mt-1 line-clamp-1 text-xs text-neutral-500">{doc.summary || "No summary"}</p>
+      <p className="mt-1 line-clamp-1 text-xs text-neutral-500">{doc.summary || "Geen samenvatting"}</p>
     </div>
   );
 }

@@ -38,8 +38,8 @@ export default async function CrmPage() {
     <div className="space-y-8">
       <PageHeader
         eyebrow="Sales"
-        title="Lead database"
-        description="Companies, groups, categories, contacts, and notes in one simple table."
+        title="Leaddatabase"
+        description="Bedrijven, groepen, categorieen, contacten en notities in een eenvoudige tabel."
       />
 
       <section className="flex justify-end">
@@ -48,14 +48,14 @@ export default async function CrmPage() {
 
       <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
         <DatabaseMetric label="Leads" value={leads.length} />
-        <DatabaseMetric label="Groups" value={grouped.size} />
-        <DatabaseMetric label="Categories" value={categories.size} />
+        <DatabaseMetric label="Groepen" value={grouped.size} />
+        <DatabaseMetric label="Categorieen" value={categories.size} />
       </div>
 
       <section>
-        <SectionHeader title="Lead table" />
+        <SectionHeader title="Leadtabel" />
         {leads.length === 0 ? (
-          <EmptyState title="No leads yet" description="Add the first company or contact from the button above." />
+          <EmptyState title="Nog geen leads" description="Voeg het eerste bedrijf of contact toe via de knop hierboven." />
         ) : (
           <div className="space-y-3">
             {Array.from(grouped.entries()).map(([id, group]) => (
@@ -77,13 +77,13 @@ export default async function CrmPage() {
               <details open className="overflow-hidden rounded-lg border border-neutral-200 bg-white">
                 <summary className="cursor-pointer border-b border-neutral-100 bg-neutral-50 px-4 py-3">
                   <div>
-                    <p className="text-sm font-semibold text-neutral-950">Ungrouped</p>
+                    <p className="text-sm font-semibold text-neutral-950">Ongegroepeerd</p>
                     <p className="mt-0.5 text-xs text-neutral-500">
                       {ungrouped.length} {ungrouped.length === 1 ? "lead" : "leads"}
                     </p>
                   </div>
                 </summary>
-                <LeadTable groupName="Ungrouped" leads={ungrouped} />
+                <LeadTable groupName="Ongegroepeerd" leads={ungrouped} />
               </details>
             ) : null}
           </div>

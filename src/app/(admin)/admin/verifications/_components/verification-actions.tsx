@@ -21,19 +21,19 @@ export default function VerificationActions({ id, isVerified }: { id: string; is
           body: JSON.stringify({ status })
         });
         if (!res.ok) {
-          toast.error(`Failed to ${status === 'VERIFIED' ? 'verify' : 'reject'} submission — reverting`);
+          toast.error("Verificatie bijwerken mislukt - teruggedraaid");
           return;
         }
-        toast.success(status === 'VERIFIED' ? 'Verification confirmed' : 'Verification rejected');
+        toast.success(status === 'VERIFIED' ? 'Verificatie bevestigd' : 'Verificatie afgewezen');
         router.refresh();
       } catch (err) {
         console.error(err);
-        toast.error('Network error — reverting');
+        toast.error('Netwerkfout - teruggedraaid');
       }
     });
   }
 
-  if (optimisticVerified) return <span style={{ color: 'var(--text-secondary)' }}>Verified</span>;
+  if (optimisticVerified) return <span style={{ color: 'var(--text-secondary)' }}>Geverifieerd</span>;
 
   return (
     <div className="flex gap-2">

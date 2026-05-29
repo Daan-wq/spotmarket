@@ -8,8 +8,8 @@ export default async function NewCampaignPage() {
 
   return (
     <div className="p-8">
-      <h1 className="text-3xl font-bold mb-1" style={{ color: "var(--text-primary)" }}>Create Campaign</h1>
-      <p className="mb-8" style={{ color: "var(--text-secondary)" }}>Fill in the details — you can post it to Discord after saving.</p>
+      <h1 className="text-3xl font-bold mb-1" style={{ color: "var(--text-primary)" }}>Campagne maken</h1>
+      <p className="mb-8" style={{ color: "var(--text-secondary)" }}>Vul de details in - na het opslaan kun je de campagne op Discord plaatsen.</p>
       <CampaignCreateForm />
     </div>
   );

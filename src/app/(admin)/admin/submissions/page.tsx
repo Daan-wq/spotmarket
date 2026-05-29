@@ -21,64 +21,64 @@ export default async function SubmissionsPage() {
   return (
     <div className="space-y-9">
       <PageHeader
-        eyebrow="Submissions"
-        title="Submissions"
-        description="Review submitted clips, metrics refresh status, eligible views, and earnings."
+        eyebrow="Inzendingen"
+        title="Inzendingen"
+        description="Review ingezonden clips, status van metricsverversing, betaalbare views en inkomsten."
       />
 
       <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
-        <StatCard label="Submissions" value={String(submissions.length)} detail="All received clips" />
-        <StatCard label="Pending" value={String(pending)} detail="Need review" tone={pending > 0 ? "warning" : "neutral"} />
-        <StatCard label="Approved" value={String(approved)} detail="Eligible for payout" />
-        <StatCard label="Issues" value={String(issues)} detail="Rejected or flagged" tone={issues > 0 ? "danger" : "neutral"} />
+        <StatCard label="Inzendingen" value={String(submissions.length)} detail="Alle ontvangen clips" />
+        <StatCard label="In behandeling" value={String(pending)} detail="Review nodig" tone={pending > 0 ? "warning" : "neutral"} />
+        <StatCard label="Goedgekeurd" value={String(approved)} detail="Klaar voor uitbetaling" />
+        <StatCard label="Issues" value={String(issues)} detail="Afgewezen of gemarkeerd" tone={issues > 0 ? "danger" : "neutral"} />
       </div>
 
       <section>
-        <SectionHeader title="Submission Table" description={`${formatCurrencyPrecise(earned, "EUR")} earned across approved and tracked submissions.`} />
+        <SectionHeader title="Inzendingentabel" description={`${formatCurrencyPrecise(earned, "EUR")} verdiend over goedgekeurde en gevolgde inzendingen.`} />
         <DataTable
           rows={submissions}
           rowKey={(submission) => submission.id}
-          emptyState={<EmptyState title="No submissions yet" description="Creator submissions will appear here after campaign work starts." />}
+          emptyState={<EmptyState title="Nog geen inzendingen" description="Creatorinzendingen verschijnen hier nadat campagnewerk start." />}
           columns={[
-            { key: "campaign", header: "Campaign", cell: (submission) => submission.campaign.name },
+            { key: "campaign", header: "Campagne", cell: (submission) => submission.campaign.name },
             { key: "creator", header: "Creator", cell: (submission) => submission.creator.email },
             {
               key: "source",
-              header: "Source",
+              header: "Bron",
               cell: (submission) => (
                 <div className="flex flex-col gap-1">
                   <span className="text-xs text-neutral-500">{submission.sourcePlatform?.toLowerCase() ?? "-"}</span>
                   {submission.sourceMethod ? (
                     <Badge variant={submission.sourceMethod === "OAUTH" ? "verified" : "pending"}>
-                      {submission.sourceMethod === "OAUTH" ? "Connected account" : titleCaseEnum(submission.sourceMethod)}
+                      {submission.sourceMethod === "OAUTH" ? "Gekoppeld account" : titleCaseEnum(submission.sourceMethod)}
                     </Badge>
                   ) : null}
                   {submission.authorHandle ? <span className="text-xs text-neutral-400">@{submission.authorHandle}</span> : null}
                 </div>
               ),
             },
-            { key: "submitted", header: "Submitted", cell: (submission) => formatDate(submission.createdAt) },
+            { key: "submitted", header: "Ingediend", cell: (submission) => formatDate(submission.createdAt) },
             {
               key: "metrics-refresh",
-              header: "Last metrics refresh",
+              header: "Laatste metricsverversing",
               cell: (submission) => (
                 <div className="text-xs text-neutral-500">
                   <p>{submission.lastMetricsRefreshAt ? formatDate(submission.lastMetricsRefreshAt) : "-"}</p>
-                  {submission.metricsRefreshFailures > 0 ? <p className="text-red-600">{submission.metricsRefreshFailures} failure{submission.metricsRefreshFailures === 1 ? "" : "s"}</p> : null}
+                  {submission.metricsRefreshFailures > 0 ? <p className="text-red-600">{submission.metricsRefreshFailures} fout{submission.metricsRefreshFailures === 1 ? "" : "en"}</p> : null}
                 </div>
               ),
             },
-            { key: "views", header: "Eligible views", align: "right", cell: (submission) => submission.eligibleViews?.toLocaleString() ?? "-" },
-            { key: "earned", header: "Earned", align: "right", cell: (submission) => Number(submission.earnedAmount) > 0 ? formatCurrencyPrecise(submission.earnedAmount, "EUR") : "-" },
+            { key: "views", header: "Betaalbare views", align: "right", cell: (submission) => submission.eligibleViews?.toLocaleString("nl-NL") ?? "-" },
+            { key: "earned", header: "Verdiend", align: "right", cell: (submission) => Number(submission.earnedAmount) > 0 ? formatCurrencyPrecise(submission.earnedAmount, "EUR") : "-" },
             { key: "status", header: "Status", cell: (submission) => <Badge variant={submissionStatusVariant(submission.status)}>{titleCaseEnum(submission.status)}</Badge> },
             {
               key: "actions",
-              header: "Actions",
+              header: "Acties",
               cell: (submission) => (
                 <ProgressiveActionDrawer
                   triggerLabel="Review"
                   title={submission.campaign.name}
-                  description="Submission actions"
+                  description="Inzendingsacties"
                   variant="outline"
                   size="sm"
                   showIcon={false}
@@ -90,9 +90,7 @@ export default async function SubmissionsPage() {
                         target="_blank"
                         rel="noopener noreferrer"
                         className="inline-flex h-10 w-full items-center justify-center rounded-xl border border-neutral-200 bg-white px-4 text-sm font-semibold text-neutral-950 transition hover:bg-neutral-50"
-                      >
-                        Open post
-                      </a>
+                      >Post openen</a>
                     ) : null}
                     <div className="rounded-2xl border border-neutral-200 bg-neutral-50 p-4">
                       <SubmissionActions

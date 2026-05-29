@@ -6,9 +6,9 @@ import Link from "next/link";
 import { ReviewCard } from "./_components/review-card";
 
 const STATUS_TABS: { value: VerificationStatus; label: string }[] = [
-  { value: "PENDING", label: "Pending" },
-  { value: "VERIFIED", label: "Verified" },
-  { value: "FAILED", label: "Declined" },
+  { value: "PENDING", label: "In behandeling" },
+  { value: "VERIFIED", label: "Geverifieerd" },
+  { value: "FAILED", label: "Afgewezen" },
 ];
 
 interface PageProps {
@@ -20,7 +20,8 @@ export default async function AdminTikTokDemographicsPage({ searchParams }: Page
 
   const sp = await searchParams;
   const requestedStatus = (sp.status ?? "PENDING").toUpperCase();
-  const activeStatus: VerificationStatus = STATUS_TABS.find((t) => t.value === requestedStatus)?.value ?? "PENDING";
+  const activeTab = STATUS_TABS.find((t) => t.value === requestedStatus) ?? STATUS_TABS[0];
+  const activeStatus: VerificationStatus = activeTab.value;
 
   const submissions = await prisma.tikTokDemographicSubmission.findMany({
     where: { status: activeStatus },
@@ -58,12 +59,8 @@ export default async function AdminTikTokDemographicsPage({ searchParams }: Page
   return (
     <div className="p-6 space-y-6">
       <div>
-        <h1 className="text-3xl font-bold" style={{ color: "var(--text-primary)" }}>
-          TikTok Demographics Review
-        </h1>
-        <p className="mt-1 text-sm" style={{ color: "var(--text-secondary)" }}>
-          Review creator-submitted demographics + screen recording proof.
-        </p>
+        <h1 className="text-3xl font-bold" style={{ color: "var(--text-primary)" }}>TikTok-demografiereview</h1>
+        <p className="mt-1 text-sm" style={{ color: "var(--text-secondary)" }}>Review door creators ingediende demografie plus screenrecording-bewijs.</p>
       </div>
 
       <div className="flex gap-2 border-b" style={{ borderColor: "var(--border)" }}>
@@ -92,7 +89,7 @@ export default async function AdminTikTokDemographicsPage({ searchParams }: Page
           style={{ background: "var(--bg-card)", borderColor: "var(--border)" }}
         >
           <p className="text-sm" style={{ color: "var(--text-muted)" }}>
-            No {activeStatus.toLowerCase()} submissions.
+            Geen {activeTab.label.toLowerCase()} inzendingen.
           </p>
         </div>
       ) : (
@@ -118,11 +115,11 @@ export default async function AdminTikTokDemographicsPage({ searchParams }: Page
                       {s.connection.creatorProfile.displayName} · {s.connection.creatorProfile.user.email}
                     </p>
                     <p className="text-xs mt-1" style={{ color: "var(--text-muted)" }}>
-                      Submitted {new Date(s.createdAt).toLocaleString()}
+                      Ingediend {new Date(s.createdAt).toLocaleString("nl-NL")}
                     </p>
                     {s.reviewedAt && (
                       <p className="text-xs" style={{ color: "var(--text-muted)" }}>
-                        Reviewed {new Date(s.reviewedAt).toLocaleString()}
+                        Gereviewd {new Date(s.reviewedAt).toLocaleString("nl-NL")}
                       </p>
                     )}
                   </div>
@@ -134,25 +131,25 @@ export default async function AdminTikTokDemographicsPage({ searchParams }: Page
                     <table className="w-full text-sm">
                       <tbody>
                         <tr>
-                          <td style={{ color: "var(--text-secondary)" }}>Top country</td>
+                          <td style={{ color: "var(--text-secondary)" }}>Topland</td>
                           <td className="text-right" style={{ color: "var(--text-primary)" }}>
                             {s.topCountry} ({s.topCountryPercent}%)
                           </td>
                         </tr>
                         <tr>
-                          <td style={{ color: "var(--text-secondary)" }}>Male</td>
+                          <td style={{ color: "var(--text-secondary)" }}>Man</td>
                           <td className="text-right" style={{ color: "var(--text-primary)" }}>
                             {s.malePercent}%
                           </td>
                         </tr>
                         <tr>
-                          <td style={{ color: "var(--text-secondary)" }}>Female</td>
+                          <td style={{ color: "var(--text-secondary)" }}>Vrouw</td>
                           <td className="text-right" style={{ color: "var(--text-primary)" }}>
                             {s.femalePercent}%
                           </td>
                         </tr>
                         <tr>
-                          <td style={{ color: "var(--text-secondary)" }}>Other</td>
+                          <td style={{ color: "var(--text-secondary)" }}>Anders</td>
                           <td className="text-right" style={{ color: "var(--text-primary)" }}>
                             {s.otherPercent}%
                           </td>
@@ -171,9 +168,7 @@ export default async function AdminTikTokDemographicsPage({ searchParams }: Page
 
                   {s.reviewNotes && (
                     <div>
-                      <div className="text-xs uppercase tracking-wide mb-1" style={{ color: "var(--text-muted)" }}>
-                        Review notes
-                      </div>
+                      <div className="text-xs uppercase tracking-wide mb-1" style={{ color: "var(--text-muted)" }}>Reviewnotities</div>
                       <p className="text-sm" style={{ color: "var(--text-primary)" }}>{s.reviewNotes}</p>
                     </div>
                   )}

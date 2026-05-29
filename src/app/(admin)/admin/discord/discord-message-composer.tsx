@@ -202,7 +202,7 @@ export function DiscordMessageComposer() {
     [activeContent, activeEmbeds, linkButtons, loading, selectedChannelId, validChannelIds, validationFiles],
   );
   const primarySendIssue = loading
-    ? { message: "Discord channels and emojis are still loading." }
+    ? { message: "Discord-kanalen en emoji's laden nog." }
     : (sendValidationIssues[0] ?? null);
 
   async function refreshAll() {
@@ -217,14 +217,14 @@ export function DiscordMessageComposer() {
       const channelsBody = (await channelsRes.json().catch(() => ({}))) as Partial<ChannelsResponse> & { error?: string };
       const emojisBody = (await emojisRes.json().catch(() => ({}))) as Partial<EmojisResponse> & { error?: string };
       const templatesBody = (await templatesRes.json().catch(() => ({}))) as Partial<TemplatesResponse> & { error?: string };
-      if (!channelsRes.ok) throw new Error(channelsBody.error ?? "Could not load Discord channels.");
-      if (!emojisRes.ok) throw new Error(emojisBody.error ?? "Could not load Discord emojis.");
-      if (!templatesRes.ok) throw new Error(templatesBody.error ?? "Could not load templates.");
+      if (!channelsRes.ok) throw new Error(channelsBody.error ?? "Discord-kanalen konden niet worden geladen.");
+      if (!emojisRes.ok) throw new Error(emojisBody.error ?? "Discord-emoji's konden niet worden geladen.");
+      if (!templatesRes.ok) throw new Error(templatesBody.error ?? "Templates konden niet worden geladen.");
       setChannelGroups(channelsBody.groups ?? []);
       setEmojis(emojisBody.emojis ?? []);
       setTemplates(templatesBody.templates ?? []);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not load Discord data.");
+      setError(err instanceof Error ? err.message : "Discord-data kon niet worden geladen.");
     } finally {
       setLoading(false);
     }
@@ -318,7 +318,7 @@ export function DiscordMessageComposer() {
     const file = selected?.[0];
     if (!file) return;
     if (file.type && !file.type.startsWith("image/")) {
-      setError("Choose an image file for the embed.");
+      setError("Kies een afbeeldingsbestand voor de embed.");
       return;
     }
 
@@ -399,7 +399,7 @@ export function DiscordMessageComposer() {
 
   function addLinkButton() {
     if (linkButtons.length >= MAX_BUTTONS) {
-      setError(`Discord accepts up to ${MAX_BUTTONS} URL buttons per message.`);
+      setError(`Discord accepteert maximaal ${MAX_BUTTONS} URL-knoppen per bericht.`);
       return;
     }
     setLinkButtons((current) => [...current, { label: "", url: "" }]);
@@ -417,7 +417,7 @@ export function DiscordMessageComposer() {
 
   function addEmbed(embed: DiscordEmbedInput = createEmptyEmbed()) {
     if (embeds.length >= MAX_EMBEDS) {
-      setError(`Discord accepts up to ${MAX_EMBEDS} embeds per message.`);
+      setError(`Discord accepteert maximaal ${MAX_EMBEDS} embeds per bericht.`);
       return;
     }
     setEmbeds((current) => [...current, embed]);
@@ -451,13 +451,13 @@ export function DiscordMessageComposer() {
     const next = createPresetEmbed(preset);
     setEmbeds([next]);
     setMessageMode(content.trim() ? "CONTENT_EMBED" : "EMBED");
-    setStatus(`${preset.label} embed preset loaded`);
+    setStatus(`${preset.label} embedpreset geladen`);
   }
 
   function addEmbedField(embedIndex: number) {
     const embed = embeds[embedIndex];
     if ((embed.fields?.length ?? 0) >= 25) {
-      setError("Discord accepts up to 25 fields per embed.");
+      setError("Discord accepteert maximaal 25 velden per embed.");
       return;
     }
     updateEmbed(embedIndex, { fields: [...(embed.fields ?? []), { name: "", value: "", inline: false }] });
@@ -495,7 +495,7 @@ export function DiscordMessageComposer() {
     setLinkButtons(template.buttons ?? []);
     setSelection({ start: 0, end: template.content.length });
     setActiveInlineFormat(null);
-    setStatus(`Loaded ${template.name}`);
+    setStatus(`${template.name} geladen`);
   }
 
   function newTemplate() {
@@ -531,12 +531,12 @@ export function DiscordMessageComposer() {
     setError(null);
     setStatus(null);
     if (hasEmbedAttachmentReferences(activeEmbeds)) {
-      setError("Uploaded embed images are only available for this send. Clear or replace them before saving a draft or template.");
+      setError("Geuploade embedafbeeldingen zijn alleen beschikbaar voor deze verzending. Wis of vervang ze voordat je een concept of template opslaat.");
       return;
     }
     setSaving(true);
     const payload = {
-      name: templateName.trim() || `${kind === "DRAFT" ? "Draft" : "Template"} ${new Date().toLocaleDateString()}`,
+      name: templateName.trim() || `${kind === "DRAFT" ? "Concept" : "Template"} ${new Date().toLocaleDateString("nl-NL")}`,
       kind,
       messageMode,
       channelId: selectedChannelId || null,
@@ -564,17 +564,17 @@ export function DiscordMessageComposer() {
         },
       );
       const body = await response.json().catch(() => ({}));
-      if (!response.ok) throw new Error(body.error ?? "Could not save template.");
+      if (!response.ok) throw new Error(body.error ?? "Template kon niet worden opgeslagen.");
       const saved = body.template as DiscordTemplate;
       setTemplateId(saved.id);
       setLoadedTemplateIdentity({ id: saved.id, name: saved.name, kind: saved.kind });
       setTemplateName(saved.name);
       setTemplateKind(saved.kind);
       setTemplateTags(saved.tags.join(", "));
-      setStatus(kind === "DRAFT" ? "Draft saved" : "Template saved");
+      setStatus(kind === "DRAFT" ? "Concept opgeslagen" : "Template opgeslagen");
       await refreshTemplates();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not save template.");
+      setError(err instanceof Error ? err.message : "Template kon niet worden opgeslagen.");
     } finally {
       setSaving(false);
     }
@@ -583,7 +583,7 @@ export function DiscordMessageComposer() {
   async function refreshTemplates() {
     const response = await fetch("/api/admin/discord/templates");
     const body = (await response.json().catch(() => ({}))) as Partial<TemplatesResponse> & { error?: string };
-    if (!response.ok) throw new Error(body.error ?? "Could not load templates.");
+    if (!response.ok) throw new Error(body.error ?? "Templates konden niet worden geladen.");
     setTemplates(body.templates ?? []);
   }
 
@@ -592,12 +592,12 @@ export function DiscordMessageComposer() {
     const response = await fetch(`/api/admin/discord/templates/${id}`, { method: "DELETE" });
     const body = await response.json().catch(() => ({}));
     if (!response.ok) {
-      setError(body.error ?? "Could not delete template.");
+      setError(body.error ?? "Template kon niet worden verwijderd.");
       return;
     }
     if (templateId === id) newTemplate();
     await refreshTemplates();
-    setStatus("Template deleted");
+    setStatus("Template verwijderd");
   }
 
   function openSendConfirm(intent: "test" | "publish") {
@@ -633,13 +633,13 @@ export function DiscordMessageComposer() {
         body: payload,
       });
       const body = await response.json().catch(() => ({}));
-      if (!response.ok) throw new Error(body.error ?? "Could not send Discord message.");
+      if (!response.ok) throw new Error(body.error ?? "Discord-bericht kon niet worden verzonden.");
       setConfirmOpen(false);
       setFiles([]);
       clearSentEmbedMediaFiles(activeEmbedMediaAttachments);
-      setStatus(`${sendIntent === "test" ? "Test message" : "Message"} sent: ${body.message?.url ?? body.message?.id ?? "Discord"}`);
+      setStatus(`${sendIntent === "test" ? "Testbericht" : "Bericht"} verzonden: ${body.message?.url ?? body.message?.id ?? "Discord"}`);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not send Discord message.");
+      setError(err instanceof Error ? err.message : "Discord-bericht kon niet worden verzonden.");
     } finally {
       setSending(false);
     }
@@ -652,14 +652,14 @@ export function DiscordMessageComposer() {
         <div className="rounded-2xl border border-neutral-200 bg-white p-5">
           <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1fr)_220px]">
             <label>
-              <span className="text-xs font-semibold uppercase tracking-[0.14em] text-neutral-500">Channel</span>
+              <span className="text-xs font-semibold uppercase tracking-[0.14em] text-neutral-500">Kanaal</span>
               <select
                 value={selectedChannelId}
                 onChange={(event) => setSelectedChannelId(event.target.value)}
                 className="mt-2 h-11 w-full rounded-xl border border-neutral-200 bg-white px-3 text-sm outline-none focus:border-neutral-500"
                 disabled={loading}
               >
-                <option value="">Choose channel</option>
+                <option value="">Kanaal kiezen</option>
                 {channelGroups.map((group) => (
                   <optgroup key={group.id ?? "uncategorized"} label={group.name}>
                     {group.channels.map((channel) => (
@@ -674,8 +674,8 @@ export function DiscordMessageComposer() {
             <div>
               <span className="text-xs font-semibold uppercase tracking-[0.14em] text-neutral-500">Status</span>
               <div className="mt-2 flex h-11 items-center justify-between rounded-xl border border-neutral-200 px-3 text-sm text-neutral-600">
-                <span>{loading ? "Loading Discord..." : selectedChannel ? `#${selectedChannel.name}` : "No channel"}</span>
-                <button type="button" onClick={refreshAll} className="rounded-md p-1 text-neutral-500 hover:bg-neutral-100" title="Refresh Discord data">
+                <span>{loading ? "Discord laden..." : selectedChannel ? `#${selectedChannel.name}` : "Geen kanaal"}</span>
+                <button type="button" onClick={refreshAll} className="rounded-md p-1 text-neutral-500 hover:bg-neutral-100" title="Discord-data verversen">
                   <RefreshCw className="h-4 w-4" />
                 </button>
               </div>
@@ -685,14 +685,14 @@ export function DiscordMessageComposer() {
           <div className="mt-5 rounded-xl border border-neutral-200 bg-neutral-50 p-2">
             <div className="grid grid-cols-1 gap-2 text-sm md:grid-cols-3">
               <ModeButton
-                label="Normal message"
-                description="Only Markdown content"
+                label="Normaal bericht"
+                description="Alleen Markdown-content"
                 active={messageMode === "CONTENT"}
                 onClick={() => setMessageMode("CONTENT")}
               />
               <ModeButton
-                label="With embed"
-                description="Only embed payload"
+                label="Met embed"
+                description="Alleen embed-payload"
                 active={messageMode === "EMBED"}
                 onClick={() => {
                   setMessageMode("EMBED");
@@ -700,8 +700,8 @@ export function DiscordMessageComposer() {
                 }}
               />
               <ModeButton
-                label="Normal + embed"
-                description="Text above embeds"
+                label="Normaal + embed"
+                description="Tekst boven embeds"
                 active={messageMode === "CONTENT_EMBED"}
                 onClick={() => {
                   setMessageMode("CONTENT_EMBED");
@@ -712,35 +712,35 @@ export function DiscordMessageComposer() {
           </div>
 
           <div className="mt-5 flex flex-wrap items-center gap-2 rounded-xl border border-neutral-200 bg-neutral-50 p-2">
-            <ToolbarButton label="Big header" pressed={lineActive("# ")} onClick={() => applyLinePrefix("# ", HEADER_PREFIX_PATTERN)}><Heading1 className="h-4 w-4" /></ToolbarButton>
-            <ToolbarButton label="Medium header" pressed={lineActive("## ")} onClick={() => applyLinePrefix("## ", HEADER_PREFIX_PATTERN)}><Heading2 className="h-4 w-4" /></ToolbarButton>
-            <ToolbarButton label="Small header" pressed={lineActive("### ")} onClick={() => applyLinePrefix("### ", HEADER_PREFIX_PATTERN)}><Heading3 className="h-4 w-4" /></ToolbarButton>
-            <ToolbarButton label="Subtext" pressed={lineActive("-# ")} onClick={() => applyLinePrefix("-# ")}><Pilcrow className="h-4 w-4" /></ToolbarButton>
+            <ToolbarButton label="Grote kop" pressed={lineActive("# ")} onClick={() => applyLinePrefix("# ", HEADER_PREFIX_PATTERN)}><Heading1 className="h-4 w-4" /></ToolbarButton>
+            <ToolbarButton label="Middelgrote kop" pressed={lineActive("## ")} onClick={() => applyLinePrefix("## ", HEADER_PREFIX_PATTERN)}><Heading2 className="h-4 w-4" /></ToolbarButton>
+            <ToolbarButton label="Kleine kop" pressed={lineActive("### ")} onClick={() => applyLinePrefix("### ", HEADER_PREFIX_PATTERN)}><Heading3 className="h-4 w-4" /></ToolbarButton>
+            <ToolbarButton label="Subtekst" pressed={lineActive("-# ")} onClick={() => applyLinePrefix("-# ")}><Pilcrow className="h-4 w-4" /></ToolbarButton>
             <ToolbarDivider />
-            <ToolbarButton label="Bold" pressed={inlineActive("**")} onClick={() => applyWrap("**")}><Bold className="h-4 w-4" /></ToolbarButton>
-            <ToolbarButton label="Italic" pressed={inlineActive("*")} onClick={() => applyWrap("*")}><Italic className="h-4 w-4" /></ToolbarButton>
-            <ToolbarButton label="Underline" pressed={inlineActive("__")} onClick={() => applyWrap("__")}><Underline className="h-4 w-4" /></ToolbarButton>
-            <ToolbarButton label="Bold italic" pressed={inlineActive("***")} onClick={() => applyWrap("***")}><span className="text-[11px] font-black italic">BI</span></ToolbarButton>
-            <ToolbarButton label="Underlined italic" pressed={inlineActive("__*", "*__")} onClick={() => applyWrap("__*", "*__")}><span className="text-[11px] font-semibold italic underline">I</span></ToolbarButton>
-            <ToolbarButton label="Underlined bold" pressed={inlineActive("__**", "**__")} onClick={() => applyWrap("__**", "**__")}><span className="text-[11px] font-black underline">B</span></ToolbarButton>
-            <ToolbarButton label="Underlined bold italic" pressed={inlineActive("__***", "***__")} onClick={() => applyWrap("__***", "***__")}><span className="text-[11px] font-black italic underline">BI</span></ToolbarButton>
-            <ToolbarButton label="Strike" pressed={inlineActive("~~")} onClick={() => applyWrap("~~")}><Strikethrough className="h-4 w-4" /></ToolbarButton>
+            <ToolbarButton label="Vet" pressed={inlineActive("**")} onClick={() => applyWrap("**")}><Bold className="h-4 w-4" /></ToolbarButton>
+            <ToolbarButton label="Cursief" pressed={inlineActive("*")} onClick={() => applyWrap("*")}><Italic className="h-4 w-4" /></ToolbarButton>
+            <ToolbarButton label="Onderstrepen" pressed={inlineActive("__")} onClick={() => applyWrap("__")}><Underline className="h-4 w-4" /></ToolbarButton>
+            <ToolbarButton label="Vet cursief" pressed={inlineActive("***")} onClick={() => applyWrap("***")}><span className="text-[11px] font-black italic">BI</span></ToolbarButton>
+            <ToolbarButton label="Onderstreept cursief" pressed={inlineActive("__*", "*__")} onClick={() => applyWrap("__*", "*__")}><span className="text-[11px] font-semibold italic underline">I</span></ToolbarButton>
+            <ToolbarButton label="Onderstreept vet" pressed={inlineActive("__**", "**__")} onClick={() => applyWrap("__**", "**__")}><span className="text-[11px] font-black underline">B</span></ToolbarButton>
+            <ToolbarButton label="Onderstreept vet cursief" pressed={inlineActive("__***", "***__")} onClick={() => applyWrap("__***", "***__")}><span className="text-[11px] font-black italic underline">BI</span></ToolbarButton>
+            <ToolbarButton label="Doorhalen" pressed={inlineActive("~~")} onClick={() => applyWrap("~~")}><Strikethrough className="h-4 w-4" /></ToolbarButton>
             <ToolbarButton label="Spoiler" pressed={inlineActive("||")} onClick={() => applyWrap("||", "||", "spoiler")}><Eye className="h-4 w-4" /></ToolbarButton>
             <ToolbarButton label="Code" pressed={inlineActive("`")} onClick={() => applyWrap("`", "`", "code")}><Code2 className="h-4 w-4" /></ToolbarButton>
-            <ToolbarButton label="Code block" pressed={blockActive("```js\n", "\n```")} onClick={() => applyBlockSnippet("```js\n", "\n```", "// code block with syntax highlighting\nconsole.log(\"Hello\");")}><CodeXml className="h-4 w-4" /></ToolbarButton>
+            <ToolbarButton label="Codeblok" pressed={blockActive("```js\n", "\n```")} onClick={() => applyBlockSnippet("```js\n", "\n```", "// code block with syntax highlighting\nconsole.log(\"Hello\");")}><CodeXml className="h-4 w-4" /></ToolbarButton>
             <ToolbarDivider />
             <ToolbarButton label="Quote" pressed={lineActive("> ")} onClick={() => applyLinePrefix("> ")}><Quote className="h-4 w-4" /></ToolbarButton>
-            <ToolbarButton label="Multiline quote" pressed={blockActive(">>> ", "")} onClick={() => applyBlockSnippet(">>> ", "", "multi-line quote\nThis keeps quoting everything after it.")}><TextQuote className="h-4 w-4" /></ToolbarButton>
-            <ToolbarButton label="List" pressed={lineActive("- ")} onClick={() => applyLinePrefix("- ")}><List className="h-4 w-4" /></ToolbarButton>
-            <ToolbarButton label="Numbered list" pressed={lineActive("1. ", ORDERED_PREFIX_PATTERN)} onClick={() => applyLinePrefix("1. ", ORDERED_PREFIX_PATTERN)}><ListOrdered className="h-4 w-4" /></ToolbarButton>
-            <ToolbarButton label="Indented bullet" pressed={lineActive("  - ")} onClick={() => applyLinePrefix("  - ")}><ListIndentIncrease className="h-4 w-4" /></ToolbarButton>
+            <ToolbarButton label="Meerregelige quote" pressed={blockActive(">>> ", "")} onClick={() => applyBlockSnippet(">>> ", "", "multi-line quote\nThis keeps quoting everything after it.")}><TextQuote className="h-4 w-4" /></ToolbarButton>
+            <ToolbarButton label="Lijst" pressed={lineActive("- ")} onClick={() => applyLinePrefix("- ")}><List className="h-4 w-4" /></ToolbarButton>
+            <ToolbarButton label="Genummerde lijst" pressed={lineActive("1. ", ORDERED_PREFIX_PATTERN)} onClick={() => applyLinePrefix("1. ", ORDERED_PREFIX_PATTERN)}><ListOrdered className="h-4 w-4" /></ToolbarButton>
+            <ToolbarButton label="Ingesprongen bullet" pressed={lineActive("  - ")} onClick={() => applyLinePrefix("  - ")}><ListIndentIncrease className="h-4 w-4" /></ToolbarButton>
             <ToolbarButton label="Link" pressed={inlineActive("[", "](https://example.com)")} onClick={() => applyWrap("[", "](https://example.com)", "link")}><Link2 className="h-4 w-4" /></ToolbarButton>
-            <ToolbarButton label="Escape markdown" onClick={escapeMarkdownSelection}><Slash className="h-4 w-4" /></ToolbarButton>
-            <ToolbarButton label="Attach files" onClick={() => fileInputRef.current?.click()}><Paperclip className="h-4 w-4" /></ToolbarButton>
+            <ToolbarButton label="Markdown escapen" onClick={escapeMarkdownSelection}><Slash className="h-4 w-4" /></ToolbarButton>
+            <ToolbarButton label="Bestanden toevoegen" onClick={() => fileInputRef.current?.click()}><Paperclip className="h-4 w-4" /></ToolbarButton>
           </div>
 
           <label className="mt-4 block">
-            <span className="text-xs font-semibold uppercase tracking-[0.14em] text-neutral-500">Main message content</span>
+            <span className="text-xs font-semibold uppercase tracking-[0.14em] text-neutral-500">Hoofdbericht</span>
             <textarea
               ref={textareaRef}
               value={content}
@@ -753,17 +753,17 @@ export function DiscordMessageComposer() {
               onKeyUp={syncSelection}
               rows={13}
               className="mt-2 w-full resize-y rounded-xl border border-neutral-200 px-4 py-3 text-sm leading-6 outline-none focus:border-neutral-500"
-              placeholder="Write Discord Markdown here..."
+              placeholder="Schrijf hier Discord Markdown..."
             />
           </label>
           <div className="mt-2 flex flex-wrap items-center justify-between gap-3 text-xs text-neutral-500">
             <span className={activeContent.length > MAX_CONTENT ? "font-semibold text-red-600" : undefined}>
-              {activeContent.length} / {MAX_CONTENT} characters sent
+              {activeContent.length} / {MAX_CONTENT} tekens verzonden
             </span>
-            {messageMode === "EMBED" && content.trim() ? <span>Text is saved locally here but not sent in embed-only mode.</span> : null}
+            {messageMode === "EMBED" && content.trim() ? <span>Tekst wordt hier lokaal opgeslagen maar niet verzonden in embed-only modus.</span> : null}
             <span>
-              {validationFiles.length} / {MAX_FILES} files
-              {activeEmbedMediaAttachments.length > 0 ? ` (${activeEmbedMediaAttachments.length} embedded)` : ""} - {formatBytes(totalFileSize)} / {formatBytes(MAX_TOTAL_BYTES)}
+              {validationFiles.length} / {MAX_FILES} bestanden
+              {activeEmbedMediaAttachments.length > 0 ? ` (${activeEmbedMediaAttachments.length} embedmedia)` : ""} - {formatBytes(totalFileSize)} / {formatBytes(MAX_TOTAL_BYTES)}
             </span>
           </div>
 
@@ -772,7 +772,7 @@ export function DiscordMessageComposer() {
               <div>
                 <p className="text-sm font-semibold text-neutral-950">Embeds</p>
                 <p className="text-xs text-neutral-500">
-                  {cleanedEmbeds.length} / {MAX_EMBEDS} embeds ready - {embedCharacterCount} / 6000 embed characters
+                  {cleanedEmbeds.length} / {MAX_EMBEDS} embeds klaar - {embedCharacterCount} / 6000 embedtekens
                 </p>
               </div>
               <div className="flex flex-wrap gap-2">
@@ -782,7 +782,7 @@ export function DiscordMessageComposer() {
                   className="inline-flex h-9 items-center gap-2 rounded-lg border border-neutral-200 bg-white px-3 text-xs font-semibold text-neutral-700 transition hover:border-neutral-300 hover:text-neutral-950"
                 >
                   <Plus className="h-4 w-4" />
-                  Add embed
+                  Embed toevoegen
                 </button>
               </div>
             </div>
@@ -802,7 +802,7 @@ export function DiscordMessageComposer() {
 
             {messageMode === "CONTENT" ? (
               <p className="mt-3 rounded-lg bg-white px-3 py-2 text-xs text-neutral-500">
-                Embed payload is off in normal-message mode. Switch to an embed mode to send embeds.
+                Embedpayload staat uit in normale berichtmodus. Schakel naar een embedmodus om embeds te verzenden.
               </p>
             ) : null}
 
@@ -813,16 +813,16 @@ export function DiscordMessageComposer() {
                     <div className="flex flex-wrap items-center justify-between gap-2">
                       <p className="text-sm font-semibold text-neutral-950">Embed {embedIndex + 1}</p>
                       <div className="flex gap-1">
-                        <IconButton label="Move embed up" onClick={() => moveEmbed(embedIndex, -1)} disabled={embedIndex === 0}>
+                        <IconButton label="Embed omhoog" onClick={() => moveEmbed(embedIndex, -1)} disabled={embedIndex === 0}>
                           <ArrowUp className="h-4 w-4" />
                         </IconButton>
-                        <IconButton label="Move embed down" onClick={() => moveEmbed(embedIndex, 1)} disabled={embedIndex === embeds.length - 1}>
+                        <IconButton label="Embed omlaag" onClick={() => moveEmbed(embedIndex, 1)} disabled={embedIndex === embeds.length - 1}>
                           <ArrowDown className="h-4 w-4" />
                         </IconButton>
-                        <IconButton label="Duplicate embed" onClick={() => duplicateEmbed(embedIndex)}>
+                        <IconButton label="Embed dupliceren" onClick={() => duplicateEmbed(embedIndex)}>
                           <Copy className="h-4 w-4" />
                         </IconButton>
-                        <IconButton label="Delete embed" onClick={() => removeEmbed(embedIndex)}>
+                        <IconButton label="Embed verwijderen" onClick={() => removeEmbed(embedIndex)}>
                           <Trash2 className="h-4 w-4" />
                         </IconButton>
                       </div>
@@ -832,12 +832,12 @@ export function DiscordMessageComposer() {
                       <input
                         value={embed.title ?? ""}
                         onChange={(event) => updateEmbed(embedIndex, { title: event.target.value })}
-                        placeholder="Embed title"
+                        placeholder="Embedtitel"
                         maxLength={256}
                         className="h-10 rounded-lg border border-neutral-200 bg-white px-3 text-sm outline-none focus:border-neutral-500"
                       />
                       <label className="flex h-10 items-center gap-2 rounded-lg border border-neutral-200 bg-white px-3 text-xs font-semibold text-neutral-500">
-                        <span>Color</span>
+                        <span>Kleur</span>
                         <input
                           type="color"
                           value={numberToHex(embed.color ?? DEFAULT_EMBED_COLOR)}
@@ -849,24 +849,24 @@ export function DiscordMessageComposer() {
                     <input
                       value={embed.url ?? ""}
                       onChange={(event) => updateEmbed(embedIndex, { url: event.target.value })}
-                      placeholder="Title URL, optional"
+                      placeholder="Titel-URL, optioneel"
                       className="mt-2 h-10 w-full rounded-lg border border-neutral-200 bg-white px-3 text-sm outline-none focus:border-neutral-500"
                     />
                     <textarea
                       value={embed.description ?? ""}
                       onChange={(event) => updateEmbed(embedIndex, { description: event.target.value })}
-                      placeholder="Embed description with Discord Markdown..."
+                      placeholder="Embedbeschrijving met Discord Markdown..."
                       rows={5}
                       maxLength={4096}
                       className="mt-2 w-full resize-y rounded-lg border border-neutral-200 bg-white px-3 py-2 text-sm leading-6 outline-none focus:border-neutral-500"
                     />
 
                     <details className="mt-3 rounded-lg border border-neutral-200 bg-neutral-50 p-3">
-                      <summary className="cursor-pointer text-xs font-semibold uppercase tracking-[0.14em] text-neutral-500">Author, media and footer</summary>
+                      <summary className="cursor-pointer text-xs font-semibold uppercase tracking-[0.14em] text-neutral-500">Auteur, media en footer</summary>
                       <div className="mt-3 grid grid-cols-1 gap-2 md:grid-cols-3">
-                        <input value={embed.authorName ?? ""} onChange={(event) => updateEmbed(embedIndex, { authorName: event.target.value })} placeholder="Author name" className="h-10 rounded-lg border border-neutral-200 bg-white px-3 text-sm outline-none focus:border-neutral-500" />
-                        <input value={embed.authorIconUrl ?? ""} onChange={(event) => updateEmbed(embedIndex, { authorIconUrl: event.target.value })} placeholder="Author icon URL" className="h-10 rounded-lg border border-neutral-200 bg-white px-3 text-sm outline-none focus:border-neutral-500" />
-                        <input value={embed.authorUrl ?? ""} onChange={(event) => updateEmbed(embedIndex, { authorUrl: event.target.value })} placeholder="Author URL" className="h-10 rounded-lg border border-neutral-200 bg-white px-3 text-sm outline-none focus:border-neutral-500" />
+                        <input value={embed.authorName ?? ""} onChange={(event) => updateEmbed(embedIndex, { authorName: event.target.value })} placeholder="Auteurnaam" className="h-10 rounded-lg border border-neutral-200 bg-white px-3 text-sm outline-none focus:border-neutral-500" />
+                        <input value={embed.authorIconUrl ?? ""} onChange={(event) => updateEmbed(embedIndex, { authorIconUrl: event.target.value })} placeholder="Auteuricoon-URL" className="h-10 rounded-lg border border-neutral-200 bg-white px-3 text-sm outline-none focus:border-neutral-500" />
+                        <input value={embed.authorUrl ?? ""} onChange={(event) => updateEmbed(embedIndex, { authorUrl: event.target.value })} placeholder="Auteur-URL" className="h-10 rounded-lg border border-neutral-200 bg-white px-3 text-sm outline-none focus:border-neutral-500" />
                         <EmbedImageUpload
                           label="Thumbnail"
                           value={embed.thumbnailUrl ?? ""}
@@ -875,7 +875,7 @@ export function DiscordMessageComposer() {
                           onClear={() => clearEmbedImage(embedIndex, "thumbnailUrl")}
                         />
                         <EmbedImageUpload
-                          label="Large image"
+                          label="Grote afbeelding"
                           value={embed.imageUrl ?? ""}
                           media={getEmbedMediaFile(embed.imageUrl, embedMediaFiles)}
                           onSelect={(selected) => handleEmbedImageFile(embedIndex, "imageUrl", selected)}
@@ -883,41 +883,41 @@ export function DiscordMessageComposer() {
                         />
                         <label className="flex h-10 items-center gap-2 rounded-lg border border-neutral-200 bg-white px-3 text-sm text-neutral-700">
                           <input type="checkbox" checked={embed.timestamp === true} onChange={(event) => updateEmbed(embedIndex, { timestamp: event.target.checked })} />
-                          Current timestamp
+                          Huidige timestamp
                         </label>
-                        <input value={embed.footerText ?? ""} onChange={(event) => updateEmbed(embedIndex, { footerText: event.target.value })} placeholder="Footer text" className="h-10 rounded-lg border border-neutral-200 bg-white px-3 text-sm outline-none focus:border-neutral-500 md:col-span-2" />
-                        <input value={embed.footerIconUrl ?? ""} onChange={(event) => updateEmbed(embedIndex, { footerIconUrl: event.target.value })} placeholder="Footer icon URL" className="h-10 rounded-lg border border-neutral-200 bg-white px-3 text-sm outline-none focus:border-neutral-500" />
+                        <input value={embed.footerText ?? ""} onChange={(event) => updateEmbed(embedIndex, { footerText: event.target.value })} placeholder="Footertekst" className="h-10 rounded-lg border border-neutral-200 bg-white px-3 text-sm outline-none focus:border-neutral-500 md:col-span-2" />
+                        <input value={embed.footerIconUrl ?? ""} onChange={(event) => updateEmbed(embedIndex, { footerIconUrl: event.target.value })} placeholder="Footericoon-URL" className="h-10 rounded-lg border border-neutral-200 bg-white px-3 text-sm outline-none focus:border-neutral-500" />
                       </div>
                     </details>
 
                     <div className="mt-3 rounded-lg border border-neutral-200 bg-neutral-50 p-3">
                       <div className="flex items-center justify-between gap-2">
-                        <p className="text-xs font-semibold uppercase tracking-[0.14em] text-neutral-500">Fields</p>
+                        <p className="text-xs font-semibold uppercase tracking-[0.14em] text-neutral-500">Velden</p>
                         <button type="button" onClick={() => addEmbedField(embedIndex)} className="inline-flex h-8 items-center gap-1 rounded-md border border-neutral-200 bg-white px-2 text-xs font-semibold text-neutral-600 hover:text-neutral-950">
                           <Plus className="h-3.5 w-3.5" />
-                          Add field
+                          Veld toevoegen
                         </button>
                       </div>
                       {(embed.fields ?? []).length > 0 ? (
                         <div className="mt-3 space-y-2">
                           {(embed.fields ?? []).map((field, fieldIndex) => (
                             <div key={fieldIndex} className="grid grid-cols-1 gap-2 rounded-lg border border-neutral-200 bg-white p-2 md:grid-cols-[minmax(0,160px)_minmax(0,1fr)_90px_116px]">
-                              <input value={field.name} onChange={(event) => updateEmbedField(embedIndex, fieldIndex, { name: event.target.value })} placeholder="Field name" maxLength={256} className="h-10 rounded-lg border border-neutral-200 px-3 text-sm outline-none focus:border-neutral-500" />
-                              <textarea value={field.value} onChange={(event) => updateEmbedField(embedIndex, fieldIndex, { value: event.target.value })} placeholder="Field value" rows={2} maxLength={1024} className="rounded-lg border border-neutral-200 px-3 py-2 text-sm outline-none focus:border-neutral-500" />
+                              <input value={field.name} onChange={(event) => updateEmbedField(embedIndex, fieldIndex, { name: event.target.value })} placeholder="Veldnaam" maxLength={256} className="h-10 rounded-lg border border-neutral-200 px-3 text-sm outline-none focus:border-neutral-500" />
+                              <textarea value={field.value} onChange={(event) => updateEmbedField(embedIndex, fieldIndex, { value: event.target.value })} placeholder="Veldwaarde" rows={2} maxLength={1024} className="rounded-lg border border-neutral-200 px-3 py-2 text-sm outline-none focus:border-neutral-500" />
                               <label className="flex h-10 items-center gap-2 rounded-lg border border-neutral-200 px-3 text-sm text-neutral-600">
                                 <input type="checkbox" checked={field.inline === true} onChange={(event) => updateEmbedField(embedIndex, fieldIndex, { inline: event.target.checked })} />
                                 Inline
                               </label>
                               <div className="flex items-center justify-end gap-1">
-                                <IconButton label="Move field up" onClick={() => moveEmbedField(embedIndex, fieldIndex, -1)} disabled={fieldIndex === 0}><ArrowUp className="h-4 w-4" /></IconButton>
-                                <IconButton label="Move field down" onClick={() => moveEmbedField(embedIndex, fieldIndex, 1)} disabled={fieldIndex === (embed.fields?.length ?? 0) - 1}><ArrowDown className="h-4 w-4" /></IconButton>
-                                <IconButton label="Remove field" onClick={() => removeEmbedField(embedIndex, fieldIndex)}><Trash2 className="h-4 w-4" /></IconButton>
+                                <IconButton label="Veld omhoog" onClick={() => moveEmbedField(embedIndex, fieldIndex, -1)} disabled={fieldIndex === 0}><ArrowUp className="h-4 w-4" /></IconButton>
+                                <IconButton label="Veld omlaag" onClick={() => moveEmbedField(embedIndex, fieldIndex, 1)} disabled={fieldIndex === (embed.fields?.length ?? 0) - 1}><ArrowDown className="h-4 w-4" /></IconButton>
+                                <IconButton label="Veld verwijderen" onClick={() => removeEmbedField(embedIndex, fieldIndex)}><Trash2 className="h-4 w-4" /></IconButton>
                               </div>
                             </div>
                           ))}
                         </div>
                       ) : (
-                        <p className="mt-2 text-xs text-neutral-500">No fields yet.</p>
+                        <p className="mt-2 text-xs text-neutral-500">Nog geen velden.</p>
                       )}
                     </div>
                   </div>
@@ -929,8 +929,8 @@ export function DiscordMessageComposer() {
           <div className="mt-4 rounded-xl border border-neutral-200 bg-neutral-50 p-3">
             <div className="flex flex-wrap items-center justify-between gap-2">
               <div>
-                <p className="text-sm font-semibold text-neutral-950">URL buttons</p>
-                <p className="text-xs text-neutral-500">{completeLinkButtons.length} / {MAX_BUTTONS} buttons ready</p>
+                <p className="text-sm font-semibold text-neutral-950">URL-knoppen</p>
+                <p className="text-xs text-neutral-500">{completeLinkButtons.length} / {MAX_BUTTONS} knoppen klaar</p>
               </div>
               <button
                 type="button"
@@ -938,7 +938,7 @@ export function DiscordMessageComposer() {
                 className="inline-flex h-9 items-center gap-2 rounded-lg border border-neutral-200 bg-white px-3 text-xs font-semibold text-neutral-700 transition hover:border-neutral-300 hover:text-neutral-950"
               >
                 <Plus className="h-4 w-4" />
-                Add URL button
+                URL-knop toevoegen
               </button>
             </div>
             {linkButtons.length > 0 ? (
@@ -948,7 +948,7 @@ export function DiscordMessageComposer() {
                     <input
                       value={button.label}
                       onChange={(event) => updateLinkButton(index, "label", event.target.value)}
-                      placeholder="Button label"
+                      placeholder="Knoplabel"
                       maxLength={80}
                       className="h-10 rounded-lg border border-neutral-200 bg-white px-3 text-sm outline-none focus:border-neutral-500"
                     />
@@ -962,7 +962,7 @@ export function DiscordMessageComposer() {
                       type="button"
                       onClick={() => removeLinkButton(index)}
                       className="flex h-10 items-center justify-center rounded-lg text-neutral-500 transition hover:bg-neutral-200 hover:text-red-600"
-                      aria-label={`Remove URL button ${index + 1}`}
+                      aria-label={`URL-knop ${index + 1} verwijderen`}
                     >
                       <Trash2 className="h-4 w-4" />
                     </button>
@@ -978,7 +978,7 @@ export function DiscordMessageComposer() {
               primarySendIssue ? "bg-amber-50 text-amber-800" : "bg-emerald-50 text-emerald-700",
             )}
           >
-            {primarySendIssue?.message ?? "Ready to preview and send."}
+            {primarySendIssue?.message ?? "Klaar voor preview en verzending."}
           </p>
           {sendValidationIssues.length > 1 ? (
             <ul className="mt-2 space-y-1 rounded-xl bg-amber-50 px-3 py-2 text-xs text-amber-800">
@@ -1015,21 +1015,21 @@ export function DiscordMessageComposer() {
           <div className="mt-5 flex flex-wrap items-center gap-2">
             <Button type="button" variant="outline" onClick={() => openSendConfirm("test")}>
               <Send className="h-4 w-4" />
-              Send test
+              Test verzenden
             </Button>
             <Button type="button" onClick={() => openSendConfirm("publish")}>
               <Send className="h-4 w-4" />
-              Preview and send
+              Previewen en verzenden
             </Button>
             <Button type="button" variant="outline" isPending={saving} onClick={() => saveTemplate("DRAFT")}>
               <Save className="h-4 w-4" />
-              Save draft
+              Concept opslaan
             </Button>
             <Button type="button" variant="outline" isPending={saving} onClick={() => saveTemplate("TEMPLATE")}>
               <Save className="h-4 w-4" />
-              Save template
+              Template opslaan
             </Button>
-            <Button type="button" variant="ghost" onClick={newTemplate}>Clear</Button>
+            <Button type="button" variant="ghost" onClick={newTemplate}>Wissen</Button>
           </div>
 
           {error ? <p className="mt-4 rounded-xl bg-red-50 px-3 py-2 text-sm font-medium text-red-700">{error}</p> : null}
@@ -1037,7 +1037,7 @@ export function DiscordMessageComposer() {
         </div>
 
         <section className="xl:sticky xl:top-4 xl:self-start">
-          <SectionHeader title="Live preview" description="Mobile Discord preview for the exact payload that will be sent." />
+          <SectionHeader title="Livepreview" description="Mobiele Discord-preview van de exacte payload die wordt verzonden." />
           <DiscordMarkdownPreview content={activeContent} embeds={previewEmbeds} emojis={emojis} buttons={completeLinkButtons} frame="mobile" />
         </section>
         </div>
@@ -1045,12 +1045,12 @@ export function DiscordMessageComposer() {
 
       <aside className="space-y-5">
         <div className="rounded-2xl border border-neutral-200 bg-white p-5">
-          <SectionHeader title="Template details" />
+          <SectionHeader title="Templatedetails" />
           <div className="space-y-3">
             <input
               value={templateName}
               onChange={(event) => setTemplateName(event.target.value)}
-              placeholder="Template name"
+              placeholder="Templatenaam"
               className="h-11 w-full rounded-xl border border-neutral-200 px-3 text-sm outline-none focus:border-neutral-500"
             />
             <select
@@ -1058,24 +1058,24 @@ export function DiscordMessageComposer() {
               onChange={(event) => setTemplateKind(event.target.value as "DRAFT" | "TEMPLATE")}
               className="h-11 w-full rounded-xl border border-neutral-200 bg-white px-3 text-sm outline-none focus:border-neutral-500"
             >
-              <option value="DRAFT">Draft</option>
+              <option value="DRAFT">Concept</option>
               <option value="TEMPLATE">Template</option>
             </select>
             <input
               value={templateTags}
               onChange={(event) => setTemplateTags(event.target.value)}
-              placeholder="Tags, comma separated"
+              placeholder="Tags, gescheiden door komma's"
               className="h-11 w-full rounded-xl border border-neutral-200 px-3 text-sm outline-none focus:border-neutral-500"
             />
           </div>
         </div>
 
         <div className="rounded-2xl border border-neutral-200 bg-white p-5">
-          <SectionHeader title="Custom emojis" action={<Smile className="h-4 w-4 text-neutral-400" />} />
+          <SectionHeader title="Custom emoji's" action={<Smile className="h-4 w-4 text-neutral-400" />} />
           <input
             value={emojiQuery}
             onChange={(event) => setEmojiQuery(event.target.value)}
-            placeholder="Search emojis"
+            placeholder="Emoji's zoeken"
             className="mb-3 h-10 w-full rounded-xl border border-neutral-200 px-3 text-sm outline-none focus:border-neutral-500"
           />
           <div className="grid max-h-56 grid-cols-6 gap-2 overflow-y-auto pr-1">
@@ -1097,10 +1097,10 @@ export function DiscordMessageComposer() {
         </div>
 
         <div className="rounded-2xl border border-neutral-200 bg-white p-5">
-          <SectionHeader title="Drafts and templates" />
+          <SectionHeader title="Concepten en templates" />
           <div className="max-h-[520px] space-y-2 overflow-y-auto pr-1">
             {templates.length === 0 ? (
-              <p className="rounded-xl bg-neutral-50 p-4 text-sm text-neutral-500">No drafts or templates yet.</p>
+              <p className="rounded-xl bg-neutral-50 p-4 text-sm text-neutral-500">Nog geen concepten of templates.</p>
             ) : (
               templates.map((template) => (
                 <div key={template.id} className="rounded-xl border border-neutral-200 p-3">
@@ -1110,14 +1110,12 @@ export function DiscordMessageComposer() {
                       <Badge variant={template.kind === "TEMPLATE" ? "active" : "neutral"}>{template.kind.toLowerCase()}</Badge>
                     </div>
                     <p className="mt-1 line-clamp-2 text-xs leading-5 text-neutral-500">
-                      {template.content || (template.embeds?.length ? `${template.embeds.length} embed(s)` : "Empty draft")}
+                      {template.content || (template.embeds?.length ? `${template.embeds.length} embed(s)` : "Leeg concept")}
                     </p>
                     {template.tags.length > 0 ? <p className="mt-2 text-[11px] text-neutral-400">{template.tags.join(", ")}</p> : null}
                   </button>
                   <button type="button" onClick={() => deleteTemplate(template.id)} className="mt-2 inline-flex items-center gap-1 text-xs font-medium text-neutral-400 hover:text-red-600">
-                    <Trash2 className="h-3 w-3" />
-                    Delete
-                  </button>
+                    <Trash2 className="h-3 w-3" />Verwijderen</button>
                 </div>
               ))
             )}
@@ -1125,7 +1123,7 @@ export function DiscordMessageComposer() {
         </div>
 
         <details className="rounded-2xl border border-neutral-200 bg-white p-5">
-          <summary className="cursor-pointer text-sm font-semibold text-neutral-950">Preview payload</summary>
+          <summary className="cursor-pointer text-sm font-semibold text-neutral-950">Payload-preview</summary>
           <pre className="mt-3 max-h-80 overflow-auto rounded-xl bg-neutral-950 p-3 text-[11px] leading-5 text-neutral-100">
             {JSON.stringify(previewPayload, null, 2)}
           </pre>
@@ -1135,27 +1133,27 @@ export function DiscordMessageComposer() {
       <Dialog
         open={confirmOpen}
         onClose={() => setConfirmOpen(false)}
-        title={sendIntent === "test" ? "Confirm Discord test" : "Confirm Discord send"}
-        description={selectedChannel ? `Posting to #${selectedChannel.name} from the ClipProfit bot.` : undefined}
+        title={sendIntent === "test" ? "Discord-test bevestigen" : "Discord-verzending bevestigen"}
+        description={selectedChannel ? `Plaatsen in #${selectedChannel.name} vanuit de ClipProfit-bot.` : undefined}
         size="lg"
         className="max-w-3xl"
         footer={
           <>
-            <Button type="button" variant="ghost" onClick={() => setConfirmOpen(false)} disabled={sending}>Cancel</Button>
+            <Button type="button" variant="ghost" onClick={() => setConfirmOpen(false)} disabled={sending}>Annuleren</Button>
             <Button type="button" onClick={sendMessage} isPending={sending}>
               <Send className="h-4 w-4" />
-              {sendIntent === "test" ? "Send test" : "Send now"}
+              {sendIntent === "test" ? "Test verzenden" : "Nu verzenden"}
             </Button>
           </>
         }
       >
         <div className="space-y-4">
           <div className="grid grid-cols-1 gap-3 text-sm md:grid-cols-5">
-            <ConfirmStat label="Channel" value={selectedChannel ? `#${selectedChannel.name}` : "-"} />
+            <ConfirmStat label="Kanaal" value={selectedChannel ? `#${selectedChannel.name}` : "-"} />
             <ConfirmStat label="Content" value={`${activeContent.length} / ${MAX_CONTENT}`} />
             <ConfirmStat label="Embeds" value={`${cleanedEmbeds.length} (${embedCharacterCount} chars)`} />
-            <ConfirmStat label="Files" value={`${validationFiles.length} (${formatBytes(totalFileSize)})`} />
-            <ConfirmStat label="Buttons" value={`${completeLinkButtons.length} / ${MAX_BUTTONS}`} />
+            <ConfirmStat label="Bestanden" value={`${validationFiles.length} (${formatBytes(totalFileSize)})`} />
+            <ConfirmStat label="Knoppen" value={`${completeLinkButtons.length} / ${MAX_BUTTONS}`} />
           </div>
           <DiscordMarkdownPreview
             content={activeContent}
@@ -1201,10 +1199,10 @@ function EmbedImageUpload({
   const detail = media
     ? `${media.file.type || "image"} - ${formatBytes(media.file.size)}`
     : previewSrc
-      ? "External image"
+      ? "Externe afbeelding"
       : isMissingUpload
-        ? "Re-upload required"
-        : "No image selected";
+        ? "Opnieuw uploaden nodig"
+        : "Geen afbeelding geselecteerd";
 
   return (
     <div className="rounded-lg border border-neutral-200 bg-white p-2">
@@ -1403,36 +1401,36 @@ const EMBED_PRESETS: EmbedPreset[] = [
   },
   {
     id: "announcement",
-    label: "Announcement",
-    title: "📣 Nieuwe update",
+    label: "Aankondiging",
+    title: "Nieuwe update",
     color: 0x3498db,
     description: "Schrijf hier de belangrijkste update, wat er verandert, en wat leden nu moeten doen.",
   },
   {
     id: "campaign",
-    label: "Campaign update",
-    title: "🚨 Nieuwe campagne",
+    label: "Campagne-update",
+    title: "Nieuwe campagne",
     color: 0xf1c40f,
-    description: "**Campagne details**\nPlatform:\nCPM:\nMinimum views:\nMaximum views:\n\n**Links**\nVoeg de juiste links toe.",
+    description: "**Campagnedetails**\nPlatform:\nCPM:\nMinimale views:\nMaximale views:\n\n**Links**\nVoeg de juiste links toe.",
   },
   {
     id: "warning",
-    label: "Warning",
-    title: "⚠️ Belangrijke waarschuwing",
+    label: "Waarschuwing",
+    title: "Belangrijke waarschuwing",
     color: 0xe74c3c,
     description: "Leg kort uit wat niet de bedoeling is en welke actie er volgt als dit doorgaat.",
   },
   {
     id: "success",
-    label: "Success",
-    title: "✅ Resultaat behaald",
+    label: "Succes",
+    title: "Resultaat behaald",
     color: 0x2ecc71,
     description: "Vat het resultaat samen en geef de volgende stap.",
   },
   {
     id: "faq",
     label: "FAQ / info",
-    title: "ℹ️ Veelgestelde vragen",
+    title: "Veelgestelde vragen",
     color: 0x5865f2,
     description: "**Vraag:**\nAntwoord.\n\n**Vraag:**\nAntwoord.",
   },

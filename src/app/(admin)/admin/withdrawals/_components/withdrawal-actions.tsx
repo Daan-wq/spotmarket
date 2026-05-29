@@ -31,14 +31,14 @@ export default function WithdrawalActions({ id, status, walletAddress, txHash }:
           body: JSON.stringify({ status: newStatus, txHash: hash }),
         });
         if (!res.ok) {
-          toast.error('Failed to update withdrawal — reverting');
+          toast.error('Opname bijwerken mislukt - teruggedraaid');
           return;
         }
         toast.success(`Withdrawal ${newStatus.toLowerCase()}`);
         router.refresh();
       } catch (err) {
         console.error(err);
-        toast.error('Network error — reverting');
+        toast.error('Netwerkfout - teruggedraaid');
       }
     });
   }
@@ -67,7 +67,7 @@ export default function WithdrawalActions({ id, status, walletAddress, txHash }:
         disabled={loading}
         style={{ fontSize: '12px', padding: '4px 8px', background: 'var(--success-bg)', color: 'var(--success-text)', border: 'none', borderRadius: '4px', cursor: 'pointer' }}
       >
-        {loading ? '...' : 'Confirm'}
+        {loading ? '...' : 'Bevestigen'}
       </button>
     );
   }
@@ -95,9 +95,7 @@ export default function WithdrawalActions({ id, status, walletAddress, txHash }:
             <button
               onClick={() => setShowTxForm(false)}
               style={{ fontSize: '11px', padding: '3px 6px', background: 'var(--bg-primary)', color: 'var(--text-secondary)', border: '1px solid var(--border)', borderRadius: '4px', cursor: 'pointer' }}
-            >
-              Cancel
-            </button>
+            >Annuleren</button>
           </div>
         </div>
       ) : (

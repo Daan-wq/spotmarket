@@ -73,7 +73,7 @@ export function LeadTable({ groupName, leads }: { groupName: string; leads: Lead
   function saveLead(leadId: string) {
     if (!draft) return;
     if (!draft.brandName.trim()) {
-      setError("Company or lead is required.");
+      setError("Bedrijf of lead is verplicht.");
       return;
     }
 
@@ -87,7 +87,7 @@ export function LeadTable({ groupName, leads }: { groupName: string; leads: Lead
 
       if (!response.ok) {
         const body = await response.json().catch(() => ({}));
-        setError(body.error ?? "Could not save lead.");
+        setError(body.error ?? "Lead kon niet worden opgeslagen.");
         return;
       }
 
@@ -102,15 +102,15 @@ export function LeadTable({ groupName, leads }: { groupName: string; leads: Lead
       <table className="w-full min-w-[1120px] text-sm">
         <thead>
           <tr className="border-b border-neutral-100 text-left text-[11px] uppercase tracking-[0.14em] text-neutral-500">
-            <th className="px-4 py-3 font-semibold">Group</th>
-            <th className="px-4 py-3 font-semibold">Company / lead</th>
-            <th className="px-4 py-3 font-semibold">Category</th>
-            <th className="px-4 py-3 font-semibold">Subcategory</th>
-            <th className="px-4 py-3 font-semibold">Contact person</th>
-            <th className="px-4 py-3 font-semibold">Contact details</th>
-            <th className="px-4 py-3 font-semibold">Owner</th>
-            <th className="px-4 py-3 font-semibold">Notes</th>
-            <th className="px-4 py-3 text-right font-semibold">Edit</th>
+            <th className="px-4 py-3 font-semibold">Groep</th>
+            <th className="px-4 py-3 font-semibold">Bedrijf / lead</th>
+            <th className="px-4 py-3 font-semibold">Categorie</th>
+            <th className="px-4 py-3 font-semibold">Subcategorie</th>
+            <th className="px-4 py-3 font-semibold">Contactpersoon</th>
+            <th className="px-4 py-3 font-semibold">Contactgegevens</th>
+            <th className="px-4 py-3 font-semibold">Eigenaar</th>
+            <th className="px-4 py-3 font-semibold">Notities</th>
+            <th className="px-4 py-3 text-right font-semibold">Bewerken</th>
           </tr>
         </thead>
         <tbody>
@@ -164,8 +164,8 @@ function ReadRow({
       <td className="px-4 py-3 text-right align-top">
         <button
           type="button"
-          aria-label={`Edit ${lead.brandName}`}
-          title="Edit lead"
+          aria-label={`Bewerk ${lead.brandName}`}
+          title="Lead bewerken"
           onClick={onEdit}
           className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-neutral-200 bg-white text-neutral-600 transition hover:bg-neutral-50 hover:text-neutral-950"
         >
@@ -194,45 +194,45 @@ function EditRow({
   return (
     <tr className="border-b border-neutral-100 bg-neutral-50/70 last:border-0">
       <td className="px-4 py-3 align-top">
-        <input aria-label="Group" value={draft.groupName} onChange={(event) => onChange("groupName", event.target.value)} className={inputClass} disabled={isPending} />
+        <input aria-label="Groep" value={draft.groupName} onChange={(event) => onChange("groupName", event.target.value)} className={inputClass} disabled={isPending} />
       </td>
       <td className="px-4 py-3 align-top">
         <div className="space-y-2">
-          <input aria-label="Company or lead" required value={draft.brandName} onChange={(event) => onChange("brandName", event.target.value)} className={inputClass} disabled={isPending} />
+          <input aria-label="Bedrijf of lead" required value={draft.brandName} onChange={(event) => onChange("brandName", event.target.value)} className={inputClass} disabled={isPending} />
           <input aria-label="Website" value={draft.website} onChange={(event) => onChange("website", event.target.value)} className={inputClass} disabled={isPending} />
         </div>
       </td>
       <td className="px-4 py-3 align-top">
-        <input aria-label="Category" value={draft.category} onChange={(event) => onChange("category", event.target.value)} className={inputClass} disabled={isPending} />
+        <input aria-label="Categorie" value={draft.category} onChange={(event) => onChange("category", event.target.value)} className={inputClass} disabled={isPending} />
       </td>
       <td className="px-4 py-3 align-top">
-        <input aria-label="Subcategory" value={draft.subcategory} onChange={(event) => onChange("subcategory", event.target.value)} className={inputClass} disabled={isPending} />
+        <input aria-label="Subcategorie" value={draft.subcategory} onChange={(event) => onChange("subcategory", event.target.value)} className={inputClass} disabled={isPending} />
       </td>
       <td className="px-4 py-3 align-top">
-        <input aria-label="Contact person" value={draft.contactName} onChange={(event) => onChange("contactName", event.target.value)} className={inputClass} disabled={isPending} />
+        <input aria-label="Contactpersoon" value={draft.contactName} onChange={(event) => onChange("contactName", event.target.value)} className={inputClass} disabled={isPending} />
       </td>
       <td className="px-4 py-3 align-top">
         <div className="space-y-2">
           <input aria-label="Email" type="email" value={draft.contactEmail} onChange={(event) => onChange("contactEmail", event.target.value)} className={inputClass} disabled={isPending} />
-          <input aria-label="Phone" value={draft.contactPhone} onChange={(event) => onChange("contactPhone", event.target.value)} className={inputClass} disabled={isPending} />
+          <input aria-label="Telefoon" value={draft.contactPhone} onChange={(event) => onChange("contactPhone", event.target.value)} className={inputClass} disabled={isPending} />
           <input aria-label="LinkedIn" value={draft.contactLinkedIn} onChange={(event) => onChange("contactLinkedIn", event.target.value)} className={inputClass} disabled={isPending} />
         </div>
       </td>
       <td className="px-4 py-3 align-top">
-        <input aria-label="Owner" value={draft.owner} onChange={(event) => onChange("owner", event.target.value)} className={inputClass} disabled={isPending} />
+        <input aria-label="Eigenaar" value={draft.owner} onChange={(event) => onChange("owner", event.target.value)} className={inputClass} disabled={isPending} />
       </td>
       <td className="px-4 py-3 align-top">
         <div className="space-y-2">
-          <input aria-label="Source" value={draft.source} onChange={(event) => onChange("source", event.target.value)} className={inputClass} disabled={isPending} />
-          <textarea aria-label="Notes" value={draft.notes} onChange={(event) => onChange("notes", event.target.value)} className={textareaClass} disabled={isPending} />
+          <input aria-label="Bron" value={draft.source} onChange={(event) => onChange("source", event.target.value)} className={inputClass} disabled={isPending} />
+          <textarea aria-label="Notities" value={draft.notes} onChange={(event) => onChange("notes", event.target.value)} className={textareaClass} disabled={isPending} />
         </div>
       </td>
       <td className="px-4 py-3 text-right align-top">
         <div className="flex justify-end gap-2">
           <button
             type="button"
-            aria-label="Save lead"
-            title="Save lead"
+            aria-label="Lead opslaan"
+            title="Lead opslaan"
             onClick={onSave}
             disabled={isPending || !draft.brandName.trim()}
             className="inline-flex h-8 w-8 items-center justify-center rounded-md bg-neutral-950 text-white transition hover:bg-neutral-800 disabled:cursor-not-allowed disabled:bg-neutral-300"
@@ -241,8 +241,8 @@ function EditRow({
           </button>
           <button
             type="button"
-            aria-label="Cancel edit"
-            title="Cancel"
+            aria-label="Bewerken annuleren"
+            title="Annuleren"
             onClick={onCancel}
             disabled={isPending}
             className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-neutral-200 bg-white text-neutral-600 transition hover:bg-neutral-50 hover:text-neutral-950 disabled:cursor-not-allowed disabled:opacity-60"

@@ -46,7 +46,7 @@ export function PricingPackageForm() {
       });
       if (!response.ok) {
         const body = await response.json().catch(() => ({}));
-        setError(body.error ?? "Could not save package.");
+        setError(body.error ?? "Pakket kon niet worden opgeslagen.");
         return;
       }
       router.refresh();
@@ -57,23 +57,23 @@ export function PricingPackageForm() {
     <form action={onSubmit} className="rounded-2xl border border-neutral-200 bg-white p-5">
       <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
         <label className="md:col-span-2">
-          <span className="text-xs font-semibold uppercase tracking-[0.14em] text-neutral-500">Package name</span>
-          <input name="name" required className="mt-2 h-11 w-full rounded-xl border border-neutral-200 px-3 text-sm outline-none focus:border-neutral-500" placeholder="Starter launch" />
+          <span className="text-xs font-semibold uppercase tracking-[0.14em] text-neutral-500">Pakketnaam</span>
+          <input name="name" required className="mt-2 h-11 w-full rounded-xl border border-neutral-200 px-3 text-sm outline-none focus:border-neutral-500" placeholder="Starterlancering" />
         </label>
         <label>
-          <span className="text-xs font-semibold uppercase tracking-[0.14em] text-neutral-500">Price</span>
+          <span className="text-xs font-semibold uppercase tracking-[0.14em] text-neutral-500">Prijs</span>
           <input name="price" type="number" min="0" step="1" className="mt-2 h-11 w-full rounded-xl border border-neutral-200 px-3 text-sm outline-none focus:border-neutral-500" placeholder="2500" />
         </label>
         <label>
-          <span className="text-xs font-semibold uppercase tracking-[0.14em] text-neutral-500">Currency</span>
+          <span className="text-xs font-semibold uppercase tracking-[0.14em] text-neutral-500">Valuta</span>
           <input name="currency" defaultValue="EUR" maxLength={3} className="mt-2 h-11 w-full rounded-xl border border-neutral-200 px-3 text-sm uppercase outline-none focus:border-neutral-500" />
         </label>
         <label>
-          <span className="text-xs font-semibold uppercase tracking-[0.14em] text-neutral-500">Included clips</span>
+          <span className="text-xs font-semibold uppercase tracking-[0.14em] text-neutral-500">Inbegrepen clips</span>
           <input name="includedClips" type="number" min="0" className="mt-2 h-11 w-full rounded-xl border border-neutral-200 px-3 text-sm outline-none focus:border-neutral-500" placeholder="20" />
         </label>
         <label>
-          <span className="text-xs font-semibold uppercase tracking-[0.14em] text-neutral-500">Included views</span>
+          <span className="text-xs font-semibold uppercase tracking-[0.14em] text-neutral-500">Inbegrepen views</span>
           <input name="includedViews" type="number" min="0" className="mt-2 h-11 w-full rounded-xl border border-neutral-200 px-3 text-sm outline-none focus:border-neutral-500" placeholder="500000" />
         </label>
         <label>
@@ -85,7 +85,7 @@ export function PricingPackageForm() {
           <input name="businessCpv" type="number" min="0" step="0.000001" className="mt-2 h-11 w-full rounded-xl border border-neutral-200 px-3 text-sm outline-none focus:border-neutral-500" placeholder="0.008" />
         </label>
         <label>
-          <span className="text-xs font-semibold uppercase tracking-[0.14em] text-neutral-500">Margin %</span>
+          <span className="text-xs font-semibold uppercase tracking-[0.14em] text-neutral-500">Marge %</span>
           <input name="marginPercent" type="number" min="0" max="100" step="0.01" className="mt-2 h-11 w-full rounded-xl border border-neutral-200 px-3 text-sm outline-none focus:border-neutral-500" placeholder="35" />
         </label>
       </div>
@@ -101,15 +101,15 @@ export function PricingPackageForm() {
         </div>
       </fieldset>
       <label className="mt-4 block">
-        <span className="text-xs font-semibold uppercase tracking-[0.14em] text-neutral-500">Description</span>
-        <textarea name="description" rows={3} className="mt-2 w-full rounded-xl border border-neutral-200 px-3 py-2 text-sm outline-none focus:border-neutral-500" placeholder="Who this package is for and what it includes." />
+        <span className="text-xs font-semibold uppercase tracking-[0.14em] text-neutral-500">Beschrijving</span>
+        <textarea name="description" rows={3} className="mt-2 w-full rounded-xl border border-neutral-200 px-3 py-2 text-sm outline-none focus:border-neutral-500" placeholder="Voor wie dit pakket is en wat erin zit." />
       </label>
       <label className="mt-4 block">
-        <span className="text-xs font-semibold uppercase tracking-[0.14em] text-neutral-500">Notes</span>
-        <textarea name="notes" rows={2} className="mt-2 w-full rounded-xl border border-neutral-200 px-3 py-2 text-sm outline-none focus:border-neutral-500" placeholder="Default delivery assumptions or internal handoff notes." />
+        <span className="text-xs font-semibold uppercase tracking-[0.14em] text-neutral-500">Notities</span>
+        <textarea name="notes" rows={2} className="mt-2 w-full rounded-xl border border-neutral-200 px-3 py-2 text-sm outline-none focus:border-neutral-500" placeholder="Standaard leveringsaannames of interne overdrachtsnotities." />
       </label>
       {error ? <p className="mt-3 text-sm text-red-600">{error}</p> : null}
-      <Button type="submit" isPending={isPending} className="mt-5">Save package</Button>
+      <Button type="submit" isPending={isPending} className="mt-5">Pakket opslaan</Button>
     </form>
   );
 }

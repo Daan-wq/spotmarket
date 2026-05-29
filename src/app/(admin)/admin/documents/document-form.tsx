@@ -40,7 +40,7 @@ export function DocumentForm({ brands, campaigns }: { brands: Option[]; campaign
       });
       if (!response.ok) {
         const body = await response.json().catch(() => ({}));
-        setError(body.error ?? "Could not save document.");
+        setError(body.error ?? "Document kon niet worden opgeslagen.");
         return;
       }
       router.refresh();
@@ -51,11 +51,11 @@ export function DocumentForm({ brands, campaigns }: { brands: Option[]; campaign
     <form action={onSubmit} className="rounded-2xl border border-neutral-200 bg-white p-5">
       <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
         <label className="md:col-span-2">
-          <span className="text-xs font-semibold uppercase tracking-[0.14em] text-neutral-500">Document title</span>
-          <input name="title" required className="mt-2 h-11 w-full rounded-xl border border-neutral-200 px-3 text-sm outline-none focus:border-neutral-500" placeholder="Brand service agreement" />
+          <span className="text-xs font-semibold uppercase tracking-[0.14em] text-neutral-500">Documenttitel</span>
+          <input name="title" required className="mt-2 h-11 w-full rounded-xl border border-neutral-200 px-3 text-sm outline-none focus:border-neutral-500" placeholder="Merk-serviceovereenkomst" />
         </label>
         <label>
-          <span className="text-xs font-semibold uppercase tracking-[0.14em] text-neutral-500">Owner</span>
+          <span className="text-xs font-semibold uppercase tracking-[0.14em] text-neutral-500">Eigenaar</span>
           <input name="owner" className="mt-2 h-11 w-full rounded-xl border border-neutral-200 px-3 text-sm outline-none focus:border-neutral-500" placeholder="Daan" />
         </label>
         <label>
@@ -63,44 +63,44 @@ export function DocumentForm({ brands, campaigns }: { brands: Option[]; campaign
           <select name="type" defaultValue="CONTRACT" className="mt-2 h-11 w-full rounded-xl border border-neutral-200 bg-white px-3 text-sm outline-none focus:border-neutral-500">
             <option value="CONTRACT">Contract</option>
             <option value="BRIEF">Brief</option>
-            <option value="INVOICE">Invoice</option>
-            <option value="RIGHTS">Rights</option>
+            <option value="INVOICE">Factuur</option>
+            <option value="RIGHTS">Rechten</option>
           </select>
         </label>
         <label>
           <span className="text-xs font-semibold uppercase tracking-[0.14em] text-neutral-500">Status</span>
           <select name="status" defaultValue="DRAFT" className="mt-2 h-11 w-full rounded-xl border border-neutral-200 bg-white px-3 text-sm outline-none focus:border-neutral-500">
-            <option value="DRAFT">Draft</option>
-            <option value="ACTIVE">Active</option>
-            <option value="WAITING">Waiting</option>
-            <option value="RENEW_SOON">Renew soon</option>
-            <option value="EXPIRED">Expired</option>
+            <option value="DRAFT">Concept</option>
+            <option value="ACTIVE">Actief</option>
+            <option value="WAITING">Wachtend</option>
+            <option value="RENEW_SOON">Binnenkort verlengen</option>
+            <option value="EXPIRED">Verlopen</option>
           </select>
         </label>
         <label>
-          <span className="text-xs font-semibold uppercase tracking-[0.14em] text-neutral-500">Brand</span>
+          <span className="text-xs font-semibold uppercase tracking-[0.14em] text-neutral-500">Merk</span>
           <select name="brandId" className="mt-2 h-11 w-full rounded-xl border border-neutral-200 bg-white px-3 text-sm outline-none focus:border-neutral-500">
-            <option value="">No brand</option>
+            <option value="">Geen merk</option>
             {brands.map((brand) => <option key={brand.id} value={brand.id}>{brand.name}</option>)}
           </select>
         </label>
         <label>
-          <span className="text-xs font-semibold uppercase tracking-[0.14em] text-neutral-500">Campaign</span>
+          <span className="text-xs font-semibold uppercase tracking-[0.14em] text-neutral-500">Campagne</span>
           <select name="campaignId" className="mt-2 h-11 w-full rounded-xl border border-neutral-200 bg-white px-3 text-sm outline-none focus:border-neutral-500">
-            <option value="">No campaign</option>
+            <option value="">Geen campagne</option>
             {campaigns.map((campaign) => <option key={campaign.id} value={campaign.id}>{campaign.name}</option>)}
           </select>
         </label>
         <label>
-          <span className="text-xs font-semibold uppercase tracking-[0.14em] text-neutral-500">Effective date</span>
+          <span className="text-xs font-semibold uppercase tracking-[0.14em] text-neutral-500">Ingangsdatum</span>
           <input name="effectiveAt" type="date" className="mt-2 h-11 w-full rounded-xl border border-neutral-200 px-3 text-sm outline-none focus:border-neutral-500" />
         </label>
         <label>
-          <span className="text-xs font-semibold uppercase tracking-[0.14em] text-neutral-500">Expiry date</span>
+          <span className="text-xs font-semibold uppercase tracking-[0.14em] text-neutral-500">Vervaldatum</span>
           <input name="expiresAt" type="date" className="mt-2 h-11 w-full rounded-xl border border-neutral-200 px-3 text-sm outline-none focus:border-neutral-500" />
         </label>
         <label>
-          <span className="text-xs font-semibold uppercase tracking-[0.14em] text-neutral-500">Renewal date</span>
+          <span className="text-xs font-semibold uppercase tracking-[0.14em] text-neutral-500">Verlengdatum</span>
           <input name="renewalAt" type="date" className="mt-2 h-11 w-full rounded-xl border border-neutral-200 px-3 text-sm outline-none focus:border-neutral-500" />
         </label>
         <label>
@@ -108,7 +108,7 @@ export function DocumentForm({ brands, campaigns }: { brands: Option[]; campaign
           <input name="externalUrl" type="url" className="mt-2 h-11 w-full rounded-xl border border-neutral-200 px-3 text-sm outline-none focus:border-neutral-500" placeholder="https://..." />
         </label>
         <label>
-          <span className="text-xs font-semibold uppercase tracking-[0.14em] text-neutral-500">File name</span>
+          <span className="text-xs font-semibold uppercase tracking-[0.14em] text-neutral-500">Bestandsnaam</span>
           <input name="fileName" className="mt-2 h-11 w-full rounded-xl border border-neutral-200 px-3 text-sm outline-none focus:border-neutral-500" placeholder="agreement.pdf" />
         </label>
         <label>
@@ -117,11 +117,11 @@ export function DocumentForm({ brands, campaigns }: { brands: Option[]; campaign
         </label>
       </div>
       <label className="mt-4 block">
-        <span className="text-xs font-semibold uppercase tracking-[0.14em] text-neutral-500">Notes</span>
-        <textarea name="notes" rows={3} className="mt-2 w-full rounded-xl border border-neutral-200 px-3 py-2 text-sm outline-none focus:border-neutral-500" placeholder="Renewal terms, missing signatures, or link context." />
+        <span className="text-xs font-semibold uppercase tracking-[0.14em] text-neutral-500">Notities</span>
+        <textarea name="notes" rows={3} className="mt-2 w-full rounded-xl border border-neutral-200 px-3 py-2 text-sm outline-none focus:border-neutral-500" placeholder="Verlengvoorwaarden, ontbrekende handtekeningen of linkcontext." />
       </label>
       {error ? <p className="mt-3 text-sm text-red-600">{error}</p> : null}
-      <Button type="submit" isPending={isPending} className="mt-5">Save document</Button>
+      <Button type="submit" isPending={isPending} className="mt-5">Document opslaan</Button>
     </form>
   );
 }

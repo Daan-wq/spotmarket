@@ -89,7 +89,7 @@ describe("admin Discord helpers", () => {
         content: "x".repeat(2001),
         files: [],
       }),
-    ).toEqual("Message content must be 2000 characters or fewer.");
+    ).toEqual("Berichtinhoud mag maximaal 2000 tekens bevatten.");
 
     expect(
       validateDiscordMessageInput({
@@ -97,7 +97,7 @@ describe("admin Discord helpers", () => {
         content: "",
         files: Array.from({ length: 11 }, (_, i) => new File(["x"], `file-${i}.txt`)),
       }),
-    ).toEqual("Discord accepts up to 10 files per message.");
+    ).toEqual("Discord accepteert maximaal 10 bestanden per bericht.");
   });
 
   it("sends multipart messages with payload_json and files", async () => {
@@ -137,7 +137,7 @@ describe("admin Discord helpers", () => {
       channelId: "channel-1",
       content: "Hello",
       files: [],
-      buttons: [{ label: "Open campaign", url: "https://clipprofit.com/campaigns/1" }],
+      buttons: [{ label: "Campagne openen", url: "https://clipprofit.com/campaigns/1" }],
     });
 
     const init = fetchMock.mock.calls[0][1] as RequestInit;
@@ -149,7 +149,7 @@ describe("admin Discord helpers", () => {
           {
             type: 2,
             style: 5,
-            label: "Open campaign",
+            label: "Campagne openen",
             url: "https://clipprofit.com/campaigns/1",
           },
         ],

@@ -58,7 +58,7 @@ export default async function ReferrerDetailPage({
 
   return (
     <div className="p-8">
-      {/* Back Link */}
+      {/* Teruglink */}
       <Link
         href="/admin/networks"
         style={{
@@ -70,7 +70,7 @@ export default async function ReferrerDetailPage({
           fontWeight: 500,
         }}
       >
-        ← Back to Networks
+        ← Terug naar netwerken
       </Link>
 
       {/* Header */}
@@ -84,7 +84,7 @@ export default async function ReferrerDetailPage({
         <p style={{ color: "var(--text-secondary)" }}>{referrer.email}</p>
       </div>
 
-      {/* Summary Cards */}
+      {/* Samenvattingskaarten */}
       <div className="grid grid-cols-3 gap-4 mb-8">
         <div
           className="p-6 rounded-xl"
@@ -97,7 +97,7 @@ export default async function ReferrerDetailPage({
             className="text-sm font-medium mb-2"
             style={{ color: "var(--text-secondary)" }}
           >
-            Total Referred
+            Totaal verwezen
           </p>
           <p
             className="text-2xl font-bold"
@@ -118,7 +118,7 @@ export default async function ReferrerDetailPage({
             className="text-sm font-medium mb-2"
             style={{ color: "var(--text-secondary)" }}
           >
-            Total Earnings
+                  Totale inkomsten
           </p>
           <p
             className="text-2xl font-bold"
@@ -139,7 +139,7 @@ export default async function ReferrerDetailPage({
             className="text-sm font-medium mb-2"
             style={{ color: "var(--text-secondary)" }}
           >
-            Pending Payouts
+            Uitbetalingen in behandeling
           </p>
           <p
             className="text-2xl font-bold"
@@ -150,13 +150,13 @@ export default async function ReferrerDetailPage({
         </div>
       </div>
 
-      {/* Referrals Table */}
+      {/* Referralstabel */}
       <div className="mb-8">
         <h2
           className="text-xl font-bold mb-4"
           style={{ color: "var(--text-primary)" }}
         >
-          Referrals ({totalReferred})
+          Verwijzingen ({totalReferred})
         </h2>
         <div
           className="rounded-xl overflow-hidden"
@@ -172,7 +172,7 @@ export default async function ReferrerDetailPage({
                   className="px-6 py-3 text-left text-xs font-semibold"
                   style={{ color: "var(--text-secondary)" }}
                 >
-                  Name
+                  Naam
                 </th>
                 <th
                   className="px-6 py-3 text-left text-xs font-semibold"
@@ -184,7 +184,7 @@ export default async function ReferrerDetailPage({
                   className="px-6 py-3 text-left text-xs font-semibold"
                   style={{ color: "var(--text-secondary)" }}
                 >
-                  Joined Date
+                  Aanmelddatum
                 </th>
               </tr>
             </thead>
@@ -210,7 +210,7 @@ export default async function ReferrerDetailPage({
                     className="px-6 py-3 text-sm"
                     style={{ color: "var(--text-secondary)" }}
                   >
-                    {new Date(ref.createdAt).toLocaleDateString()}
+                    {new Date(ref.createdAt).toLocaleDateString("nl-NL")}
                   </td>
                 </tr>
               ))}
@@ -222,7 +222,7 @@ export default async function ReferrerDetailPage({
               className="px-6 py-8 text-center"
               style={{ color: "var(--text-secondary)" }}
             >
-              <p>No referrals yet.</p>
+              <p>Nog geen verwijzingen.</p>
             </div>
           )}
         </div>
@@ -234,7 +234,7 @@ export default async function ReferrerDetailPage({
           className="text-xl font-bold mb-4"
           style={{ color: "var(--text-primary)" }}
         >
-          Payout History ({payouts.length})
+          Uitbetalingshistorie ({payouts.length})
         </h2>
         <div
           className="rounded-xl overflow-hidden"
@@ -249,20 +249,16 @@ export default async function ReferrerDetailPage({
                 <th
                   className="px-6 py-3 text-left text-xs font-semibold"
                   style={{ color: "var(--text-secondary)" }}
-                >
-                  Amount
-                </th>
+                >Bedrag</th>
+                <th
+                  className="px-6 py-3 text-left text-xs font-semibold"
+                  style={{ color: "var(--text-secondary)" }}
+                >Status</th>
                 <th
                   className="px-6 py-3 text-left text-xs font-semibold"
                   style={{ color: "var(--text-secondary)" }}
                 >
-                  Status
-                </th>
-                <th
-                  className="px-6 py-3 text-left text-xs font-semibold"
-                  style={{ color: "var(--text-secondary)" }}
-                >
-                  Date
+                  Datum
                 </th>
               </tr>
             </thead>
@@ -303,7 +299,7 @@ export default async function ReferrerDetailPage({
                     className="px-6 py-3 text-sm"
                     style={{ color: "var(--text-secondary)" }}
                   >
-                    {new Date(payout.createdAt).toLocaleDateString()}
+                    {new Date(payout.createdAt).toLocaleDateString("nl-NL")}
                   </td>
                 </tr>
               ))}
@@ -315,7 +311,7 @@ export default async function ReferrerDetailPage({
               className="px-6 py-8 text-center"
               style={{ color: "var(--text-secondary)" }}
             >
-              <p>No payouts yet.</p>
+              <p>Nog geen uitbetalingen.</p>
             </div>
           )}
         </div>

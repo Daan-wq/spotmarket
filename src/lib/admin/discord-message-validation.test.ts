@@ -17,8 +17,8 @@ describe("Discord message validation", () => {
         files: [],
       }),
     ).toEqual([
-      { code: "missing_channel", message: "Choose a Discord channel." },
-      { code: "missing_payload", message: "Add message content, an embed, a file, or a URL button." },
+      { code: "missing_channel", message: "Kies een Discord-kanaal." },
+      { code: "missing_payload", message: "Voeg berichtinhoud, een embed, een bestand of een URL-knop toe." },
     ]);
   });
 
@@ -30,7 +30,7 @@ describe("Discord message validation", () => {
         files: [],
         validChannelIds: ["channel-1"],
       }),
-    ).toBe("Choose a valid Discord channel.");
+    ).toBe("Kies een geldig Discord-kanaal.");
   });
 
   it("allows attachment-only messages with a valid channel", () => {
@@ -50,7 +50,7 @@ describe("Discord message validation", () => {
         channelId: "channel-1",
         content: "",
         files: [],
-        buttons: [{ label: "Open campaign", url: "https://clipprofit.com/campaigns/1" }],
+        buttons: [{ label: "Campagne openen", url: "https://clipprofit.com/campaigns/1" }],
         validChannelIds: ["channel-1"],
       }),
     ).toBeNull();
@@ -87,7 +87,7 @@ describe("Discord message validation", () => {
         embeds: [{ title: "Launch", imageUrl: "attachment://embed-1-image-launch.png" }],
         validChannelIds: ["channel-1"],
       }).map((issue) => issue.message),
-    ).toContain("Embed 1 image URL upload is missing. Re-upload the image before sending.");
+    ).toContain("Embed 1: upload voor afbeeldings-URL ontbreekt. Upload de afbeelding opnieuw voordat je verzendt.");
   });
 
   it("normalizes embeds by removing empty optional objects", () => {
@@ -139,9 +139,9 @@ describe("Discord message validation", () => {
         validChannelIds: ["channel-1"],
       }).map((issue) => issue.message),
     ).toEqual([
-      "Embed 1 title must be 256 characters or fewer.",
-      "Embed 1 description must be 4096 characters or fewer.",
-      "Embed 1 field 1 needs both name and value.",
+      "Embed 1: titel mag maximaal 256 tekens bevatten.",
+      "Embed 1: beschrijving mag maximaal 4096 tekens bevatten.",
+      "Embed 1: veld 1 heeft een naam en waarde nodig.",
     ]);
   });
 
@@ -159,9 +159,9 @@ describe("Discord message validation", () => {
         validChannelIds: ["channel-1"],
       }).map((issue) => issue.message),
     ).toEqual([
-      "Button 1 needs both a label and URL.",
-      "Button 2 URL must start with http:// or https://.",
-      "Button 3 label must be 80 characters or fewer.",
+      "Knop 1 heeft een label en URL nodig.",
+      "Knop 2: URL moet beginnen met http:// of https://.",
+      "Knop 3: label mag maximaal 80 tekens bevatten.",
     ]);
   });
 

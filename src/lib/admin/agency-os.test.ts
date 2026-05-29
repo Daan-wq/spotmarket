@@ -123,12 +123,12 @@ describe("buildOperatingAreas", () => {
 
     expect(areas).toHaveLength(12);
     expect(areas.filter((area) => area.status === "live")).toHaveLength(12);
-    expect(byName.get("Command Center")?.status).toBe("live");
-    expect(byName.get("Clip Review")?.status).toBe("live");
+    expect(byName.get("Commandcenter")?.status).toBe("live");
+    expect(byName.get("Clipreview")?.status).toBe("live");
     expect(byName.get("Leads")?.status).toBe("live");
-    expect(byName.get("Brand Onboarding")?.status).toBe("live");
-    expect(byName.get("Documents")?.status).toBe("live");
-    expect(byName.get("Guides")?.status).toBe("live");
-    expect(byName.get("Weekly Numbers")?.status).toBe("live");
+    expect(byName.get("Merkonboarding")?.status).toBe("live");
+    expect(byName.get("Documenten")?.status).toBe("live");
+    expect(byName.get("Handleidingen")?.status).toBe("live");
+    expect(byName.get("Weekcijfers")?.status).toBe("live");
   });
 });

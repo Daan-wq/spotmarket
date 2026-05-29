@@ -118,26 +118,26 @@ export function getDiscordMessageValidationIssues(
   const embeds = normalizeDiscordEmbeds(input.embeds ?? []);
 
   if (!channelId) {
-    issues.push({ code: "missing_channel", message: "Choose a Discord channel." });
+    issues.push({ code: "missing_channel", message: "Kies een Discord-kanaal." });
   } else if (input.validChannelIds && !input.validChannelIds.includes(channelId)) {
-    issues.push({ code: "invalid_channel", message: "Choose a valid Discord channel." });
+    issues.push({ code: "invalid_channel", message: "Kies een geldig Discord-kanaal." });
   }
 
   if (input.content.length > DISCORD_MESSAGE_MAX_CHARS) {
-    issues.push({ code: "content_too_long", message: "Message content must be 2000 characters or fewer." });
+    issues.push({ code: "content_too_long", message: "Berichtinhoud mag maximaal 2000 tekens bevatten." });
   }
 
   if (!input.content.trim() && input.files.length === 0 && buttons.length === 0 && embeds.length === 0) {
-    issues.push({ code: "missing_payload", message: "Add message content, an embed, a file, or a URL button." });
+    issues.push({ code: "missing_payload", message: "Voeg berichtinhoud, een embed, een bestand of een URL-knop toe." });
   }
 
   if (input.files.length > DISCORD_MAX_FILES) {
-    issues.push({ code: "too_many_files", message: "Discord accepts up to 10 files per message." });
+    issues.push({ code: "too_many_files", message: "Discord accepteert maximaal 10 bestanden per bericht." });
   }
 
   const totalSize = input.files.reduce((sum, file) => sum + file.size, 0);
   if (totalSize > DISCORD_MAX_REQUEST_BYTES) {
-    issues.push({ code: "request_too_large", message: "Discord accepts up to 25 MiB per message." });
+    issues.push({ code: "request_too_large", message: "Discord accepteert maximaal 25 MiB per bericht." });
   }
 
   issues.push(...getDiscordButtonValidationIssues(input.buttons ?? []));
@@ -263,7 +263,7 @@ function getDiscordEmbedValidationIssues(
       .filter((name): name is string => Boolean(name)),
   );
   if (embeds.length > DISCORD_MAX_EMBEDS) {
-    issues.push({ code: "too_many_embeds", message: `Discord accepts up to ${DISCORD_MAX_EMBEDS} embeds per message.` });
+    issues.push({ code: "too_many_embeds", message: `Discord accepteert maximaal ${DISCORD_MAX_EMBEDS} embeds per bericht.` });
   }
 
   embeds.forEach((embed, index) => {
@@ -281,80 +281,80 @@ function getDiscordEmbedValidationIssues(
     const fields = embed.fields ?? [];
 
     if (title.length > DISCORD_EMBED_TITLE_MAX_CHARS) {
-      issues.push({ code: "invalid_embed", message: `Embed ${number} title must be ${DISCORD_EMBED_TITLE_MAX_CHARS} characters or fewer.` });
+      issues.push({ code: "invalid_embed", message: `Embed ${number}: titel mag maximaal ${DISCORD_EMBED_TITLE_MAX_CHARS} tekens bevatten.` });
     }
     if (url && !title) {
-      issues.push({ code: "invalid_embed", message: `Embed ${number} title URL needs an embed title.` });
+      issues.push({ code: "invalid_embed", message: `Embed ${number}: titel-URL heeft een embedtitel nodig.` });
     }
     if (url && !isHttpUrl(url)) {
-      issues.push({ code: "invalid_embed", message: `Embed ${number} title URL must start with http:// or https://.` });
+      issues.push({ code: "invalid_embed", message: `Embed ${number}: titel-URL moet beginnen met http:// of https://.` });
     }
     if (description.length > DISCORD_EMBED_DESCRIPTION_MAX_CHARS) {
       issues.push({
         code: "invalid_embed",
-        message: `Embed ${number} description must be ${DISCORD_EMBED_DESCRIPTION_MAX_CHARS} characters or fewer.`,
+        message: `Embed ${number}: beschrijving mag maximaal ${DISCORD_EMBED_DESCRIPTION_MAX_CHARS} tekens bevatten.`,
       });
     }
     if (typeof embed.color === "number" && (!Number.isInteger(embed.color) || embed.color < 0 || embed.color > 0xffffff)) {
-      issues.push({ code: "invalid_embed", message: `Embed ${number} color must be a valid Discord color.` });
+      issues.push({ code: "invalid_embed", message: `Embed ${number}: kleur moet een geldige Discord-kleur zijn.` });
     }
     if (authorName.length > DISCORD_EMBED_AUTHOR_NAME_MAX_CHARS) {
-      issues.push({ code: "invalid_embed", message: `Embed ${number} author name must be ${DISCORD_EMBED_AUTHOR_NAME_MAX_CHARS} characters or fewer.` });
+      issues.push({ code: "invalid_embed", message: `Embed ${number}: auteurnaam mag maximaal ${DISCORD_EMBED_AUTHOR_NAME_MAX_CHARS} tekens bevatten.` });
     }
     if ((authorIconUrl || authorUrl) && !authorName) {
-      issues.push({ code: "invalid_embed", message: `Embed ${number} author URLs need an author name.` });
+      issues.push({ code: "invalid_embed", message: `Embed ${number}: auteur-URL's hebben een auteurnaam nodig.` });
     }
     for (const [label, value] of [
-      ["thumbnail URL", thumbnailUrl],
-      ["image URL", imageUrl],
+      ["thumbnail-URL", thumbnailUrl],
+      ["afbeeldings-URL", imageUrl],
     ] as const) {
       if (!value) continue;
       const attachmentName = getDiscordAttachmentFileName(value);
       if (!isHttpUrl(value) && !attachmentName) {
-        issues.push({ code: "invalid_embed", message: `Embed ${number} ${label} must start with http://, https://, or attachment://.` });
+        issues.push({ code: "invalid_embed", message: `Embed ${number}: ${label} moet beginnen met http://, https:// of attachment://.` });
       } else if (attachmentName && !uploadedFileNames.has(attachmentName)) {
-        issues.push({ code: "invalid_embed", message: `Embed ${number} ${label} upload is missing. Re-upload the image before sending.` });
+        issues.push({ code: "invalid_embed", message: `Embed ${number}: upload voor ${label} ontbreekt. Upload de afbeelding opnieuw voordat je verzendt.` });
       }
     }
     for (const [label, value] of [
-      ["author icon URL", authorIconUrl],
-      ["footer icon URL", footerIconUrl],
+      ["auteuricoon-URL", authorIconUrl],
+      ["footericoon-URL", footerIconUrl],
     ] as const) {
       if (value && !isHttpUrl(value)) {
-        issues.push({ code: "invalid_embed", message: `Embed ${number} ${label} must start with http:// or https://.` });
+        issues.push({ code: "invalid_embed", message: `Embed ${number}: ${label} moet beginnen met http:// of https://.` });
       }
     }
     if (authorUrl && !isHttpUrl(authorUrl)) {
-      issues.push({ code: "invalid_embed", message: `Embed ${number} author URL must start with http:// or https://.` });
+      issues.push({ code: "invalid_embed", message: `Embed ${number}: auteur-URL moet beginnen met http:// of https://.` });
     }
     if (footerText.length > DISCORD_EMBED_FOOTER_TEXT_MAX_CHARS) {
-      issues.push({ code: "invalid_embed", message: `Embed ${number} footer text must be ${DISCORD_EMBED_FOOTER_TEXT_MAX_CHARS} characters or fewer.` });
+      issues.push({ code: "invalid_embed", message: `Embed ${number}: footertekst mag maximaal ${DISCORD_EMBED_FOOTER_TEXT_MAX_CHARS} tekens bevatten.` });
     }
     if (footerIconUrl && !footerText) {
-      issues.push({ code: "invalid_embed", message: `Embed ${number} footer icon needs footer text.` });
+      issues.push({ code: "invalid_embed", message: `Embed ${number}: footericoon heeft footertekst nodig.` });
     }
     const touchedFields = fields.filter((field) => field.name.trim().length > 0 || field.value.trim().length > 0);
     if (touchedFields.length > DISCORD_EMBED_MAX_FIELDS) {
-      issues.push({ code: "invalid_embed", message: `Embed ${number} accepts up to ${DISCORD_EMBED_MAX_FIELDS} fields.` });
+      issues.push({ code: "invalid_embed", message: `Embed ${number}: maximaal ${DISCORD_EMBED_MAX_FIELDS} velden toegestaan.` });
     }
     touchedFields.forEach((field, fieldIndex) => {
       const fieldNumber = fieldIndex + 1;
       const name = field.name.trim();
       const value = field.value.trim();
       if (!name || !value) {
-        issues.push({ code: "invalid_embed", message: `Embed ${number} field ${fieldNumber} needs both name and value.` });
+        issues.push({ code: "invalid_embed", message: `Embed ${number}: veld ${fieldNumber} heeft een naam en waarde nodig.` });
         return;
       }
       if (name.length > DISCORD_EMBED_FIELD_NAME_MAX_CHARS) {
         issues.push({
           code: "invalid_embed",
-          message: `Embed ${number} field ${fieldNumber} name must be ${DISCORD_EMBED_FIELD_NAME_MAX_CHARS} characters or fewer.`,
+          message: `Embed ${number}: veld ${fieldNumber} naam mag maximaal ${DISCORD_EMBED_FIELD_NAME_MAX_CHARS} tekens bevatten.`,
         });
       }
       if (value.length > DISCORD_EMBED_FIELD_VALUE_MAX_CHARS) {
         issues.push({
           code: "invalid_embed",
-          message: `Embed ${number} field ${fieldNumber} value must be ${DISCORD_EMBED_FIELD_VALUE_MAX_CHARS} characters or fewer.`,
+          message: `Embed ${number}: veld ${fieldNumber} waarde mag maximaal ${DISCORD_EMBED_FIELD_VALUE_MAX_CHARS} tekens bevatten.`,
         });
       }
     });
@@ -364,7 +364,7 @@ function getDiscordEmbedValidationIssues(
   if (totalCharacters > DISCORD_EMBEDS_TOTAL_MAX_CHARS) {
     issues.push({
       code: "embeds_too_long",
-      message: `Discord embeds can contain up to ${DISCORD_EMBEDS_TOTAL_MAX_CHARS} total characters.`,
+      message: `Discord-embeds mogen samen maximaal ${DISCORD_EMBEDS_TOTAL_MAX_CHARS} tekens bevatten.`,
     });
   }
 
@@ -381,7 +381,7 @@ function getDiscordButtonValidationIssues(buttons: DiscordLinkButton[]): Discord
   const nonEmptyButtons = buttons.filter((button) => button.label.trim().length > 0 || button.url.trim().length > 0);
 
   if (nonEmptyButtons.length > DISCORD_MAX_LINK_BUTTONS) {
-    issues.push({ code: "too_many_buttons", message: "Discord accepts up to 25 URL buttons per message." });
+    issues.push({ code: "too_many_buttons", message: "Discord accepteert maximaal 25 URL-knoppen per bericht." });
   }
 
   nonEmptyButtons.forEach((button, index) => {
@@ -392,7 +392,7 @@ function getDiscordButtonValidationIssues(buttons: DiscordLinkButton[]): Discord
     if (!label || !url) {
       issues.push({
         code: "invalid_button",
-        message: `Button ${number} needs both a label and URL.`,
+        message: `Knop ${number} heeft een label en URL nodig.`,
       });
       return;
     }
@@ -400,21 +400,21 @@ function getDiscordButtonValidationIssues(buttons: DiscordLinkButton[]): Discord
     if (label.length > DISCORD_LINK_BUTTON_MAX_LABEL_CHARS) {
       issues.push({
         code: "invalid_button",
-        message: `Button ${number} label must be ${DISCORD_LINK_BUTTON_MAX_LABEL_CHARS} characters or fewer.`,
+        message: `Knop ${number}: label mag maximaal ${DISCORD_LINK_BUTTON_MAX_LABEL_CHARS} tekens bevatten.`,
       });
     }
 
     if (url.length > DISCORD_LINK_BUTTON_MAX_URL_CHARS) {
       issues.push({
         code: "invalid_button",
-        message: `Button ${number} URL must be ${DISCORD_LINK_BUTTON_MAX_URL_CHARS} characters or fewer.`,
+        message: `Knop ${number}: URL mag maximaal ${DISCORD_LINK_BUTTON_MAX_URL_CHARS} tekens bevatten.`,
       });
     }
 
     if (!isHttpUrl(url)) {
       issues.push({
         code: "invalid_button",
-        message: `Button ${number} URL must start with http:// or https://.`,
+        message: `Knop ${number}: URL moet beginnen met http:// of https://.`,
       });
     }
   });

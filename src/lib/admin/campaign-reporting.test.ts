@@ -167,6 +167,8 @@ describe("buildCampaignReportLiveData", () => {
     expect(report.referral.inviteCount).toBe(1);
     expect(report.defaults.editorialContent.campaignType).toBe("Awareness");
     expect(report.defaults.editorialContent.contentInsights.length).toBeGreaterThan(0);
+    expect(report.defaults.title).toBe("Bram's Fruit campagnerapport");
+    expect(report.defaults.executiveSummary).toContain("goedgekeurde views");
     expect(report.defaults.keyTakeaways.length).toBeGreaterThanOrEqual(3);
   });
 });

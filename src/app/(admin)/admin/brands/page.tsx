@@ -28,43 +28,43 @@ export default async function BrandsPage() {
   return (
     <div className="space-y-9">
       <PageHeader
-        eyebrow="Clients"
-        title="Brands"
-        description="External client brands. Campaigns, onboarding, production assignments, and value roll up here."
-        actions={[{ label: "Add brand", href: "/admin/crm?new=brand", icon: Plus }]}
+        eyebrow="Klanten"
+        title="Merken"
+        description="Externe klantmerken. Campagnes, onboarding, productieopdrachten en waarde komen hier samen."
+        actions={[{ label: "Merk toevoegen", href: "/admin/crm?new=brand", icon: Plus }]}
       />
 
       <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
-        <StatCard label="Active brands" value={String(activeBrands.length)} detail="Currently sold and delivering" />
-        <StatCard label="Onboarding" value={String(onboardingBrands.length)} detail="Checklist still open" />
-        <StatCard label="Monthly value" value={formatCurrency(monthlyValue)} detail="Active brand value" />
-        <StatCard label="Needs onboarding" value={String(withMissingOnboarding.length)} detail="Brand exists without checklist" tone={withMissingOnboarding.length > 0 ? "warning" : "neutral"} />
+        <StatCard label="Actieve merken" value={String(activeBrands.length)} detail="Verkocht en in levering" />
+        <StatCard label="Onboarding" value={String(onboardingBrands.length)} detail="Checklist nog open" />
+        <StatCard label="Maandwaarde" value={formatCurrency(monthlyValue)} detail="Actieve merkwaarde" />
+        <StatCard label="Onboarding nodig" value={String(withMissingOnboarding.length)} detail="Merk bestaat zonder checklist" tone={withMissingOnboarding.length > 0 ? "warning" : "neutral"} />
       </div>
 
       <section>
-        <SectionHeader title="Brand Database" description="Strict CLIPPING table, dense enough for admin work but still neutral and readable." />
+        <SectionHeader title="Merkdatabase" description="Strakke CLIPPING-tabel, compact genoeg voor adminwerk en toch neutraal en leesbaar." />
         <DataTable
           rows={brands}
           rowKey={(brand) => brand.id}
-          emptyState={<EmptyState icon={<Building2 className="h-5 w-5" />} title="No brands yet" description="Convert CRM leads into brands or add brands through the admin API to start onboarding." />}
+          emptyState={<EmptyState icon={<Building2 className="h-5 w-5" />} title="Nog geen merken" description="Zet CRM-leads om naar merken of voeg merken toe via de admin-API om onboarding te starten." />}
           columns={[
             {
               key: "brand",
-              header: "Brand",
+              header: "Merk",
               cell: (brand) => (
                 <div>
                   <p className="font-semibold text-neutral-950">{brand.name}</p>
-                  <p className="mt-1 text-xs text-neutral-500">{brand.website || brand.contactEmail || brand.niche || "No contact details"}</p>
+                  <p className="mt-1 text-xs text-neutral-500">{brand.website || brand.contactEmail || brand.niche || "Geen contactgegevens"}</p>
                 </div>
               ),
             },
             { key: "status", header: "Status", cell: (brand) => <Badge variant={brand.status === "ACTIVE" ? "verified" : brand.status === "CHURNED" ? "failed" : "neutral"}>{titleCaseEnum(brand.status)}</Badge> },
-            { key: "owner", header: "Owner", cell: (brand) => brand.owner || "-" },
-            { key: "value", header: "Monthly value", align: "right", cell: (brand) => formatCurrency(brand.monthlyValue, brand.currency) },
-            { key: "campaigns", header: "Campaigns", align: "right", cell: (brand) => brand.campaigns.length },
+            { key: "owner", header: "Eigenaar", cell: (brand) => brand.owner || "-" },
+            { key: "value", header: "Maandwaarde", align: "right", cell: (brand) => formatCurrency(brand.monthlyValue, brand.currency) },
+            { key: "campaigns", header: "Campagnes", align: "right", cell: (brand) => brand.campaigns.length },
             {
               key: "production",
-              header: "Assignments",
+              header: "Opdrachten",
               align: "right",
               cell: (brand) => brand.productionAssignments.filter((assignment) => !["APPROVED", "POSTED", "PAID", "REJECTED"].includes(assignment.status)).length,
             },
@@ -73,10 +73,10 @@ export default async function BrandsPage() {
               header: "Onboarding",
               cell: (brand) => brand.onboarding ? (
                 <Badge variant={onboardingComplete(brand.onboarding) ? "verified" : "pending"}>
-                  {onboardingComplete(brand.onboarding) ? "Complete" : "Open"}
+                  {onboardingComplete(brand.onboarding) ? "Compleet" : "Openen"}
                 </Badge>
               ) : (
-                <Badge variant="failed">Missing</Badge>
+                <Badge variant="failed">Ontbreekt</Badge>
               ),
             },
           ]}

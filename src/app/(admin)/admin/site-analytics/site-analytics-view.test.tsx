@@ -22,7 +22,7 @@ function baseDashboard(overrides: Partial<SiteAnalyticsDashboard> = {}): SiteAna
 describe("SiteAnalyticsView", () => {
   it("renders the empty state", () => {
     const html = renderToStaticMarkup(<SiteAnalyticsView dashboard={baseDashboard()} showChart={false} />);
-    expect(html).toContain("No site analytics yet");
+    expect(html).toContain("Nog geen site analytics");
     expect(html).toContain("sync-site-analytics");
   });
 
@@ -50,7 +50,7 @@ describe("SiteAnalyticsView", () => {
       />,
     );
 
-    expect(html).toContain("Site analytics");
+    expect(html).toContain("Site-analytics");
     expect(html).toContain("/sign-up");
     expect(html).toContain("google.com");
     expect(html).toContain("/creator/campaigns");

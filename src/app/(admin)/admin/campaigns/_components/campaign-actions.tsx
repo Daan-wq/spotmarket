@@ -30,14 +30,14 @@ export function CampaignActions({ campaignId, status }: CampaignActionsProps) {
           body: JSON.stringify({ status: newStatus }),
         });
         if (!res.ok) {
-          toast.error("Failed to update campaign — reverting");
+          toast.error("Campagne bijwerken mislukt - teruggedraaid");
           return;
         }
-        toast.success(newStatus === "active" ? "Campaign activated" : "Campaign paused");
+        toast.success(newStatus === "active" ? "Campagne geactiveerd" : "Campagne gepauzeerd");
         router.refresh();
       } catch (err) {
         console.error("[CampaignActions]", err);
-        toast.error("Network error — reverting");
+        toast.error("Netwerkfout - teruggedraaid");
       }
     });
   }
@@ -50,21 +50,21 @@ export function CampaignActions({ campaignId, status }: CampaignActionsProps) {
 
         if (res.status === 409) {
           setDeleteState("error");
-          toast.error("Cannot delete: active applications");
+          toast.error("Kan niet verwijderen: actieve aanmeldingen");
           setTimeout(() => setDeleteState("idle"), 3000);
           return;
         }
 
         if (!res.ok) {
-          throw new Error("Failed to delete campaign");
+          throw new Error("Campagne verwijderen mislukt");
         }
 
         setDeleteState("idle");
-        toast.success("Campaign deleted");
+        toast.success("Campagne verwijderd");
         router.refresh();
       } catch (err) {
         console.error("[CampaignActions]", err);
-        toast.error("Failed to delete campaign");
+        toast.error("Campagne verwijderen mislukt");
         setDeleteState("idle");
       }
     });
@@ -82,18 +82,18 @@ export function CampaignActions({ campaignId, status }: CampaignActionsProps) {
         const res = await fetch(`/api/campaigns/${campaignId}/settle`, { method: "POST" });
         if (!res.ok) {
           setSettleState("error");
-          toast.error("Settle failed");
+          toast.error("Vastzetten mislukt");
           setTimeout(() => setSettleState("idle"), 3000);
           return;
         }
         setSettleState("done");
-        toast.success("Campaign settled");
+        toast.success("Campagne vastgezet");
         router.refresh();
         setTimeout(() => setSettleState("idle"), 2000);
       } catch (err) {
         console.error("[settle]", err);
         setSettleState("error");
-        toast.error("Network error");
+        toast.error("Netwerkfout");
         setTimeout(() => setSettleState("idle"), 3000);
       }
     });
@@ -102,7 +102,7 @@ export function CampaignActions({ campaignId, status }: CampaignActionsProps) {
   const deleteButtonLabel =
     deleteState === "confirming" ? "Confirm delete?" :
     deleteState === "error" ? "Has active applications" :
-    "Delete";
+    "Verwijderen";
 
   return (
     <div style={{ display: "flex", gap: "6px", alignItems: "center" }}>
@@ -149,10 +149,10 @@ export function CampaignActions({ campaignId, status }: CampaignActionsProps) {
           whiteSpace: "nowrap",
         }}
       >
-        {settleState === "loading" ? "…" :
-         settleState === "done" ? "Settled!" :
-         settleState === "error" ? "No submissions" :
-         "Settle"}
+        {settleState === "loading" ? "..." :
+         settleState === "done" ? "Afgewikkeld" :
+         settleState === "error" ? "Geen inzendingen" :
+         "Afrekenen"}
       </button>
 
       {/* Delete button */}
@@ -185,7 +185,7 @@ export function CampaignActions({ campaignId, status }: CampaignActionsProps) {
           whiteSpace: "nowrap",
         }}
       >
-        {deleteState === "loading" ? "…" : deleteButtonLabel}
+        {deleteState === "loading" ? "..." : deleteButtonLabel}
       </button>
     </div>
   );

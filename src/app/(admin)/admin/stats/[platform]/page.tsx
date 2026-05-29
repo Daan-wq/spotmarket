@@ -89,11 +89,11 @@ export default async function AdminPlatformStatsPage({ params, searchParams }: P
     const breakdowns = await getYtBreakdowns(ids, range);
     trendsContent = (
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        <DimensionalBreakdown title="Traffic source" data={breakdowns.trafficSourceBreakdown} />
-        <DimensionalBreakdown title="Playback location" data={breakdowns.playbackLocationBreakdown} />
-        <DimensionalBreakdown title="Device type" data={breakdowns.deviceTypeBreakdown} />
-        <DimensionalBreakdown title="Content type" data={breakdowns.contentTypeBreakdown} />
-        <DimensionalBreakdown title="Subscribed status" data={breakdowns.subscribedStatusBreakdown} />
+        <DimensionalBreakdown title="Verkeersbron" data={breakdowns.trafficSourceBreakdown} />
+        <DimensionalBreakdown title="Afspeellocatie" data={breakdowns.playbackLocationBreakdown} />
+        <DimensionalBreakdown title="Apparaattype" data={breakdowns.deviceTypeBreakdown} />
+        <DimensionalBreakdown title="Contenttype" data={breakdowns.contentTypeBreakdown} />
+        <DimensionalBreakdown title="Abonneestatus" data={breakdowns.subscribedStatusBreakdown} />
       </div>
     );
   } else if (platform === "ig") {
@@ -135,10 +135,10 @@ export default async function AdminPlatformStatsPage({ params, searchParams }: P
         style={{ background: "var(--bg-card)", border: "1px solid var(--border)" }}
       >
         <p className="text-xs uppercase tracking-wide mb-3 font-semibold" style={{ color: "var(--text-muted)" }}>
-          Posting cadence (fleet)
+          Postritme (fleet)
         </p>
         {cadence.length === 0 ? (
-          <p className="text-sm" style={{ color: "var(--text-secondary)" }}>No posts in this range.</p>
+          <p className="text-sm" style={{ color: "var(--text-secondary)" }}>Geen posts in deze periode.</p>
         ) : (
           <ul className="space-y-1.5">
             {cadence.map(({ date, count }) => (
@@ -160,10 +160,10 @@ export default async function AdminPlatformStatsPage({ params, searchParams }: P
   const overviewTab = (
     <div className="space-y-5">
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        <KpiCard label="Fleet followers" value={stats.followerCount.toLocaleString()} hint="Latest snapshot" />
-        <KpiCard label="Views" value={stats.windowViews.toLocaleString()} trend={stats.viewsDelta} hint={range.label} />
-        <KpiCard label="Engagement" value={stats.windowEngagement.toLocaleString()} trend={stats.engagementDelta} />
-        <KpiCard label="Connections" value={stats.connectionCount.toLocaleString()} hint="Across all creators" />
+        <KpiCard label="Fleetvolgers" value={stats.followerCount.toLocaleString("nl-NL")} hint="Laatste snapshot" />
+        <KpiCard label="Views" value={stats.windowViews.toLocaleString("nl-NL")} trend={stats.viewsDelta} hint={range.label} />
+        <KpiCard label="Engagement" value={stats.windowEngagement.toLocaleString("nl-NL")} trend={stats.engagementDelta} />
+        <KpiCard label="Connecties" value={stats.connectionCount.toLocaleString("nl-NL")} hint="Over alle creators" />
       </div>
       <DailyViewsChart data={dailySeries} />
       <TopCreators rows={stats.topCreators} platform={platform} />
@@ -203,7 +203,7 @@ export default async function AdminPlatformStatsPage({ params, searchParams }: P
             {PLATFORM_LABEL[platform]} (fleet)
           </h1>
           <p className="text-sm mt-1" style={{ color: "var(--text-secondary)" }}>
-            {stats.connectionCount} connections · {range.label}
+            {stats.connectionCount} connecties - {range.label}
           </p>
         </div>
         <TimeRangeSelector value={range.key} />
@@ -211,9 +211,9 @@ export default async function AdminPlatformStatsPage({ params, searchParams }: P
 
       <StatsTabs
         tabs={[
-          { id: "overview", label: "Overview", content: overviewTab },
+          { id: "overview", label: "Overzicht", content: overviewTab },
           { id: "content", label: "Content", content: contentTab },
-          { id: "audience", label: "Audience", content: audienceTab },
+          { id: "audience", label: "Publiek", content: audienceTab },
           { id: "trends", label: "Trends", content: trendsContent },
         ]}
       />
@@ -234,7 +234,7 @@ function TopCreators({
       style={{ background: "var(--bg-card)", border: "1px solid var(--border)" }}
     >
       <p className="px-5 py-3 text-xs uppercase tracking-wide font-semibold" style={{ color: "var(--text-muted)" }}>
-        Top creators on this platform
+        Topcreators op dit platform
       </p>
       <ul style={{ borderTop: "1px solid var(--border)" }}>
         {rows.map((r) => (
@@ -252,7 +252,7 @@ function TopCreators({
             </Link>
             <div className="text-right">
               <p className="text-sm font-semibold" style={{ color: "var(--text-primary)" }}>
-                {r.views.toLocaleString()}
+                {r.views.toLocaleString("nl-NL")}
               </p>
               <p className="text-[10px] uppercase tracking-wide" style={{ color: "var(--text-muted)" }}>
                 views

@@ -226,7 +226,7 @@ export default async function CampaignHealthPage({ params }: PageProps) {
             </div>
           </div>
           <p className="hidden" style={{ color: "var(--text-secondary)" }}>
-            {campaign.status} deadline {campaign.deadline.toLocaleDateString()}{" "}
+            {campaign.status} deadline {campaign.deadline.toLocaleDateString("nl-NL")}{" "}
             {campaign.platforms.map((p) => p.toLowerCase()).join(" / ")}
           </p>
           <div className="mt-5 max-w-xl">
@@ -254,8 +254,8 @@ export default async function CampaignHealthPage({ params }: PageProps) {
         <div className="w-full sm:w-[220px] xl:w-[240px]">
           <KpiCard
             label="Doelviews"
-            value={totalEligibleViews.toLocaleString()}
-            hint={goalViews > 0 ? `van ${goalViews.toLocaleString()} (${Math.round(goalPct * 100)}%)` : "geen doel ingesteld"}
+            value={totalEligibleViews.toLocaleString("nl-NL")}
+            hint={goalViews > 0 ? `van ${goalViews.toLocaleString("nl-NL")} (${Math.round(goalPct * 100)}%)` : "geen doel ingesteld"}
             tone={goalViews > 0 && goalPct < 0.5 ? "warning" : "default"}
           />
         </div>
@@ -272,14 +272,14 @@ export default async function CampaignHealthPage({ params }: PageProps) {
         <div className="w-full sm:w-[220px] xl:w-[240px]">
           <KpiCard
             label="Minimum betaalde views"
-            value={minimumPaidViews.toLocaleString()}
+            value={minimumPaidViews.toLocaleString("nl-NL")}
             hint="per ingezonden video"
           />
         </div>
         <div className="w-full sm:w-[220px] xl:w-[240px]">
           <KpiCard
             label="Maximum betaalde views"
-            value={maximumPaidViews === null ? "Onbeperkt" : maximumPaidViews.toLocaleString()}
+            value={maximumPaidViews === null ? "Onbeperkt" : maximumPaidViews.toLocaleString("nl-NL")}
             hint="per ingezonden video"
           />
         </div>
@@ -310,7 +310,7 @@ export default async function CampaignHealthPage({ params }: PageProps) {
               hint="signup plus onboarding"
             />
             <KpiCard
-              label="Active clippers"
+              label="Actieve clippers"
               value={referralReport.activeClipperCount}
               hint="minimaal 1 submission"
             />
@@ -357,9 +357,7 @@ export default async function CampaignHealthPage({ params }: PageProps) {
                     <th className="px-5 py-3 text-right text-xs font-semibold" style={{ color: "var(--text-secondary)" }}>
                       Invites
                     </th>
-                    <th className="px-5 py-3 text-right text-xs font-semibold" style={{ color: "var(--text-secondary)" }}>
-                      Active
-                    </th>
+                    <th className="px-5 py-3 text-right text-xs font-semibold" style={{ color: "var(--text-secondary)" }}>Actief</th>
                     <th className="px-5 py-3 text-right text-xs font-semibold" style={{ color: "var(--text-secondary)" }}>
                       Eerste submissions
                     </th>
@@ -456,7 +454,7 @@ export default async function CampaignHealthPage({ params }: PageProps) {
                         {creator.submissions}
                       </td>
                       <td className="px-5 py-3 text-right text-sm tabular-nums" style={{ color: "var(--text-primary)" }}>
-                        {creator.views.toLocaleString()}
+                        {creator.views.toLocaleString("nl-NL")}
                       </td>
                       <td className="px-5 py-3 text-right text-sm tabular-nums" style={{ color: "var(--text-primary)" }}>
                         EUR {creator.earned.toFixed(2)}

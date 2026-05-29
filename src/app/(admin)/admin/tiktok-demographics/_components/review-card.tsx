@@ -27,7 +27,7 @@ export function ReviewCard({ submissionId, videoUrl }: ReviewCardProps) {
       try {
         await reviewTikTokDemographic(submissionId, decision, notes.trim());
       } catch (err) {
-        setError(err instanceof Error ? err.message : "Review failed");
+        setError(err instanceof Error ? err.message : "Review mislukt");
       }
     });
   };
