@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { PATCH } from "./route";
+import { DELETE, PATCH } from "./route";
 
 const routeMocks = vi.hoisted(() => ({
   requireAuth: vi.fn(),
@@ -47,15 +47,18 @@ const updatedLead = {
   contactLinkedIn: null,
   website: "merry.example",
   source: null,
+  conversionBlocker: "Wacht op reactie",
   stage: "LEAD",
   priority: "MEDIUM",
   owner: "Solomon",
+  nextAction: "Stuur case study",
   lastContactedAt: null,
   nextFollowUpAt: null,
   estimatedValue: 0,
   probability: 0,
   notes: "Same owner cluster",
   convertedBrandId: null,
+  archivedAt: null,
   leadGroupId: "group-1",
   leadGroup: { id: "group-1", name: "Solomon owner cluster", owner: "Solomon", notes: null },
   createdAt: new Date("2026-05-29T10:00:00.000Z"),
@@ -133,6 +136,54 @@ describe("/api/admin/crm/leads/[id]", () => {
     });
   });
 
+  it("supports status-only partial updates", async () => {
+    routeMocks.brandLeadUpdate.mockResolvedValue({ ...updatedLead, stage: "CONTACTED" });
+
+    const response = await PATCH(
+      new Request("https://app.test/api/admin/crm/leads/lead-1", {
+        method: "PATCH",
+        body: JSON.stringify({ stage: "CONTACTED" }),
+      }),
+      params,
+    );
+
+    expect(response.status).toBe(200);
+    expect(routeMocks.brandLeadUpdate).toHaveBeenCalledWith({
+      where: { id: "lead-1" },
+      data: { stage: "CONTACTED" },
+      include: { leadGroup: true },
+    });
+  });
+
+  it("stores blocker and next action updates", async () => {
+    routeMocks.brandLeadUpdate.mockResolvedValue({
+      ...updatedLead,
+      conversionBlocker: "Budget/prijs",
+      nextAction: "Nieuwe pricing sturen",
+    });
+
+    const response = await PATCH(
+      new Request("https://app.test/api/admin/crm/leads/lead-1", {
+        method: "PATCH",
+        body: JSON.stringify({
+          conversionBlocker: "Budget/prijs",
+          nextAction: "Nieuwe pricing sturen",
+        }),
+      }),
+      params,
+    );
+
+    expect(response.status).toBe(200);
+    expect(routeMocks.brandLeadUpdate).toHaveBeenCalledWith({
+      where: { id: "lead-1" },
+      data: {
+        conversionBlocker: "Budget/prijs",
+        nextAction: "Nieuwe pricing sturen",
+      },
+      include: { leadGroup: true },
+    });
+  });
+
   it("still saves the lead when the audit user cannot be resolved", async () => {
     routeMocks.userFindFirst.mockResolvedValue(null);
     routeMocks.brandLeadUpdate.mockResolvedValue(updatedLead);
@@ -173,6 +224,48 @@ describe("/api/admin/crm/leads/[id]", () => {
       where: { id: "lead-1" },
       data: expect.objectContaining({ leadGroupId: null }),
       include: { leadGroup: true },
+    });
+  });
+
+  it("restores an archived lead when archivedAt is null", async () => {
+    routeMocks.brandLeadUpdate.mockResolvedValue({ ...updatedLead, archivedAt: null });
+
+    const response = await PATCH(
+      new Request("https://app.test/api/admin/crm/leads/lead-1", {
+        method: "PATCH",
+        body: JSON.stringify({ archivedAt: null }),
+      }),
+      params,
+    );
+
+    expect(response.status).toBe(200);
+    expect(routeMocks.brandLeadUpdate).toHaveBeenCalledWith({
+      where: { id: "lead-1" },
+      data: { archivedAt: null },
+      include: { leadGroup: true },
+    });
+  });
+
+  it("soft archives a lead instead of deleting it", async () => {
+    const archivedAt = new Date("2026-05-30T10:00:00.000Z");
+    routeMocks.brandLeadUpdate.mockResolvedValue({ ...updatedLead, archivedAt });
+
+    const response = await DELETE(
+      new Request("https://app.test/api/admin/crm/leads/lead-1", { method: "DELETE" }),
+      params,
+    );
+
+    expect(response.status).toBe(200);
+    expect(routeMocks.brandLeadUpdate).toHaveBeenCalledWith({
+      where: { id: "lead-1" },
+      data: { archivedAt: expect.any(Date) },
+      include: { leadGroup: true },
+    });
+    expect(routeMocks.auditLogCreate).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        action: "crm.lead.archive",
+        entityId: "lead-1",
+      }),
     });
   });
 

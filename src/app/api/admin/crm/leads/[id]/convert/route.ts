@@ -5,13 +5,20 @@ import { prisma } from "@/lib/prisma";
 import { jsonError, serialize } from "@/lib/admin/agency-api";
 import { createCrmAuditLog } from "../../audit";
 
+const optionalText = (max: number) =>
+  z.preprocess((value) => {
+    if (typeof value !== "string") return value;
+    const trimmed = value.trim();
+    return trimmed.length > 0 ? trimmed : undefined;
+  }, z.string().max(max).optional().nullable());
+
 const convertSchema = z.object({
-  niche: z.string().max(120).optional().nullable(),
-  website: z.string().url().optional().nullable(),
+  niche: optionalText(120),
+  website: optionalText(300),
   monthlyValue: z.coerce.number().min(0).optional(),
   currency: z.string().length(3).optional(),
-  accountManager: z.string().max(120).optional().nullable(),
-  packageName: z.string().max(120).optional().nullable(),
+  accountManager: optionalText(120),
+  packageName: optionalText(120),
 });
 
 export async function POST(
@@ -31,8 +38,8 @@ export async function POST(
       const brand = await tx.brand.create({
         data: {
           name: lead.brandName,
-          niche: data.niche,
-          website: data.website,
+          niche: data.niche ?? lead.category,
+          website: data.website ?? lead.website,
           contactName: lead.contactName,
           contactEmail: lead.contactEmail,
           owner: lead.owner,
@@ -46,7 +53,7 @@ export async function POST(
       const onboarding = await tx.brandOnboarding.create({
         data: {
           brandId: brand.id,
-          packageName: data.packageName,
+          packageName: data.packageName ?? lead.subcategory,
           monthlyPrice: data.monthlyValue ?? Number(lead.estimatedValue),
           accountManager: data.accountManager ?? lead.owner,
         },
