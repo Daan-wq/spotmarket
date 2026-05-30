@@ -111,8 +111,8 @@
       "submitting": "Instellen...",
       "submitFailed": "Instellen is mislukt",
       "unknownError": "Er ging iets mis",
-      "completeTitle": "Je bent klaar",
-      "completeBody": "Nog twee dingen ontgrendelen je eerste uitbetaling: koppel een social account en doe mee aan een campagne. Kies waarmee je wilt starten.",
+      "completeTitle": "Je account staat. Nu je eerste clip.",
+      "completeBody": "Je plaatst de video op je eigen social, daarna dien je die post in via ClipProfit. Vanaf dat moment kunnen we views volgen.",
       "connectAccount": "Social account koppelen",
       "browseCampaigns": "Campagnes bekijken",
       "skip": "Overslaan - naar campagnes",
@@ -699,6 +699,58 @@
     }
   },
   "creator": {
+    "firstClipOnboarding": {
+      "eyebrow": "Onboarding",
+      "title": "Stuur je eerste clip in",
+      "current": "Volgende stap",
+      "learnMore": "Hoe werkt dit?",
+      "steps": {
+        "discord": {
+          "label": "Discord",
+          "description": "Koppel Discord zodat je toegang krijgt tot campagnekanalen en campagne-updates.",
+          "cta": "Discord koppelen"
+        },
+        "connect_account": {
+          "label": "Social koppelen",
+          "description": "Koppel het social account waarop je clips post. Zo kan ClipProfit je posts laden en views meten.",
+          "cta": "Social account koppelen"
+        },
+        "join_campaign": {
+          "label": "Campagne kiezen",
+          "description": "Kies een campagne die past bij je account, lees de brief en join voordat je content indient.",
+          "cta": "Campagnes bekijken"
+        },
+        "submit_clip": {
+          "label": "Clip indienen",
+          "description": "Post je clip eerst op je social kanaal. Kom daarna terug om de post te selecteren en in te dienen.",
+          "cta": "Clip indienen"
+        }
+      },
+      "details": [
+        "Lees de brief",
+        "Maak en plaats je clip op je eigen kanaal",
+        "Gebruik verplichte hashtags",
+        "Kom terug naar ClipProfit, ververs je posts en klik Indienen"
+      ],
+      "drawer": {
+        "title": "Zo werkt je eerste clip",
+        "description": "ClipProfit meet de post die jij indient. De video zelf plaats je dus eerst op je eigen kanaal.",
+        "beforeTitle": "Voor je indient",
+        "notFoundTitle": "Zie je je clip niet?",
+        "notFoundBody": "Controleer of je het juiste platform en account hebt geselecteerd. Staat je clip net live, wacht dan een paar minuten en klik opnieuw op Verversen."
+      },
+      "submitHint": {
+        "eyebrow": "Eerste clip",
+        "title": "Selecteer de post die je net hebt geplaatst",
+        "help": "Clip niet zichtbaar?",
+        "notFound": "Controleer het juiste account, wacht een paar minuten na posten en klik opnieuw op Verversen.",
+        "steps": [
+          "Selecteer het platform en account waarop je hebt gepost.",
+          "Klik Verversen als je clip net live staat.",
+          "Selecteer je post en klik Indienen."
+        ]
+      }
+    },
     "shared": {
       "fallbackCreator": "Creator",
       "emptyValue": "-",

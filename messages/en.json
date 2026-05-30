@@ -111,8 +111,8 @@
       "submitting": "Setting up...",
       "submitFailed": "Failed to complete setup",
       "unknownError": "Something went wrong",
-      "completeTitle": "You're set up",
-      "completeBody": "Two more things unlock your first payout: connecting a social account and joining a campaign. Pick one to start.",
+      "completeTitle": "Your account is set. Now your first clip.",
+      "completeBody": "Post the video on your own social account first, then submit that post in ClipProfit. From that moment we can track views.",
       "connectAccount": "Connect a social account",
       "browseCampaigns": "Browse campaigns",
       "skip": "Skip for now - go to campaigns",
@@ -699,6 +699,58 @@
     }
   },
   "creator": {
+    "firstClipOnboarding": {
+      "eyebrow": "Onboarding",
+      "title": "Submit your first clip",
+      "current": "Next step",
+      "learnMore": "How it works",
+      "steps": {
+        "discord": {
+          "label": "Discord",
+          "description": "Connect Discord so you can access campaign channels and campaign updates.",
+          "cta": "Connect Discord"
+        },
+        "connect_account": {
+          "label": "Connect social",
+          "description": "Connect the social account where you post clips. ClipProfit uses it to load posts and track views.",
+          "cta": "Connect social account"
+        },
+        "join_campaign": {
+          "label": "Pick a campaign",
+          "description": "Choose a campaign that fits your account, read the brief, and join before submitting content.",
+          "cta": "Browse campaigns"
+        },
+        "submit_clip": {
+          "label": "Submit clip",
+          "description": "Post your clip on your social channel first. Then come back to select and submit the post.",
+          "cta": "Submit clip"
+        }
+      },
+      "details": [
+        "Read the brief",
+        "Create and post your clip on your own channel",
+        "Use required hashtags",
+        "Come back to ClipProfit, refresh your posts, and click Submit"
+      ],
+      "drawer": {
+        "title": "How your first clip works",
+        "description": "ClipProfit tracks the post you submit. The video itself needs to be published on your own channel first.",
+        "beforeTitle": "Before you submit",
+        "notFoundTitle": "Can't see your clip?",
+        "notFoundBody": "Check that the right platform and account are selected. If your clip just went live, wait a few minutes and click Refresh again."
+      },
+      "submitHint": {
+        "eyebrow": "First clip",
+        "title": "Select the post you just published",
+        "help": "Clip not visible?",
+        "notFound": "Check the right account, wait a few minutes after posting, and click Refresh again.",
+        "steps": [
+          "Select the platform and account you posted on.",
+          "Click Refresh if your clip just went live.",
+          "Select your post and click Submit."
+        ]
+      }
+    },
     "shared": {
       "fallbackCreator": "Creator",
       "emptyValue": "-",

@@ -6,6 +6,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
 import posthog from "posthog-js";
 import { StepIndicator } from "@/components/onboarding/step-indicator";
+import type { FirstClipStep } from "@/lib/first-clip-onboarding";
 
 const NICHES = ["Memes", "Sport", "Gaming", "Lifestyle", "Finance", "Tech", "Other"] as const;
 
@@ -42,6 +43,7 @@ export function OnboardingForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const t = useTranslations("onboarding.form");
+  const firstClipT = useTranslations("creator.firstClipOnboarding");
   const stepLabels = t.raw("steps") as string[];
   const sourceLabels = t.raw("sources") as string[];
   const nicheLabels = t.raw("niches") as string[];
@@ -53,6 +55,8 @@ export function OnboardingForm() {
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [completionNextHref, setCompletionNextHref] = useState("/api/auth/discord?return_to=%2Fcreator%2Fcampaigns%3FfirstClip%3D1");
+  const [completionNextStep, setCompletionNextStep] = useState<FirstClipStep>("discord");
 
   const [form, setForm] = useState<FormData>({
     attributionSource: "",
@@ -95,9 +99,15 @@ export function OnboardingForm() {
           experienceLevel: form.experienceLevel || undefined,
         }),
       });
+      const data = await res.json();
       if (!res.ok) {
-        const data = await res.json();
         throw new Error(data.error ?? t("submitFailed"));
+      }
+      if (typeof data.firstClipNextHref === "string") {
+        setCompletionNextHref(data.firstClipNextHref);
+      }
+      if (typeof data.firstClipNextStep === "string") {
+        setCompletionNextStep(data.firstClipNextStep as FirstClipStep);
       }
       posthog.capture("clipprofit_onboarding_completed", {
         attribution_source: attribution || "Unknown",
@@ -277,14 +287,14 @@ export function OnboardingForm() {
 
           <div className="mt-6 grid gap-2.5">
             <Link
-              href="/creator/connections"
+              href={completionNextHref}
               className="block py-3 rounded-xl text-sm font-semibold text-white transition-colors"
               style={{ background: "var(--accent)" }}
             >
-              {t("connectAccount")}
+              {firstClipT(`steps.${completionNextStep === "done" ? "submit_clip" : completionNextStep}.cta`)}
             </Link>
             <Link
-              href="/creator/campaigns"
+              href="/creator/campaigns?firstClip=1"
               className="block py-3 rounded-xl text-sm font-semibold transition-colors"
               style={{
                 border: "1.5px solid #e2e8f0",

@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
+import { HelpCircle } from "lucide-react";
 import type { NormalizedPost } from "@/types/media";
 import PlatformTabs from "@/components/shared/connections/PlatformTabs";
 import AccountSwitcher from "@/components/shared/connections/AccountSwitcher";
@@ -36,6 +37,7 @@ interface Props {
   /** When set, the client tries to find this post in the grid and pre-select it. */
   prefillUrl?: string | null;
   prefillPlatform?: Platform | null;
+  showFirstClipHint?: boolean;
 }
 
 // Per-card identity. Two cards rendered in the grid can share a `url`
@@ -67,8 +69,10 @@ export default function SubmitPageClient({
   closedForSubmissionsReason,
   prefillUrl,
   prefillPlatform,
+  showFirstClipHint = false,
 }: Props) {
   const t = useTranslations("creator.applications.submit");
+  const firstClipT = useTranslations("creator.firstClipOnboarding");
   const sharedT = useTranslations("creator.shared");
   const router = useRouter();
 
@@ -128,6 +132,7 @@ export default function SubmitPageClient({
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [connectPromptPlatform, setConnectPromptPlatform] = useState<Platform | null>(null);
+  const [showFirstClipTroubleshooting, setShowFirstClipTroubleshooting] = useState(false);
 
   // Synchronous single-flight lock across submitOne + submitSelected. Two
   // rapid clicks on different per-card Submit buttons (or per-card + bulk)
@@ -501,6 +506,50 @@ export default function SubmitPageClient({
           style={{ background: "rgba(234,179,8,0.1)", color: "#ca8a04" }}
         >
           {t("prefillNotFound")}
+        </div>
+      )}
+
+      {showFirstClipHint && (
+        <div className="mb-4 rounded-2xl border border-neutral-200 bg-neutral-50 p-4">
+          <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+            <div className="min-w-0">
+              <p className="text-xs font-semibold uppercase tracking-[0.14em] text-neutral-400">
+                {firstClipT("submitHint.eyebrow")}
+              </p>
+              <h2 className="mt-1 text-lg font-semibold text-neutral-950">
+                {firstClipT("submitHint.title")}
+              </h2>
+            </div>
+            <div className="relative">
+              <button
+                type="button"
+                onClick={() => setShowFirstClipTroubleshooting((open) => !open)}
+                className="inline-flex h-9 items-center justify-center gap-2 rounded-xl border border-neutral-200 bg-white px-3 text-sm font-semibold text-neutral-700 transition hover:bg-neutral-100 hover:text-neutral-950"
+                aria-expanded={showFirstClipTroubleshooting}
+              >
+                <HelpCircle className="h-4 w-4" aria-hidden />
+                {firstClipT("submitHint.help")}
+              </button>
+              {showFirstClipTroubleshooting ? (
+                <div
+                  role="dialog"
+                  className="absolute right-0 z-20 mt-2 w-[min(22rem,calc(100vw-2rem))] rounded-2xl border border-neutral-200 bg-white p-4 text-sm leading-6 text-neutral-600 shadow-xl"
+                >
+                  {firstClipT("submitHint.notFound")}
+                </div>
+              ) : null}
+            </div>
+          </div>
+          <ol className="mt-4 grid gap-2 md:grid-cols-3">
+            {(firstClipT.raw("submitHint.steps") as string[]).map((item, index) => (
+              <li key={item} className="flex gap-3 rounded-xl bg-white px-3 py-3 text-sm text-neutral-600 ring-1 ring-neutral-200">
+                <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-neutral-950 text-xs font-semibold text-white">
+                  {index + 1}
+                </span>
+                <span className="leading-6">{item}</span>
+              </li>
+            ))}
+          </ol>
         </div>
       )}
 

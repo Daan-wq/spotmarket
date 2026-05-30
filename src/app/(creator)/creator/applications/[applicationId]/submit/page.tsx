@@ -6,6 +6,7 @@ import {
   campaignClosedForSubmissionsReason,
   isCampaignClosedForSubmissions,
 } from "@/lib/campaign-submission-state";
+import { getFirstClipOnboardingStatus } from "@/lib/first-clip-onboarding";
 
 export default async function SubmitPage({
   params,
@@ -20,7 +21,7 @@ export default async function SubmitPage({
 
   const user = await prisma.user.findUnique({
     where: { supabaseId: userId },
-    select: { creatorProfile: { select: { id: true } } },
+    select: { id: true, creatorProfile: { select: { id: true } } },
   });
   if (!user?.creatorProfile) notFound();
   const creatorProfileId = user.creatorProfile.id;
@@ -42,7 +43,7 @@ export default async function SubmitPage({
   });
   if (!application) notFound();
 
-  const [igConns, ttConns, ytConns, fbConns, submissions] = await Promise.all([
+  const [igConns, ttConns, ytConns, fbConns, submissions, firstClipStatus] = await Promise.all([
     prisma.creatorIgConnection.findMany({
       where: { creatorProfileId, isVerified: true, accessToken: { not: null } },
       select: { id: true, igUsername: true },
@@ -63,6 +64,7 @@ export default async function SubmitPage({
       where: { applicationId, status: { in: ["PENDING", "APPROVED", "FLAGGED"] } },
       select: { postUrl: true },
     }),
+    getFirstClipOnboardingStatus(user.id),
   ]);
 
   const prefillPlatform =
@@ -98,6 +100,7 @@ export default async function SubmitPage({
       initialSubmittedUrls={submissions.map((s) => s.postUrl)}
       prefillUrl={sp.prefillUrl ?? null}
       prefillPlatform={prefillPlatform}
+      showFirstClipHint={!firstClipStatus.firstClipSubmitted}
     />
   );
 }
