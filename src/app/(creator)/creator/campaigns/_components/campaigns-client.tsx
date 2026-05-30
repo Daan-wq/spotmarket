@@ -507,7 +507,13 @@ function CampaignCard({ campaign }: { campaign: CampaignData }) {
       </div>
 
       <div className="mt-5">
-        <CampaignBudgetProgress totalPaid={campaign.totalPaid} totalBudget={campaign.totalBudget} compact />
+        <CampaignBudgetProgress
+          totalPaid={campaign.totalPaid}
+          totalBudget={campaign.totalBudget}
+          compact
+          status={campaign.status}
+          deadline={campaign.deadlineIso}
+        />
       </div>
 
       <div className="mt-5 flex flex-wrap items-center justify-between gap-3">

@@ -162,10 +162,14 @@ export function CampaignBudgetProgress({
   totalPaid,
   totalBudget,
   compact = false,
+  status,
+  deadline,
 }: {
   totalPaid: number;
   totalBudget: number;
   compact?: boolean;
+  status?: CampaignStatus;
+  deadline?: Date | string | null;
 }) {
   const locale = useLocale();
   const deadlineT = useTranslations("creator.campaigns.deadline");
@@ -174,8 +178,16 @@ export function CampaignBudgetProgress({
     totalBudget > 0 ? Math.min((totalPaid / totalBudget) * 100, 100) : 0;
   const remaining = Math.max(0, totalBudget - totalPaid);
   const budgetState = getCampaignBudgetState(totalPaid, totalBudget);
+  const showBudgetStatus = shouldShowCampaignBudgetNotice({
+    totalPaid,
+    totalBudget,
+    status,
+    deadline,
+  });
   const statusMeta =
-    budgetState === "full"
+    !showBudgetStatus
+      ? null
+      : budgetState === "full"
       ? {
           label: budgetT("fullLabel"),
           detail: budgetT("fullDetail"),
@@ -247,6 +259,31 @@ function getCampaignBudgetState(totalPaid: number, totalBudget: number) {
   if (ratio >= 1) return "full";
   if (ratio >= 0.9) return "near-limit";
   return "open";
+}
+
+export function shouldShowCampaignBudgetNotice({
+  totalPaid,
+  totalBudget,
+  status,
+  deadline,
+}: {
+  totalPaid: number;
+  totalBudget: number;
+  status?: CampaignStatus | null;
+  deadline?: Date | string | null;
+}) {
+  return (
+    getCampaignBudgetState(totalPaid, totalBudget) !== "open" &&
+    !isCampaignDisplayedAsEnded(status, deadline)
+  );
+}
+
+export function isCampaignDisplayedAsEnded(
+  status: CampaignStatus | null | undefined,
+  deadline?: Date | string | null,
+) {
+  if (!status) return false;
+  return campaignStatusDisplay(status, deadline).labelKey === "ended";
 }
 
 function deadlineLabel(

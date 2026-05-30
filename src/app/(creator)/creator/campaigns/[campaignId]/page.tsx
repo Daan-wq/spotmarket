@@ -358,6 +358,8 @@ export default async function CampaignDetailPage({
             <CampaignBudgetProgress
               totalPaid={totalPaid}
               totalBudget={totalBudget}
+              status={campaign.status}
+              deadline={campaign.deadline}
             />
           </div>
         </div>
