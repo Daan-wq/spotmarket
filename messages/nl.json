@@ -1034,6 +1034,12 @@
         "oneDay": "1 dag over",
         "days": "{days} dagen over",
         "paidProgress": "{paid} van {budget} betaald"
+      },
+      "budget": {
+        "nearLimitLabel": "Campagnebudget bijna vol",
+        "nearLimitDetail": "Er is nog ongeveer {remaining} beschikbaar. Nieuwe of later goedgekeurde clips kunnen deels gecapt worden.",
+        "fullLabel": "Budget vol",
+        "fullDetail": "Campagnebudget limiet is bereikt. Views blijven meetellen, maar extra projected earnings kunnen door het budgetlimiet op 0 uitkomen."
       }
     },
     "videos": {

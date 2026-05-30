@@ -1034,6 +1034,12 @@
         "oneDay": "1 day left",
         "days": "{days} days left",
         "paidProgress": "{paid} of {budget} paid"
+      },
+      "budget": {
+        "nearLimitLabel": "Campaign budget almost full",
+        "nearLimitDetail": "About {remaining} is still available. New or later-approved clips can be partly capped.",
+        "fullLabel": "Budget full",
+        "fullDetail": "The campaign budget limit has been reached. Views still count, but extra projected earnings can land at 0 because of the budget limit."
       }
     },
     "videos": {
