@@ -49,9 +49,9 @@ const NAV: Array<{ labelKey: string; items: NavItem[] }> = [
     labelKey: "delivery",
     items: [
       { href: "/admin/crm", labelKey: "leads", icon: BriefcaseBusiness },
+      { href: "/admin/brands", labelKey: "brands", icon: FileText },
       { href: "/admin/discord", labelKey: "discord", icon: Send },
       { href: "/admin/recruitment", labelKey: "recruitment", icon: Sparkles, hiddenFromSidebar: true },
-      { href: "/admin/brands", labelKey: "brands", icon: FileText },
       { href: "/admin/onboarding", labelKey: "onboarding", icon: ListChecks, hiddenFromSidebar: true },
     ],
   },

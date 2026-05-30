@@ -29,10 +29,11 @@ vi.mock("next-intl", () => ({
 }));
 
 describe("AdminSidebar", () => {
-  it("rendert het Discord-item in de adminnavigatie", () => {
+  it("zet Discord onder Merken in de adminnavigatie", () => {
     const html = renderToStaticMarkup(<AdminSidebar initials="A" email="admin@test.com" />);
 
     expect(html).toContain("/admin/discord");
     expect(html).toContain("Discord");
+    expect(html.indexOf("Merken")).toBeLessThan(html.indexOf("Discord"));
   });
 });
