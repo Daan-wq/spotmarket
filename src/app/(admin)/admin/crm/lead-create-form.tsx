@@ -4,6 +4,7 @@ import { ChevronDown, Plus } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useRef, useState, useTransition } from "react";
 import { Button } from "@/components/ui/button";
+import { CONVERSION_BLOCKER_OPTIONS } from "@/lib/admin/crm-leads";
 
 const inputClass = "h-10 rounded-md border border-neutral-200 px-3 text-sm outline-none transition focus:border-neutral-500";
 
@@ -28,6 +29,8 @@ export function LeadCreateForm() {
       website: String(formData.get("website") ?? ""),
       owner: String(formData.get("owner") ?? ""),
       source: String(formData.get("source") ?? ""),
+      conversionBlocker: String(formData.get("conversionBlocker") ?? ""),
+      nextAction: String(formData.get("nextAction") ?? ""),
       notes: String(formData.get("notes") ?? ""),
     };
 
@@ -81,6 +84,13 @@ export function LeadCreateForm() {
               <input name="contactLinkedIn" placeholder="LinkedIn" className={inputClass} />
               <input name="website" placeholder="Website" className={`${inputClass} md:col-span-2`} />
               <input name="source" placeholder="Bron" className={`${inputClass} md:col-span-2`} />
+              <select name="conversionBlocker" className={`${inputClass} bg-white md:col-span-2`} defaultValue="">
+                <option value="">Reden nog geen brand</option>
+                {CONVERSION_BLOCKER_OPTIONS.map((option) => (
+                  <option key={option} value={option}>{option}</option>
+                ))}
+              </select>
+              <input name="nextAction" placeholder="Volgende actie" className={`${inputClass} md:col-span-2`} />
               <input name="notes" placeholder="Notities" className={`${inputClass} md:col-span-2`} />
             </div>
             {error ? <p className="mt-3 text-sm text-red-600">{error}</p> : null}

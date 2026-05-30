@@ -34,8 +34,8 @@ model User {
   campaignReferralAttributions CampaignReferralAttribution[] @relation("CampaignReferralReferrer")
   referredCampaignAttributions CampaignReferralAttribution[] @relation("CampaignReferralUser")
   ownedCampaigns               Campaign[]                    @relation("OwnedCampaigns")
-  createdDiscordTemplates       DiscordMessageTemplate[]      @relation("DiscordTemplateCreatedBy")
-  updatedDiscordTemplates       DiscordMessageTemplate[]      @relation("DiscordTemplateUpdatedBy")
+  createdDiscordTemplates      DiscordMessageTemplate[]      @relation("DiscordTemplateCreatedBy")
+  updatedDiscordTemplates      DiscordMessageTemplate[]      @relation("DiscordTemplateUpdatedBy")
   notifications                Notification[]
   campaignSubmissions          CampaignSubmission[]
   wallet                       Wallet?
@@ -384,38 +384,43 @@ model Brand {
 }
 
 model BrandLead {
-  id               String         @id @default(cuid())
-  brandName        String
-  leadGroupId      String?
-  leadGroup        LeadGroup?     @relation(fields: [leadGroupId], references: [id], onDelete: SetNull)
-  category         String?
-  subcategory      String?
-  contactName      String?
-  contactEmail     String?
-  contactPhone     String?
-  contactLinkedIn  String?
-  website          String?
-  source           String?
-  stage            BrandLeadStage @default(LEAD)
-  priority         LeadPriority   @default(MEDIUM)
-  owner            String?
-  lastContactedAt  DateTime?
-  nextFollowUpAt   DateTime?
-  estimatedValue   Decimal        @default(0) @db.Decimal(12, 2)
-  probability      Int            @default(0)
-  notes            String?        @db.Text
-  convertedBrandId String?
-  convertedBrand   Brand?         @relation("ConvertedBrand", fields: [convertedBrandId], references: [id])
-  createdAt        DateTime       @default(now())
-  updatedAt        DateTime       @updatedAt
+  id                String         @id @default(cuid())
+  brandName         String
+  leadGroupId       String?
+  leadGroup         LeadGroup?     @relation(fields: [leadGroupId], references: [id], onDelete: SetNull)
+  category          String?
+  subcategory       String?
+  contactName       String?
+  contactEmail      String?
+  contactPhone      String?
+  contactLinkedIn   String?
+  website           String?
+  source            String?
+  conversionBlocker String?
+  stage             BrandLeadStage @default(LEAD)
+  priority          LeadPriority   @default(MEDIUM)
+  owner             String?
+  nextAction        String?
+  lastContactedAt   DateTime?
+  nextFollowUpAt    DateTime?
+  estimatedValue    Decimal        @default(0) @db.Decimal(12, 2)
+  probability       Int            @default(0)
+  notes             String?        @db.Text
+  convertedBrandId  String?
+  convertedBrand    Brand?         @relation("ConvertedBrand", fields: [convertedBrandId], references: [id])
+  archivedAt        DateTime?
+  createdAt         DateTime       @default(now())
+  updatedAt         DateTime       @updatedAt
 
   @@index([stage])
   @@index([priority])
   @@index([nextFollowUpAt])
   @@index([convertedBrandId])
+  @@index([archivedAt])
   @@index([leadGroupId])
   @@index([category])
   @@index([subcategory])
+  @@index([conversionBlocker])
 }
 
 model LeadGroup {
@@ -769,14 +774,14 @@ model CampaignSubmission {
   thumbnailUrl       String?
   mediaType          String?
   claimedViews       Int              @default(0)
-  brandMessage  String?          @db.Text
-  viewCount     Int?
-  likeCount     Int?
-  commentCount  Int?
-  shareCount    Int?
-  baselineViews Int?
-  eligibleViews Int?
-  status        SubmissionStatus @default(PENDING)
+  brandMessage       String?          @db.Text
+  viewCount          Int?
+  likeCount          Int?
+  commentCount       Int?
+  shareCount         Int?
+  baselineViews      Int?
+  eligibleViews      Int?
+  status             SubmissionStatus @default(PENDING)
 
   // Source tracking for bio-verify fallback flow
   sourcePlatform         BioPlatform?
@@ -810,13 +815,13 @@ model CampaignSubmission {
   qcReviews         QcReview[]
   payoutRunItems    PayoutRunItem[]
 
+  @@unique([normalizedPlatform, platformVideoId])
   @@index([applicationId])
   @@index([creatorId])
   @@index([campaignId])
   @@index([status])
   @@index([settledAt])
   @@index([sourceConnectionType, sourceConnectionId])
-  @@unique([normalizedPlatform, platformVideoId])
   @@index([logoStatus])
   @@index([productionAssignmentId])
 }

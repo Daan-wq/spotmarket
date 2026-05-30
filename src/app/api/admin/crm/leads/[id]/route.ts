@@ -58,3 +58,42 @@ export async function PATCH(
     return jsonError(error, "[PATCH /api/admin/crm/leads/[id]]");
   }
 }
+
+export async function DELETE(
+  _req: Request,
+  { params }: { params: Promise<{ id: string }> },
+) {
+  try {
+    const { userId } = await requireAuth("admin");
+    const { id } = await params;
+
+    const lead = await prisma.$transaction(async (tx) => {
+      const existingLead = await tx.brandLead.findUnique({
+        where: { id },
+        select: { id: true },
+      });
+      if (!existingLead) return null;
+
+      const archivedLead = await tx.brandLead.update({
+        where: { id },
+        data: { archivedAt: new Date() },
+        include: { leadGroup: true },
+      });
+
+      await createCrmAuditLog(tx, {
+        authUserId: userId,
+        action: "crm.lead.archive",
+        entityId: archivedLead.id,
+        metadata: { brandName: archivedLead.brandName, groupName: archivedLead.leadGroup?.name ?? null },
+      });
+
+      return archivedLead;
+    });
+
+    if (!lead) return NextResponse.json({ error: "Lead not found" }, { status: 404 });
+
+    return NextResponse.json(serialize(lead));
+  } catch (error) {
+    return jsonError(error, "[DELETE /api/admin/crm/leads/[id]]");
+  }
+}
