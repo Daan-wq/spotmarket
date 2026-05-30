@@ -9,5 +9,5 @@ export async function FirstClipCoach({ supabaseId }: { supabaseId: string }) {
   const status = await getFirstClipOnboardingStatus(header.id);
   if (status.nextStep === "done") return null;
 
-  return <FirstClipCoachClient status={status} />;
+  return <FirstClipCoachClient status={status} storageScope={supabaseId} />;
 }

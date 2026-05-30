@@ -704,6 +704,77 @@
       "title": "Submit your first clip",
       "current": "Next step",
       "learnMore": "How it works",
+      "tour": {
+        "start": "Start quick tour",
+        "resume": "Resume tour",
+        "skipCoach": "Skip tour",
+        "dialogLabel": "First clip tour",
+        "counter": "Step {current} of {total}",
+        "close": "Close tour",
+        "skip": "Skip",
+        "back": "Back",
+        "next": "Next",
+        "finish": "Done",
+        "fallback": "This part is not visible right now. We'll point you to the closest step on this page.",
+        "openPageHint": "This step lives on another page. Open the page to continue.",
+        "steps": {
+          "coach_overview": {
+            "title": "We'll show you the path",
+            "body": "This coach stays visible until your first clip is submitted. You can still browse freely; the button always points to the best next step.",
+            "cta": "Go to next step"
+          },
+          "discord_cta": {
+            "title": "Connect Discord",
+            "body": "Discord gives you access to campaign channels and updates. If you registered with Discord, this step is already done.",
+            "cta": "Connect Discord"
+          },
+          "social_connect": {
+            "title": "Connect your social account",
+            "body": "Connect the account you will post from. ClipProfit uses it to load posts and track views once you submit.",
+            "cta": "Connect social"
+          },
+          "campaign_guide": {
+            "title": "See how campaigns work",
+            "body": "Check the rules and payout flow, then choose a campaign that fits your account.",
+            "cta": "Open campaigns"
+          },
+          "campaign_card": {
+            "title": "Choose a campaign",
+            "body": "Open a campaign, check the reward, platforms, and deadline, and read the brief before joining.",
+            "cta": "Choose campaign"
+          },
+          "campaign_join": {
+            "title": "Read the brief first",
+            "body": "Check the requirements and hashtags. If everything fits, join the campaign or go straight to clip submission.",
+            "cta": "Open campaigns"
+          },
+          "submit_platform": {
+            "title": "Choose the platform",
+            "body": "Select the platform where you published the clip. Post your clip on your own channel first.",
+            "cta": "Open submit page"
+          },
+          "submit_account": {
+            "title": "Choose the right account",
+            "body": "Use the account where the clip is live. If you have multiple accounts, this prevents loading the wrong posts.",
+            "cta": "Open submit page"
+          },
+          "submit_refresh": {
+            "title": "Refresh your posts",
+            "body": "Can't see your clip? Wait a few minutes after posting, then click Refresh again.",
+            "cta": "Open submit page"
+          },
+          "submit_post": {
+            "title": "Select your clip",
+            "body": "Choose the post you just published. Check that required hashtags are in the caption.",
+            "cta": "Open submit page"
+          },
+          "submit_action": {
+            "title": "Submit your clip",
+            "body": "Click Submit. From that moment, ClipProfit can track the post and process views.",
+            "cta": "Open submit page"
+          }
+        }
+      },
       "steps": {
         "discord": {
           "label": "Discord",

@@ -120,6 +120,7 @@ export function CampaignDetailClient({
       <button
         onClick={handleSubmitContent}
         disabled={disabled}
+        data-first-clip-target="campaign-join"
         className="w-full flex items-center justify-center gap-2 py-3.5 rounded-xl font-semibold transition-all disabled:cursor-not-allowed disabled:opacity-100"
         style={{
           background: isClosedForSubmissions ? "#e5e5e5" : "var(--primary)",

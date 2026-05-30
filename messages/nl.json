@@ -704,6 +704,77 @@
       "title": "Stuur je eerste clip in",
       "current": "Volgende stap",
       "learnMore": "Hoe werkt dit?",
+      "tour": {
+        "start": "Start korte tour",
+        "resume": "Tour hervatten",
+        "skipCoach": "Tour overslaan",
+        "dialogLabel": "Eerste clip tour",
+        "counter": "Stap {current} van {total}",
+        "close": "Tour sluiten",
+        "skip": "Overslaan",
+        "back": "Terug",
+        "next": "Volgende",
+        "finish": "Klaar",
+        "fallback": "Dit onderdeel is nu niet zichtbaar. We wijzen je naar de dichtstbijzijnde stap op deze pagina.",
+        "openPageHint": "Deze stap staat op een andere pagina. Open de pagina om verder te gaan.",
+        "steps": {
+          "coach_overview": {
+            "title": "We wijzen je kort de weg",
+            "body": "Deze coach blijft zichtbaar tot je eerste clip is ingediend. Je kunt vrij rondkijken; de knop wijst steeds naar je beste volgende stap.",
+            "cta": "Naar volgende stap"
+          },
+          "discord_cta": {
+            "title": "Koppel Discord",
+            "body": "Discord geeft toegang tot campagnekanalen en updates. Als je via Discord bent geregistreerd, is deze stap al klaar.",
+            "cta": "Discord koppelen"
+          },
+          "social_connect": {
+            "title": "Koppel je social account",
+            "body": "Koppel het account waarop je straks post. Zo kan ClipProfit je posts laden en views volgen zodra je indient.",
+            "cta": "Social koppelen"
+          },
+          "campaign_guide": {
+            "title": "Bekijk hoe campagnes werken",
+            "body": "Lees kort de regels en hoe uitbetalingen werken. Daarna kies je een campagne die past bij je account.",
+            "cta": "Campagnes openen"
+          },
+          "campaign_card": {
+            "title": "Kies een campagne",
+            "body": "Open een campagne, check de beloning, platformen en deadline, en lees de brief voordat je joined.",
+            "cta": "Campagne kiezen"
+          },
+          "campaign_join": {
+            "title": "Lees eerst de brief",
+            "body": "Controleer de vereisten en hashtags. Als alles klopt, join je de campagne of ga je direct naar clip indienen.",
+            "cta": "Campagnes openen"
+          },
+          "submit_platform": {
+            "title": "Kies het platform",
+            "body": "Selecteer het platform waarop je de clip hebt geplaatst. Plaats je clip eerst op je eigen kanaal.",
+            "cta": "Submitpagina openen"
+          },
+          "submit_account": {
+            "title": "Kies het juiste account",
+            "body": "Gebruik het account waarop de clip live staat. Bij meerdere accounts voorkom je hiermee dat de verkeerde posts worden geladen.",
+            "cta": "Submitpagina openen"
+          },
+          "submit_refresh": {
+            "title": "Ververs je posts",
+            "body": "Zie je je clip niet? Wacht een paar minuten na posten en klik opnieuw op Verversen.",
+            "cta": "Submitpagina openen"
+          },
+          "submit_post": {
+            "title": "Selecteer je clip",
+            "body": "Kies de post die je net hebt geplaatst. Controleer of verplichte hashtags in de caption staan.",
+            "cta": "Submitpagina openen"
+          },
+          "submit_action": {
+            "title": "Dien je clip in",
+            "body": "Klik Indienen. Vanaf dat moment kan ClipProfit de post volgen en views verwerken.",
+            "cta": "Submitpagina openen"
+          }
+        }
+      },
       "steps": {
         "discord": {
           "label": "Discord",

@@ -22,7 +22,11 @@ export function ConnectPlatformDialog({ children }: { children: ReactNode }) {
 
   return (
     <>
-      <Button type="button" onClick={() => setOpen(true)}>
+      <Button
+        type="button"
+        onClick={() => setOpen(true)}
+        data-first-clip-target="social-connect"
+      >
         {t("button")}
       </Button>
       {open ? (

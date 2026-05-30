@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { shouldShowFirstClipCoach } from "./first-clip-coach-client";
+import { shouldRenderFirstClipCoach, shouldShowFirstClipCoach } from "./first-clip-coach-client";
 
 describe("shouldShowFirstClipCoach", () => {
   it.each([
@@ -20,5 +20,14 @@ describe("shouldShowFirstClipCoach", () => {
     "/admin",
   ])("hides the coach on %s", (pathname) => {
     expect(shouldShowFirstClipCoach(pathname)).toBe(false);
+  });
+
+  it("hides the coach once the first clip flow is done", () => {
+    expect(
+      shouldRenderFirstClipCoach("/creator/campaigns", { nextStep: "done" }),
+    ).toBe(false);
+    expect(
+      shouldRenderFirstClipCoach("/creator/campaigns", { nextStep: "join_campaign" }),
+    ).toBe(true);
   });
 });

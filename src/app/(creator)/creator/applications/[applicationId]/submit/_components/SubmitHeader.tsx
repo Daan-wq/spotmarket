@@ -38,6 +38,7 @@ export default function SubmitHeader({ campaignName, requirements, isLoading, on
         <button
           onClick={onRefresh}
           disabled={isLoading}
+          data-first-clip-target="submit-refresh"
           className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm transition-colors disabled:opacity-40 cursor-pointer disabled:cursor-default"
           style={{ border: "1px solid var(--border)", color: "var(--text-secondary)" }}
           title={t("refreshPosts")}
