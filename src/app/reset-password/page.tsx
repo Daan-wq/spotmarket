@@ -54,62 +54,72 @@ export default function ResetPasswordPage() {
     router.push("/sign-in?reset=1");
   }
 
-  const inp = "w-full px-3 py-2.5 rounded-lg text-sm outline-none transition-all text-white";
-  const inpStyle = { border: "1px solid rgba(255,255,255,0.1)", background: "rgba(255,255,255,0.05)" };
+  const inputClass =
+    "h-12 w-full rounded-[18px] border border-[#d2d9db] bg-white px-4 text-sm text-[#010405] outline-none transition-[border-color,box-shadow,background-color] placeholder:text-[#8a9699] focus:border-[#5d5fef] focus:bg-white focus:shadow-[0_0_0_4px_rgba(93,95,239,0.14)]";
 
   return (
-    <div className="min-h-screen flex items-center justify-center px-4" style={{ background: "var(--dark-bg)" }}>
-      <div className="w-full max-w-sm">
-        <div className="text-center mb-8">
+    <main className="min-h-screen bg-[#f7f9f9] px-4 py-10 text-[#010405]">
+      <div className="auth-page-enter mx-auto flex min-h-[calc(100vh-5rem)] w-full max-w-[480px] flex-col items-center justify-center">
+        <div className="mb-11 text-center">
           <Link href="/" className="inline-block">
-            <Logo variant="dark" size="sm" />
+            <Logo variant="light" size="md" />
           </Link>
         </div>
 
-        <div className="rounded-xl p-8" style={{ background: "var(--dark-card)", border: "1px solid rgba(255,255,255,0.07)" }}>
-          <h1 className="text-xl font-semibold mb-1 text-white">{t("title")}</h1>
-          <p className="text-sm mb-6" style={{ color: "var(--text-secondary)" }}>{t("description")}</p>
-
-          <form onSubmit={handleSubmit} className="space-y-4">
+        <section
+          className="w-full overflow-hidden rounded-[24px] border border-[#d2d9db] bg-[#fbfcfc] p-8 shadow-[0_2px_8px_rgba(23,33,54,0.08),0_18px_48px_rgba(23,33,54,0.08)] sm:p-10"
+          aria-labelledby="reset-password-title"
+        >
+          <div className="mb-7 flex items-start justify-between gap-4">
             <div>
-              <label className="block text-sm font-medium mb-1.5" style={{ color: "var(--text-muted)" }}>{t("newPassword")}</label>
+              <span className="mb-4 block h-1.5 w-14 rounded-full bg-gradient-to-r from-[#5d5fef] to-[#3f41b3]" aria-hidden="true" />
+              <h1 id="reset-password-title" className="text-[32px] font-extrabold leading-[1.02] text-[#010405] sm:text-[40px]">{t("title")}</h1>
+            </div>
+            <span className="mt-1 h-10 w-10 shrink-0 rounded-full bg-gradient-to-br from-[#5d5fef] to-[#3f41b3] shadow-[0_16px_34px_rgba(93,95,239,0.24)]" aria-hidden="true" />
+          </div>
+          <p className="mb-7 text-[15px] leading-6 text-[#5a6569]">{t("description")}</p>
+
+          <form onSubmit={handleSubmit} className="space-y-5">
+            <div>
+              <label htmlFor="new-password" className="mb-2 block text-sm font-semibold text-[#282f31]">{t("newPassword")}</label>
               <div className="relative">
                 <input
+                  id="new-password"
                   type={showPassword ? "text" : "password"}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   required
                   minLength={6}
                   autoFocus
-                  className={inp}
-                  style={{ ...inpStyle, paddingRight: "2.5rem" }}
-                  onFocus={(e) => { e.currentTarget.style.borderColor = "var(--accent)"; e.currentTarget.style.boxShadow = "0 0 0 3px rgba(79,70,229,0.15)"; }}
-                  onBlur={(e) => { e.currentTarget.style.borderColor = "rgba(255,255,255,0.1)"; e.currentTarget.style.boxShadow = "none"; }}
+                  className={`${inputClass} pr-11`}
                 />
-                <button type="button" onClick={() => setShowPassword(v => !v)} className="absolute right-3 top-1/2 -translate-y-1/2" style={{ color: "var(--text-secondary)" }} tabIndex={-1}>
+                <button
+                  type="button"
+                  onClick={() => setShowPassword((v) => !v)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 rounded-full p-1 text-[#5a6569] transition-colors hover:bg-[#e8eced] hover:text-[#010405]"
+                  tabIndex={-1}
+                >
                   <EyeIcon open={showPassword} />
                 </button>
               </div>
             </div>
             <div>
-              <label className="block text-sm font-medium mb-1.5" style={{ color: "var(--text-muted)" }}>{t("confirmPassword")}</label>
+              <label htmlFor="confirm-password" className="mb-2 block text-sm font-semibold text-[#282f31]">{t("confirmPassword")}</label>
               <div className="relative">
                 <input
+                  id="confirm-password"
                   type={showPassword ? "text" : "password"}
                   value={confirm}
                   onChange={(e) => setConfirm(e.target.value)}
                   required
                   minLength={6}
-                  className={inp}
-                  style={{ ...inpStyle, paddingRight: "2.5rem" }}
-                  onFocus={(e) => { e.currentTarget.style.borderColor = "var(--accent)"; e.currentTarget.style.boxShadow = "0 0 0 3px rgba(79,70,229,0.15)"; }}
-                  onBlur={(e) => { e.currentTarget.style.borderColor = "rgba(255,255,255,0.1)"; e.currentTarget.style.boxShadow = "none"; }}
+                  className={`${inputClass} pr-11`}
                 />
               </div>
             </div>
 
             {error && (
-              <p className="text-sm px-3 py-2 rounded-lg" style={{ color: "var(--error-text-light)", background: "rgba(239,68,68,0.1)", border: "1px solid rgba(239,68,68,0.2)" }}>
+              <p className="rounded-[18px] border border-[#fecaca] bg-[#fff1f2] px-4 py-3 text-sm font-medium leading-6 text-[#be123c]" aria-live="assertive">
                 {error}
               </p>
             )}
@@ -117,16 +127,13 @@ export default function ResetPasswordPage() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full py-2.5 rounded-lg text-sm font-semibold text-white transition-opacity disabled:opacity-50"
-              style={{ background: "var(--accent)" }}
-              onMouseEnter={(e) => { if (!loading) (e.currentTarget as HTMLElement).style.opacity = "0.88"; }}
-              onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.opacity = "1"; }}
+              className="h-12 w-full rounded-full bg-gradient-to-br from-[#5d5fef] to-[#3f41b3] text-sm font-bold text-white shadow-[0_16px_34px_rgba(93,95,239,0.24)] transition-[filter,transform,opacity] hover:brightness-110 active:scale-[0.98] disabled:opacity-55 disabled:hover:brightness-100"
             >
               {loading ? t("submitting") : t("submit")}
             </button>
           </form>
-        </div>
+        </section>
       </div>
-    </div>
+    </main>
   );
 }
