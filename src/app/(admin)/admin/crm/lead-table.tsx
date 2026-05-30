@@ -25,10 +25,10 @@ export type { LeadTableLead } from "./lead-table-utils";
 
 const contactLinkClass = "break-all text-sm font-medium text-neutral-950 underline underline-offset-2";
 const inputClass =
-  "h-9 w-full rounded-md border border-neutral-200 bg-white px-2.5 text-sm outline-none transition focus:border-neutral-500 disabled:bg-neutral-50";
+  "h-9 w-full min-w-0 rounded-md border border-neutral-200 bg-white px-2.5 text-sm outline-none transition focus:border-neutral-500 disabled:bg-neutral-50";
 const selectClass = `${inputClass} pr-8`;
 const textareaClass =
-  "min-h-20 w-full rounded-md border border-neutral-200 bg-white px-2.5 py-2 text-sm outline-none transition focus:border-neutral-500 disabled:bg-neutral-50";
+  "min-h-20 w-full min-w-0 rounded-md border border-neutral-200 bg-white px-2.5 py-2 text-sm outline-none transition focus:border-neutral-500 disabled:bg-neutral-50";
 
 type LeadDraft = {
   groupName: string;
@@ -388,19 +388,30 @@ function LeadTable({
   onStatusChange: (lead: LeadTableLead, stage: LeadStage) => void;
 }) {
   return (
-    <div className="overflow-x-auto">
-      <table className="w-full min-w-[1320px] text-sm">
+    <div className="w-full">
+      <table className="w-full table-fixed text-sm">
+        <colgroup>
+          <col className="w-[7%]" />
+          <col className="w-[12%]" />
+          <col className="w-[16%]" />
+          <col className="w-[10%]" />
+          <col className="w-[12%]" />
+          <col className="w-[14%]" />
+          <col className="w-[8%]" />
+          <col className="w-[13%]" />
+          <col className="w-[8%]" />
+        </colgroup>
         <thead>
           <tr className="border-b border-neutral-100 text-left text-[11px] uppercase tracking-[0.14em] text-neutral-500">
-            <th className="px-4 py-3 font-semibold">Groep</th>
-            <th className="px-4 py-3 font-semibold">Status</th>
-            <th className="px-4 py-3 font-semibold">Bedrijf / lead</th>
-            <th className="px-4 py-3 font-semibold">Reden</th>
-            <th className="px-4 py-3 font-semibold">Volgende actie</th>
-            <th className="px-4 py-3 font-semibold">Contact</th>
-            <th className="px-4 py-3 font-semibold">Eigenaar</th>
-            <th className="px-4 py-3 font-semibold">Notities</th>
-            <th className="px-4 py-3 text-right font-semibold">Acties</th>
+            <th className="px-3 py-3 font-semibold">Groep</th>
+            <th className="px-3 py-3 font-semibold">Status</th>
+            <th className="px-3 py-3 font-semibold">Bedrijf / lead</th>
+            <th className="px-3 py-3 font-semibold">Reden</th>
+            <th className="px-3 py-3 font-semibold">Volgende actie</th>
+            <th className="px-3 py-3 font-semibold">Contact</th>
+            <th className="px-3 py-3 font-semibold">Eigenaar</th>
+            <th className="px-3 py-3 font-semibold">Notities</th>
+            <th className="px-3 py-3 text-right font-semibold">Acties</th>
           </tr>
         </thead>
         <tbody>
@@ -455,8 +466,8 @@ function ReadRow({
 
   return (
     <tr className={`border-b border-neutral-100 last:border-0 ${lead.archivedAt ? "bg-neutral-50/70" : ""}`}>
-      <td className="px-4 py-3 align-top text-neutral-500">{leadGroupName(lead)}</td>
-      <td className="w-44 px-4 py-3 align-top">
+      <td className="min-w-0 break-words px-3 py-3 align-top text-neutral-500">{leadGroupName(lead)}</td>
+      <td className="min-w-0 px-3 py-3 align-top">
         <select
           aria-label={`Status voor ${lead.brandName}`}
           value={lead.stage}
@@ -469,26 +480,26 @@ function ReadRow({
           ))}
         </select>
       </td>
-      <td className="px-4 py-3 align-top">
+      <td className="min-w-0 px-3 py-3 align-top">
         <p className="font-semibold text-neutral-950">{lead.brandName}</p>
         {lead.website ? <ContactLink href={lead.website} label={lead.website} /> : null}
         {converted ? <p className="mt-1 text-xs font-medium text-emerald-700">Staat in Brands</p> : null}
       </td>
-      <td className="px-4 py-3 align-top text-neutral-700">{lead.conversionBlocker || "-"}</td>
-      <td className="max-w-52 px-4 py-3 align-top text-neutral-700">
+      <td className="min-w-0 break-words px-3 py-3 align-top text-neutral-700">{lead.conversionBlocker || "-"}</td>
+      <td className="min-w-0 px-3 py-3 align-top text-neutral-700">
         <p className="line-clamp-2">{lead.nextAction || "-"}</p>
         {lead.nextFollowUpAt ? <p className="mt-1 text-xs text-neutral-400">{formatDateDisplay(lead.nextFollowUpAt)}</p> : null}
       </td>
-      <td className="px-4 py-3 align-top">
+      <td className="min-w-0 px-3 py-3 align-top">
         <p className="text-neutral-700">{lead.contactName || "-"}</p>
         <ContactDetails lead={lead} />
       </td>
-      <td className="px-4 py-3 align-top text-neutral-700">{leadOwner(lead) || "-"}</td>
-      <td className="max-w-xs px-4 py-3 align-top text-neutral-600">
+      <td className="min-w-0 break-words px-3 py-3 align-top text-neutral-700">{leadOwner(lead) || "-"}</td>
+      <td className="min-w-0 px-3 py-3 align-top text-neutral-600">
         <p className="line-clamp-3">{[lead.source, lead.notes].filter(Boolean).join(" / ") || "-"}</p>
       </td>
-      <td className="px-4 py-3 text-right align-top">
-        <div className="flex justify-end gap-1">
+      <td className="min-w-0 px-3 py-3 text-right align-top">
+        <div className="flex flex-wrap justify-end gap-1">
           <IconButton label={`Bewerk ${lead.brandName}`} onClick={onEdit} disabled={isBusy}>
             <Pencil className="h-4 w-4" />
           </IconButton>
@@ -527,17 +538,17 @@ function EditRow({
 }) {
   return (
     <tr className="border-b border-neutral-100 bg-neutral-50/70 last:border-0">
-      <td className="px-4 py-3 align-top">
+      <td className="min-w-0 px-3 py-3 align-top">
         <input aria-label="Groep" value={draft.groupName} onChange={(event) => onChange("groupName", event.target.value)} className={inputClass} disabled={isPending} />
       </td>
-      <td className="px-4 py-3 align-top">
+      <td className="min-w-0 px-3 py-3 align-top">
         <select aria-label="Status" value={draft.stage} onChange={(event) => onChange("stage", event.target.value as LeadStage)} className={selectClass} disabled={isPending}>
           {LEAD_STAGE_OPTIONS.map((option) => (
             <option key={option.value} value={option.value}>{option.label}</option>
           ))}
         </select>
       </td>
-      <td className="px-4 py-3 align-top">
+      <td className="min-w-0 px-3 py-3 align-top">
         <div className="space-y-2">
           <input aria-label="Bedrijf of lead" required value={draft.brandName} onChange={(event) => onChange("brandName", event.target.value)} className={inputClass} disabled={isPending} />
           <input aria-label="Website" value={draft.website} onChange={(event) => onChange("website", event.target.value)} className={inputClass} disabled={isPending} />
@@ -545,7 +556,7 @@ function EditRow({
           <input aria-label="Subcategorie" value={draft.subcategory} onChange={(event) => onChange("subcategory", event.target.value)} className={inputClass} disabled={isPending} />
         </div>
       </td>
-      <td className="px-4 py-3 align-top">
+      <td className="min-w-0 px-3 py-3 align-top">
         <select aria-label="Reden nog geen brand" value={draft.conversionBlocker} onChange={(event) => onChange("conversionBlocker", event.target.value)} className={selectClass} disabled={isPending}>
           <option value="">Geen reden</option>
           {CONVERSION_BLOCKER_OPTIONS.map((option) => (
@@ -553,13 +564,13 @@ function EditRow({
           ))}
         </select>
       </td>
-      <td className="px-4 py-3 align-top">
+      <td className="min-w-0 px-3 py-3 align-top">
         <div className="space-y-2">
           <input aria-label="Volgende actie" value={draft.nextAction} onChange={(event) => onChange("nextAction", event.target.value)} className={inputClass} disabled={isPending} />
           <input aria-label="Follow-up datum" type="date" value={draft.nextFollowUpAt} onChange={(event) => onChange("nextFollowUpAt", event.target.value)} className={inputClass} disabled={isPending} />
         </div>
       </td>
-      <td className="px-4 py-3 align-top">
+      <td className="min-w-0 px-3 py-3 align-top">
         <div className="space-y-2">
           <input aria-label="Contactpersoon" value={draft.contactName} onChange={(event) => onChange("contactName", event.target.value)} className={inputClass} disabled={isPending} />
           <input aria-label="Email" type="email" value={draft.contactEmail} onChange={(event) => onChange("contactEmail", event.target.value)} className={inputClass} disabled={isPending} />
@@ -567,17 +578,17 @@ function EditRow({
           <input aria-label="LinkedIn" value={draft.contactLinkedIn} onChange={(event) => onChange("contactLinkedIn", event.target.value)} className={inputClass} disabled={isPending} />
         </div>
       </td>
-      <td className="px-4 py-3 align-top">
+      <td className="min-w-0 px-3 py-3 align-top">
         <input aria-label="Eigenaar" value={draft.owner} onChange={(event) => onChange("owner", event.target.value)} className={inputClass} disabled={isPending} />
       </td>
-      <td className="px-4 py-3 align-top">
+      <td className="min-w-0 px-3 py-3 align-top">
         <div className="space-y-2">
           <input aria-label="Bron" value={draft.source} onChange={(event) => onChange("source", event.target.value)} className={inputClass} disabled={isPending} />
           <textarea aria-label="Notities" value={draft.notes} onChange={(event) => onChange("notes", event.target.value)} className={textareaClass} disabled={isPending} />
         </div>
       </td>
-      <td className="px-4 py-3 text-right align-top">
-        <div className="flex justify-end gap-2">
+      <td className="min-w-0 px-3 py-3 text-right align-top">
+        <div className="flex flex-wrap justify-end gap-1">
           <IconButton label="Lead opslaan" onClick={onSave} disabled={isPending || !draft.brandName.trim()} tone="dark">
             {isPending ? <span className="h-3 w-3 animate-spin rounded-full border-2 border-current border-r-transparent" /> : <Save className="h-4 w-4" />}
           </IconButton>
