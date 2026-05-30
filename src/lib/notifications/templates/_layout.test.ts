@@ -43,4 +43,29 @@ describe("email app URL", () => {
 
     expect(styles.appUrl).toBe("https://app.clipprofit.com");
   });
+
+  it("renders the shared shell with the branded surface and dashboard CTA", async () => {
+    delete process.env.NEXT_PUBLIC_APP_URL;
+    delete process.env.NEXT_PUBLIC_APP_URL_EN;
+    delete process.env.NEXT_PUBLIC_APP_URL_NL;
+    vi.resetModules();
+
+    const React = await import("react");
+    const { render } = await import("@react-email/components");
+    const { EmailShell, styles } = await import("./_layout");
+
+    const html = await render(
+      React.createElement(
+        EmailShell,
+        { preview: "Preview text", heading: "Mail heading" },
+        React.createElement("p", { style: styles.p }, "Mail body"),
+      ),
+    );
+
+    expect(html).toContain("background-color:#f7f9f9");
+    expect(html).toContain("ClipProfit");
+    expect(html).toContain("Mail heading");
+    expect(html).toContain("Open dashboard");
+    expect(html).toContain("https://app.clipprofit.com");
+  });
 });

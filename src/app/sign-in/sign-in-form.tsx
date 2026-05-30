@@ -90,29 +90,38 @@ export function SignInForm() {
 
   if (mode === "forgot") {
     return (
-      <>
-        <h1 className="mb-2 text-[24px] font-semibold leading-tight text-zinc-50">{forgotT("title")}</h1>
-        <p className="mb-6 text-sm text-[#a1a1aa]">
+      <div className="-m-8 rounded-[20px] bg-[#f7f9f9] p-8 text-[#010405] sm:-m-10 sm:p-10">
+        <div className="mb-6 flex items-start justify-between gap-4">
+          <div>
+            <span className="mb-4 block h-1.5 w-14 rounded-full bg-gradient-to-r from-[#5d5fef] to-[#3f41b3]" aria-hidden="true" />
+            <h1 className="text-[32px] font-extrabold leading-[1.02] text-[#010405] sm:text-[40px]">{forgotT("title")}</h1>
+          </div>
+          <span className="mt-1 h-10 w-10 shrink-0 rounded-full bg-gradient-to-br from-[#5d5fef] to-[#3f41b3] shadow-[0_16px_34px_rgba(93,95,239,0.24)]" aria-hidden="true" />
+        </div>
+        <p className="mb-7 text-[15px] leading-6 text-[#5a6569]">
           {forgotT("description")}
         </p>
 
         {success ? (
-          <div className="space-y-4">
-            <p className="rounded-lg px-3 py-3 text-sm" style={{ color: "#86efac", background: "rgba(34,197,94,0.12)", border: "1px solid rgba(34,197,94,0.22)" }}>
+          <div className="space-y-5">
+            <p
+              className="rounded-[18px] border border-[#bdebd3] bg-[#e7fbef] px-4 py-4 text-sm font-medium leading-6 text-[#047857]"
+              aria-live="polite"
+            >
               {success}
             </p>
             <button
               type="button"
               onClick={() => { setMode("signin"); setSuccess(null); setError(null); }}
-              className="text-sm font-medium text-zinc-50 hover:underline"
+              className="inline-flex h-11 items-center justify-center rounded-full px-5 text-sm font-semibold text-[#303295] transition-colors hover:bg-[#e8e6ff] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#5d5fef]"
             >
               {forgotT("back")}
             </button>
           </div>
         ) : (
-          <form onSubmit={handleForgotPassword} className="space-y-4">
+          <form onSubmit={handleForgotPassword} className="space-y-5">
             <div>
-              <label htmlFor="forgot-email" className="block text-sm font-medium mb-1.5 text-[#d4d4d8]">{commonT("email")}</label>
+              <label htmlFor="forgot-email" className="mb-2 block text-sm font-semibold text-[#282f31]">{commonT("email")}</label>
               <input
                 id="forgot-email"
                 type="email"
@@ -120,15 +129,12 @@ export function SignInForm() {
                 onChange={(e) => setEmail(e.target.value)}
                 required
                 autoFocus
-                className={inputClass}
-                style={inputStyle}
-                onFocus={(e) => { e.currentTarget.style.borderColor = "#5865F2"; e.currentTarget.style.boxShadow = "0 0 0 3px rgba(88,101,242,0.2)"; }}
-                onBlur={(e) => { e.currentTarget.style.borderColor = "#2a2a2a"; e.currentTarget.style.boxShadow = "none"; }}
+                className="h-12 w-full rounded-[18px] border border-[#d2d9db] bg-white px-4 text-sm text-[#010405] outline-none transition-[border-color,box-shadow,background-color] placeholder:text-[#8a9699] focus:border-[#5d5fef] focus:bg-white focus:shadow-[0_0_0_4px_rgba(93,95,239,0.14)]"
               />
             </div>
 
             {error && (
-              <p className="rounded-lg px-3 py-2 text-sm" style={{ color: "#fecaca", background: "rgba(239,68,68,0.14)", border: "1px solid rgba(239,68,68,0.24)" }}>
+              <p className="rounded-[18px] border border-[#fecaca] bg-[#fff1f2] px-4 py-3 text-sm font-medium leading-6 text-[#be123c]" aria-live="assertive">
                 {error}
               </p>
             )}
@@ -136,10 +142,7 @@ export function SignInForm() {
             <button
               type="submit"
               disabled={loading}
-              className="h-12 w-full rounded-xl text-sm font-semibold text-zinc-950 transition-opacity disabled:opacity-50"
-              style={{ background: "#ffffff" }}
-              onMouseEnter={(e) => { if (!loading) (e.currentTarget as HTMLElement).style.opacity = "0.88"; }}
-              onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.opacity = "1"; }}
+              className="h-12 w-full rounded-full bg-gradient-to-br from-[#5d5fef] to-[#3f41b3] text-sm font-bold text-white shadow-[0_16px_34px_rgba(93,95,239,0.24)] transition-[filter,transform,opacity] hover:brightness-110 active:scale-[0.98] disabled:opacity-55 disabled:hover:brightness-100"
             >
               {loading ? forgotT("submitting") : forgotT("submit")}
             </button>
@@ -147,13 +150,13 @@ export function SignInForm() {
             <button
               type="button"
               onClick={() => { setMode("signin"); setError(null); }}
-              className="w-full text-center text-sm text-[#a1a1aa] hover:text-white"
+              className="w-full rounded-full py-2 text-center text-sm font-semibold text-[#5a6569] transition-colors hover:bg-[#e8eced] hover:text-[#010405] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#5d5fef]"
             >
               {forgotT("back")}
             </button>
           </form>
         )}
-      </>
+      </div>
     );
   }
 
