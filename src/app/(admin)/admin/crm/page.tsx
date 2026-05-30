@@ -20,7 +20,7 @@ export default async function CrmPage() {
   const archivedLeads = leads.filter((lead) => lead.archivedAt);
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-8 xl:relative xl:left-1/2 xl:w-[calc(100vw-20rem)] xl:max-w-[1680px] xl:-translate-x-1/2">
       <PageHeader
         eyebrow="Sales"
         title="Leaddatabase"
