@@ -5,6 +5,8 @@ import { DataTable } from "@/components/ui/data-table";
 import { EmptyState } from "@/components/ui/empty-state";
 import { PageHeader, SectionHeader, StatCard } from "@/components/ui/page";
 import { prisma } from "@/lib/prisma";
+import { getEurUsdRate, type ExchangeRate } from "@/lib/exchange-rates";
+import { formatAdminPayoutAmount } from "@/lib/admin/payout-amount-display";
 import { formatCurrencyPrecise, formatDate, titleCaseEnum } from "@/lib/admin/agency-format";
 import { PayoutRunForm } from "./payout-run-form";
 import { PaymentRequestActions } from "./payment-request-actions";
@@ -14,7 +16,7 @@ export const dynamic = "force-dynamic";
 const PAID_LIKE_STATUSES = new Set(["sent", "confirmed"]);
 
 export default async function PayoutsPage() {
-  const [paymentRequests, runs, payouts, approvedUnpaid] = await Promise.all([
+  const [paymentRequests, runs, payouts, approvedUnpaid, eurUsdRate] = await Promise.all([
     prisma.payout.findMany({
       where: {
         paymentMethod: { in: ["BANK_TRANSFER", "CRYPTO"] },
@@ -50,6 +52,7 @@ export default async function PayoutsPage() {
       select: { id: true, earnedAmount: true, creator: { select: { email: true } }, campaign: { select: { name: true } } },
       take: 100,
     }),
+    getEurUsdRate(),
   ]);
 
   const openRuns = runs.filter((run) => ["DRAFT", "FINALIZED", "PROCESSING"].includes(run.status));
@@ -110,9 +113,12 @@ export default async function PayoutsPage() {
               header: "Bedrag",
               align: "right",
               cell: (payout) => (
-                <span className="font-semibold text-neutral-950">
-                  {formatCurrencyPrecise(payout.amount, payout.currency)}
-                </span>
+                <AdminPayoutAmount
+                  amount={payout.amount}
+                  currency={payout.currency}
+                  paymentMethod={payout.paymentMethod}
+                  eurUsdRate={eurUsdRate}
+                />
               ),
             },
             {
@@ -235,7 +241,19 @@ export default async function PayoutsPage() {
                     </div>
                   ),
                 },
-                { key: "amount", header: "Bedrag", align: "right", cell: (payout) => formatCurrencyPrecise(payout.amount, payout.currency) },
+                {
+                  key: "amount",
+                  header: "Bedrag",
+                  align: "right",
+                  cell: (payout) => (
+                    <AdminPayoutAmount
+                      amount={payout.amount}
+                      currency={payout.currency}
+                      paymentMethod={payout.paymentMethod}
+                      eurUsdRate={eurUsdRate}
+                    />
+                  ),
+                },
                 { key: "status", header: "Status", cell: (payout) => <Badge variant={payout.status === "confirmed" || payout.status === "sent" ? "verified" : payout.status === "failed" ? "failed" : "pending"}>{titleCaseEnum(payout.status)}</Badge> },
                 { key: "method", header: "Methode", cell: (payout) => payout.paymentMethod || "-" },
                 { key: "evidence", header: "Betaalbewijs", cell: (payout) => <PayoutEvidence payout={payout} /> },
@@ -248,6 +266,41 @@ export default async function PayoutsPage() {
           </div>
         </div>
       </section>
+    </div>
+  );
+}
+
+function AdminPayoutAmount({
+  amount,
+  currency,
+  paymentMethod,
+  eurUsdRate,
+}: {
+  amount: number | string | { toString(): string } | null | undefined;
+  currency: string | null | undefined;
+  paymentMethod: string | null | undefined;
+  eurUsdRate: ExchangeRate;
+}) {
+  const display = formatAdminPayoutAmount({
+    amount,
+    currency,
+    paymentMethod,
+    eurUsdRate,
+  });
+
+  return (
+    <div className="min-w-[150px] text-right">
+      <p className="font-semibold text-neutral-950">{display.primary}</p>
+      {display.secondary ? (
+        <p className="mt-1 whitespace-nowrap text-[11px] font-medium text-neutral-500">
+          {display.secondary}
+        </p>
+      ) : null}
+      {display.rateLabel ? (
+        <p className="mt-0.5 whitespace-nowrap text-[10px] text-neutral-400">
+          {display.rateLabel}
+        </p>
+      ) : null}
     </div>
   );
 }
