@@ -6,7 +6,6 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
 import posthog from "posthog-js";
 import { StepIndicator } from "@/components/onboarding/step-indicator";
-import type { FirstClipStep } from "@/lib/first-clip-onboarding";
 
 const NICHES = ["Memes", "Sport", "Gaming", "Lifestyle", "Finance", "Tech", "Other"] as const;
 
@@ -55,9 +54,6 @@ export function OnboardingForm() {
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [completionNextHref, setCompletionNextHref] = useState("/api/auth/discord?return_to=%2Fcreator%2Fcampaigns%3FfirstClip%3D1");
-  const [completionNextStep, setCompletionNextStep] = useState<FirstClipStep>("discord");
-
   const [form, setForm] = useState<FormData>({
     attributionSource: "",
     attributionOther: "",
@@ -102,12 +98,6 @@ export function OnboardingForm() {
       const data = await res.json();
       if (!res.ok) {
         throw new Error(data.error ?? t("submitFailed"));
-      }
-      if (typeof data.firstClipNextHref === "string") {
-        setCompletionNextHref(data.firstClipNextHref);
-      }
-      if (typeof data.firstClipNextStep === "string") {
-        setCompletionNextStep(data.firstClipNextStep as FirstClipStep);
       }
       posthog.capture("clipprofit_onboarding_completed", {
         attribution_source: attribution || "Unknown",
@@ -287,11 +277,11 @@ export function OnboardingForm() {
 
           <div className="mt-6 grid gap-2.5">
             <Link
-              href={completionNextHref}
+              href="/creator/dashboard?firstClip=1"
               className="block py-3 rounded-xl text-sm font-semibold text-white transition-colors"
               style={{ background: "var(--accent)" }}
             >
-              {firstClipT(`steps.${completionNextStep === "done" ? "submit_clip" : completionNextStep}.cta`)}
+              {firstClipT("tour.start")}
             </Link>
             <Link
               href="/creator/campaigns?firstClip=1"

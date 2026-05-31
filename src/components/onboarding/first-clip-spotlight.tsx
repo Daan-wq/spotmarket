@@ -5,9 +5,10 @@ import { usePathname, useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { ChevronLeft, ChevronRight, X } from "lucide-react";
 import {
+  FIRST_CLIP_TOUR_OPEN_MOBILE_MENU_EVENT,
   getFirstClipTourStepById,
   getFirstClipTourStepHref,
-  getFirstClipTourStepsForStatus,
+  isFirstClipTourActionStep,
   matchesFirstClipTourRoute,
   resolveFirstClipTourVisibleStepId,
   withFirstClipTourQuery,
@@ -18,11 +19,15 @@ import type { FirstClipOnboardingStatus } from "@/lib/first-clip-onboarding";
 
 interface FirstClipSpotlightProps {
   status: FirstClipOnboardingStatus;
+  steps: readonly FirstClipTourStep[];
   open: boolean;
   activeStepId: FirstClipTourStepId | null;
   onStepChange: (stepId: FirstClipTourStepId | null) => void;
   onClose: () => void;
-  onDismiss: () => void;
+  onSkipStep: (
+    stepId: FirstClipTourStepId,
+    nextStepId: FirstClipTourStepId | null,
+  ) => void;
   onComplete: () => void;
 }
 
@@ -30,20 +35,17 @@ type TargetRect = Pick<DOMRect, "top" | "left" | "width" | "height" | "right" | 
 
 export function FirstClipSpotlight({
   status,
+  steps,
   open,
   activeStepId,
   onStepChange,
   onClose,
-  onDismiss,
+  onSkipStep,
   onComplete,
 }: FirstClipSpotlightProps) {
   const t = useTranslations("creator.firstClipOnboarding.tour");
   const pathname = usePathname();
   const router = useRouter();
-  const steps = useMemo(
-    () => getFirstClipTourStepsForStatus(status.nextStep, pathname),
-    [pathname, status.nextStep],
-  );
   const currentStep =
     getFirstClipTourStepById(activeStepId, steps) ?? steps[0] ?? null;
   const currentIndex = currentStep
@@ -66,11 +68,16 @@ export function FirstClipSpotlight({
     if (!open || !currentStep) return;
 
     let frame = 0;
+    let mobileMenuTimer = 0;
     const update = () => {
+      const mobile = window.innerWidth < 1024;
       setIsMobile(window.innerWidth < 768);
-      const target = document.querySelector<HTMLElement>(
-        `[data-first-clip-target="${currentStep.target}"]`,
-      );
+
+      if (mobile && currentStep.opensMobileMenu) {
+        window.dispatchEvent(new Event(FIRST_CLIP_TOUR_OPEN_MOBILE_MENU_EVENT));
+      }
+
+      const target = findFirstClipTarget(currentStep.target);
 
       if (!target) {
         setHasTarget(false);
@@ -81,12 +88,7 @@ export function FirstClipSpotlight({
             steps,
             requestedStepId: currentStep.id,
             pathname,
-            hasTarget: (step) =>
-              Boolean(
-                document.querySelector(
-                  `[data-first-clip-target="${step.target}"]`,
-                ),
-              ),
+            hasTarget: (step) => Boolean(findFirstClipTarget(step.target)),
           });
           if (fallback && fallback !== currentStep.id) {
             onStepChange(fallback);
@@ -108,9 +110,11 @@ export function FirstClipSpotlight({
     };
 
     const scrollIntoView = () => {
-      const target = document.querySelector<HTMLElement>(
-        `[data-first-clip-target="${currentStep.target}"]`,
-      );
+      if (window.innerWidth < 1024 && currentStep.opensMobileMenu) {
+        window.dispatchEvent(new Event(FIRST_CLIP_TOUR_OPEN_MOBILE_MENU_EVENT));
+        mobileMenuTimer = window.setTimeout(update, 220);
+      }
+      const target = findFirstClipTarget(currentStep.target);
       target?.scrollIntoView({ block: "center", behavior: "smooth" });
       window.setTimeout(update, 180);
     };
@@ -123,6 +127,7 @@ export function FirstClipSpotlight({
 
     return () => {
       window.cancelAnimationFrame(frame);
+      window.clearTimeout(mobileMenuTimer);
       window.removeEventListener("resize", update);
       window.removeEventListener("scroll", update, true);
     };
@@ -133,28 +138,42 @@ export function FirstClipSpotlight({
     if (!currentStep && steps[0]) onStepChange(steps[0].id);
   }, [currentStep, onStepChange, open, steps]);
 
+  const nextStep = useMemo(() => {
+    if (!currentStep || currentIndex < 0) return null;
+    return steps[currentIndex + 1] ?? null;
+  }, [currentIndex, currentStep, steps]);
+
   if (!open || !currentStep || currentIndex < 0) return null;
 
   const routeMatches = matchesFirstClipTourRoute(currentStep, pathname);
-  const isLast = currentIndex === steps.length - 1;
-  const nextStep = isLast ? null : steps[currentIndex + 1];
   const previousStep = currentIndex > 0 ? steps[currentIndex - 1] : null;
   const panelStyle = getPanelStyle(targetRect, isMobile);
+  const isDirectAction =
+    currentStep.id === "discord_cta" || (!routeMatches && isFirstClipTourActionStep(currentStep.id));
+  const isLast = !nextStep;
+
+  function openStepHref(step: FirstClipTourStep) {
+    const href = withFirstClipTourQuery(
+      getFirstClipTourStepHref(step, status),
+      step.id,
+    );
+    if (href.startsWith("/api/") || href.startsWith("http")) {
+      window.location.assign(href);
+      return;
+    }
+    router.push(href);
+  }
 
   function goToStep(step: FirstClipTourStep) {
     onStepChange(step.id);
     if (!matchesFirstClipTourRoute(step, pathname)) {
-      const href = withFirstClipTourQuery(
-        getFirstClipTourStepHref(step, status),
-        step.id,
-      );
-      router.push(href);
+      openStepHref(step);
     }
   }
 
   function handlePrimary() {
-    if (!routeMatches) {
-      goToStep(currentStep);
+    if (!routeMatches || isDirectAction) {
+      openStepHref(currentStep);
       return;
     }
     if (!nextStep) {
@@ -164,16 +183,31 @@ export function FirstClipSpotlight({
     goToStep(nextStep);
   }
 
+  function handleSkip() {
+    const nextUnskippedStep = steps[currentIndex + 1] ?? null;
+    onSkipStep(currentStep.id, nextUnskippedStep?.id ?? null);
+    if (nextUnskippedStep) {
+      goToStep(nextUnskippedStep);
+    }
+  }
+
+  const primaryLabel =
+    !routeMatches || isDirectAction
+      ? t(`steps.${currentStep.id}.cta`)
+      : isLast
+        ? t("finish")
+        : t("next");
+
   return (
     <div className="pointer-events-none fixed inset-0 z-[60]" aria-live="polite">
       {targetRect && hasTarget ? (
         <div
-          className="fixed rounded-2xl border border-white/90 shadow-[0_0_0_9999px_rgba(9,9,11,0.42),0_18px_60px_rgba(9,9,11,0.18)] ring-2 ring-neutral-950/80"
+          className="fixed rounded-2xl border border-white/90 shadow-[0_0_0_9999px_rgba(9,9,11,0.5),0_18px_60px_rgba(9,9,11,0.22)] ring-2 ring-neutral-950/80"
           style={getSpotlightStyle(targetRect)}
           aria-hidden
         />
       ) : (
-        <div className="fixed inset-0 bg-neutral-950/35" aria-hidden />
+        <div className="fixed inset-0 bg-neutral-950/50" aria-hidden />
       )}
 
       <div
@@ -213,7 +247,7 @@ export function FirstClipSpotlight({
         <div className="mt-4 flex flex-wrap items-center justify-between gap-2">
           <button
             type="button"
-            onClick={onDismiss}
+            onClick={handleSkip}
             className="inline-flex h-9 items-center justify-center rounded-xl px-2 text-sm font-semibold text-neutral-500 transition hover:bg-neutral-100 hover:text-neutral-950"
           >
             {t("skip")}
@@ -233,12 +267,8 @@ export function FirstClipSpotlight({
               onClick={handlePrimary}
               className="inline-flex h-9 items-center justify-center gap-1 rounded-xl bg-neutral-950 px-4 text-sm font-semibold text-white shadow-[0_8px_18px_rgba(0,0,0,0.16)] transition hover:bg-neutral-800"
             >
-              {!routeMatches
-                ? t(`steps.${currentStep.id}.cta`)
-                : isLast
-                  ? t("finish")
-                  : t("next")}
-              {!isLast || !routeMatches ? (
+              {primaryLabel}
+              {!isLast || !routeMatches || isDirectAction ? (
                 <ChevronRight className="h-4 w-4" aria-hidden />
               ) : null}
             </button>
@@ -246,6 +276,25 @@ export function FirstClipSpotlight({
         </div>
       </div>
     </div>
+  );
+}
+
+function findFirstClipTarget(target: string) {
+  const elements = Array.from(
+    document.querySelectorAll<HTMLElement>(`[data-first-clip-target="${target}"]`),
+  );
+  return elements.find(isVisibleElement) ?? null;
+}
+
+function isVisibleElement(element: HTMLElement) {
+  const rect = element.getBoundingClientRect();
+  const styles = window.getComputedStyle(element);
+  return (
+    rect.width > 0 &&
+    rect.height > 0 &&
+    styles.display !== "none" &&
+    styles.visibility !== "hidden" &&
+    styles.opacity !== "0"
   );
 }
 
@@ -267,8 +316,10 @@ function getPanelStyle(
     return {
       left: "1rem",
       right: "1rem",
-      bottom: "1rem",
+      bottom: "calc(1rem + env(safe-area-inset-bottom))",
       width: "auto",
+      maxHeight: "calc(100vh - 2rem - env(safe-area-inset-bottom))",
+      overflowY: "auto",
     };
   }
   if (!rect) {

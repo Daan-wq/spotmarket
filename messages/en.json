@@ -718,6 +718,31 @@
         "fallback": "This part is not visible right now. We'll point you to the closest step on this page.",
         "openPageHint": "This step lives on another page. Open the page to continue.",
         "steps": {
+          "nav_campaigns": {
+            "title": "Campaigns live here",
+            "body": "This is where you find campaigns that are open to creators. Later you will pick one that fits your account and content style.",
+            "cta": "Open campaigns"
+          },
+          "nav_connections": {
+            "title": "Connect accounts here",
+            "body": "Connect the social account you will post from. ClipProfit uses it to load posts and track views.",
+            "cta": "Open accounts"
+          },
+          "nav_videos": {
+            "title": "Your clips show up here",
+            "body": "After submitting, this is where you can find your clips, status, and performance.",
+            "cta": "Open my clips"
+          },
+          "nav_payouts": {
+            "title": "Payments stay separate",
+            "body": "Your first clip does not need to be payout-ready yet. Once you have earnings, payouts live here.",
+            "cta": "Open payments"
+          },
+          "nav_referral": {
+            "title": "Referral is in the menu",
+            "body": "This is where your referral link and activity live. Useful later, but not required for your first clip.",
+            "cta": "Open referral"
+          },
           "coach_overview": {
             "title": "We'll show you the path",
             "body": "This coach stays visible until your first clip is submitted. You can still browse freely; the button always points to the best next step.",

@@ -718,6 +718,31 @@
         "fallback": "Dit onderdeel is nu niet zichtbaar. We wijzen je naar de dichtstbijzijnde stap op deze pagina.",
         "openPageHint": "Deze stap staat op een andere pagina. Open de pagina om verder te gaan.",
         "steps": {
+          "nav_campaigns": {
+            "title": "Campagnes staan hier",
+            "body": "Hier vind je campagnes die openstaan voor creators. Je kiest straks een campagne die past bij je account en contentstijl.",
+            "cta": "Campagnes openen"
+          },
+          "nav_connections": {
+            "title": "Accounts koppel je hier",
+            "body": "Koppel het social account waarop je gaat posten. ClipProfit gebruikt dit om posts te laden en views te volgen.",
+            "cta": "Accounts openen"
+          },
+          "nav_videos": {
+            "title": "Je clips komen hier terug",
+            "body": "Na het indienen zie je hier je clips, status en performance. Dit is je plek om submissions terug te vinden.",
+            "cta": "Mijn clips openen"
+          },
+          "nav_payouts": {
+            "title": "Betalingen staan apart",
+            "body": "Je eerste clip hoeft nog geen payout klaar te hebben. Zodra er earnings zijn, vind je uitbetalingen hier terug.",
+            "cta": "Betalingen openen"
+          },
+          "nav_referral": {
+            "title": "Referral zit in het menu",
+            "body": "Hier vind je je referral-link en activiteit. Handig voor later, maar niet verplicht voor je eerste clip.",
+            "cta": "Referral openen"
+          },
           "coach_overview": {
             "title": "We wijzen je kort de weg",
             "body": "Deze coach blijft zichtbaar tot je eerste clip is ingediend. Je kunt vrij rondkijken; de knop wijst steeds naar je beste volgende stap.",

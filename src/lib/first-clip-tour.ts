@@ -4,7 +4,11 @@ import type {
 } from "@/lib/first-clip-onboarding";
 
 export type FirstClipTourStepId =
-  | "coach_overview"
+  | "nav_campaigns"
+  | "nav_connections"
+  | "nav_videos"
+  | "nav_payouts"
+  | "nav_referral"
   | "discord_cta"
   | "social_connect"
   | "campaign_guide"
@@ -17,11 +21,14 @@ export type FirstClipTourStepId =
   | "submit_action";
 
 export type FirstClipTourRoute =
-  | "creator_coach"
-  | "connections"
   | "campaigns"
+  | "connections"
+  | "videos"
+  | "payouts"
+  | "referral"
   | "campaign_detail"
-  | "submit";
+  | "submit"
+  | "creator_shell";
 
 type FirstClipTourPhase = Exclude<FirstClipStep, "done"> | "all";
 
@@ -30,12 +37,14 @@ export interface FirstClipTourStep {
   target: string;
   routes: readonly FirstClipTourRoute[];
   phases: readonly FirstClipTourPhase[];
+  opensMobileMenu?: boolean;
 }
 
 export interface FirstClipTourStorageState {
   dismissed: boolean;
   completed: boolean;
   activeStepId: FirstClipTourStepId | null;
+  skippedStepIds: FirstClipTourStepId[];
   updatedAt: string | null;
 }
 
@@ -49,22 +58,50 @@ const DEFAULT_STORAGE_STATE: FirstClipTourStorageState = {
   dismissed: false,
   completed: false,
   activeStepId: null,
+  skippedStepIds: [],
   updatedAt: null,
 };
 
-export const FIRST_CLIP_TOUR_STORAGE_VERSION = 1;
+export const FIRST_CLIP_TOUR_STORAGE_VERSION = 2;
+export const FIRST_CLIP_TOUR_OPEN_MOBILE_MENU_EVENT =
+  "clipprofit:first-clip-open-mobile-menu";
 
 export const FIRST_CLIP_TOUR_STEPS: readonly FirstClipTourStep[] = [
   {
-    id: "coach_overview",
-    target: "coach-overview",
-    routes: ["creator_coach"],
+    id: "nav_campaigns",
+    target: "creator-nav-campaigns",
+    routes: ["campaigns"],
     phases: ["all"],
   },
   {
+    id: "nav_connections",
+    target: "creator-nav-connections",
+    routes: ["connections"],
+    phases: ["all"],
+  },
+  {
+    id: "nav_videos",
+    target: "creator-nav-videos",
+    routes: ["videos"],
+    phases: ["all"],
+  },
+  {
+    id: "nav_payouts",
+    target: "creator-nav-payouts",
+    routes: ["payouts"],
+    phases: ["all"],
+  },
+  {
+    id: "nav_referral",
+    target: "creator-nav-referral",
+    routes: ["referral"],
+    phases: ["all"],
+    opensMobileMenu: true,
+  },
+  {
     id: "discord_cta",
-    target: "discord-cta",
-    routes: ["creator_coach"],
+    target: "first-clip-discord-action",
+    routes: ["creator_shell"],
     phases: ["discord"],
   },
   {
@@ -126,16 +163,21 @@ export const FIRST_CLIP_TOUR_STEPS: readonly FirstClipTourStep[] = [
 export function getFirstClipTourStepsForStatus(
   nextStep: FirstClipStep,
   pathname?: string,
+  skippedStepIds: readonly FirstClipTourStepId[] = [],
 ): readonly FirstClipTourStep[] {
   if (nextStep === "done") return [];
+  const skipped = new Set(skippedStepIds);
   const steps = FIRST_CLIP_TOUR_STEPS.filter(
-    (step) => step.phases.includes("all") || step.phases.includes(nextStep),
+    (step) =>
+      !skipped.has(step.id) &&
+      (step.phases.includes("all") || step.phases.includes(nextStep)),
   );
 
   if (nextStep === "join_campaign" && pathname) {
     if (matchesFirstClipTourRouteName("campaign_detail", pathname)) {
       return steps.filter(
-        (step) => step.id === "coach_overview" || step.id === "campaign_join",
+        (step) =>
+          step.phases.includes("all") || step.id === "campaign_join",
       );
     }
     if (matchesFirstClipTourRouteName("campaigns", pathname)) {
@@ -160,6 +202,10 @@ export function isFirstClipTourStepId(
   return Boolean(getFirstClipTourStepById(value));
 }
 
+export function isFirstClipTourActionStep(stepId: FirstClipTourStepId) {
+  return !stepId.startsWith("nav_");
+}
+
 export function matchesFirstClipTourRoute(
   step: FirstClipTourStep,
   pathname: string,
@@ -173,18 +219,14 @@ export function matchesFirstClipTourRouteName(
   route: FirstClipTourRoute,
   pathname: string,
 ) {
-  if (route === "creator_coach") {
-    return (
-      pathname === "/creator/dashboard" ||
-      pathname.startsWith("/creator/connections") ||
-      pathname.startsWith("/creator/campaigns") ||
-      pathname === "/creator/videos" ||
-      pathname.startsWith("/creator/videos/") ||
-      /^\/creator\/applications\/[^/]+\/submit(?:\/)?$/.test(pathname)
-    );
-  }
+  if (route === "creator_shell") return pathname.startsWith("/creator");
   if (route === "connections") return pathname.startsWith("/creator/connections");
   if (route === "campaigns") return pathname === "/creator/campaigns";
+  if (route === "videos") {
+    return pathname === "/creator/videos" || pathname.startsWith("/creator/videos/");
+  }
+  if (route === "payouts") return pathname.startsWith("/creator/payouts");
+  if (route === "referral") return pathname.startsWith("/creator/referral");
   if (route === "campaign_detail") {
     return /^\/creator\/campaigns\/[^/]+(?:\/)?$/.test(pathname);
   }
@@ -223,6 +265,11 @@ export function getFirstClipTourStepHref(
   step: FirstClipTourStep,
   status: FirstClipOnboardingStatus,
 ) {
+  if (step.id === "nav_campaigns") return "/creator/campaigns?firstClip=1";
+  if (step.id === "nav_connections") return "/creator/connections?firstClip=1";
+  if (step.id === "nav_videos") return "/creator/videos?firstClip=1";
+  if (step.id === "nav_payouts") return "/creator/payouts?firstClip=1";
+  if (step.id === "nav_referral") return "/creator/referral?firstClip=1";
   if (step.id === "discord_cta") return status.nextHref;
   if (step.id === "social_connect") return "/creator/connections?firstClip=1";
   if (step.id === "campaign_guide" || step.id === "campaign_card") {
@@ -262,6 +309,7 @@ export function parseFirstClipTourStorage(
       activeStepId: isFirstClipTourStepId(parsed.activeStepId)
         ? parsed.activeStepId
         : null,
+      skippedStepIds: normalizeStepIds(parsed.skippedStepIds),
       updatedAt:
         typeof parsed.updatedAt === "string" && parsed.updatedAt
           ? parsed.updatedAt
@@ -306,4 +354,13 @@ export function clearFirstClipTourStorage(
   } catch {
     // Ignore unavailable browser storage.
   }
+}
+
+function normalizeStepIds(value: unknown) {
+  if (!Array.isArray(value)) return [];
+  const seen = new Set<FirstClipTourStepId>();
+  for (const item of value) {
+    if (isFirstClipTourStepId(item)) seen.add(item);
+  }
+  return [...seen];
 }

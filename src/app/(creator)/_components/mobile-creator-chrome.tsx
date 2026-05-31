@@ -7,6 +7,7 @@ import { useTranslations } from "next-intl";
 import { Menu, X } from "lucide-react";
 import { Logo } from "@/components/shared/logo";
 import { cn } from "@/lib/cn";
+import { FIRST_CLIP_TOUR_OPEN_MOBILE_MENU_EVENT } from "@/lib/first-clip-tour";
 import {
   CREATOR_BOTTOM_NAV_ITEMS,
   CREATOR_NAV_ITEMS,
@@ -28,6 +29,14 @@ export function MobileCreatorChrome({
   const pathname = usePathname();
   const t = useTranslations("navigation.creatorNav");
   const [open, setOpen] = useState(false);
+
+  useEffect(() => {
+    const openMenu = () => setOpen(true);
+    window.addEventListener(FIRST_CLIP_TOUR_OPEN_MOBILE_MENU_EVENT, openMenu);
+    return () => {
+      window.removeEventListener(FIRST_CLIP_TOUR_OPEN_MOBILE_MENU_EVENT, openMenu);
+    };
+  }, []);
 
   useEffect(() => {
     if (!open) return;
@@ -103,6 +112,7 @@ export function MobileCreatorChrome({
                     <Link
                       key={item.href}
                       href={item.href}
+                      data-first-clip-target={item.firstClipTarget}
                       onClick={() => setOpen(false)}
                       className={cn(
                         "flex h-12 items-center gap-3 rounded-xl px-4 text-[15px] font-semibold transition",
@@ -142,6 +152,7 @@ export function MobileCreatorChrome({
             <Link
               key={item.href}
               href={item.href}
+              data-first-clip-target={item.firstClipTarget}
               className={cn(
                 "flex h-14 flex-col items-center justify-center gap-1 rounded-xl text-[11px] font-semibold transition",
                 active

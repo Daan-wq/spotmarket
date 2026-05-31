@@ -56,6 +56,7 @@ export function CreatorSidebar({ identitySlot, balanceSlot }: CreatorSidebarProp
             <AnimateIcon key={item.href} animateOnHover asChild>
               <Link
                 href={item.href}
+                data-first-clip-target={item.firstClipTarget}
                 className={cn(
                   "flex h-11 items-center gap-3 rounded-xl px-4 text-sm font-medium transition",
                   active
