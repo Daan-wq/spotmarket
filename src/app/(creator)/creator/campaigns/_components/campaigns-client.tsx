@@ -232,12 +232,8 @@ export function CampaignsClient({ marketplace, myCampaigns }: CampaignsClientPro
           )
         ) : (
           <div className="grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-3">
-            {filtered.map((campaign, index) => (
-              <CampaignCard
-                key={campaign.id}
-                campaign={campaign}
-                firstClipTarget={index === 0}
-              />
+            {filtered.map((campaign) => (
+              <CampaignCard key={campaign.id} campaign={campaign} />
             ))}
           </div>
         )}
@@ -255,10 +251,7 @@ function CampaignGuideCard({
 }) {
   const t = useTranslations("creator.campaigns.guide");
   return (
-    <section
-      className="rounded-2xl border border-neutral-200 bg-neutral-50 p-4"
-      data-first-clip-target="campaign-guide"
-    >
+    <section className="rounded-2xl border border-neutral-200 bg-neutral-50 p-4">
       <p className="text-sm text-neutral-600">
         {t("intro")}
       </p>
@@ -436,13 +429,7 @@ function compareAvailability(a: CampaignData, b: CampaignData) {
   return Number(a.closedForSubmissions) - Number(b.closedForSubmissions);
 }
 
-function CampaignCard({
-  campaign,
-  firstClipTarget = false,
-}: {
-  campaign: CampaignData;
-  firstClipTarget?: boolean;
-}) {
+function CampaignCard({ campaign }: { campaign: CampaignData }) {
   const router = useRouter();
   const locale = useLocale();
   const t = useTranslations("creator.campaigns.card");
@@ -483,7 +470,6 @@ function CampaignCard({
     <article
       role="link"
       tabIndex={0}
-      data-first-clip-target={firstClipTarget ? "campaign-card" : undefined}
       aria-label={cardLabel}
       onClick={openCampaign}
       onKeyDown={openCampaignFromKeyboard}

@@ -103,7 +103,7 @@ export default function PostGrid({
 
   return (
     <div className="grid grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
-      {posts.map((post, index) => {
+      {posts.map((post) => {
         const eligible =
           requiredHashtags.length > 0 &&
           !!post.caption &&
@@ -112,11 +112,7 @@ export default function PostGrid({
           );
         const k = keyOf(post);
         return (
-          <div
-            key={k}
-            id={`submit-card-${k}`}
-            data-first-clip-target={index === 0 ? "submit-post-card" : undefined}
-          >
+          <div key={k} id={`submit-card-${k}`}>
             <PostCard
               post={post}
               isSelected={selectedKeys.has(k)}

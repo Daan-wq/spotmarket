@@ -1,21 +1,10 @@
 "use client";
 
-import { useMemo, useState, useSyncExternalStore } from "react";
+import { useMemo, useState } from "react";
 import { usePathname, useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
-import { BookOpen, CheckCircle2, Circle, HelpCircle, Map, Play, RefreshCw, RotateCcw, Send } from "lucide-react";
+import { BookOpen, CheckCircle2, Circle, HelpCircle, RefreshCw, Send } from "lucide-react";
 import { Drawer } from "@/components/ui/drawer";
-import { FirstClipSpotlight } from "@/components/onboarding/first-clip-spotlight";
-import {
-  getFirstClipTourStepById,
-  getFirstClipTourStepsForStatus,
-  isFirstClipTourStepId,
-  parseFirstClipTourStorage,
-  readFirstClipTourStorage,
-  writeFirstClipTourStorage,
-  type FirstClipTourStepId,
-  type FirstClipTourStorageState,
-} from "@/lib/first-clip-tour";
 import type { FirstClipOnboardingStatus, FirstClipStep } from "@/lib/first-clip-onboarding";
 
 const STEP_ORDER: Exclude<FirstClipStep, "done">[] = [
@@ -24,8 +13,6 @@ const STEP_ORDER: Exclude<FirstClipStep, "done">[] = [
   "join_campaign",
   "submit_clip",
 ];
-const TOUR_STORAGE_EVENT = "clipprofit:first-clip-tour-storage";
-const DEFAULT_TOUR_STORAGE_SNAPSHOT = JSON.stringify(parseFirstClipTourStorage(null));
 
 export function shouldShowFirstClipCoach(pathname: string) {
   return (
@@ -38,29 +25,16 @@ export function shouldShowFirstClipCoach(pathname: string) {
   );
 }
 
-export function shouldRenderFirstClipCoach(
-  pathname: string,
-  status: Pick<FirstClipOnboardingStatus, "nextStep">,
-) {
-  return shouldShowFirstClipCoach(pathname) && status.nextStep !== "done";
-}
-
 export function FirstClipCoachClient({
   status,
-  storageScope,
 }: {
   status: FirstClipOnboardingStatus;
-  storageScope?: string;
 }) {
   const t = useTranslations("creator.firstClipOnboarding");
-  const tourT = useTranslations("creator.firstClipOnboarding.tour");
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const shouldAutoOpen = searchParams.get("firstClip") === "1";
-  const requestedTourStep = searchParams.get("firstClipTour");
   const [drawerOpen, setDrawerOpen] = useState(shouldAutoOpen);
-  const [tourOpen, setTourOpen] = useState(false);
-  const [suppressedQueryStepId, setSuppressedQueryStepId] = useState<FirstClipTourStepId | null>(null);
 
   const steps = useMemo(
     () =>
@@ -71,119 +45,16 @@ export function FirstClipCoachClient({
       })),
     [status],
   );
-  const tourSteps = useMemo(
-    () => getFirstClipTourStepsForStatus(status.nextStep, pathname),
-    [pathname, status.nextStep],
-  );
-  const tourStorageSnapshot = useSyncExternalStore(
-    subscribeTourStorage,
-    () => readTourStorageSnapshot(storageScope),
-    () => DEFAULT_TOUR_STORAGE_SNAPSHOT,
-  );
-  const tourState = useMemo(
-    () => parseFirstClipTourStorage(tourStorageSnapshot),
-    [tourStorageSnapshot],
-  );
 
-  if (!shouldRenderFirstClipCoach(pathname, status)) {
+  if (!shouldShowFirstClipCoach(pathname) || status.nextStep === "done") {
     return null;
   }
 
   const details = t.raw("details") as string[];
-  const hasTour = tourSteps.length > 0;
-  const requestedTourStepId =
-    isFirstClipTourStepId(requestedTourStep) &&
-    getFirstClipTourStepById(requestedTourStep, tourSteps)
-      ? requestedTourStep
-      : null;
-  const storedTourStepId =
-    tourState.activeStepId &&
-    getFirstClipTourStepById(tourState.activeStepId, tourSteps)
-      ? tourState.activeStepId
-      : null;
-  const activeTourStepId = requestedTourStepId ?? storedTourStepId ?? tourSteps[0]?.id ?? null;
-  const spotlightOpen =
-    tourOpen ||
-    Boolean(requestedTourStepId && requestedTourStepId !== suppressedQueryStepId);
-  const canResumeTour = Boolean(
-    storedTourStepId && !tourState.dismissed && !tourState.completed,
-  );
-
-  function persistTour(partial: Partial<FirstClipTourStorageState>) {
-    const nextState: FirstClipTourStorageState = {
-      dismissed: tourState.dismissed,
-      completed: tourState.completed,
-      activeStepId: activeTourStepId,
-      updatedAt: new Date().toISOString(),
-      ...partial,
-    };
-    persistTourState(storageScope, nextState);
-  }
-
-  function startTour() {
-    const firstStep = canResumeTour
-      ? storedTourStepId
-      : tourSteps[0]?.id ?? null;
-    if (!firstStep) return;
-    setSuppressedQueryStepId(null);
-    persistTour({
-      dismissed: false,
-      completed: false,
-      activeStepId: firstStep,
-    });
-    setTourOpen(true);
-  }
-
-  function handleTourStepChange(stepId: FirstClipTourStepId | null) {
-    persistTour({
-      dismissed: false,
-      completed: false,
-      activeStepId: stepId,
-    });
-  }
-
-  function closeTour() {
-    setTourOpen(false);
-    setSuppressedQueryStepId(requestedTourStepId);
-    persistTour({ activeStepId: activeTourStepId });
-  }
-
-  function dismissTour() {
-    setTourOpen(false);
-    setSuppressedQueryStepId(requestedTourStepId);
-    persistTour({
-      dismissed: true,
-      completed: false,
-      activeStepId: null,
-    });
-  }
-
-  function completeTour() {
-    setTourOpen(false);
-    setSuppressedQueryStepId(requestedTourStepId);
-    persistTour({
-      dismissed: false,
-      completed: true,
-      activeStepId: null,
-    });
-  }
 
   return (
     <>
-      <FirstClipSpotlight
-        status={status}
-        open={spotlightOpen}
-        activeStepId={activeTourStepId}
-        onStepChange={handleTourStepChange}
-        onClose={closeTour}
-        onDismiss={dismissTour}
-        onComplete={completeTour}
-      />
-
-      <section
-        className="mb-6 overflow-hidden rounded-2xl border border-neutral-200 bg-neutral-50"
-        data-first-clip-target="coach-overview"
-      >
+      <section className="mb-6 overflow-hidden rounded-2xl border border-neutral-200 bg-neutral-50">
         <div className="grid gap-4 p-4 md:grid-cols-[minmax(0,1fr)_auto] md:items-start md:p-5">
           <div className="min-w-0">
             <p className="text-xs font-semibold uppercase tracking-[0.14em] text-neutral-400">
@@ -198,30 +69,6 @@ export function FirstClipCoachClient({
           </div>
 
           <div className="flex flex-wrap gap-2 md:justify-end">
-            {hasTour ? (
-              <>
-                <button
-                  type="button"
-                  onClick={startTour}
-                  className="inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-neutral-200 bg-white px-4 text-sm font-semibold text-neutral-700 transition hover:bg-neutral-100 hover:text-neutral-950"
-                >
-                  {canResumeTour ? (
-                    <RotateCcw className="h-4 w-4" aria-hidden />
-                  ) : (
-                    <Play className="h-4 w-4" aria-hidden />
-                  )}
-                  {canResumeTour ? tourT("resume") : tourT("start")}
-                </button>
-                <button
-                  type="button"
-                  onClick={dismissTour}
-                  className="inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-transparent px-3 text-sm font-semibold text-neutral-500 transition hover:bg-neutral-100 hover:text-neutral-950"
-                >
-                  <Map className="h-4 w-4" aria-hidden />
-                  {tourT("skipCoach")}
-                </button>
-              </>
-            ) : null}
             <button
               type="button"
               onClick={() => setDrawerOpen(true)}
@@ -232,7 +79,6 @@ export function FirstClipCoachClient({
             </button>
             <a
               href={status.nextHref}
-              data-first-clip-target={status.nextStep === "discord" ? "discord-cta" : undefined}
               className="inline-flex h-10 items-center justify-center gap-2 rounded-xl bg-neutral-950 px-4 text-sm font-semibold text-white shadow-[0_8px_18px_rgba(0,0,0,0.16)] transition hover:bg-neutral-800"
             >
               <Send className="h-4 w-4" aria-hidden />
@@ -317,28 +163,4 @@ function isStepComplete(
   if (step === "connect_account") return status.accountConnected;
   if (step === "join_campaign") return status.hasJoinedCampaign;
   return status.firstClipSubmitted;
-}
-
-function persistTourState(
-  storageScope: string | undefined,
-  state: FirstClipTourStorageState,
-) {
-  writeFirstClipTourStorage(window.localStorage, storageScope, state);
-  window.dispatchEvent(new Event(TOUR_STORAGE_EVENT));
-}
-
-function subscribeTourStorage(onStoreChange: () => void) {
-  if (typeof window === "undefined") return () => {};
-  const onChange = () => onStoreChange();
-  window.addEventListener("storage", onChange);
-  window.addEventListener(TOUR_STORAGE_EVENT, onChange);
-  return () => {
-    window.removeEventListener("storage", onChange);
-    window.removeEventListener(TOUR_STORAGE_EVENT, onChange);
-  };
-}
-
-function readTourStorageSnapshot(storageScope: string | undefined) {
-  if (typeof window === "undefined") return DEFAULT_TOUR_STORAGE_SNAPSHOT;
-  return JSON.stringify(readFirstClipTourStorage(window.localStorage, storageScope));
 }

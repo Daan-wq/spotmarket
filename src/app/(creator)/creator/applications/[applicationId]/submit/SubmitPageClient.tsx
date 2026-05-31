@@ -620,7 +620,6 @@ export default function SubmitPageClient({
           <button
             onClick={submitSelected}
             disabled={submitSelectedDisabled}
-            data-first-clip-target="submit-action"
             className="flex items-center justify-center gap-1.5 rounded-lg px-4 py-2 text-sm font-medium transition-all disabled:cursor-not-allowed disabled:opacity-100"
             style={{
               background: isClosedForSubmissions ? "#e5e5e5" : "var(--primary)",

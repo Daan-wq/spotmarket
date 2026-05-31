@@ -23,10 +23,7 @@ export default function PlatformTabs<P extends ConnectionPlatform = ConnectionPl
   onChange,
 }: Props<P>) {
   return (
-    <div
-      className="flex items-center gap-1 flex-wrap"
-      data-first-clip-target="submit-platform-tabs"
-    >
+    <div className="flex items-center gap-1 flex-wrap">
       {platforms.map((p) => (
         <button
           key={p}

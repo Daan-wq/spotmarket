@@ -14,10 +14,7 @@ interface Props {
 export default function AccountSwitcher({ accounts, activeId, onChange }: Props) {
   if (accounts.length === 0) return null;
   return (
-    <div
-      className="flex items-center gap-1 flex-wrap"
-      data-first-clip-target="submit-account-switcher"
-    >
+    <div className="flex items-center gap-1 flex-wrap">
       {accounts.map((acc) => (
         <button
           key={acc.id}
