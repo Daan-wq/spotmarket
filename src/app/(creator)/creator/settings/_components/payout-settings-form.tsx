@@ -36,8 +36,25 @@ export function PayoutSettingsForm({
   const [cryptoError, setCryptoError] = useState<string | null>(null);
   const [bankSuccess, setBankSuccess] = useState<string | null>(null);
   const [cryptoSuccess, setCryptoSuccess] = useState<string | null>(null);
+  const [isEditingBank, setIsEditingBank] = useState(false);
+  const [isEditingCrypto, setIsEditingCrypto] = useState(false);
   const [savingBank, setSavingBank] = useState(false);
   const [savingCrypto, setSavingCrypto] = useState(false);
+
+  function startEditingBank() {
+    setIbanInput(savedIban ? formatIban(savedIban) : "");
+    setAccountNameInput(savedAccountName ?? "");
+    setBankError(null);
+    setBankSuccess(null);
+    setIsEditingBank(true);
+  }
+
+  function startEditingCrypto() {
+    setSolanaInput(savedSolanaAddress ?? "");
+    setCryptoError(null);
+    setCryptoSuccess(null);
+    setIsEditingCrypto(true);
+  }
 
   async function saveBankDetails() {
     const iban = normalizeIban(ibanInput);
@@ -73,6 +90,7 @@ export function PayoutSettingsForm({
       setSavedAccountName(data.payoutAccountName);
       setIbanInput(formatIban(data.payoutIban));
       setAccountNameInput(data.payoutAccountName);
+      setIsEditingBank(false);
       setBankSuccess(t("bankSaved"));
     } catch {
       setBankError(t("saveError"));
@@ -108,6 +126,7 @@ export function PayoutSettingsForm({
 
       setSavedSolanaAddress(data.payoutSolanaAddress);
       setSolanaInput(data.payoutSolanaAddress);
+      setIsEditingCrypto(false);
       setCryptoSuccess(t("cryptoSaved"));
     } catch {
       setCryptoError(t("saveCryptoError"));
@@ -153,8 +172,13 @@ export function PayoutSettingsForm({
                 }}
                 placeholder={t("ibanPlaceholder")}
                 autoComplete="off"
+                readOnly={!isEditingBank}
                 spellCheck={false}
-                className="mt-2 h-11 w-full rounded-xl border border-neutral-200 bg-white px-4 font-mono text-sm text-neutral-950 outline-none transition placeholder:text-neutral-400 focus:border-neutral-400"
+                className={`mt-2 h-11 w-full rounded-xl border border-neutral-200 px-4 font-mono text-sm outline-none transition placeholder:text-neutral-400 ${
+                  isEditingBank
+                    ? "bg-white text-neutral-950 focus:border-neutral-400"
+                    : "cursor-default bg-white text-neutral-500 focus:border-neutral-200"
+                }`}
               />
             </label>
             <label className="block text-sm font-semibold text-neutral-950">
@@ -169,15 +193,24 @@ export function PayoutSettingsForm({
                 }}
                 placeholder={t("accountNamePlaceholder")}
                 autoComplete="name"
-                className="mt-2 h-11 w-full rounded-xl border border-neutral-200 bg-white px-4 text-sm text-neutral-950 outline-none transition placeholder:text-neutral-400 focus:border-neutral-400"
+                readOnly={!isEditingBank}
+                className={`mt-2 h-11 w-full rounded-xl border border-neutral-200 px-4 text-sm outline-none transition placeholder:text-neutral-400 ${
+                  isEditingBank
+                    ? "bg-white text-neutral-950 focus:border-neutral-400"
+                    : "cursor-default bg-white text-neutral-500 focus:border-neutral-200"
+                }`}
               />
             </label>
 
             {bankError ? <AlertBanner tone="error" title={bankError} /> : null}
             {bankSuccess ? <AlertBanner tone="success" title={bankSuccess} /> : null}
 
-            <Button type="button" isPending={savingBank} onClick={saveBankDetails}>
-              {t("saveBankDetails")}
+            <Button
+              type="button"
+              isPending={savingBank}
+              onClick={isEditingBank ? saveBankDetails : startEditingBank}
+            >
+              {isEditingBank ? t("saveBankDetails") : t("editBankDetails")}
             </Button>
           </div>
         </div>
@@ -211,8 +244,13 @@ export function PayoutSettingsForm({
                 }}
                 placeholder={t("solanaAddressPlaceholder")}
                 autoComplete="off"
+                readOnly={!isEditingCrypto}
                 spellCheck={false}
-                className="mt-2 h-11 w-full rounded-xl border border-neutral-200 bg-white px-4 font-mono text-sm text-neutral-950 outline-none transition placeholder:text-neutral-400 focus:border-neutral-400"
+                className={`mt-2 h-11 w-full rounded-xl border border-neutral-200 px-4 font-mono text-sm outline-none transition placeholder:text-neutral-400 ${
+                  isEditingCrypto
+                    ? "bg-white text-neutral-950 focus:border-neutral-400"
+                    : "cursor-default bg-white text-neutral-500 focus:border-neutral-200"
+                }`}
               />
             </label>
 
@@ -220,8 +258,12 @@ export function PayoutSettingsForm({
             {cryptoError ? <AlertBanner tone="error" title={cryptoError} /> : null}
             {cryptoSuccess ? <AlertBanner tone="success" title={cryptoSuccess} /> : null}
 
-            <Button type="button" isPending={savingCrypto} onClick={saveCryptoDetails}>
-              {t("saveCryptoDetails")}
+            <Button
+              type="button"
+              isPending={savingCrypto}
+              onClick={isEditingCrypto ? saveCryptoDetails : startEditingCrypto}
+            >
+              {isEditingCrypto ? t("saveCryptoDetails") : t("editCryptoDetails")}
             </Button>
           </div>
         </div>

@@ -234,6 +234,8 @@
       "ibanError": "Enter a valid IBAN.",
       "accountNameError": "Enter the account holder name.",
       "solanaAddressError": "Enter a valid Solana wallet address.",
+      "editBankDetails": "Edit bank details",
+      "editCryptoDetails": "Edit USDC wallet",
       "saveBankDetails": "Save bank details",
       "saveCryptoDetails": "Save USDC wallet",
       "saveFailed": "Failed to save bank details",

@@ -234,6 +234,8 @@
       "ibanError": "Vul een geldige IBAN in.",
       "accountNameError": "Vul de naam van de rekeninghouder in.",
       "solanaAddressError": "Vul een geldig Solana walletadres in.",
+      "editBankDetails": "Bankgegevens bewerken",
+      "editCryptoDetails": "USDC-wallet bewerken",
       "saveBankDetails": "Bankgegevens opslaan",
       "saveCryptoDetails": "USDC-wallet opslaan",
       "saveFailed": "Bankgegevens opslaan mislukt",

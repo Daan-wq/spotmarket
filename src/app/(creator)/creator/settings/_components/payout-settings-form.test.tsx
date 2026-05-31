@@ -21,6 +21,8 @@ vi.mock("next-intl", () => ({
       savedCryptoAddress: "Saved wallet address",
       cryptoNetwork: "USDC on Solana",
       cryptoWarning: "Only use a Solana wallet address that can receive USDC on Solana.",
+      editBankDetails: "Edit bank details",
+      editCryptoDetails: "Edit USDC wallet",
       saveBankDetails: "Save bank details",
       saveCryptoDetails: "Save USDC wallet",
     };
@@ -45,5 +47,10 @@ describe("PayoutSettingsForm", () => {
     expect(html).toContain("USDC on Solana");
     expect(html).toContain("NL91 ABNA ... 4300");
     expect(html).toContain("EPjFWd...yTDt1v");
+    expect(html).toContain("Edit bank details");
+    expect(html).toContain("Edit USDC wallet");
+    expect(html).not.toContain("Save bank details");
+    expect(html).not.toContain("Save USDC wallet");
+    expect(html).toContain("readOnly");
   });
 });
