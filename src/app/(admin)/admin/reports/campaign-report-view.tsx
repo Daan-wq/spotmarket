@@ -234,7 +234,7 @@ export function CampaignReportView({
           <ReportPage widthMode={widthMode}>
             <ReportHeading icon={<Users className="h-5 w-5" />} kicker="Communitygroei" title="Communityactivatie" />
             <CommunityActivation data={liveData} />
-            <InsightNote text="Communityactivatie is het meest nuttig wanneer creatorwerving of referraldistributie een expliciet campagnedoel is." />
+            <InsightNote text="Communityactivatie is het meest nuttig wanneer creatorwerving of invite-distributie een expliciet campagnedoel is." />
           </ReportPage>
         ) : null}
 
@@ -518,7 +518,7 @@ function CreatorTable({ rows }: { rows: CampaignReportLiveData["creators"] }) {
 function CommunityActivation({ data }: { data: CampaignReportLiveData }) {
   return (
     <div className="mt-7 grid gap-3 md:grid-cols-4">
-      <MetricCard label="Clicks" value={formatNumber(data.referral.totalClicks, "nl")} detail="campagne-referralbezoeken" />
+      <MetricCard label="Clicks" value={formatNumber(data.referral.totalClicks, "nl")} detail="campagne-invitebezoeken" />
       <MetricCard label="Invites" value={formatNumber(data.referral.inviteCount, "nl")} detail="getrackte aanmeldingen" />
       <MetricCard label="Actieve clippers" value={formatNumber(data.referral.activeClipperCount, "nl")} detail="dienden campagnecontent in" />
       <MetricCard label="Activatiepercentage" value={formatPercent(data.referral.activationRate)} detail="actief vanuit invites" />

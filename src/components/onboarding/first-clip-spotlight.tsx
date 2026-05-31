@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState, type CSSProperties } from "react";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { ChevronLeft, ChevronRight, X } from "lucide-react";
 import {
@@ -46,6 +46,7 @@ export function FirstClipSpotlight({
   const t = useTranslations("creator.firstClipOnboarding.tour");
   const pathname = usePathname();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const currentStep =
     getFirstClipTourStepById(activeStepId, steps) ?? steps[0] ?? null;
   const currentIndex = currentStep
@@ -83,7 +84,10 @@ export function FirstClipSpotlight({
         setHasTarget(false);
         setTargetRect(null);
 
-        if (matchesFirstClipTourRoute(currentStep, pathname)) {
+        if (
+          matchesFirstClipTourRoute(currentStep, pathname) &&
+          !isFirstClipTourActionStep(currentStep.id)
+        ) {
           const fallback = resolveFirstClipTourVisibleStepId({
             steps,
             requestedStepId: currentStep.id,
@@ -168,7 +172,11 @@ export function FirstClipSpotlight({
     onStepChange(step.id);
     if (!matchesFirstClipTourRoute(step, pathname)) {
       openStepHref(step);
+      return;
     }
+    router.replace(withFirstClipTourQuery(getCurrentHref(pathname, searchParams), step.id), {
+      scroll: false,
+    });
   }
 
   function handlePrimary() {
@@ -284,6 +292,11 @@ function findFirstClipTarget(target: string) {
     document.querySelectorAll<HTMLElement>(`[data-first-clip-target="${target}"]`),
   );
   return elements.find(isVisibleElement) ?? null;
+}
+
+function getCurrentHref(pathname: string, searchParams: { toString: () => string }) {
+  const query = searchParams.toString();
+  return query ? `${pathname}?${query}` : pathname;
 }
 
 function isVisibleElement(element: HTMLElement) {

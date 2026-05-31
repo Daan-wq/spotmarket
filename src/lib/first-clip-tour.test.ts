@@ -125,6 +125,14 @@ describe("first-clip tour model", () => {
     expect(withFirstClipTourQuery(getFirstClipTourStepHref(step!, submitStatus), step!.id)).toBe(
       "/creator/applications/application-1/submit?firstClip=1&firstClipTour=submit_refresh",
     );
+    expect(
+      withFirstClipTourQuery(
+        "/creator/applications/application-1/submit?firstClip=1&firstClipTour=submit_post",
+        "submit_action",
+      ),
+    ).toBe(
+      "/creator/applications/application-1/submit?firstClip=1&firstClipTour=submit_action",
+    );
   });
 });
 

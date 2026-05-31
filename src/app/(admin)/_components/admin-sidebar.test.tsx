@@ -11,7 +11,7 @@ vi.mock("next-intl", () => ({
       control: "Controle",
       commandCenter: "Commandcenter",
       campaigns: "Campagnes",
-      referrals: "Referralnetwerk",
+      referrals: "Invitenetwerk",
       clippers: "Clippers",
       clipReview: "Clipreview",
       leads: "Leads",

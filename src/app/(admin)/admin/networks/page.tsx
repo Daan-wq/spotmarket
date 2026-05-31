@@ -52,7 +52,7 @@ export default async function NetworksPage() {
           Netwerken
         </h1>
         <p style={{ color: "var(--text-secondary)" }}>
-          Volg verwijzers, verwijzingen en revenue share
+          Volg inviters, invites en revenue share
         </p>
       </div>
 
@@ -69,7 +69,7 @@ export default async function NetworksPage() {
             className="text-sm font-medium mb-2"
             style={{ color: "var(--text-secondary)" }}
           >
-            Totaal verwijzers
+            Totaal inviters
           </p>
           <p
             className="text-2xl font-bold"
@@ -90,7 +90,7 @@ export default async function NetworksPage() {
             className="text-sm font-medium mb-2"
             style={{ color: "var(--text-secondary)" }}
           >
-            Totaal verwijzingen
+            Totaal invites
           </p>
           <p
             className="text-2xl font-bold"
@@ -149,13 +149,13 @@ export default async function NetworksPage() {
                 className="px-6 py-3 text-left text-xs font-semibold"
                 style={{ color: "var(--text-secondary)" }}
               >
-                Referralcode
+                Invite code
               </th>
               <th
                 className="px-6 py-3 text-left text-xs font-semibold"
                 style={{ color: "var(--text-secondary)" }}
               >
-                Verwijzingen
+                Invites
               </th>
               <th
                 className="px-6 py-3 text-left text-xs font-semibold"
@@ -244,7 +244,7 @@ export default async function NetworksPage() {
             className="px-6 py-8 text-center"
             style={{ color: "var(--text-secondary)" }}
           >
-            <p>Nog geen referrers met actieve referralcodes.</p>
+            <p>Nog geen inviters met actieve invite codes.</p>
           </div>
         )}
       </div>

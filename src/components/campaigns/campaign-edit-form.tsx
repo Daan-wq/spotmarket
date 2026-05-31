@@ -392,7 +392,7 @@ export function CampaignEditForm({
               />
             </Field>
 
-            <Field label="Referral / tracking link">
+            <Field label="Invite link / tracking link">
               <input
                 className={controlClass}
                 style={inputStyle}

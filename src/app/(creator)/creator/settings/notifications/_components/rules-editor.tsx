@@ -22,7 +22,7 @@ const TYPE_LABELS: Partial<Record<NotificationType, string>> = {
   DEMOGRAPHICS_REJECTED: "Demographics rejected",
   BIO_VERIFIED: "Bio verified",
   PAYOUT_SENT: "Payout sent",
-  REFERRAL_EARNED: "Referral earned",
+  REFERRAL_EARNED: "Invite earned",
   EARNINGS_CREDITED: "Earnings credited",
   WITHDRAWAL_PROCESSED: "Withdrawal processed",
   PERFORMANCE_VIRAL: "Clip going viral",

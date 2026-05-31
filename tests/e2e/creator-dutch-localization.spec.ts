@@ -14,7 +14,7 @@ const staticCreatorRoutes: Array<{ path: string; expected: RegExp }> = [
     expected: /Opnemen|Uitbetalen|Withdraw/i,
   },
   { path: "/creator/payouts?tab=history", expected: /Geschiedenis|History/i },
-  { path: "/creator/referral", expected: /Referral|Uitnodigen/i },
+  { path: "/creator/referral", expected: /Invite|Uitnodigen/i },
   { path: "/creator/profile?tab=general", expected: /Profiel|Algemeen/i },
   { path: "/creator/profile?tab=activity", expected: /Activiteit/i },
   { path: "/creator/profile?tab=balance", expected: /Saldo|Beschikbaar/i },

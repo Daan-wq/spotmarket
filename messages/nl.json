@@ -265,7 +265,7 @@
       "videos": "Mijn clips",
       "payouts": "Betalingen",
       "course": "Training",
-      "referral": "Referral",
+      "referral": "Invite",
       "profile": "Profiel",
       "settings": "Instellingen",
       "search": "Zoeken",
@@ -281,7 +281,7 @@
       "control": "Controle",
       "commandCenter": "Commandcenter",
       "campaigns": "Campagnes",
-      "referrals": "Referralnetwerk",
+      "referrals": "Invitenetwerk",
       "clippers": "Clippers",
       "production": "Productie",
       "clipReview": "Clipreview",
@@ -739,9 +739,9 @@
             "cta": "Betalingen openen"
           },
           "nav_referral": {
-            "title": "Referral zit in het menu",
-            "body": "Hier vind je je referral-link en activiteit. Handig voor later, maar niet verplicht voor je eerste clip.",
-            "cta": "Referral openen"
+            "title": "Invite link zit in het menu",
+            "body": "Hier vind je je invite-link en -activiteit. Hiermee kun je vrienden en anderen inviten om exclusieve beloningen te verdienen.",
+            "cta": "Invite openen"
           },
           "coach_overview": {
             "title": "We wijzen je kort de weg",
@@ -1103,7 +1103,7 @@
         "biggestEarners": "Grootste verdieners",
         "noEarners": "Nog geen goedgekeurde verdieners.",
         "referralLink": {
-          "title": "Persoonlijke bio-link",
+          "title": "Persoonlijke invite link",
           "description": "Plaats deze ClipProfit-link in je bio zodat invites en actieve clippers voor deze campagne worden gemeten.",
           "copy": "Link kopieren",
           "copied": "Gekopieerd"
@@ -1349,8 +1349,8 @@
     },
     "referral": {
       "page": {
-        "title": "ClipProfit-link",
-        "description": "Gebruik deze persoonlijke link in je bio voor de ClipProfit-campagne.",
+        "title": "Invite link",
+        "description": "Hier vind je je invite-link en -activiteit. Hiermee kun je vrienden en anderen inviten om exclusieve beloningen te verdienen.",
         "emptyTitle": "Nodig een creator uit",
         "emptyDescription": "Deel je link hieronder zodat nieuwe creators ClipProfit kunnen joinen.",
         "peopleInvited": "Mensen geinvite",
@@ -1382,9 +1382,9 @@
         }
       },
       "link": {
-        "title": "Jouw ClipProfit bio-link",
-        "description": "Plaats deze link in je bio voor de ClipProfit-campagne.",
-        "code": "Referralcode",
+        "title": "Jouw invite link",
+        "description": "Deel deze link met vrienden en anderen om exclusieve beloningen te verdienen.",
+        "code": "Invite code",
         "yourCode": "Jouw code: {code}",
         "copy": "Kopieren",
         "copyLink": "Link kopieren",
@@ -1403,7 +1403,7 @@
       "leaderboard": {
         "title": "Invite leaderboard",
         "description": "Top creators op basis van actieve ClipProfit-invites.",
-        "referrals": "Referrals",
+        "referrals": "Invites",
         "activeClippers": "Actieve clippers",
         "earned": "Goedgekeurd",
         "you": "Jij",
@@ -1743,7 +1743,7 @@
         "DEMOGRAPHICS_REJECTED": "Demografie afgewezen",
         "BIO_VERIFIED": "Bio geverifieerd",
         "PAYOUT_SENT": "Payout verzonden",
-        "REFERRAL_EARNED": "Referral verdiend"
+        "REFERRAL_EARNED": "Invite verdiend"
       }
     },
     "stats": {

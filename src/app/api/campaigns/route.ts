@@ -35,7 +35,7 @@ const createCampaignSchema = z.object({
   // Section 4
   deadline: z.string().datetime(),
   startsAt: z.string().datetime().optional(),
-  referralLink: z.string().optional().refine((v) => !v || /^https?:\/\//.test(v), "Referral link must start with https://"),
+  referralLink: z.string().optional().refine((v) => !v || /^https?:\/\//.test(v), "Invite link must start with https://"),
   bannerUrl: z.string().optional().refine((v) => !v || /^https?:\/\//.test(v), "Must be a valid URL"),
   bannerVideoUrl: z.string().optional().refine((v) => !v || /^https?:\/\//.test(v), "Must be a valid URL"),
   contentAssetUrls: z.array(z.string().url()).optional().default([]),

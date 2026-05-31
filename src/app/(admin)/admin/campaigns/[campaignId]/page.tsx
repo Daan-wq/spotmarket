@@ -297,7 +297,7 @@ export default async function CampaignHealthPage({ params }: PageProps) {
         >
           <div className="px-5 py-4" style={{ borderBottom: "1px solid var(--border)" }}>
             <h2 className="text-base font-semibold" style={{ color: "var(--text-primary)" }}>
-              Campagne referral rapportage
+              Campagne invite rapportage
             </h2>
             <p className="mt-1 text-sm" style={{ color: "var(--text-secondary)" }}>
               Invite count telt afgeronde onboarding. Active clipper count telt de eerste ingestuurde submission.
@@ -354,7 +354,7 @@ export default async function CampaignHealthPage({ params }: PageProps) {
                 <thead>
                   <tr style={{ borderTop: "1px solid var(--border)", borderBottom: "1px solid var(--border)" }}>
                     <th className="px-5 py-3 text-left text-xs font-semibold" style={{ color: "var(--text-secondary)" }}>
-                      Referrer
+                      Inviter
                     </th>
                     <th className="px-5 py-3 text-right text-xs font-semibold" style={{ color: "var(--text-secondary)" }}>
                       Clicks

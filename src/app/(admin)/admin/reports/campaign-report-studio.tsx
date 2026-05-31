@@ -1105,7 +1105,7 @@ function CreatorTable({ rows }: { rows: CampaignReportLiveData["creators"] }) {
 function ReferralSummary({ data }: { data: CampaignReportLiveData }) {
   return (
     <div className="mt-6 grid gap-3 md:grid-cols-4">
-      <SetupRow label="Referralclicks" value={formatNumber(data.referral.totalClicks, "nl")} />
+      <SetupRow label="Invite clicks" value={formatNumber(data.referral.totalClicks, "nl")} />
       <SetupRow label="Invites" value={formatNumber(data.referral.inviteCount, "nl")} />
       <SetupRow label="Actieve clippers" value={formatNumber(data.referral.activeClipperCount, "nl")} />
       <SetupRow label="Activatie" value={formatPercent(data.referral.activationRate)} />

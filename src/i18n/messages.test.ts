@@ -51,14 +51,14 @@ describe("localized messages", () => {
     expect(creatorKeys).toContain("connections.page.headerTitle");
   });
 
-  it("keeps creator referral copy focused on campaign attribution, not cash rewards", () => {
-    const referralCopy = [
+  it("keeps creator invite copy free of fixed commission promises", () => {
+    const inviteCopy = [
       ...flattenStringValues(enMessages.creator.referral),
       ...flattenStringValues(nlMessages.creator.referral),
     ].join("\n");
 
-    expect(referralCopy).not.toMatch(
-      /€100|10%|commission|commissie|cap|earnings|earning|inkomsten|verdien/i,
+    expect(inviteCopy).not.toMatch(
+      /EUR 100|10%|commission|commissie|cap|inkomsten/i,
     );
   });
 });

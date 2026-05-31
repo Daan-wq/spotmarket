@@ -156,7 +156,7 @@ export default async function ReferrerDetailPage({
           className="text-xl font-bold mb-4"
           style={{ color: "var(--text-primary)" }}
         >
-          Verwijzingen ({totalReferred})
+          Invites ({totalReferred})
         </h2>
         <div
           className="rounded-xl overflow-hidden"
@@ -222,7 +222,7 @@ export default async function ReferrerDetailPage({
               className="px-6 py-8 text-center"
               style={{ color: "var(--text-secondary)" }}
             >
-              <p>Nog geen verwijzingen.</p>
+              <p>Nog geen invites.</p>
             </div>
           )}
         </div>

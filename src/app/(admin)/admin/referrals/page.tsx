@@ -228,7 +228,7 @@ export default async function AdminReferralsPage({ searchParams }: PageProps) {
     <div className="space-y-9">
       <PageHeader
         eyebrow="ClipProfit"
-        title="Referral rapportage"
+        title="Invite rapportage"
         description="Campagne-attributie voor persoonlijke bio-links: clicks, onboarding-invites, inzendingen en goedgekeurde/verdiende signalen."
       />
 
@@ -238,7 +238,7 @@ export default async function AdminReferralsPage({ searchParams }: PageProps) {
           <input
             name="q"
             defaultValue={query}
-            placeholder="Zoek op naam, email, Discord of referralcode"
+            placeholder="Zoek op naam, email, Discord of invite code"
             className="h-11 w-full rounded-xl border border-neutral-200 bg-white pl-10 pr-3 text-sm outline-none placeholder:text-neutral-400 focus:border-neutral-400"
           />
         </label>
@@ -272,7 +272,7 @@ export default async function AdminReferralsPage({ searchParams }: PageProps) {
           rows={referrerRows}
           rowKey={(row) => row.referrerId}
           rowHref={(row) => buildReferrerHref(row.referrerId, query)}
-          emptyState={<EmptyState title="Geen referrers gevonden" description="Er zijn nog geen ClipProfit-campagne-attributies voor deze zoekopdracht." />}
+          emptyState={<EmptyState title="Geen inviters gevonden" description="Er zijn nog geen ClipProfit-campagne-attributies voor deze zoekopdracht." />}
           columns={[
             {
               key: "creator",

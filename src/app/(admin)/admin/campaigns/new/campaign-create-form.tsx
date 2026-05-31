@@ -650,7 +650,7 @@ export function CampaignCreateForm() {
         )}
 
         <div>
-          <label style={labelStyle}>Referral- / trackinglink</label>
+          <label style={labelStyle}>Invite link / trackinglink</label>
           <input
             style={inputStyle}
             type="url"

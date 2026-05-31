@@ -18,7 +18,7 @@ const SEGMENT_LABELS: Record<string, string> = {
   profile: "Profile",
   contact: "Contact Brand",
   applications: "Applications",
-  referral: "Referrals",
+  referral: "Invite",
   stats: "Stats",
   settings: "Settings",
   updates: "Updates",

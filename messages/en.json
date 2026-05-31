@@ -265,7 +265,7 @@
       "videos": "My Clips",
       "payouts": "Payments",
       "course": "Course",
-      "referral": "Referral",
+      "referral": "Invite",
       "profile": "Profile",
       "settings": "Settings",
       "search": "Search",
@@ -281,7 +281,7 @@
       "control": "Controle",
       "commandCenter": "Commandcenter",
       "campaigns": "Campagnes",
-      "referrals": "Referralnetwerk",
+      "referrals": "Invite network",
       "clippers": "Clippers",
       "production": "Productie",
       "clipReview": "Clipreview",
@@ -739,9 +739,9 @@
             "cta": "Open payments"
           },
           "nav_referral": {
-            "title": "Referral is in the menu",
-            "body": "This is where your referral link and activity live. Useful later, but not required for your first clip.",
-            "cta": "Open referral"
+            "title": "Invite link is in the menu",
+            "body": "This is where your invite link and activity live. Use it to invite friends and others to earn exclusive rewards.",
+            "cta": "Open invite"
           },
           "coach_overview": {
             "title": "We'll show you the path",
@@ -1103,7 +1103,7 @@
         "biggestEarners": "Biggest earners",
         "noEarners": "No approved earners yet.",
         "referralLink": {
-          "title": "Personal bio link",
+          "title": "Personal invite link",
           "description": "Place this ClipProfit link in your bio so invites and active clippers are tracked for this campaign.",
           "copy": "Copy link",
           "copied": "Copied"
@@ -1349,8 +1349,8 @@
     },
     "referral": {
       "page": {
-        "title": "ClipProfit link",
-        "description": "Use this personal link in your bio for the ClipProfit campaign.",
+        "title": "Invite link",
+        "description": "This is where your invite link and activity live. Use it to invite friends and others to earn exclusive rewards.",
         "emptyTitle": "Invite a creator",
         "emptyDescription": "Share your link below so new creators can join ClipProfit.",
         "peopleInvited": "People invited",
@@ -1382,9 +1382,9 @@
         }
       },
       "link": {
-        "title": "Your ClipProfit bio link",
-        "description": "Place this link in your bio for the ClipProfit campaign.",
-        "code": "Referral code",
+        "title": "Your invite link",
+        "description": "Share this link with friends and others to earn exclusive rewards.",
+        "code": "Invite code",
         "yourCode": "Your code: {code}",
         "copy": "Copy",
         "copyLink": "Copy link",
@@ -1403,7 +1403,7 @@
       "leaderboard": {
         "title": "Invite leaderboard",
         "description": "Top creators based on active ClipProfit invites.",
-        "referrals": "Referrals",
+        "referrals": "Invites",
         "activeClippers": "Active clippers",
         "earned": "Approved",
         "you": "You",
@@ -1743,7 +1743,7 @@
         "DEMOGRAPHICS_REJECTED": "Demographics rejected",
         "BIO_VERIFIED": "Bio verified",
         "PAYOUT_SENT": "Payout sent",
-        "REFERRAL_EARNED": "Referral earned"
+        "REFERRAL_EARNED": "Invite earned"
       }
     },
     "stats": {
