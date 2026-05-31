@@ -214,6 +214,35 @@
       "saved": "Taal bijgewerkt.",
       "error": "Taal kon niet worden bijgewerkt."
     },
+    "payoutSettings": {
+      "title": "Uitbetalingsgegevens",
+      "description": "Sla hier beide uitbetalingsbestemmingen op. Bij opnemen kun je nog steeds kiezen tussen bankoverschrijving of USDC op Solana.",
+      "bankTitle": "Bankoverschrijving",
+      "bankDescription": "Sla je IBAN en rekeninghoudernaam op voor handmatige EUR-bankoverschrijvingen.",
+      "ibanLabel": "IBAN",
+      "ibanPlaceholder": "NL00 BANK 0000 0000 00",
+      "accountNameLabel": "Naam rekeninghouder",
+      "accountNamePlaceholder": "Naam op de bankrekening",
+      "savedBankDetails": "Opgeslagen bankgegevens",
+      "cryptoTitle": "USDC op Solana",
+      "cryptoDescription": "Sla het Solana walletadres op dat USDC-payouts kan ontvangen.",
+      "solanaAddressLabel": "Solana walletadres",
+      "solanaAddressPlaceholder": "Solana adres",
+      "savedCryptoAddress": "Opgeslagen walletadres",
+      "cryptoNetwork": "USDC op Solana",
+      "cryptoWarning": "Gebruik alleen een Solana walletadres dat USDC op Solana kan ontvangen.",
+      "ibanError": "Vul een geldige IBAN in.",
+      "accountNameError": "Vul de naam van de rekeninghouder in.",
+      "solanaAddressError": "Vul een geldig Solana walletadres in.",
+      "saveBankDetails": "Bankgegevens opslaan",
+      "saveCryptoDetails": "USDC-wallet opslaan",
+      "saveFailed": "Bankgegevens opslaan mislukt",
+      "saveCryptoFailed": "Solana walletadres opslaan mislukt",
+      "saveError": "Er ging iets mis bij het opslaan van bankgegevens.",
+      "saveCryptoError": "Er ging iets mis bij het opslaan van de USDC-wallet.",
+      "bankSaved": "Bankgegevens opgeslagen.",
+      "cryptoSaved": "USDC-wallet opgeslagen."
+    },
     "profile": {
       "title": "Profiel",
       "about": "Over",
@@ -1158,7 +1187,8 @@
         "focusProcessing": "{amount} wordt al verwerkt",
         "focusApproved": "{amount} tot nu toe goedgekeurd",
         "focusNone": "Nog geen goedgekeurd saldo",
-        "missingDestination": "Voeg een opnamebestemming toe voordat je je volgende payout aanvraagt."
+        "missingDestination": "Voeg een opnamebestemming toe voordat je je volgende payout aanvraagt.",
+        "missingDestinationCta": "Bestemmingen beheren"
       },
       "overview": {
         "availableBalance": "Beschikbaar saldo",
@@ -1207,6 +1237,7 @@
         "maxAmount": "Max",
         "bankPanelTitle": "Uitbetaling naar",
         "destinationPanelTitle": "Uitbetaling naar",
+        "manageInSettings": "Beheren in instellingen",
         "bankMethod": "Bank",
         "cryptoMethod": "USDC (Solana)",
         "ibanLabel": "IBAN",

@@ -42,7 +42,7 @@ async function DashboardAlertsContent({
         tone="warning"
         title={t("payment.title")}
         description={t("payment.description")}
-        cta={{ label: t("payment.cta"), href: "/creator/payouts" }}
+        cta={{ label: t("payment.cta"), href: "/creator/settings#payout-settings" }}
       />,
     );
   }

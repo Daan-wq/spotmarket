@@ -214,6 +214,35 @@
       "saved": "Language updated.",
       "error": "Could not update language."
     },
+    "payoutSettings": {
+      "title": "Payout destinations",
+      "description": "Save both payout destinations here. You can still choose bank transfer or USDC on Solana when requesting a withdrawal.",
+      "bankTitle": "Bank transfer",
+      "bankDescription": "Save the IBAN and account holder name for manual EUR bank transfers.",
+      "ibanLabel": "IBAN",
+      "ibanPlaceholder": "NL00 BANK 0000 0000 00",
+      "accountNameLabel": "Account holder name",
+      "accountNamePlaceholder": "Name on the bank account",
+      "savedBankDetails": "Saved bank details",
+      "cryptoTitle": "USDC on Solana",
+      "cryptoDescription": "Save the Solana wallet address that can receive USDC payouts.",
+      "solanaAddressLabel": "Solana wallet address",
+      "solanaAddressPlaceholder": "Solana address",
+      "savedCryptoAddress": "Saved wallet address",
+      "cryptoNetwork": "USDC on Solana",
+      "cryptoWarning": "Only use a Solana wallet address that can receive USDC on Solana.",
+      "ibanError": "Enter a valid IBAN.",
+      "accountNameError": "Enter the account holder name.",
+      "solanaAddressError": "Enter a valid Solana wallet address.",
+      "saveBankDetails": "Save bank details",
+      "saveCryptoDetails": "Save USDC wallet",
+      "saveFailed": "Failed to save bank details",
+      "saveCryptoFailed": "Failed to save Solana wallet address",
+      "saveError": "An error occurred while saving bank details.",
+      "saveCryptoError": "An error occurred while saving the USDC wallet.",
+      "bankSaved": "Bank details saved.",
+      "cryptoSaved": "USDC wallet saved."
+    },
     "profile": {
       "title": "Profile",
       "about": "About",
@@ -1158,7 +1187,8 @@
         "focusProcessing": "{amount} already processing",
         "focusApproved": "{amount} approved so far",
         "focusNone": "No approved balance yet",
-        "missingDestination": "Add a withdrawal destination before requesting your next payout."
+        "missingDestination": "Add a withdrawal destination before requesting your next payout.",
+        "missingDestinationCta": "Manage destinations"
       },
       "overview": {
         "availableBalance": "Available balance",
@@ -1207,6 +1237,7 @@
         "maxAmount": "Max",
         "bankPanelTitle": "Payout to",
         "destinationPanelTitle": "Payout to",
+        "manageInSettings": "Manage in settings",
         "bankMethod": "Bank",
         "cryptoMethod": "USDC (Solana)",
         "ibanLabel": "IBAN",
