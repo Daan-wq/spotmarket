@@ -930,6 +930,7 @@ function CopyBlock({
   if (!tokenContext?.showValues && onChange) {
     return (
       <EditablePlainText
+        key="template-editor"
         value={value}
         onChange={onChange}
         placeholder={placeholder}
@@ -937,7 +938,11 @@ function CopyBlock({
       />
     );
   }
-  return <div className={cn("whitespace-pre-wrap", className)}>{renderTemplateText(value || placeholder)}</div>;
+  return (
+    <div key="live-preview" className={cn("whitespace-pre-wrap", className)}>
+      {renderTemplateText(value || placeholder)}
+    </div>
+  );
 }
 
 function EditablePlainText({

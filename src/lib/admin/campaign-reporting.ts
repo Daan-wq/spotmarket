@@ -6,6 +6,7 @@ import {
   type CampaignReportSectionSettings,
 } from "@/lib/admin/campaign-report-shared";
 import { calculateCampaignDelivery, submissionLiveViews } from "@/lib/campaign-delivery";
+import { parseClipUrl } from "@/lib/parse-clip-url";
 import { prisma } from "@/lib/prisma";
 import { computeDayDeltas } from "@/lib/stats/trends";
 
@@ -30,7 +31,10 @@ const PLATFORM_LABELS: Record<string, string> = {
   OAUTH_TT: "TikTok",
   OAUTH_YT: "YouTube Shorts",
   OAUTH_FB: "Facebook",
+  YOUTUBE: "YouTube Shorts",
 };
+
+const INTERNAL_METRIC_SOURCES = new Set(["OAUTH_FAILED"]);
 
 export interface CampaignReportCampaignInput {
   id: string;
@@ -653,6 +657,7 @@ function buildPlatformBreakdown(submissions: CampaignReportSubmissionInput[]) {
     rows.set(platform, current);
   }
   return Array.from(rows.values())
+    .filter((row) => row.platform !== "Unknown")
     .map((row) => ({
       ...row,
       averageViewsPerClip: row.clips > 0 ? row.views / row.clips : 0,
@@ -824,12 +829,22 @@ function latestSnapshot(submission: CampaignReportSubmissionInput) {
 
 function inferPlatform(submission: CampaignReportSubmissionInput) {
   const snapshotSource = latestSnapshot(submission)?.source;
-  return platformLabel(snapshotSource ?? submission.sourcePlatform ?? "Onbekend");
+  return platformLabel(
+    clientFacingPlatformSource(snapshotSource) ??
+      clientFacingPlatformSource(submission.sourcePlatform) ??
+      parseClipUrl(submission.postUrl).normalizedPlatform ??
+      "UNKNOWN",
+  );
 }
 
 function platformLabel(value: string | null | undefined) {
   if (!value) return "Unknown";
   return PLATFORM_LABELS[value] ?? value.replace(/_/g, " ").toLowerCase().replace(/\b\w/g, (char) => char.toUpperCase());
+}
+
+function clientFacingPlatformSource(value: string | null | undefined) {
+  if (!value || INTERNAL_METRIC_SOURCES.has(value)) return null;
+  return PLATFORM_LABELS[value] ? value : null;
 }
 
 function countBy<T>(items: T[], keyFn: (item: T) => string) {

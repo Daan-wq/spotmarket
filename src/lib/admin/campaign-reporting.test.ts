@@ -184,6 +184,57 @@ describe("buildCampaignReportLiveData", () => {
     expect(report.performance.overdeliveryViews).toBe(600_000);
     expect(report.defaults.executiveSummary).toContain("overdelivery");
   });
+
+  it("keeps internal metric failure sources out of client-facing platform breakdowns", () => {
+    const report = buildCampaignReportLiveData({
+      campaign,
+      submissions: [
+        {
+          id: "sub-oauth-failed-tiktok",
+          creatorId: "creator-1",
+          creatorLabel: "Alice",
+          postUrl: "https://www.tiktok.com/@alice/video/7123456789012345678",
+          sourcePlatform: "TIKTOK",
+          status: "APPROVED",
+          createdAt: new Date("2026-05-02T00:00:00.000Z"),
+          viewCount: 12_000,
+          earnedAmount: 0,
+          metricSnapshots: [
+            { capturedAt: new Date("2026-05-03T00:00:00.000Z"), source: "OAUTH_FAILED", viewCount: 0 },
+          ],
+          signals: [],
+          qcReviews: [],
+        },
+        {
+          id: "sub-oauth-failed-invalid",
+          creatorId: "creator-2",
+          creatorLabel: "Bob",
+          postUrl: "https://example.com/codex-test-credit-usdc-solana-2026-05-25",
+          sourcePlatform: null,
+          status: "APPROVED",
+          createdAt: new Date("2026-05-02T00:00:00.000Z"),
+          viewCount: 0,
+          earnedAmount: 0,
+          metricSnapshots: [
+            { capturedAt: new Date("2026-05-03T00:00:00.000Z"), source: "OAUTH_FAILED", viewCount: 0 },
+          ],
+          signals: [],
+          qcReviews: [],
+        },
+      ],
+      attributions: [],
+      audienceSnapshots: [],
+    });
+
+    expect(report.platformBreakdown).toHaveLength(1);
+    expect(report.platformBreakdown[0]).toMatchObject({
+      platform: "TikTok",
+      clips: 1,
+      views: 0,
+    });
+    expect(report.platformBreakdown.map((row) => row.platform)).not.toContain("Oauth Failed");
+    expect(report.platformBreakdown.map((row) => row.platform)).not.toContain("Unknown");
+  });
 });
 
 describe("normalizeSectionSettings", () => {
