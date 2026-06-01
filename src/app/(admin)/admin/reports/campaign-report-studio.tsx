@@ -621,15 +621,6 @@ function ReportPreview({
   }
 
   const enabled = (sectionKey: CampaignReportSectionKey) => sectionSettings[sectionKey];
-  const reportPeriod = formatPeriod(periodStart || liveData.period.start, periodEnd || liveData.period.end);
-  const metricCards = [
-    { label: "Doelviews", value: liveData.performance.targetViews ? formatNumber(liveData.performance.targetViews, "nl") : "-", detail: liveData.performance.targetViewsSource === "budget_cpm" ? "budget / CPM" : "legacy doel" },
-    { label: "Huidige views", value: formatNumber(liveData.performance.currentViews, "nl"), detail: percentOrDash(liveData.performance.deliveryProgress, "van doel") },
-    { label: "Overdelivery", value: formatNumber(liveData.performance.overdeliveryViews, "nl"), detail: liveData.performance.overdeliveryViews > 0 ? "gratis extra bereik" : "nog geen bonusviews" },
-    { label: "Budget gebruikt", value: formatCurrency(liveData.performance.budgetUsed, "EUR", "nl"), detail: percentOrDash(liveData.performance.budgetUsedPercent, "verbruikt") },
-    { label: "Goedgekeurde clips", value: formatNumber(liveData.performance.approvedClips, "nl"), detail: `${formatNumber(liveData.performance.totalSubmissions, "nl")} inzendingen` },
-    { label: "CPM", value: liveData.performance.cpmPerThousand == null ? "-" : formatCurrency(liveData.performance.cpmPerThousand, "EUR", "nl"), detail: "per 1.000 views" },
-  ];
 
   return (
     <div className="report-print-root rounded-lg bg-neutral-200 px-3 py-6 sm:px-6">
@@ -639,162 +630,459 @@ function ReportPreview({
             <div>
               <div className="flex items-center justify-between gap-6">
                 <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-neutral-500">Campagnerapport</p>
-                <Badge variant={status === "FINAL" ? "verified" : "pending"}>{reportStatusLabel(status)}</Badge>
+                <Token name="report.status" />
               </div>
-              <InlineEditable
-                value={title}
-                onChange={editors?.setTitle}
-                placeholder="Rapporttitel"
-                className="mt-20 max-w-[130mm] text-4xl font-semibold leading-tight tracking-normal text-neutral-400"
-              />
+              <h2 className="mt-20 max-w-[130mm] text-4xl font-semibold leading-tight tracking-normal text-neutral-400">
+                <Token name="campaign.brandName" /> campagnerapport
+              </h2>
             </div>
             <div className="mt-8 grid gap-6">
-              <CoverFact label="Merk" value={liveData.campaign.brandName} />
-              <CoverFact label="Campagne" value={liveData.campaign.name} />
-              <CoverFact label="Periode" value={reportPeriod} />
+              <CoverTokenFact label="Merk" token="campaign.brandName" />
+              <CoverTokenFact label="Campagne" token="campaign.name" />
+              <CoverTokenFact label="Periode" tokens={["period.start", "period.end"]} separator=" - " />
+              <CoverTokenFact label="Rapportdatum" token="generatedAt" />
             </div>
           </ReportPage>
         ) : null}
 
         {enabled("executiveSummary") ? (
           <ReportPage>
-            <ReportHeading icon={<FileText className="h-5 w-5" />} kicker={liveData.campaign.brandName} title="Samenvatting" />
-            <InlineEditable
-              value={executiveSummary}
-              onChange={editors?.setExecutiveSummary}
-              placeholder="Schrijf hier de samenvatting."
-              className="mt-6 max-w-5xl text-lg leading-8 text-neutral-700"
+            <ReportHeading icon={<FileText className="h-5 w-5" />} kicker="Master template" title="Samenvatting" />
+            <EditableMarker name="executiveSummary" />
+            <TemplateParagraph>
+              <Token name="campaign.brandName" /> behaalde <Token name="performance.currentViews" /> huidige goedgekeurde views met <Token name="performance.approvedClips" /> goedgekeurde clips.
+              Het afgesproken doel was <Token name="performance.targetViews" /> views, berekend uit budget en CPM. De campagne leverde <Token name="performance.overdeliveryViews" /> extra views boven het afgesproken doel.
+              <Token name="platformBreakdown[0].platform" /> was het sterkste bereikskanaal. Voor de volgende campagne adviseren we om de best presterende creators opnieuw te activeren, de winnende hooks expliciet in de briefing te zetten en budget te sturen naar de kanalen met de laagste CPM.
+            </TemplateParagraph>
+            <TemplateOption title="Variant: onder doel">
+              De campagne staat momenteel op <Token name="performance.deliveryProgress" /> van het afgesproken doel van <Token name="performance.targetViews" /> views. De belangrijkste optimalisatie voor een volgende campagne is meer volume op creators/formats die sneller approved views genereren.
+            </TemplateOption>
+            <TemplateOption title="Variant: overdelivery">
+              De campagne heeft het afgesproken doel van <Token name="performance.targetViews" /> views overschreden en staat op <Token name="performance.currentViews" /> huidige goedgekeurde views. De extra <Token name="performance.overdeliveryViews" /> views zijn overdelivery: gratis extra bereik zonder extra budget.
+            </TemplateOption>
+            <TemplateKpiGrid
+              items={[
+                ["Doelviews", "performance.targetViews"],
+                ["Huidige views", "performance.currentViews"],
+                ["Overdelivery", "performance.overdeliveryViews"],
+                ["Delivery progress", "performance.deliveryProgress"],
+                ["Budget gebruikt", "performance.budgetUsed"],
+                ["Budget gebruikt %", "performance.budgetUsedPercent"],
+                ["CPM", "performance.cpmPerThousand"],
+                ["Goedgekeurde clips", "performance.approvedClips"],
+                ["Actieve creators", "performance.activeCreators"],
+                ["Topplatform", "platformBreakdown[0].platform"],
+                ["Topplatform views", "platformBreakdown[0].views"],
+              ]}
             />
-            <div className="mt-8 grid gap-3 md:grid-cols-2">
-              {keyTakeaways.map((takeaway, index) => (
-                <NumberedItem key={index} index={index + 1} text={takeaway} onChange={editors ? (value) => editors.updateKeyTakeaway(index, value) : undefined} />
-              ))}
-            </div>
-            {editors ? (
-              <Button type="button" variant="outline" size="sm" className="report-inline-control mt-4 rounded-lg opacity-0 transition focus:opacity-100 group-hover/report:opacity-100" onClick={editors.addKeyTakeaway}>
-                <Plus className="h-4 w-4" />
-                Inzicht toevoegen
-              </Button>
-            ) : null}
           </ReportPage>
         ) : null}
 
         {enabled("campaignSetup") ? (
           <ReportPage>
-            <ReportHeading icon={<CalendarDays className="h-5 w-5" />} kicker={reportPeriod} title="Campagne-inrichting" />
-            <div className="mt-7 grid gap-4 md:grid-cols-2">
-              <SetupRow label="Platforms" value={liveData.campaign.platforms.join(", ") || "-"} />
-              <SetupRow label="Doelviews" value={liveData.performance.targetViews ? formatNumber(liveData.performance.targetViews, "nl") : "-"} />
-              <SetupRow label="Budget" value={formatCurrency(liveData.campaign.totalBudget, "EUR", "nl")} />
-              <SetupRow label="CPM" value={liveData.performance.cpmPerThousand == null ? "-" : formatCurrency(liveData.performance.cpmPerThousand, "EUR", "nl")} />
-              <SetupRow label="Min. volgers" value={formatNumber(liveData.campaign.target.minFollowers, "nl")} />
-              <SetupRow label="Doelland" value={liveData.campaign.target.country ?? "-"} />
-            </div>
-            <div className="mt-6 grid gap-4 md:grid-cols-2">
-              <TextBlock title="Vereisten" text={liveData.campaign.requirements || "-"} />
-              <TextBlock title="Contentrichtlijnen" text={liveData.campaign.contentGuidelines || "-"} />
-            </div>
-            <div className="mt-6 flex flex-wrap gap-2">
-              {liveData.campaign.requiredHashtags.length > 0
-                ? liveData.campaign.requiredHashtags.map((tag) => <span key={tag} className="rounded-full bg-neutral-100 px-3 py-1 text-xs font-semibold text-neutral-700">{tag}</span>)
-                : <span className="text-sm text-neutral-500">Geen verplichte hashtags</span>}
-            </div>
-            <p className="mt-6 rounded-lg bg-neutral-50 p-4 text-sm leading-6 text-neutral-600">
-              Measurement definition: doelviews zijn berekend uit budget en CPM. Huidige views zijn live goedgekeurde views. Overdelivery is extra bereik boven het afgesproken doel zonder extra budget.
-            </p>
+            <ReportHeading icon={<CalendarDays className="h-5 w-5" />} kicker="Template setup" title="Campagne-inrichting" />
+            <TemplateVariableGrid
+              rows={[
+                ["Platforms", "campaign.platforms"],
+                ["Budget", "campaign.totalBudget"],
+                ["CPM", "performance.cpmPerThousand"],
+                ["Doelviews", "performance.targetViews"],
+                ["Minimum betaalde views", "campaign.minimumPaidViews"],
+                ["Maximum betaalde views", "campaign.maximumPaidViews"],
+                ["Campagneperiode", "campaign.startsAt", "campaign.deadline"],
+                ["Doelland", "campaign.target.country"],
+                ["Minimale volgers", "campaign.target.minFollowers"],
+                ["Minimale engagement rate", "campaign.target.minEngagementRate"],
+                ["Requirements", "campaign.requirements"],
+                ["Content guidelines", "campaign.contentGuidelines"],
+                ["Verplichte hashtags", "campaign.requiredHashtags"],
+              ]}
+            />
+            <TemplateCallout title="Measurement definition">
+              Doelviews worden berekend uit <Token name="campaign.totalBudget" /> en <Token name="campaign.creatorCpv" />. Huidige views zijn live goedgekeurde views. Overdelivery is extra bereik boven het afgesproken doel zonder extra budget.
+            </TemplateCallout>
           </ReportPage>
         ) : null}
 
         {enabled("performance") ? (
           <ReportPage>
             <ReportHeading icon={<BarChart3 className="h-5 w-5" />} kicker="Live dashboarddata" title="Prestatieoverzicht" />
-            <div className="mt-7 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-              {metricCards.map((card) => (
-                <div key={card.label} className="rounded-lg border border-neutral-200 p-4">
-                  <p className="text-xs font-semibold uppercase tracking-[0.12em] text-neutral-400">{card.label}</p>
-                  <p className="mt-3 text-2xl font-semibold tracking-normal text-neutral-950">{card.value}</p>
-                  <p className="mt-1 text-xs text-neutral-500">{card.detail}</p>
-                </div>
-              ))}
-            </div>
-            {liveData.performance.overdeliveryViews > 0 ? (
-              <p className="mt-5 rounded-lg border border-neutral-200 bg-neutral-50 p-4 text-sm leading-6 text-neutral-700">
-                Gratis bonus voor de client: deze campagne levert nog steeds views boven het afgesproken doel. Deze overdelivery laat zien dat oude campagnecontent blijft doorlopen zonder extra budget.
-              </p>
-            ) : null}
-            <TimelineChart rows={liveData.timeline} />
-            <StatusGrid statusCounts={liveData.performance.statusCounts} />
+            <TemplateRepeat title="Views over time" source="timeline">
+              <Token name="timeline[].date" /> <Token name="timeline[].views" /> <Token name="timeline[].likes" /> <Token name="timeline[].comments" /> <Token name="timeline[].shares" />
+            </TemplateRepeat>
+            <TemplateVariableGrid
+              rows={[
+                ["Status breakdown", "performance.statusCounts"],
+                ["Doelviews", "performance.targetViews"],
+                ["Huidige live views", "performance.currentViews"],
+                ["Betaalbare / eligible views", "performance.paidEligibleViews"],
+                ["Overdelivery views", "performance.overdeliveryViews"],
+                ["Overdelivery %", "performance.overdeliveryPercent"],
+                ["Delivery progress", "performance.deliveryProgress"],
+                ["Approval rate", "performance.approvalRate"],
+              ]}
+            />
+            <EditableMarker name="performanceInsight" />
+            <TemplateParagraph>
+              De campagne staat op <Token name="performance.deliveryProgress" /> van het afgesproken viewdoel. Huidige views blijven live doorlopen via goedgekeurde clips. Views boven <Token name="performance.targetViews" /> worden zichtbaar als overdelivery.
+            </TemplateParagraph>
+          </ReportPage>
+        ) : null}
+
+        {enabled("performance") ? (
+          <ReportPage>
+            <ReportHeading icon={<BarChart3 className="h-5 w-5" />} kicker="Budget en delivery" title="Financial Overview" />
+            <TemplateVariableGrid
+              rows={[
+                ["Totaal budget", "campaign.totalBudget"],
+                ["Budget gebruikt", "performance.budgetUsed"],
+                ["Budget gebruikt %", "performance.budgetUsedPercent"],
+                ["Betaalbare / eligible views", "performance.paidEligibleViews"],
+                ["Huidige live views", "performance.currentViews"],
+                ["Doelviews", "performance.targetViews"],
+                ["Overdelivery", "performance.overdeliveryViews"],
+                ["CPM", "performance.cpmPerThousand"],
+                ["Effectieve cost per 1.000 views", "performance.costPerThousandViews"],
+              ]}
+            />
+            <EditableMarker name="financialNote" />
+            <TemplateParagraph>
+              Het afgesproken viewdoel is gebaseerd op budget en CPM. Eventuele overdelivery wordt niet extra doorbelast en vertegenwoordigt extra bereik voor de client.
+            </TemplateParagraph>
           </ReportPage>
         ) : null}
 
         {enabled("platformBreakdown") ? (
           <ReportPage>
-            <ReportHeading icon={<BarChart3 className="h-5 w-5" />} kicker="Kanaallevering" title="Platformverdeling" />
-            <div className="mt-7 space-y-3">
-              {liveData.platformBreakdown.length === 0 ? <EmptyPreviewLine text="Nog geen goedgekeurde platformdata." /> : null}
-              <BreakdownRows rows={liveData.platformBreakdown} />
-            </div>
+            <ReportHeading icon={<BarChart3 className="h-5 w-5" />} kicker="Kanaallevering" title="Platform Performance" />
+            <TemplateRepeat title="Herhaal per platform" source="platformBreakdown">
+              <TemplateVariableGrid
+                rows={[
+                  ["Platform", "platformBreakdown[].platform"],
+                  ["Views", "platformBreakdown[].views"],
+                  ["Clips", "platformBreakdown[].clips"],
+                  ["Engagement", "platformBreakdown[].engagement"],
+                  ["Cost", "platformBreakdown[].cost"],
+                ]}
+              />
+              <EditableMarker name="platformRecommendation[]" />
+              <TemplateParagraph>
+                <Token name="platformBreakdown[].platform" /> leverde <Token name="platformBreakdown[].views" /> views via <Token name="platformBreakdown[].clips" /> clips. Dit kanaal is relevant voor de volgende campagne op basis van bereik, kosten en engagement.
+              </TemplateParagraph>
+            </TemplateRepeat>
           </ReportPage>
         ) : null}
 
         {enabled("topContent") ? (
           <ReportPage>
             <ReportHeading icon={<Sparkles className="h-5 w-5" />} kicker="Beste clips" title="Topcontent" />
-            <TopContentTable rows={liveData.topContent.slice(0, 8)} />
+            <TemplateRepeat title="Herhaal per top clip" source="topContent">
+              <TemplateVariableGrid
+                rows={[
+                  ["Thumbnail", "topContent[].thumbnailUrl"],
+                  ["Creator", "topContent[].creator"],
+                  ["Platform", "topContent[].platform"],
+                  ["Post URL", "topContent[].postUrl"],
+                  ["Views", "topContent[].views"],
+                  ["Engagement", "topContent[].engagement"],
+                  ["Earned amount", "topContent[].earnedAmount"],
+                  ["Status", "topContent[].status"],
+                ]}
+              />
+              <EditableMarker name="topContentLearning[]" />
+              <TemplateParagraph>
+                Deze clip werkte door een sterke hook, snelle herkenbaarheid en een format dat native aanvoelde voor <Token name="topContent[].platform" />.
+              </TemplateParagraph>
+            </TemplateRepeat>
+          </ReportPage>
+        ) : null}
+
+        {enabled("topContent") ? (
+          <ReportPage>
+            <ReportHeading icon={<Sparkles className="h-5 w-5" />} kicker="Strategische patronen" title="Content Insights" />
+            <EditableMarker name="contentInsights" />
+            <TemplateParagraph>
+              De best presterende content combineerde een duidelijke hook, snelle merkplaatsing en een format dat paste bij het platform. Clips die sneller tot de kern kwamen, presteerden beter dan content met een tragere opening.
+            </TemplateParagraph>
+            <TemplateOption title="Opties">
+              <TemplateBullets
+                items={[
+                  <>Directe problem/solution hooks presteerden het sterkst.</>,
+                  <>Creator-native edits presteerden beter dan te gepolijste branded content.</>,
+                  <>Product of merk zichtbaar in de eerste seconden verhoogde de performance.</>,
+                  <><Token name="platformBreakdown[0].platform" /> verdient extra focus in de volgende briefing.</>,
+                ]}
+              />
+            </TemplateOption>
           </ReportPage>
         ) : null}
 
         {enabled("creatorPerformance") ? (
           <ReportPage>
-            <ReportHeading icon={<Users className="h-5 w-5" />} kicker={`${liveData.performance.activeCreators} actieve creators`} title="Creatorprestaties" />
-            <CreatorTable rows={liveData.creators.slice(0, 10)} />
-            <ReferralSummary data={liveData} />
+            <ReportHeading icon={<Users className="h-5 w-5" />} kicker="Creator pool" title="Creator Performance Breakdown" />
+            <TemplateRepeat title="Herhaal per creator" source="creators">
+              <TemplateVariableGrid
+                rows={[
+                  ["Creator", "creators[].creator"],
+                  ["Submissions", "creators[].submissions"],
+                  ["Views", "creators[].views"],
+                  ["Earned amount", "creators[].earnedAmount"],
+                  ["Flagged count", "creators[].flagged"],
+                ]}
+              />
+            </TemplateRepeat>
+            <EditableMarker name="creatorRecommendation" />
+            <TemplateParagraph>
+              Voor de volgende campagne raden we aan creators opnieuw te activeren die hoge views combineren met consistente kwaliteit, lage revision-rate en duidelijke merkfit.
+            </TemplateParagraph>
           </ReportPage>
         ) : null}
 
         {enabled("audience") ? (
           <ReportPage>
-            <ReportHeading icon={<Users className="h-5 w-5" />} kicker={`${liveData.audience.sampleCount} publieksmetingen`} title="Publiek en bereikskwaliteit" />
-            <div className="mt-7 grid gap-6 md:grid-cols-3">
-              <Distribution title="Toplanden" rows={liveData.audience.topCountries.map((row) => ({ label: row.code, value: row.share }))} suffix="%" />
-              <Distribution title="Leeftijdsgroepen" rows={objectRows(liveData.audience.ageBuckets)} suffix="%" />
-              <Distribution title="Genderverdeling" rows={objectRows(liveData.audience.genderSplit)} suffix="%" />
-            </div>
+            <ReportHeading icon={<Users className="h-5 w-5" />} kicker="Audience snapshots" title="Audience & Reach Quality" />
+            <TemplateVariableGrid
+              rows={[
+                ["Audience sample count", "audience.sampleCount"],
+                ["Top countries", "audience.topCountries[]"],
+                ["Age buckets", "audience.ageBuckets"],
+                ["Gender split", "audience.genderSplit"],
+              ]}
+            />
+            <EditableMarker name="audienceInsight" />
+            <TemplateParagraph>
+              Audience-data is gebaseerd op beschikbare creator audience snapshots. De databeschikbaarheid kan per platform verschillen.
+            </TemplateParagraph>
+          </ReportPage>
+        ) : null}
+
+        {enabled("creatorPerformance") ? (
+          <ReportPage>
+            <ReportHeading icon={<Users className="h-5 w-5" />} kicker="Optioneel" title="Community Activation Performance" />
+            <TemplateCallout title="Voorwaarde">
+              Toon deze sectie alleen als <Token name="referral.totalClicks" /> of <Token name="referral.inviteCount" /> groter is dan 0.
+            </TemplateCallout>
+            <TemplateVariableGrid
+              rows={[
+                ["Total clicks", "referral.totalClicks"],
+                ["Invites", "referral.inviteCount"],
+                ["Active clippers", "referral.activeClipperCount"],
+                ["Activation rate", "referral.activationRate"],
+                ["CPA per invite", "referral.cpaPerInvite"],
+                ["CPA per active clipper", "referral.cpaPerActiveClipper"],
+              ]}
+            />
+            <EditableMarker name="communityInsight" />
+            <TemplateParagraph>
+              De campagne activeerde <Token name="referral.activeClipperCount" /> actieve clippers vanuit <Token name="referral.inviteCount" /> invites. Dit laat zien hoeveel extra creator-distributie via de campagneflow is ontstaan.
+            </TemplateParagraph>
           </ReportPage>
         ) : null}
 
         {enabled("quality") ? (
           <ReportPage>
-            <ReportHeading icon={<ShieldCheck className="h-5 w-5" />} kicker="QC en signalen" title="Kwaliteit en compliance" />
-            <div className="mt-7 grid gap-4 md:grid-cols-3">
-              <QualityMetric label="Open signalen" value={liveData.quality.openSignals} />
-              <QualityMetric label="Kritieke signalen" value={liveData.quality.criticalSignals} />
-              <QualityMetric label="Opgeloste signalen" value={liveData.quality.resolvedSignals} />
-            </div>
-            <div className="mt-6 grid gap-6 md:grid-cols-2">
-              <Distribution title="Signaaltypes" rows={objectRows(liveData.quality.signalCounts)} />
-              <Distribution title="QC-beslissingen" rows={objectRows(liveData.quality.qcDecisionCounts)} />
-            </div>
+            <ReportHeading icon={<ShieldCheck className="h-5 w-5" />} kicker="Client-safe wording" title="Quality & Compliance Review" />
+            <TemplateVariableGrid
+              rows={[
+                ["Traffic Quality Status", "computed.trafficQualityStatus"],
+                ["Open signals", "quality.openSignals"],
+                ["Critical signals", "quality.criticalSignals"],
+                ["Resolved signals", "quality.resolvedSignals"],
+                ["Signal counts", "quality.signalCounts"],
+                ["QC decisions", "quality.qcDecisionCounts"],
+              ]}
+            />
+            <TemplateParagraph>
+              Alle clips en views zijn beoordeeld op campagnevoorwaarden, content compliance, duplicate activity en traffic quality. Alleen goedgekeurde prestaties worden meegenomen in approved views en payout.
+            </TemplateParagraph>
+            <EditableMarker name="qualityNote" />
+            <TemplateOption title="Status opties">
+              <TemplateBullets
+                items={[
+                  <>Passed: geen open kritieke kwaliteitsissues.</>,
+                  <>Passed with exclusions: niet-kwalificerende activiteit is uitgesloten van approved performance.</>,
+                  <>Needs attention: er zijn open signalen die handmatige review vragen.</>,
+                ]}
+              />
+            </TemplateOption>
           </ReportPage>
         ) : null}
 
         {enabled("nextCampaign") ? (
-          <ReportPage>
-            <ReportHeading icon={<RefreshCw className="h-5 w-5" />} kicker="Volgende campagne" title="Aanbeveling voor volgende campagne" />
-            <div className="mt-7 grid gap-6 md:grid-cols-2">
-              <div>
-                <h3 className="text-sm font-semibold text-neutral-950">Learnings</h3>
-                <BulletList items={learnings} onItemChange={editors?.updateLearning} onAdd={editors?.addLearning} addLabel="Learning toevoegen" />
-              </div>
-              <div>
-                <h3 className="text-sm font-semibold text-neutral-950">Aanbevelingen</h3>
-                <BulletList items={recommendations} onItemChange={editors?.updateRecommendation} onAdd={editors?.addRecommendation} addLabel="Aanbeveling toevoegen" />
-              </div>
-            </div>
-          </ReportPage>
+          <>
+            <ReportPage>
+              <ReportHeading icon={<RefreshCw className="h-5 w-5" />} kicker="Praktische conclusies" title="Key Learnings" />
+              <EditableMarker name="learnings[]" />
+              <TemplateBullets
+                items={[
+                  <>Herhaal formats die op <Token name="platformBreakdown[0].platform" /> vroeg aandacht trekken.</>,
+                  <>Gebruik topcontent van <Token name="topContent[0].creator" /> als referentie voor hook, tempo en visuele brand placement.</>,
+                  <>Activeer creators opnieuw die veel views leveren met consistente kwaliteit.</>,
+                  <>Houd contentregels concreet om revision-rate te beperken.</>,
+                  <>Gebruik overdelivery van <Token name="performance.overdeliveryViews" /> als bewijs dat campagnecontent na livegang blijft doorlopen.</>,
+                ]}
+              />
+            </ReportPage>
+
+            <ReportPage>
+              <ReportHeading icon={<RefreshCw className="h-5 w-5" />} kicker="Volgende campagne" title="Next Campaign Recommendations" />
+              <EditableMarker name="nextCampaignRecommendations[]" />
+              <TemplateBullets
+                items={[
+                  <>Reserveer extra budget voor <Token name="platformBreakdown[0].platform" />, omdat dit kanaal de sterkste delivery liet zien.</>,
+                  <>Nodig de best presterende creators opnieuw uit.</>,
+                  <>Maak 3 concrete hook-angles voor de volgende briefing.</>,
+                  <>Gebruik winnende topclips als voorbeeldmateriaal in de creator brief.</>,
+                  <>Stuur budget op basis van CPM, approved views en overdelivery.</>,
+                  <>Houd quality review actief op brand placement, duplicate content en engagementratio's.</>,
+                ]}
+              />
+            </ReportPage>
+
+            <ReportPage>
+              <ReportHeading icon={<FileText className="h-5 w-5" />} kicker="Admin appendix" title="Appendix / Raw Data" />
+              <TemplateVariableGrid
+                rows={[
+                  ["Campagne ID", "campaign.id"],
+                  ["Brand ID", "campaign.brandId"],
+                  ["Target views source", "performance.targetViewsSource"],
+                  ["Approved views", "performance.approvedViews"],
+                  ["Current views", "performance.currentViews"],
+                  ["Paid eligible views", "performance.paidEligibleViews"],
+                  ["All status counts", "performance.statusCounts"],
+                  ["All signal counts", "quality.signalCounts"],
+                  ["All QC decisions", "quality.qcDecisionCounts"],
+                ]}
+              />
+            </ReportPage>
+          </>
         ) : null}
       </div>
     </div>
+  );
+}
+
+function Token({ name }: { name: string }) {
+  return (
+    <span className="inline-flex max-w-full items-center rounded-md border border-neutral-300 bg-neutral-100 px-1.5 py-0.5 align-baseline font-mono text-[0.85em] font-semibold leading-5 text-neutral-700">
+      {"{{"}{name}{"}}"}
+    </span>
+  );
+}
+
+function EditableMarker({ name }: { name: string }) {
+  return (
+    <div className="mt-5 inline-flex items-center rounded-md border border-dashed border-neutral-300 bg-white px-2 py-1 font-mono text-xs font-semibold text-neutral-500">
+      [editable: {name}]
+    </div>
+  );
+}
+
+function CoverTokenFact({
+  label,
+  token,
+  tokens,
+  separator = "",
+}: {
+  label: string;
+  token?: string;
+  tokens?: string[];
+  separator?: string;
+}) {
+  return (
+    <div>
+      <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-neutral-600">{label}</p>
+      <p className="mt-2 flex flex-wrap items-center gap-1 text-sm font-semibold text-neutral-400">
+        {token ? <Token name={token} /> : null}
+        {tokens?.map((item, index) => (
+          <span key={item} className="inline-flex items-center gap-1">
+            {index > 0 ? <span>{separator}</span> : null}
+            <Token name={item} />
+          </span>
+        ))}
+      </p>
+    </div>
+  );
+}
+
+function TemplateParagraph({ children }: { children: React.ReactNode }) {
+  return <p className="mt-5 text-sm leading-7 text-neutral-700">{children}</p>;
+}
+
+function TemplateOption({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <div className="mt-4 rounded-lg border border-dashed border-neutral-300 bg-neutral-50 p-4">
+      <p className="text-xs font-semibold uppercase tracking-[0.14em] text-neutral-500">{title}</p>
+      <p className="mt-2 text-sm leading-7 text-neutral-700">{children}</p>
+    </div>
+  );
+}
+
+function TemplateCallout({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <div className="mt-6 rounded-lg border border-neutral-200 bg-neutral-50 p-4">
+      <p className="text-xs font-semibold uppercase tracking-[0.14em] text-neutral-500">{title}</p>
+      <p className="mt-2 text-sm leading-7 text-neutral-700">{children}</p>
+    </div>
+  );
+}
+
+function TemplateKpiGrid({ items }: { items: Array<[string, string]> }) {
+  return (
+    <div className="mt-7 grid gap-3 md:grid-cols-2">
+      {items.map(([label, token]) => (
+        <div key={label} className="rounded-lg border border-neutral-200 p-4">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-neutral-400">{label}</p>
+          <p className="mt-3">
+            <Token name={token} />
+          </p>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function TemplateVariableGrid({ rows }: { rows: Array<[string, ...string[]]> }) {
+  return (
+    <div className="mt-6 grid gap-3 md:grid-cols-2">
+      {rows.map(([label, ...tokens]) => (
+        <div key={label} className="rounded-lg border border-neutral-200 p-4">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-neutral-400">{label}</p>
+          <div className="mt-3 flex flex-wrap items-center gap-1.5">
+            {tokens.map((token, index) => (
+              <span key={`${label}-${token}`} className="inline-flex items-center gap-1">
+                {index > 0 ? <span className="text-xs text-neutral-400">-</span> : null}
+                <Token name={token} />
+              </span>
+            ))}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function TemplateRepeat({ title, source, children }: { title: string; source: string; children: React.ReactNode }) {
+  return (
+    <div className="mt-6 rounded-lg border border-neutral-200 p-4">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <p className="text-xs font-semibold uppercase tracking-[0.14em] text-neutral-500">{title}</p>
+        <span className="rounded-full bg-neutral-100 px-2 py-1 font-mono text-[11px] font-semibold text-neutral-500">[repeat: {source}]</span>
+      </div>
+      <div className="mt-3">{children}</div>
+    </div>
+  );
+}
+
+function TemplateBullets({ items }: { items: React.ReactNode[] }) {
+  return (
+    <ul className="mt-5 space-y-3">
+      {items.map((item, index) => (
+        <li key={index} className="rounded-lg border border-neutral-200 p-4 text-sm leading-7 text-neutral-700">
+          {item}
+        </li>
+      ))}
+    </ul>
   );
 }
 
