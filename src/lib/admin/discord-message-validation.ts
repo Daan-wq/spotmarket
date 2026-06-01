@@ -431,10 +431,17 @@ export function isHttpUrl(value: string): boolean {
   }
 }
 
-function getDiscordAttachmentFileName(value: string): string | null {
+export function isAttachmentUrl(value: string): boolean {
+  return /^attachment:\/\/[^/\\?#]+$/.test(value.trim());
+}
+
+export function attachmentFileNameFromUrl(value: string): string | null {
   const prefix = "attachment://";
-  if (!value.startsWith(prefix)) return null;
-  const filename = value.slice(prefix.length).trim();
-  if (!filename || /[/\\?#]/.test(filename)) return null;
-  return filename;
+  const trimmed = value.trim();
+  if (!isAttachmentUrl(trimmed)) return null;
+  return trimmed.slice(prefix.length);
+}
+
+function getDiscordAttachmentFileName(value: string): string | null {
+  return attachmentFileNameFromUrl(value);
 }
