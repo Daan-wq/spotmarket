@@ -14,7 +14,7 @@ export const dynamic = "force-dynamic";
 const PAID_LIKE_STATUSES = new Set(["sent", "confirmed"]);
 
 export default async function PayoutsPage() {
-  const [paymentRequests, runs, payouts, legacyAudit, eurUsdRate] = await Promise.all([
+  const [paymentRequests, runs, payouts, approvedUnpaid, legacyAudit, eurUsdRate] = await Promise.all([
     prisma.payout.findMany({
       where: {
         paymentMethod: { in: ["BANK_TRANSFER", "CRYPTO"] },
@@ -45,11 +45,22 @@ export default async function PayoutsPage() {
       orderBy: { createdAt: "desc" },
       take: 100,
     }),
+    prisma.campaignSubmission.findMany({
+      where: { status: "APPROVED", payoutRunItems: { none: {} } },
+      select: {
+        id: true,
+        earnedAmount: true,
+        creator: { select: { email: true } },
+        campaign: { select: { name: true } },
+      },
+      take: 100,
+    }),
     getLegacyFinancialAudit(),
     getEurUsdRate(),
   ]);
 
   const runNet = runs.reduce((sum, run) => sum + Number(run.totalNet), 0);
+  const owed = approvedUnpaid.reduce((sum, submission) => sum + Number(submission.earnedAmount), 0);
 
   return (
     <div className="space-y-9">
@@ -62,9 +73,10 @@ export default async function PayoutsPage() {
         ]}
       />
 
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-5">
         <StatCard label="Betaalverzoeken" value={String(paymentRequests.length)} detail="Handmatige overboekingen wachten" tone={paymentRequests.length > 0 ? "warning" : "neutral"} />
         <StatCard label="Legacy runs" value={String(runs.length)} detail={`${formatCurrencyPrecise(runNet)} historische runwaarde`} />
+        <StatCard label="Goedgekeurd onbetaald" value={formatCurrencyPrecise(owed)} detail={`${approvedUnpaid.length} inzendingen buiten runs`} tone={approvedUnpaid.length > 0 ? "warning" : "neutral"} />
         <StatCard label="Legacy settled" value={String(legacyAudit.settledSubmissionCount)} detail={`${formatCurrencyPrecise(legacyAudit.settledSubmissionTotal)} via settledAt`} />
         <StatCard label="Legacy wallets" value={formatCurrencyPrecise(legacyAudit.walletBalanceTotal)} detail={`${legacyAudit.walletCount} oude wallets, ${legacyAudit.payoutRunItemCount} run-items`} />
       </div>
@@ -185,6 +197,20 @@ export default async function PayoutsPage() {
             { key: "deduction", header: "Inhoudingen", align: "right", cell: (run) => formatCurrencyPrecise(run.totalDeduction, run.currency) },
             { key: "net", header: "Net", align: "right", cell: (run) => <span className="font-semibold text-neutral-950">{formatCurrencyPrecise(run.totalNet, run.currency)}</span> },
             { key: "proof", header: "Bewijs", cell: (run) => run.proofUrl ? <a href={run.proofUrl} className="font-semibold underline underline-offset-2">Openen</a> : "-" },
+          ]}
+        />
+      </section>
+
+      <section>
+        <SectionHeader title="Goedgekeurd onbetaald werk" description="Auditbron voor historisch runmateriaal; nieuwe betalingen blijven via handmatige betaalverzoeken lopen." />
+        <DataTable
+          rows={approvedUnpaid}
+          rowKey={(submission) => submission.id}
+          emptyState={<EmptyState title="Geen goedgekeurde onbetaalde inzendingen" description="Al het goedgekeurde werk zit al in een run of er is geen goedgekeurd werk." />}
+          columns={[
+            { key: "campaign", header: "Campagne", cell: (submission) => submission.campaign.name },
+            { key: "creator", header: "Creator", cell: (submission) => submission.creator.email },
+            { key: "amount", header: "Bedrag", align: "right", cell: (submission) => formatCurrencyPrecise(submission.earnedAmount, "EUR") },
           ]}
         />
       </section>
