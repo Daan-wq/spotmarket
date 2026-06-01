@@ -1,6 +1,7 @@
 import { calculateCampaignReferralReport, type CampaignReferralReport } from "@/lib/campaign-referrals";
 import {
   DEFAULT_CAMPAIGN_REPORT_SECTIONS,
+  normalizeEditorialContent,
   type CampaignReportEditorial,
   type CampaignReportSectionSettings,
 } from "@/lib/admin/campaign-report-shared";
@@ -195,6 +196,9 @@ export interface CampaignReportLiveData {
     clips: number;
     engagement: number;
     cost: number;
+    averageViewsPerClip: number;
+    engagementRate: number | null;
+    effectiveCpm: number | null;
   }>;
   topContent: Array<{
     id: string;
@@ -211,9 +215,11 @@ export interface CampaignReportLiveData {
     creatorId: string;
     creator: string;
     submissions: number;
+    approvedSubmissions: number;
     views: number;
     earnedAmount: number;
     flagged: number;
+    approvalRate: number | null;
   }>;
   referral: CampaignReferralReport;
   quality: {
@@ -572,6 +578,20 @@ function generateDefaultEditorial(data: Omit<CampaignReportLiveData, "defaults">
     "Maak 3 concrete hook-angles en voeg voorbeeldclips toe aan de creator brief.",
     "Houd quality checks actief op logo/brand placement, duplicate content en afwijkende engagementratio's.",
   ];
+  const defaultTemplateBlocks = {
+    "cover.kicker": "Campagne performance report",
+    "summary.body": "De campagne heeft het afgesproken doel van {{performance.targetViews}} views ruim overtroffen. In totaal genereerden goedgekeurde clips {{performance.currentViews}} views, goed voor {{performance.overdeliveryViews}} extra views boven het afgesproken doel. Het volledige budget van {{campaign.totalBudget}} is benut, waardoor de effectieve CPM op het totale bereik uitkomt op {{performance.costPerThousandViews}}. De best presterende content kwam voort uit snelle hooks, duidelijke merkherkenning en creator-native edits.",
+    "summary.conclusion": "Dit betekent dat de campagne het afgesproken bereik ruim heeft overtroffen zonder extra mediabudget.",
+    "glance.statement": "De campagne leverde extra bereik boven het afgesproken doel. Extra bereik wordt niet extra doorbelast en blijft zichtbaar als gratis bonus voor de client.",
+    "performance.insight": "De groei laat zien wanneer de campagne tractie kreeg. Sterke clipmomenten versnellen de cumulatieve viewlijn en vormen de basis voor optimalisatie in de volgende ronde.",
+    "content.insight": "De best presterende clips combineren een snelle hook, zichtbare merkplaatsing in de eerste seconden en een editstijl die native voelt voor het platform.",
+    "platform.insight": "{{platformBreakdown[0].platform}} leverde het grootste deel van het bereik en verdient extra focus in de volgende campagne.",
+    "creator.insight": "Voor de volgende campagne raden we aan creators opnieuw te activeren die hoge views combineren met consistente kwaliteit en duidelijke merkfit.",
+    "audience.insight": "Audience-data is gebaseerd op beschikbare platformdata. De beschikbaarheid kan per platform verschillen.",
+    "budget.insight": "Betaalde views zijn gemaximeerd op het afgesproken doel. Extra views boven dit doel worden gerapporteerd als extra bereik zonder extra kosten.",
+    "quality.insight": "Alle clips en views zijn gecontroleerd op campagnevoorwaarden, duplicate activity en traffic quality. Alleen prestaties die voldeden aan de voorwaarden zijn meegenomen in de goedgekeurde resultaten.",
+    "next.plan": "Voor de volgende campagne adviseren we om de best presterende creators opnieuw te activeren, de winnende hooks expliciet in de briefing te zetten en budget te sturen naar de kanalen met de laagste effectieve CPM.",
+  };
 
   return {
     title: `${data.campaign.brandName} campagnerapport`,
@@ -580,6 +600,21 @@ function generateDefaultEditorial(data: Omit<CampaignReportLiveData, "defaults">
     learnings,
     nextCampaignRecommendations,
     sectionSettings: { ...DEFAULT_CAMPAIGN_REPORT_SECTIONS },
+    editorialContent: normalizeEditorialContent({
+      templateBlocks: defaultTemplateBlocks,
+      contentPatternTags: [
+        "snelle hook",
+        "creator-native edit",
+        "merk zichtbaar in eerste 3 seconden",
+        "probleem/oplossing",
+        "duidelijke productintegratie",
+      ],
+      topContentNotes: {},
+      platformRecommendations: {},
+      creatorRecommendations: nextCampaignRecommendations.slice(0, 3),
+      qualityNote: defaultTemplateBlocks["quality.insight"],
+      nextCampaignPlan: defaultTemplateBlocks["next.plan"],
+    }),
   };
 }
 
@@ -617,7 +652,14 @@ function buildPlatformBreakdown(submissions: CampaignReportSubmissionInput[]) {
     current.cost += toNumber(submission.earnedAmount);
     rows.set(platform, current);
   }
-  return Array.from(rows.values()).sort((a, b) => b.views - a.views);
+  return Array.from(rows.values())
+    .map((row) => ({
+      ...row,
+      averageViewsPerClip: row.clips > 0 ? row.views / row.clips : 0,
+      engagementRate: row.views > 0 ? row.engagement / row.views : null,
+      effectiveCpm: row.views > 0 ? (row.cost / row.views) * 1000 : null,
+    }))
+    .sort((a, b) => b.views - a.views);
 }
 
 function buildTopContent(submissions: CampaignReportSubmissionInput[]) {
@@ -638,25 +680,33 @@ function buildTopContent(submissions: CampaignReportSubmissionInput[]) {
 }
 
 function buildCreatorLeaderboard(submissions: CampaignReportSubmissionInput[]) {
-  const rows = new Map<string, { creatorId: string; creator: string; submissions: number; views: number; earnedAmount: number; flagged: number }>();
+  const rows = new Map<string, { creatorId: string; creator: string; submissions: number; approvedSubmissions: number; views: number; earnedAmount: number; flagged: number }>();
   for (const submission of submissions) {
     const current = rows.get(submission.creatorId) ?? {
       creatorId: submission.creatorId,
       creator: submission.creatorLabel,
       submissions: 0,
+      approvedSubmissions: 0,
       views: 0,
       earnedAmount: 0,
       flagged: 0,
     };
     current.submissions += 1;
     if (submission.status === "APPROVED") {
+      current.approvedSubmissions += 1;
       current.views += submissionViews(submission);
       current.earnedAmount += toNumber(submission.earnedAmount);
     }
     current.flagged += submission.signals.some((signal) => !signal.resolvedAt && ["WARN", "CRITICAL"].includes(signal.severity)) ? 1 : 0;
     rows.set(submission.creatorId, current);
   }
-  return Array.from(rows.values()).sort((a, b) => b.views - a.views).slice(0, 20);
+  return Array.from(rows.values())
+    .map((row) => ({
+      ...row,
+      approvalRate: row.submissions > 0 ? row.approvedSubmissions / row.submissions : null,
+    }))
+    .sort((a, b) => b.views - a.views)
+    .slice(0, 20);
 }
 
 function buildQualitySummary(submissions: CampaignReportSubmissionInput[]) {

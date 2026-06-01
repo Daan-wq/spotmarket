@@ -3,12 +3,14 @@ import { optionalIsoDate } from "@/lib/admin/agency-api";
 import {
   CAMPAIGN_REPORT_SECTION_KEYS,
   DEFAULT_CAMPAIGN_REPORT_SECTIONS,
+  normalizeEditorialContent,
   type CampaignReportSectionSettings,
 } from "@/lib/admin/campaign-report-shared";
 
 const reportStatus = z.enum(["DRAFT", "FINAL"]);
 const textList = z.array(z.string().trim().min(1).max(500)).max(12);
 const rawSectionSettings = z.record(z.string(), z.boolean());
+const rawEditorialContent = z.record(z.string(), z.unknown());
 
 function normalizeCampaignReportSectionSettings(value?: Record<string, boolean>): CampaignReportSectionSettings {
   const input = value ?? {};
@@ -31,6 +33,13 @@ const optionalSectionSettingsSchema = rawSectionSettings
     return normalizeCampaignReportSectionSettings(value);
   });
 
+const optionalEditorialContentSchema = rawEditorialContent
+  .optional()
+  .transform((value) => {
+    if (!value) return undefined;
+    return normalizeEditorialContent(value);
+  });
+
 export const campaignReportCreateSchema = z.object({
   campaignId: z.string().min(1),
   title: z.string().trim().min(1).max(180).optional(),
@@ -42,6 +51,7 @@ export const campaignReportCreateSchema = z.object({
   learnings: textList.optional(),
   nextCampaignRecommendations: textList.optional(),
   sectionSettings: sectionSettingsSchema,
+  editorialContent: optionalEditorialContentSchema,
 });
 
 export const campaignReportUpdateSchema = z.object({
@@ -54,6 +64,7 @@ export const campaignReportUpdateSchema = z.object({
   learnings: textList.optional(),
   nextCampaignRecommendations: textList.optional(),
   sectionSettings: optionalSectionSettingsSchema,
+  editorialContent: optionalEditorialContentSchema,
 });
 
 export type CampaignReportCreateInput = z.infer<typeof campaignReportCreateSchema>;

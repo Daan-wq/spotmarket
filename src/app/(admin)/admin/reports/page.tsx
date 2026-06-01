@@ -6,6 +6,7 @@ import {
 } from "@/lib/admin/campaign-reporting";
 import {
   normalizeSectionSettings,
+  normalizeEditorialContent,
   normalizeTextList,
   type CampaignReportEditorial,
   type CampaignReportStatusValue,
@@ -147,6 +148,7 @@ function buildInitialEditorial(
     learnings: normalizeTextList(report.learnings),
     nextCampaignRecommendations: normalizeTextList(report.nextCampaignRecommendations),
     sectionSettings: normalizeSectionSettings(report.sectionSettings),
+    editorialContent: normalizeEditorialContent(report.editorialContent),
   };
 }
 
@@ -167,6 +169,7 @@ function toReportRecord(report: ReportWithRelations): CampaignReportRecord {
     learnings: normalizeTextList(report.learnings),
     nextCampaignRecommendations: normalizeTextList(report.nextCampaignRecommendations),
     sectionSettings: normalizeSectionSettings(report.sectionSettings),
+    editorialContent: normalizeEditorialContent(report.editorialContent),
   };
 }
 

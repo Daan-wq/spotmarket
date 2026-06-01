@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import type { Prisma } from "@prisma/client";
 import { requireAuth } from "@/lib/auth";
 import { jsonError, serialize } from "@/lib/admin/agency-api";
 import { campaignReportUpdateSchema } from "@/lib/admin/campaign-report-validation";
@@ -52,8 +53,11 @@ export async function PATCH(req: Request, { params }: RouteContext) {
       "learnings",
       "nextCampaignRecommendations",
       "sectionSettings",
+      "editorialContent",
     ] as const) {
-      if (parsed[key] !== undefined) data[key] = parsed[key];
+      if (parsed[key] !== undefined) {
+        data[key] = key === "editorialContent" ? parsed[key] as unknown as Prisma.InputJsonValue : parsed[key];
+      }
     }
     if (parsed.periodStart !== undefined) data.periodStart = parsed.periodStart;
     if (parsed.periodEnd !== undefined) data.periodEnd = parsed.periodEnd;

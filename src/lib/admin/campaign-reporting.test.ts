@@ -131,7 +131,16 @@ describe("buildCampaignReportLiveData", () => {
     expect(report.performance.costPerThousandViews).toBe(0.8);
     expect(report.performance.approvalRate).toBeCloseTo(1 / 3);
     expect(report.platformBreakdown).toEqual([
-      { platform: "TikTok", views: 400_000, clips: 1, engagement: 21_000, cost: 320 },
+      {
+        platform: "TikTok",
+        views: 400_000,
+        clips: 1,
+        engagement: 21_000,
+        cost: 320,
+        averageViewsPerClip: 400_000,
+        engagementRate: 0.0525,
+        effectiveCpm: 0.8,
+      },
     ]);
     expect(report.topContent[1]).toMatchObject({ id: "sub-2", views: 90_000 });
     expect(report.quality.openSignals).toBe(1);
@@ -142,6 +151,7 @@ describe("buildCampaignReportLiveData", () => {
     expect(report.defaults.title).toBe("Bram's Fruit campagnerapport");
     expect(report.defaults.executiveSummary).toContain("goedgekeurde views");
     expect(report.defaults.keyTakeaways.length).toBeGreaterThanOrEqual(3);
+    expect(report.defaults.editorialContent.templateBlocks["summary.body"]).toContain("{{performance.currentViews}}");
   });
 
   it("shows live approved views and overdelivery above the CPM target", () => {
@@ -180,7 +190,7 @@ describe("normalizeSectionSettings", () => {
   it("keeps unknown input safe and preserves known booleans", () => {
     const settings = normalizeSectionSettings({ audience: false, unknown: false });
 
-    expect(settings.audience).toBe(false);
+    expect(settings.audienceReach).toBe(false);
     expect(settings.cover).toBe(true);
     expect("unknown" in settings).toBe(false);
   });

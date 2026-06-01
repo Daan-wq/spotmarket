@@ -49,6 +49,15 @@ const report = {
   learnings: ["Open with product earlier."],
   nextCampaignRecommendations: ["Invite top creators again."],
   sectionSettings: { audience: true },
+  editorialContent: {
+    templateBlocks: { "summary.body": "Saved {{performance.currentViews}} views." },
+    contentPatternTags: ["snelle hook"],
+    topContentNotes: {},
+    platformRecommendations: {},
+    creatorRecommendations: [],
+    qualityNote: "",
+    nextCampaignPlan: "",
+  },
   createdBy: "admin-1",
   createdAt: new Date("2026-05-29T08:00:00.000Z"),
   updatedAt: new Date("2026-05-29T09:00:00.000Z"),
@@ -71,6 +80,15 @@ const liveData = {
     learnings: ["Default learning"],
     nextCampaignRecommendations: ["Default recommendation"],
     sectionSettings: { audience: true },
+    editorialContent: {
+      templateBlocks: { "summary.body": "Default {{performance.currentViews}} views." },
+      contentPatternTags: ["creator-native edit"],
+      topContentNotes: {},
+      platformRecommendations: {},
+      creatorRecommendations: [],
+      qualityNote: "",
+      nextCampaignPlan: "",
+    },
   },
 };
 
@@ -167,6 +185,9 @@ describe("POST /api/admin/campaign-reports", () => {
           status: "DRAFT",
           executiveSummary: "Default generated summary.",
           keyTakeaways: ["Default takeaway"],
+          editorialContent: expect.objectContaining({
+            templateBlocks: { "summary.body": "Default {{performance.currentViews}} views." },
+          }),
           createdBy: "admin-1",
         }),
       }),
@@ -227,6 +248,10 @@ describe("PATCH /api/admin/campaign-reports/[id]", () => {
           status: "FINAL",
           executiveSummary: "Client ready summary.",
           keyTakeaways: ["Best delivery came from TikTok."],
+          editorialContent: {
+            templateBlocks: { "summary.body": "Client {{performance.currentViews}} views." },
+            contentPatternTags: ["snelle hook"],
+          },
         }),
       }),
       { params: Promise.resolve({ id: "report-1" }) },
@@ -240,6 +265,15 @@ describe("PATCH /api/admin/campaign-reports/[id]", () => {
           status: "FINAL",
           executiveSummary: "Client ready summary.",
           keyTakeaways: ["Best delivery came from TikTok."],
+          editorialContent: {
+            templateBlocks: { "summary.body": "Client {{performance.currentViews}} views." },
+            contentPatternTags: ["snelle hook"],
+            topContentNotes: {},
+            platformRecommendations: {},
+            creatorRecommendations: [],
+            qualityNote: "",
+            nextCampaignPlan: "",
+          },
         },
       }),
     );
