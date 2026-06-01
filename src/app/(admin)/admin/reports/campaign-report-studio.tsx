@@ -17,7 +17,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { createContext, useContext, useMemo, useState } from "react";
+import React, { createContext, useContext, useMemo, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { formatCurrency, formatDate, formatNumber } from "@/lib/admin/agency-format";
@@ -572,7 +572,7 @@ function ReportMetaControls({
           <label className="mt-3 flex cursor-pointer items-center justify-between gap-3 rounded-lg border border-neutral-200 px-3 py-2">
             <span>
               <span className="block text-xs font-semibold text-neutral-950">Live waarden tonen</span>
-              <span className="block text-[11px] leading-4 text-neutral-500">Toon actuele databasewaarde onder elke token.</span>
+              <span className="block text-[11px] leading-4 text-neutral-500">Vervang tokens door actuele databasewaarden.</span>
             </span>
             <input
               type="checkbox"
@@ -662,11 +662,13 @@ function ReportPreview({
           <ReportPage>
             <div>
               <div className="flex items-center justify-between gap-6">
-                <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-neutral-500">Campagnerapport</p>
+                <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-neutral-500">
+                  <EditableCopy>Campagnerapport</EditableCopy>
+                </p>
                 <Token name="report.status" />
               </div>
               <h2 className="mt-20 max-w-[130mm] text-4xl font-semibold leading-tight tracking-normal text-neutral-400">
-                <Token name="campaign.brandName" /> campagnerapport
+                <Token name="campaign.brandName" /> <EditableCopy>campagnerapport</EditableCopy>
               </h2>
             </div>
             <div className="mt-8 grid gap-6">
@@ -1002,23 +1004,52 @@ function Token({ name }: { name: string }) {
     ? formatTokenPreviewValue(name, resolveTokenPreviewValue(name, tokenContext))
     : null;
 
+  if (tokenContext?.showValues) {
+    return (
+      <span className="inline-flex max-w-full items-center rounded-md border border-neutral-300 bg-white px-1.5 py-0.5 align-baseline text-[0.85em] font-semibold leading-5 text-neutral-900">
+        <span className="max-w-[220px] truncate">{previewValue ?? "geen waarde"}</span>
+      </span>
+    );
+  }
+
   return (
-    <span
-      className={cn(
-        "inline-flex max-w-full items-center rounded-md border border-neutral-300 bg-neutral-100 px-1.5 py-0.5 align-baseline font-mono text-[0.85em] font-semibold leading-5 text-neutral-700",
-        previewValue && "flex-col items-start gap-0.5 py-1 align-middle",
-      )}
-    >
+    <span className="inline-flex max-w-full items-center rounded-md border border-neutral-300 bg-neutral-100 px-1.5 py-0.5 align-baseline font-mono text-[0.85em] font-semibold leading-5 text-neutral-700">
       <span className="max-w-full truncate">
         {"{{"}{name}{"}}"}
       </span>
-      {previewValue ? (
-        <span className="max-w-[210px] truncate rounded bg-white px-1 py-0.5 text-[10px] font-medium leading-4 text-neutral-500">
-          = {previewValue}
-        </span>
-      ) : null}
     </span>
   );
+}
+
+function EditableCopy({ children, className }: { children: React.ReactNode; className?: string }) {
+  return <span className={className}>{renderEditableCopy(children)}</span>;
+}
+
+function EditableText({ value }: { value: string }) {
+  const [text, setText] = useState(value);
+  return (
+    <span
+      contentEditable
+      suppressContentEditableWarning
+      spellCheck={false}
+      className="report-copy-edit rounded-sm outline-none transition focus:bg-amber-50 focus:ring-2 focus:ring-amber-200"
+      onBlur={(event) => setText(event.currentTarget.innerText)}
+    >
+      {text}
+    </span>
+  );
+}
+
+function renderEditableCopy(children: React.ReactNode): React.ReactNode {
+  return React.Children.map(children, (child) => {
+    if (typeof child === "string" || typeof child === "number") {
+      return <EditableText value={String(child)} />;
+    }
+    if (React.isValidElement<{ children?: React.ReactNode }>(child) && child.type === React.Fragment) {
+      return <>{renderEditableCopy(child.props.children)}</>;
+    }
+    return child;
+  });
 }
 
 function resolveTokenPreviewValue(name: string, context: TokenPreviewContextValue) {
@@ -1145,7 +1176,9 @@ function CoverTokenFact({
 }) {
   return (
     <div>
-      <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-neutral-600">{label}</p>
+      <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-neutral-600">
+        <EditableCopy>{label}</EditableCopy>
+      </p>
       <p className="mt-2 flex flex-wrap items-center gap-1 text-sm font-semibold text-neutral-400">
         {token ? <Token name={token} /> : null}
         {tokens?.map((item, index) => (
@@ -1160,14 +1193,22 @@ function CoverTokenFact({
 }
 
 function TemplateParagraph({ children }: { children: React.ReactNode }) {
-  return <p className="mt-5 text-sm leading-7 text-neutral-700">{children}</p>;
+  return (
+    <p className="mt-5 text-sm leading-7 text-neutral-700">
+      <EditableCopy>{children}</EditableCopy>
+    </p>
+  );
 }
 
 function TemplateOption({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <div className="mt-4 rounded-lg border border-dashed border-neutral-300 bg-neutral-50 p-4">
-      <p className="text-xs font-semibold uppercase tracking-[0.14em] text-neutral-500">{title}</p>
-      <p className="mt-2 text-sm leading-7 text-neutral-700">{children}</p>
+      <p className="text-xs font-semibold uppercase tracking-[0.14em] text-neutral-500">
+        <EditableCopy>{title}</EditableCopy>
+      </p>
+      <p className="mt-2 text-sm leading-7 text-neutral-700">
+        <EditableCopy>{children}</EditableCopy>
+      </p>
     </div>
   );
 }
@@ -1175,8 +1216,12 @@ function TemplateOption({ title, children }: { title: string; children: React.Re
 function TemplateCallout({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <div className="mt-6 rounded-lg border border-neutral-200 bg-neutral-50 p-4">
-      <p className="text-xs font-semibold uppercase tracking-[0.14em] text-neutral-500">{title}</p>
-      <p className="mt-2 text-sm leading-7 text-neutral-700">{children}</p>
+      <p className="text-xs font-semibold uppercase tracking-[0.14em] text-neutral-500">
+        <EditableCopy>{title}</EditableCopy>
+      </p>
+      <p className="mt-2 text-sm leading-7 text-neutral-700">
+        <EditableCopy>{children}</EditableCopy>
+      </p>
     </div>
   );
 }
@@ -1186,7 +1231,9 @@ function TemplateKpiGrid({ items }: { items: Array<[string, string]> }) {
     <div className="mt-7 grid gap-3 md:grid-cols-2">
       {items.map(([label, token]) => (
         <div key={label} className="rounded-lg border border-neutral-200 p-4">
-          <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-neutral-400">{label}</p>
+          <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-neutral-400">
+            <EditableCopy>{label}</EditableCopy>
+          </p>
           <p className="mt-3">
             <Token name={token} />
           </p>
@@ -1201,7 +1248,9 @@ function TemplateVariableGrid({ rows }: { rows: Array<[string, ...string[]]> }) 
     <div className="mt-6 grid gap-3 md:grid-cols-2">
       {rows.map(([label, ...tokens]) => (
         <div key={label} className="rounded-lg border border-neutral-200 p-4">
-          <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-neutral-400">{label}</p>
+          <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-neutral-400">
+            <EditableCopy>{label}</EditableCopy>
+          </p>
           <div className="mt-3 flex flex-wrap items-center gap-1.5">
             {tokens.map((token, index) => (
               <span key={`${label}-${token}`} className="inline-flex items-center gap-1">
@@ -1220,7 +1269,9 @@ function TemplateRepeat({ title, source, children }: { title: string; source: st
   return (
     <div className="mt-6 rounded-lg border border-neutral-200 p-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <p className="text-xs font-semibold uppercase tracking-[0.14em] text-neutral-500">{title}</p>
+        <p className="text-xs font-semibold uppercase tracking-[0.14em] text-neutral-500">
+          <EditableCopy>{title}</EditableCopy>
+        </p>
         <span className="rounded-full bg-neutral-100 px-2 py-1 font-mono text-[11px] font-semibold text-neutral-500">[repeat: {source}]</span>
       </div>
       <div className="mt-3">{children}</div>
@@ -1233,7 +1284,7 @@ function TemplateBullets({ items }: { items: React.ReactNode[] }) {
     <ul className="mt-5 space-y-3">
       {items.map((item, index) => (
         <li key={index} className="rounded-lg border border-neutral-200 p-4 text-sm leading-7 text-neutral-700">
-          {item}
+          <EditableCopy>{item}</EditableCopy>
         </li>
       ))}
     </ul>
@@ -1296,8 +1347,12 @@ function ReportHeading({ icon, kicker, title }: { icon: React.ReactNode; kicker:
   return (
     <div className="flex items-start justify-between gap-6 border-b border-neutral-200 pb-5">
       <div>
-        <p className="text-xs font-semibold uppercase tracking-[0.18em] text-neutral-400">{kicker}</p>
-        <h2 className="mt-2 text-3xl font-semibold leading-tight tracking-normal text-neutral-950">{title}</h2>
+        <p className="text-xs font-semibold uppercase tracking-[0.18em] text-neutral-400">
+          <EditableCopy>{kicker}</EditableCopy>
+        </p>
+        <h2 className="mt-2 text-3xl font-semibold leading-tight tracking-normal text-neutral-950">
+          <EditableCopy>{title}</EditableCopy>
+        </h2>
       </div>
       <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-neutral-100 text-neutral-700">{icon}</div>
     </div>
