@@ -219,12 +219,134 @@ export default async function PayoutsPage() {
               rowKey={(payout) => payout.id}
               emptyState={<EmptyState title="No payouts yet" description="Creator payout records will appear here after processing." />}
               columns={[
-                { key: "creator", header: "Creator", cell: (payout) => payout.creatorProfile?.displayName || payout.creatorProfile?.user?.email || "-" },
-                { key: "amount", header: "Amount", align: "right", cell: (payout) => formatCurrencyPrecise(payout.amount, payout.currency) },
-                { key: "status", header: "Status", cell: (payout) => <Badge variant={payout.status === "confirmed" || payout.status === "sent" ? "verified" : payout.status === "failed" ? "failed" : "pending"}>{titleCaseEnum(payout.status)}</Badge> },
-                { key: "method", header: "Method", cell: (payout) => payout.paymentMethod || "-" },
-                { key: "reason", header: "Internal reason", cell: (payout) => payout.rejectionReason || "-" },
-                { key: "date", header: "Date", cell: (payout) => formatDate(payout.createdAt) },
+                {
+                  key: "record",
+                  header: "Record",
+                  className: "min-w-[190px]",
+                  cell: (payout) => (
+                    <FieldList
+                      items={[
+                        { label: "Payout", value: payout.id, mono: true },
+                        { label: "Run", value: payout.payoutRunId, mono: true },
+                        { label: "Run item", value: payout.payoutRunItemId, mono: true },
+                        { label: "Application", value: payout.applicationId, mono: true },
+                      ]}
+                    />
+                  ),
+                },
+                {
+                  key: "creator",
+                  header: "Creator",
+                  className: "min-w-[190px]",
+                  cell: (payout) => (
+                    <div>
+                      <p className="font-semibold text-neutral-950">
+                        {payout.creatorProfile?.displayName || payout.creatorProfile?.user?.email || "-"}
+                      </p>
+                      <p className="mt-1 text-xs text-neutral-500">
+                        {payout.creatorProfile?.user?.email || "-"}
+                      </p>
+                    </div>
+                  ),
+                },
+                {
+                  key: "amount",
+                  header: "Amount",
+                  align: "right",
+                  className: "min-w-[130px]",
+                  cell: (payout) => (
+                    <FieldList
+                      align="right"
+                      items={[
+                        { label: "Amount", value: formatCurrencyPrecise(payout.amount, payout.currency), strong: true },
+                        { label: "Currency", value: payout.currency },
+                        { label: "Type", value: titleCaseEnum(payout.type) },
+                      ]}
+                    />
+                  ),
+                },
+                {
+                  key: "status",
+                  header: "Status",
+                  className: "min-w-[150px]",
+                  cell: (payout) => (
+                    <div className="space-y-2">
+                      <Badge variant={payout.status === "confirmed" || payout.status === "sent" ? "verified" : payout.status === "failed" ? "failed" : "pending"}>
+                        {titleCaseEnum(payout.status)}
+                      </Badge>
+                      <ProofBadge payout={payout} />
+                    </div>
+                  ),
+                },
+                {
+                  key: "method",
+                  header: "Method & destination",
+                  className: "min-w-[260px]",
+                  cell: (payout) => (
+                    <FieldList
+                      items={[
+                        { label: "Method", value: payout.paymentMethod || "-" },
+                        {
+                          label: payout.paymentMethod === "CRYPTO" ? "Wallet" : "IBAN",
+                          value: payout.paymentMethod === "CRYPTO" ? payout.walletAddress : payout.bankIbanSnapshot,
+                          mono: true,
+                        },
+                        {
+                          label: payout.paymentMethod === "CRYPTO" ? "Network" : "Account",
+                          value: payout.paymentMethod === "CRYPTO" ? "USDC on Solana" : payout.bankAccountNameSnapshot,
+                        },
+                      ]}
+                    />
+                  ),
+                },
+                {
+                  key: "proof",
+                  header: "Payment evidence",
+                  className: "min-w-[280px]",
+                  cell: (payout) => (
+                    <FieldList
+                      items={[
+                        { label: "Bank ref/note", value: payout.bankReference, mono: true, warn: isWeakBankReference(payout.bankReference) },
+                        { label: "Tx hash", value: payout.txHash, mono: true },
+                        { label: "Stripe transfer", value: payout.stripeTransferId, mono: true },
+                        { label: "Coinbase charge", value: payout.coinbaseChargeId, mono: true },
+                        { label: "Internal reason", value: payout.rejectionReason },
+                      ]}
+                    />
+                  ),
+                },
+                {
+                  key: "timeline",
+                  header: "Timeline",
+                  className: "min-w-[240px]",
+                  cell: (payout) => (
+                    <FieldList
+                      items={[
+                        { label: "Requested", value: formatDate(payout.requestedAt ?? payout.createdAt) },
+                        { label: "Initiated", value: formatDate(payout.initiatedAt) },
+                        { label: "Confirmed", value: formatDate(payout.confirmedAt) },
+                        { label: "Processed", value: formatDate(payout.processedAt) },
+                        { label: "Created", value: formatDate(payout.createdAt) },
+                        { label: "Updated", value: formatDate(payout.updatedAt) },
+                      ]}
+                    />
+                  ),
+                },
+                {
+                  key: "scope",
+                  header: "Scope",
+                  className: "min-w-[210px]",
+                  cell: (payout) => (
+                    <FieldList
+                      items={[
+                        { label: "Period start", value: formatDate(payout.periodStart) },
+                        { label: "Period end", value: formatDate(payout.periodEnd) },
+                        { label: "Verified views", value: payout.verifiedViews?.toLocaleString() },
+                        { label: "Application IDs", value: payout.applicationIds.length > 0 ? payout.applicationIds.join(", ") : null, mono: true },
+                      ]}
+                    />
+                  ),
+                },
               ]}
             />
           </div>
@@ -232,4 +354,81 @@ export default async function PayoutsPage() {
       </section>
     </div>
   );
+}
+
+function FieldList({
+  items,
+  align = "left",
+}: {
+  items: Array<{
+    label: string;
+    value: React.ReactNode;
+    mono?: boolean;
+    strong?: boolean;
+    warn?: boolean;
+  }>;
+  align?: "left" | "right";
+}) {
+  return (
+    <dl className={align === "right" ? "space-y-1 text-right" : "space-y-1"}>
+      {items.map((item) => (
+        <div key={item.label}>
+          <dt className="text-[10px] font-semibold uppercase tracking-[0.12em] text-neutral-400">
+            {item.label}
+          </dt>
+          <dd
+            className={[
+              "mt-0.5 break-words text-xs",
+              item.mono ? "font-mono" : "",
+              item.strong ? "font-semibold text-neutral-950" : "text-neutral-700",
+              item.warn ? "text-amber-700" : "",
+            ].filter(Boolean).join(" ")}
+          >
+            {isPresent(item.value) ? item.value : "-"}
+          </dd>
+        </div>
+      ))}
+    </dl>
+  );
+}
+
+function ProofBadge({
+  payout,
+}: {
+  payout: {
+    status: string;
+    paymentMethod: string | null;
+    bankReference: string | null;
+    txHash: string | null;
+    stripeTransferId: string | null;
+    coinbaseChargeId: string | null;
+  };
+}) {
+  if (!["confirmed", "sent"].includes(payout.status)) return null;
+
+  if (payout.paymentMethod === "BANK_TRANSFER") {
+    if (!payout.bankReference) return <Badge variant="failed">Missing bank note</Badge>;
+    if (isWeakBankReference(payout.bankReference)) return <Badge variant="pending">Weak bank note</Badge>;
+    return <Badge variant="verified">Bank note present</Badge>;
+  }
+
+  if (payout.paymentMethod === "CRYPTO") {
+    return payout.txHash ? <Badge variant="verified">Tx hash present</Badge> : <Badge variant="failed">Missing tx hash</Badge>;
+  }
+
+  if (payout.stripeTransferId || payout.coinbaseChargeId) {
+    return <Badge variant="verified">Provider proof present</Badge>;
+  }
+
+  return <Badge variant="pending">Manual proof unknown</Badge>;
+}
+
+function isWeakBankReference(value: string | null | undefined) {
+  const normalized = value?.trim().toLowerCase();
+  if (!normalized) return false;
+  return ["bank", "paid", "done", "ok", "yes", "ja", "sent", "transfer"].includes(normalized);
+}
+
+function isPresent(value: React.ReactNode) {
+  return value !== null && value !== undefined && value !== "";
 }
