@@ -831,8 +831,8 @@ export function CampaignCreateForm() {
           </div>
           <div>
             <label style={labelStyle}>Biovereiste</label>
-            <input
-              style={inputStyle}
+            <textarea
+              style={{ ...inputStyle, minHeight: "112px", resize: "vertical" }}
               value={bioRequirement}
               onChange={(e) => setBioRequirement(e.target.value)}
             />

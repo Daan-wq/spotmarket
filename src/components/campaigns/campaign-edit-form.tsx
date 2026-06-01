@@ -592,9 +592,9 @@ export function CampaignEditForm({
 
           <div className="grid gap-4 md:grid-cols-2">
             <Field label="Bio requirement">
-              <input
+              <textarea
                 className={controlClass}
-                style={inputStyle}
+                style={{ ...inputStyle, minHeight: 112, resize: "vertical" }}
                 value={form.bioRequirement}
                 onChange={(event) => setField("bioRequirement", event.target.value)}
               />
