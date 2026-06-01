@@ -632,24 +632,23 @@ function ReportPreview({
   ];
 
   return (
-    <div className="report-print-root">
-      <div className="report-print-scroll space-y-5 overflow-hidden">
+    <div className="report-print-root rounded-lg bg-neutral-200 px-3 py-6 sm:px-6">
+      <div className="report-print-scroll space-y-6 overflow-visible">
         {enabled("cover") ? (
-          <ReportPage className="flex min-h-[840px] flex-col justify-between bg-neutral-950 text-white">
+          <ReportPage>
             <div>
               <div className="flex items-center justify-between gap-6">
-                <p className="text-xs font-semibold uppercase tracking-[0.24em] text-neutral-300">Campagnerapport</p>
+                <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-neutral-500">Campagnerapport</p>
                 <Badge variant={status === "FINAL" ? "verified" : "pending"}>{reportStatusLabel(status)}</Badge>
               </div>
               <InlineEditable
                 value={title}
                 onChange={editors?.setTitle}
                 placeholder="Rapporttitel"
-                className="mt-20 max-w-4xl text-5xl font-semibold leading-tight tracking-normal text-white"
-                dark
+                className="mt-20 max-w-[130mm] text-4xl font-semibold leading-tight tracking-normal text-neutral-400"
               />
             </div>
-            <div className="grid gap-6 border-t border-white/20 pt-8 md:grid-cols-3">
+            <div className="mt-8 grid gap-6">
               <CoverFact label="Merk" value={liveData.campaign.brandName} />
               <CoverFact label="Campagne" value={liveData.campaign.name} />
               <CoverFact label="Periode" value={reportPeriod} />
@@ -672,7 +671,7 @@ function ReportPreview({
               ))}
             </div>
             {editors ? (
-              <Button type="button" variant="outline" size="sm" className="report-inline-control mt-4 rounded-lg" onClick={editors.addKeyTakeaway}>
+              <Button type="button" variant="outline" size="sm" className="report-inline-control mt-4 rounded-lg opacity-0 transition focus:opacity-100 group-hover/report:opacity-100" onClick={editors.addKeyTakeaway}>
                 <Plus className="h-4 w-4" />
                 Inzicht toevoegen
               </Button>
@@ -820,6 +819,7 @@ function InlineEditable({
     <div
       contentEditable
       suppressContentEditableWarning
+      spellCheck={false}
       role="textbox"
       tabIndex={0}
       className={cn(
@@ -844,7 +844,7 @@ function InlineEditable({
 
 function ReportPage({ children, className }: { children: React.ReactNode; className?: string }) {
   return (
-    <article className={cn("report-print-page mx-auto min-h-[840px] w-full max-w-none rounded-lg border border-neutral-200 bg-white p-8 shadow-sm", className)}>
+    <article className={cn("report-print-page group/report mx-auto min-h-[297mm] w-full max-w-[210mm] rounded-none border border-neutral-300 bg-white px-[28mm] py-[18mm] shadow-sm", className)}>
       {children}
     </article>
   );
@@ -865,8 +865,8 @@ function ReportHeading({ icon, kicker, title }: { icon: React.ReactNode; kicker:
 function CoverFact({ label, value }: { label: string; value: string }) {
   return (
     <div>
-      <p className="text-xs font-semibold uppercase tracking-[0.16em] text-neutral-400">{label}</p>
-      <p className="mt-2 text-lg font-semibold text-white">{value}</p>
+      <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-neutral-600">{label}</p>
+      <p className="mt-2 text-sm font-semibold text-neutral-400">{value}</p>
     </div>
   );
 }
@@ -1084,7 +1084,7 @@ function BulletList({
       <div className="mt-3">
         <p className="text-sm text-neutral-500">Geen items.</p>
         {onAdd ? (
-          <Button type="button" variant="outline" size="sm" className="report-inline-control mt-3 rounded-lg" onClick={onAdd}>
+          <Button type="button" variant="outline" size="sm" className="report-inline-control mt-3 rounded-lg opacity-0 transition focus:opacity-100 group-hover/report:opacity-100" onClick={onAdd}>
             <Plus className="h-4 w-4" />
             {addLabel ?? "Item toevoegen"}
           </Button>
@@ -1103,7 +1103,7 @@ function BulletList({
         ))}
       </ul>
       {onAdd ? (
-        <Button type="button" variant="outline" size="sm" className="report-inline-control mt-3 rounded-lg" onClick={onAdd}>
+        <Button type="button" variant="outline" size="sm" className="report-inline-control mt-3 rounded-lg opacity-0 transition focus:opacity-100 group-hover/report:opacity-100" onClick={onAdd}>
           <Plus className="h-4 w-4" />
           {addLabel ?? "Item toevoegen"}
         </Button>

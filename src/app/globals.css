@@ -231,6 +231,8 @@ summary {
     inset: 0;
     width: 100%;
     background: #ffffff;
+    border-radius: 0 !important;
+    padding: 0 !important;
   }
 
   .report-print-scroll {
@@ -243,6 +245,7 @@ summary {
     max-width: none !important;
     min-height: auto !important;
     margin: 0 0 12mm !important;
+    padding: 6mm 16mm !important;
     border: 0 !important;
     border-radius: 0 !important;
     box-shadow: none !important;
