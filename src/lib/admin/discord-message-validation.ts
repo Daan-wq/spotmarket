@@ -36,7 +36,7 @@ export interface DiscordMessageValidationIssue {
 export interface DiscordMessageValidationInput {
   channelId: string;
   content: string;
-  files: Array<{ size: number }>;
+  files: Array<{ size: number; name?: string }>;
   buttons?: DiscordLinkButton[];
   embeds?: DiscordEmbedInput[];
   validChannelIds?: readonly string[];
@@ -141,7 +141,7 @@ export function getDiscordMessageValidationIssues(
   }
 
   issues.push(...getDiscordButtonValidationIssues(input.buttons ?? []));
-  issues.push(...getDiscordEmbedValidationIssues(input.embeds ?? []));
+  issues.push(...getDiscordEmbedValidationIssues(input.embeds ?? [], input.files));
 
   return issues;
 }
@@ -252,8 +252,12 @@ function normalizeDiscordTimestamp(value: DiscordEmbedInput["timestamp"]): strin
   return date.toISOString();
 }
 
-function getDiscordEmbedValidationIssues(embeds: DiscordEmbedInput[]): DiscordMessageValidationIssue[] {
+function getDiscordEmbedValidationIssues(
+  embeds: DiscordEmbedInput[],
+  files: Array<{ name?: string }>,
+): DiscordMessageValidationIssue[] {
   const issues: DiscordMessageValidationIssue[] = [];
+  const fileNames = new Set(files.map((file) => file.name).filter((name): name is string => Boolean(name)));
   if (embeds.length > DISCORD_MAX_EMBEDS) {
     issues.push({ code: "too_many_embeds", message: `Discord accepts up to ${DISCORD_MAX_EMBEDS} embeds per message.` });
   }
@@ -299,12 +303,29 @@ function getDiscordEmbedValidationIssues(embeds: DiscordEmbedInput[]): DiscordMe
     for (const [label, value] of [
       ["author icon URL", authorIconUrl],
       ["author URL", authorUrl],
-      ["thumbnail URL", thumbnailUrl],
-      ["image URL", imageUrl],
       ["footer icon URL", footerIconUrl],
     ] as const) {
       if (value && !isHttpUrl(value)) {
         issues.push({ code: "invalid_embed", message: `Embed ${number} ${label} must start with http:// or https://.` });
+      }
+    }
+    for (const [label, value] of [
+      ["thumbnail image", thumbnailUrl],
+      ["large image", imageUrl],
+    ] as const) {
+      if (!value) continue;
+      if (!isHttpUrl(value) && !isAttachmentUrl(value)) {
+        issues.push({
+          code: "invalid_embed",
+          message: `Embed ${number} ${label} must be an http(s) URL or uploaded attachment.`,
+        });
+      }
+      const attachmentName = attachmentFileNameFromUrl(value);
+      if (attachmentName && !fileNames.has(attachmentName)) {
+        issues.push({
+          code: "invalid_embed",
+          message: `Embed ${number} ${label} upload is missing from the file list.`,
+        });
       }
     }
     if (footerText.length > DISCORD_EMBED_FOOTER_TEXT_MAX_CHARS) {
@@ -409,4 +430,14 @@ export function isHttpUrl(value: string): boolean {
   } catch {
     return false;
   }
+}
+
+export function isAttachmentUrl(value: string): boolean {
+  return /^attachment:\/\/[^/\\]+$/.test(value.trim());
+}
+
+export function attachmentFileNameFromUrl(value: string): string | null {
+  const trimmed = value.trim();
+  if (!isAttachmentUrl(trimmed)) return null;
+  return trimmed.slice("attachment://".length);
 }
