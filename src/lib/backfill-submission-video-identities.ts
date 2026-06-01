@@ -2,11 +2,12 @@ import type { SubmissionStatus } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { parseClipUrl } from "@/lib/parse-clip-url";
 
-type NumericLike = number | string | { toString(): string } | null;
+type NumericLike = number | string | { toString(): string } | null | undefined;
 
 interface BackfillRow {
   id: string;
   applicationId: string;
+  application: { earnedAmount: NumericLike } | null;
   postUrl: string;
   status: SubmissionStatus;
   earnedAmount: NumericLike;
@@ -50,6 +51,7 @@ export async function backfillSubmissionVideoIdentities({
     select: {
       id: true,
       applicationId: true,
+      application: { select: { earnedAmount: true } },
       postUrl: true,
       status: true,
       earnedAmount: true,
@@ -88,10 +90,18 @@ export async function backfillSubmissionVideoIdentities({
           });
 
           if (row.status === "APPROVED" && previousEarnedAmount > 0) {
-            await tx.campaignApplication.update({
-              where: { id: row.applicationId },
-              data: { earnedAmount: { decrement: Math.round(previousEarnedAmount) } },
-            });
+            const legacyApplicationEarnedAmountUpdate =
+              legacyApplicationReversalUpdate(
+                row.application?.earnedAmount,
+                previousEarnedAmount,
+              );
+
+            if (legacyApplicationEarnedAmountUpdate) {
+              await tx.campaignApplication.update({
+                where: { id: row.applicationId },
+                data: { earnedAmount: legacyApplicationEarnedAmountUpdate },
+              });
+            }
           }
         }
       },
@@ -191,4 +201,18 @@ function toNumber(value: NumericLike): number {
   if (typeof value === "number") return Number.isFinite(value) ? value : 0;
   const parsed = Number(value.toString());
   return Number.isFinite(parsed) ? parsed : 0;
+}
+
+function legacyApplicationReversalUpdate(
+  currentEarnedAmount: NumericLike,
+  previousSubmissionEarnedAmount: number,
+) {
+  const current = Math.round(toNumber(currentEarnedAmount));
+  const reversal = Math.round(previousSubmissionEarnedAmount);
+
+  if (current < 0) return { set: 0 };
+  if (reversal <= 0 || current <= 0) return null;
+  if (current <= reversal) return { set: 0 };
+
+  return { decrement: reversal };
 }
