@@ -204,8 +204,8 @@ export function CampaignEditForm({
   }));
 
   const creatorRate = numberValue(form.creatorRatePerK);
-  const adminMargin = numberValue(form.adminMarginPerK);
-  const businessRate = creatorRate + adminMargin;
+  const budget = numberValue(form.totalBudget);
+  const derivedGoalViews = budget > 0 && creatorRate > 0 ? Math.floor(budget / (creatorRate / 1_000)) : null;
 
   function setField<K extends keyof CampaignEditFormState>(
     field: K,
@@ -620,11 +620,12 @@ export function CampaignEditForm({
             </Field>
 
             <Field label="Goal views">
-              <NumberInput
-                value={form.goalViews}
-                onChange={(value) => setField("goalViews", value)}
-                min={1}
-                step={1}
+              <input
+                className={controlClass}
+                style={inputStyle}
+                value={derivedGoalViews ? derivedGoalViews.toLocaleString("nl-NL") : ""}
+                readOnly
+                placeholder="Calculated from budget / CPM"
               />
             </Field>
 
@@ -646,7 +647,7 @@ export function CampaignEditForm({
               />
             </Field>
 
-            <Field label="Creator payout / 1K views">
+            <Field label="CPM / 1K views">
               <NumberInput
                 value={form.creatorRatePerK}
                 onChange={(value) => setField("creatorRatePerK", value)}
@@ -655,14 +656,6 @@ export function CampaignEditForm({
               />
             </Field>
 
-            <Field label="Admin margin / 1K views">
-              <NumberInput
-                value={form.adminMarginPerK}
-                onChange={(value) => setField("adminMarginPerK", value)}
-                min={0}
-                step={0.01}
-              />
-            </Field>
           </div>
 
           <div
@@ -670,9 +663,9 @@ export function CampaignEditForm({
             style={{ background: "var(--bg-secondary, var(--bg-primary))", border: "1px solid var(--border)" }}
           >
             <div className="flex flex-wrap items-center justify-between gap-2">
-              <span style={{ color: "var(--text-secondary)" }}>Client / business rate</span>
+              <span style={{ color: "var(--text-secondary)" }}>Doelviews worden automatisch berekend</span>
               <span className="font-semibold tabular-nums" style={{ color: "var(--text-primary)" }}>
-                €{businessRate.toFixed(2)} per 1K views
+                {derivedGoalViews ? derivedGoalViews.toLocaleString("nl-NL") : "-"} views
               </span>
             </div>
           </div>
@@ -798,7 +791,10 @@ function validateForm(state: CampaignEditFormState): string | null {
   if (state.platforms.length === 0) return "Select at least one platform";
   if (!state.deadline) return "Deadline is required";
 
-  const positiveChecks: Array<[string, string]> = [["Total budget", state.totalBudget]];
+  const positiveChecks: Array<[string, string]> = [
+    ["Total budget", state.totalBudget],
+    ["CPM", state.creatorRatePerK],
+  ];
   for (const [label, value] of positiveChecks) {
     const parsed = Number(value);
     if (!Number.isFinite(parsed) || parsed <= 0) return `${label} must be greater than 0`;
@@ -822,8 +818,6 @@ function validateForm(state: CampaignEditFormState): string | null {
     ["Minimum followers", state.minFollowers],
     ["Minimum paid views", state.minimumPaidViews],
     ["Maximum paid views", state.maximumPaidViews],
-    ["Creator payout", state.creatorRatePerK],
-    ["Admin margin", state.adminMarginPerK],
   ];
   for (const [label, value] of nonNegativeChecks) {
     if (!value.trim()) continue;
@@ -842,7 +836,6 @@ function validateForm(state: CampaignEditFormState): string | null {
   }
 
   const positiveOptionalChecks: Array<[string, string]> = [
-    ["Goal views", state.goalViews],
     ["Max creators", state.maxSlots],
   ];
   for (const [label, value] of positiveOptionalChecks) {

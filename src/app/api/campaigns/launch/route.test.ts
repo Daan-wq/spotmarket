@@ -86,7 +86,12 @@ describe("POST /api/campaigns/launch", () => {
     expect(response.status).toBe(201);
     expect(routeMocks.campaignCreate).toHaveBeenCalledWith(
       expect.objectContaining({
-        data: expect.objectContaining({ status: "draft" }),
+        data: expect.objectContaining({
+          status: "draft",
+          adminMargin: 0,
+          businessCpv: 0.00025,
+          goalViews: BigInt(4_000_000),
+        }),
       }),
     );
     expect(routeMocks.campaignUpdate).toHaveBeenCalledWith({

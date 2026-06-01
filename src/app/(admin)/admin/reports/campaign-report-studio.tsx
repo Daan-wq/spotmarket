@@ -633,10 +633,12 @@ function ReportPreview({
   const enabled = (sectionKey: CampaignReportSectionKey) => sectionSettings[sectionKey];
   const reportPeriod = formatPeriod(periodStart || liveData.period.start, periodEnd || liveData.period.end);
   const metricCards = [
-    { label: "Goedgekeurde views", value: formatNumber(liveData.performance.approvedViews, "nl"), detail: percentOrDash(liveData.performance.goalCompletion, "van doel") },
+    { label: "Doelviews", value: liveData.performance.targetViews ? formatNumber(liveData.performance.targetViews, "nl") : "-", detail: liveData.performance.targetViewsSource === "budget_cpm" ? "budget / CPM" : "legacy doel" },
+    { label: "Huidige views", value: formatNumber(liveData.performance.currentViews, "nl"), detail: percentOrDash(liveData.performance.deliveryProgress, "van doel") },
+    { label: "Overdelivery", value: formatNumber(liveData.performance.overdeliveryViews, "nl"), detail: liveData.performance.overdeliveryViews > 0 ? "gratis extra bereik" : "nog geen bonusviews" },
     { label: "Budget gebruikt", value: formatCurrency(liveData.performance.budgetUsed, "EUR", "nl"), detail: percentOrDash(liveData.performance.budgetUsedPercent, "verbruikt") },
     { label: "Goedgekeurde clips", value: formatNumber(liveData.performance.approvedClips, "nl"), detail: `${formatNumber(liveData.performance.totalSubmissions, "nl")} inzendingen` },
-    { label: "CPM", value: liveData.performance.costPerThousandViews == null ? "-" : formatCurrency(liveData.performance.costPerThousandViews, "EUR", "nl"), detail: "betaalbare views" },
+    { label: "CPM", value: liveData.performance.cpmPerThousand == null ? "-" : formatCurrency(liveData.performance.cpmPerThousand, "EUR", "nl"), detail: "per 1.000 views" },
   ];
 
   return (
@@ -676,9 +678,9 @@ function ReportPreview({
             <ReportHeading icon={<CalendarDays className="h-5 w-5" />} kicker={reportPeriod} title="Campagne-inrichting" />
             <div className="mt-7 grid gap-4 md:grid-cols-2">
               <SetupRow label="Platforms" value={liveData.campaign.platforms.join(", ") || "-"} />
-              <SetupRow label="Doelviews" value={liveData.campaign.goalViews ? formatNumber(liveData.campaign.goalViews, "nl") : "-"} />
+              <SetupRow label="Doelviews" value={liveData.performance.targetViews ? formatNumber(liveData.performance.targetViews, "nl") : "-"} />
               <SetupRow label="Budget" value={formatCurrency(liveData.campaign.totalBudget, "EUR", "nl")} />
-              <SetupRow label="Business CPV" value={formatCurrency(liveData.campaign.businessCpv, "EUR", "nl")} />
+              <SetupRow label="CPM" value={liveData.performance.cpmPerThousand == null ? "-" : formatCurrency(liveData.performance.cpmPerThousand, "EUR", "nl")} />
               <SetupRow label="Min. volgers" value={formatNumber(liveData.campaign.target.minFollowers, "nl")} />
               <SetupRow label="Doelland" value={liveData.campaign.target.country ?? "-"} />
             </div>
@@ -691,13 +693,16 @@ function ReportPreview({
                 ? liveData.campaign.requiredHashtags.map((tag) => <span key={tag} className="rounded-full bg-neutral-100 px-3 py-1 text-xs font-semibold text-neutral-700">{tag}</span>)
                 : <span className="text-sm text-neutral-500">Geen verplichte hashtags</span>}
             </div>
+            <p className="mt-6 rounded-lg bg-neutral-50 p-4 text-sm leading-6 text-neutral-600">
+              Measurement definition: doelviews zijn berekend uit budget en CPM. Huidige views zijn live goedgekeurde views. Overdelivery is extra bereik boven het afgesproken doel zonder extra budget.
+            </p>
           </ReportPage>
         ) : null}
 
         {enabled("performance") ? (
           <ReportPage>
             <ReportHeading icon={<BarChart3 className="h-5 w-5" />} kicker="Live dashboarddata" title="Prestatieoverzicht" />
-            <div className="mt-7 grid gap-3 md:grid-cols-4">
+            <div className="mt-7 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
               {metricCards.map((card) => (
                 <div key={card.label} className="rounded-lg border border-neutral-200 p-4">
                   <p className="text-xs font-semibold uppercase tracking-[0.12em] text-neutral-400">{card.label}</p>
@@ -706,6 +711,11 @@ function ReportPreview({
                 </div>
               ))}
             </div>
+            {liveData.performance.overdeliveryViews > 0 ? (
+              <p className="mt-5 rounded-lg border border-neutral-200 bg-neutral-50 p-4 text-sm leading-6 text-neutral-700">
+                Gratis bonus voor de client: deze campagne levert nog steeds views boven het afgesproken doel. Deze overdelivery laat zien dat oude campagnecontent blijft doorlopen zonder extra budget.
+              </p>
+            ) : null}
             <TimelineChart rows={liveData.timeline} />
             <StatusGrid statusCounts={liveData.performance.statusCounts} />
           </ReportPage>

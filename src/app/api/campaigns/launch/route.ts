@@ -5,6 +5,7 @@ import type { Niche } from "@prisma/client";
 import { z } from "zod";
 import { ensureDiscordCampaignProvisioning } from "@/lib/discord-campaign-provisioning";
 import { sendCampaignAnnouncementOnce } from "@/lib/admin/discord-campaign-announcements";
+import { calculateDerivedGoalViews } from "@/lib/campaign-delivery";
 
 const launchCampaignSchema = z.object({
   name: z.string().min(3),
@@ -49,8 +50,12 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "User not found" }, { status: 404 });
     }
 
-    const adminMargin = data.creatorCpv * 0.3;
-    const businessCpv = data.creatorCpv + adminMargin;
+    const adminMargin = 0;
+    const businessCpv = data.creatorCpv;
+    const goalViews = calculateDerivedGoalViews({
+      totalBudget: data.totalBudget,
+      creatorCpv: data.creatorCpv,
+    });
 
     const campaign = await prisma.campaign.create({
       data: {
@@ -59,6 +64,7 @@ export async function POST(req: NextRequest) {
         creatorCpv: data.creatorCpv,
         adminMargin,
         businessCpv,
+        goalViews: goalViews ? BigInt(goalViews) : null,
         deadline: new Date(data.deadline),
         description: data.description,
         contentGuidelines: data.contentGuidelines,

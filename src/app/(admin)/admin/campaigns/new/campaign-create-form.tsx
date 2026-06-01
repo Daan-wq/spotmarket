@@ -155,10 +155,9 @@ export function CampaignCreateForm() {
   const [statValues, setStatValues] = useState<Record<string, string>>({});
 
   // — Full details (revealed after approval) —
-  const [goalViewsRaw, setGoalViewsRaw] = useState("");
+  const [creatorCpmRaw, setCreatorCpmRaw] = useState("");
   const [minimumPaidViewsRaw, setMinimumPaidViewsRaw] = useState("");
   const [maximumPaidViewsRaw, setMaximumPaidViewsRaw] = useState("");
-  const [adminMarginPerK, setAdminMarginPerK] = useState("0.03");
   const [referralLink, setReferralLink] = useState("");
   const [contentGuidelines, setContentGuidelines] = useState("");
   const [bannerVideoUrl, setBannerVideoUrl] = useState("");
@@ -178,12 +177,10 @@ export function CampaignCreateForm() {
   const [maxSlots, setMaxSlots] = useState("");
 
   const budget = parseFloat(totalBudget) || 0;
-  const goalViews = parseViews(goalViewsRaw);
+  const creatorCpm = parseFloat(creatorCpmRaw) || 0;
+  const goalViews = budget > 0 && creatorCpm > 0 ? Math.floor(budget / (creatorCpm / 1_000)) : null;
   const minimumPaidViews = minimumPaidViewsRaw.trim() ? parseViews(minimumPaidViewsRaw) : 0;
   const maximumPaidViews = maximumPaidViewsRaw.trim() ? parseViews(maximumPaidViewsRaw) : null;
-  const margin = parseFloat(adminMarginPerK) || 0;
-  const businessPerK = goalViews && budget > 0 ? (budget / goalViews) * 1_000 : null;
-  const creatorPerK = businessPerK !== null ? businessPerK - margin : null;
 
   function toggleContentType(ct: string) {
     setSelectedContentTypes((prev) =>
@@ -228,8 +225,8 @@ export function CampaignCreateForm() {
 
     if (!name.trim()) { setError("Campagnenaam is verplicht"); return; }
     if (!budget || budget <= 0) { setError("Budget moet een positief getal zijn"); return; }
+    if (!creatorCpm || creatorCpm <= 0) { setError("CPM moet een positief getal zijn"); return; }
     if (!deadline) { setError("Deadline is verplicht"); return; }
-    if (creatorPerK !== null && creatorPerK < 0) { setError("Marge is te hoog - creatortarief zou negatief worden"); return; }
     if (minimumPaidViewsRaw.trim() && minimumPaidViews === null) { setError("Minimum betaalde views moet een heel getal zijn"); return; }
     if (maximumPaidViewsRaw.trim() && maximumPaidViews === null) { setError("Maximum betaalde views moet een heel getal zijn of leeg blijven"); return; }
     if (maximumPaidViews !== null && minimumPaidViews !== null && maximumPaidViews < minimumPaidViews) {
@@ -285,7 +282,8 @@ export function CampaignCreateForm() {
         goalViews: goalViews ?? undefined,
         minimumPaidViews: minimumPaidViews ?? 0,
         maximumPaidViews: maximumPaidViewsRaw.trim() ? maximumPaidViews : undefined,
-        adminMarginPerK: margin,
+        creatorRatePerK: creatorCpm,
+        adminMarginPerK: 0,
         deadline: new Date(deadline).toISOString(),
         startsAt: startsAt ? new Date(startsAt).toISOString() : undefined,
         maxSlots: numberOrUndefined(maxSlots),
@@ -569,28 +567,28 @@ export function CampaignCreateForm() {
 
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
           <div>
-            <label style={labelStyle}>Doelviews</label>
-            <input
-              style={inputStyle}
-              value={goalViewsRaw}
-              onChange={(e) => setGoalViewsRaw(e.target.value)}
-              placeholder="e.g. 200m, 500k"
-            />
-            {goalViews ? (
-              <p style={{ fontSize: "11px", marginTop: "4px", color: "var(--text-muted, var(--text-secondary))" }}>{fmtViews(goalViews)}</p>
-            ) : goalViewsRaw ? (
-              <p style={{ fontSize: "11px", marginTop: "4px", color: "var(--error, #dc2626)" }}>Invalid — try: 200m, 500k</p>
-            ) : null}
-          </div>
-          <div>
-            <label style={labelStyle}>Jouw marge (€/1K views)</label>
+            <label style={labelStyle}>CPM (EUR / 1K views)</label>
             <input
               style={inputStyle}
               type="number"
               step="0.01"
-              value={adminMarginPerK}
-              onChange={(e) => setAdminMarginPerK(e.target.value)}
-              placeholder="0.03"
+              value={creatorCpmRaw}
+              onChange={(e) => setCreatorCpmRaw(e.target.value)}
+              placeholder="0.25"
+            />
+            {goalViews ? (
+              <p style={{ fontSize: "11px", marginTop: "4px", color: "var(--text-muted, var(--text-secondary))" }}>Doelviews: {fmtViews(goalViews)}</p>
+            ) : creatorCpmRaw ? (
+              <p style={{ fontSize: "11px", marginTop: "4px", color: "var(--error, #dc2626)" }}>CPM moet groter zijn dan 0</p>
+            ) : null}
+          </div>
+          <div>
+            <label style={labelStyle}>Doelviews</label>
+            <input
+              style={inputStyle}
+              value={goalViews ? fmtViews(goalViews) : ""}
+              readOnly
+              placeholder="Automatisch uit budget / CPM"
             />
           </div>
         </div>
@@ -622,24 +620,15 @@ export function CampaignCreateForm() {
           </div>
         </div>
 
-        {/* Economics preview */}
-        {businessPerK !== null && creatorPerK !== null && goalViews && (
+        {creatorCpm > 0 && goalViews && (
           <div style={{ borderRadius: "8px", padding: "12px 14px", background: "var(--bg-secondary, var(--bg-primary))", border: "1px solid var(--border)", fontSize: "13px", display: "flex", flexDirection: "column", gap: "6px" }}>
             <div style={{ display: "flex", justifyContent: "space-between", color: "var(--text-secondary)" }}>
-              <span>Klant betaalt (per 1K views)</span>
-              <span style={{ fontWeight: 500, color: "var(--text-primary)" }}>€{businessPerK.toFixed(2)}</span>
-            </div>
-            <div style={{ display: "flex", justifyContent: "space-between", color: "var(--error, #dc2626)" }}>
-              <span>Jouw marge</span>
-              <span>−€{margin.toFixed(2)}</span>
+              <span>CPM</span>
+              <span style={{ fontWeight: 500, color: "var(--text-primary)" }}>€{creatorCpm.toFixed(2)} per 1K views</span>
             </div>
             <div style={{ display: "flex", justifyContent: "space-between", borderTop: "1px solid var(--border)", paddingTop: "6px" }}>
-              <span style={{ color: "var(--text-secondary)" }}>Creator verdient (per 1K views)</span>
-              <span style={{ fontWeight: 600, color: "var(--text-primary)" }}>€{creatorPerK.toFixed(2)}</span>
-            </div>
-            <div style={{ display: "flex", justifyContent: "space-between", fontWeight: 600, color: "var(--accent, #534AB7)" }}>
-              <span>Jouw omzet</span>
-              <span>€{((margin / 1_000) * goalViews).toFixed(2)}</span>
+              <span style={{ color: "var(--text-secondary)" }}>Beloofde doelviews</span>
+              <span style={{ fontWeight: 600, color: "var(--text-primary)" }}>{fmtViews(goalViews)}</span>
             </div>
           </div>
         )}

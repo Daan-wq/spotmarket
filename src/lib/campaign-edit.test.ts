@@ -79,11 +79,11 @@ describe("campaign edit helpers", () => {
       minFollowers: 0,
       minEngagementRate: 2.5,
       totalBudget: 10000,
-      goalViews: 5000000,
+      goalViews: 28571428,
       minimumPaidViews: 2000,
       maximumPaidViews: 100000,
       creatorRatePerK: 0.35,
-      adminMarginPerK: 0.1,
+      adminMarginPerK: 0,
       startsAt: null,
       maxSlots: null,
     });

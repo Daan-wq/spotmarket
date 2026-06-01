@@ -4,6 +4,7 @@ import {
   type CampaignReportEditorial,
   type CampaignReportSectionSettings,
 } from "@/lib/admin/campaign-report-shared";
+import { calculateCampaignDelivery, submissionLiveViews } from "@/lib/campaign-delivery";
 import { prisma } from "@/lib/prisma";
 import { computeDayDeltas } from "@/lib/stats/trends";
 
@@ -169,6 +170,14 @@ export interface CampaignReportLiveData {
   };
   performance: {
     approvedViews: number;
+    currentViews: number;
+    targetViews: number | null;
+    targetViewsSource: "budget_cpm" | "legacy_goal" | "none";
+    paidEligibleViews: number;
+    overdeliveryViews: number;
+    overdeliveryPercent: number | null;
+    deliveryProgress: number | null;
+    cpmPerThousand: number | null;
     goalCompletion: number | null;
     budgetUsed: number;
     budgetUsedPercent: number | null;
@@ -226,11 +235,16 @@ export interface CampaignReportLiveData {
 
 export function buildCampaignReportLiveData(input: CampaignReportBuildInput): CampaignReportLiveData {
   const totalBudget = toNumber(input.campaign.totalBudget);
-  const goalViews = input.campaign.goalViews == null ? null : Number(input.campaign.goalViews);
+  const creatorCpv = toNumber(input.campaign.creatorCpv);
+  const legacyGoalViews = input.campaign.goalViews == null ? null : Number(input.campaign.goalViews);
   const submissions = input.submissions;
   const approved = submissions.filter((submission) => submission.status === "APPROVED");
   const reviewed = submissions.filter((submission) => ["APPROVED", "REJECTED", "NEEDS_REVISION", "FLAGGED"].includes(submission.status));
-  const approvedViews = approved.reduce((sum, submission) => sum + submissionViews(submission), 0);
+  const delivery = calculateCampaignDelivery({
+    campaign: { totalBudget, creatorCpv, goalViews: legacyGoalViews },
+    submissions,
+  });
+  const approvedViews = delivery.currentViews;
   const budgetUsed = approved.reduce((sum, submission) => sum + toNumber(submission.earnedAmount), 0);
   const statusCounts = countBy(submissions, (submission) => submission.status);
   const activeCreators = new Set(submissions.map((submission) => submission.creatorId)).size;
@@ -264,10 +278,10 @@ export function buildCampaignReportLiveData(input: CampaignReportBuildInput): Ca
       description: input.campaign.description ?? null,
       platforms: input.campaign.platforms.map(platformLabel),
       totalBudget,
-      creatorCpv: toNumber(input.campaign.creatorCpv),
+      creatorCpv,
       adminMargin: toNumber(input.campaign.adminMargin),
-      businessCpv: toNumber(input.campaign.businessCpv),
-      goalViews,
+      businessCpv: creatorCpv,
+      goalViews: delivery.targetViews,
       minimumPaidViews: input.campaign.minimumPaidViews,
       maximumPaidViews: input.campaign.maximumPaidViews ?? null,
       startsAt: input.campaign.startsAt ? toIso(input.campaign.startsAt) : null,
@@ -286,7 +300,15 @@ export function buildCampaignReportLiveData(input: CampaignReportBuildInput): Ca
     },
     performance: {
       approvedViews,
-      goalCompletion: goalViews && goalViews > 0 ? approvedViews / goalViews : null,
+      currentViews: delivery.currentViews,
+      targetViews: delivery.targetViews,
+      targetViewsSource: delivery.targetViewsSource,
+      paidEligibleViews: delivery.paidEligibleViews,
+      overdeliveryViews: delivery.overdeliveryViews,
+      overdeliveryPercent: delivery.overdeliveryPercent,
+      deliveryProgress: delivery.deliveryProgress,
+      cpmPerThousand: delivery.cpmPerThousand,
+      goalCompletion: delivery.deliveryProgress,
       budgetUsed,
       budgetUsedPercent: totalBudget > 0 ? budgetUsed / totalBudget : null,
       costPerThousandViews: approvedViews > 0 ? (budgetUsed / approvedViews) * 1000 : null,
@@ -505,8 +527,11 @@ export async function getCampaignReportLiveData({
 function generateDefaultEditorial(data: Omit<CampaignReportLiveData, "defaults">): CampaignReportEditorial {
   const topPlatform = data.platformBreakdown[0];
   const goalText = data.performance.goalCompletion == null
-    ? "zonder vast viewdoel"
-    : `${formatPercent(data.performance.goalCompletion)} van het viewdoel`;
+    ? "zonder betrouwbaar viewdoel"
+    : `${formatPercent(data.performance.goalCompletion)} van de doelviews`;
+  const overdeliveryText = data.performance.overdeliveryViews > 0
+    ? ` Daarnaast leverde de campagne ${formatNumber(data.performance.overdeliveryViews)} views overdelivery als gratis extra bereik voor de client.`
+    : "";
   const qualityText = data.quality.criticalSignals === 0
     ? "zonder open kritieke kwaliteitsissues"
     : `met ${data.quality.criticalSignals} kritieke signalen die aandacht vragen`;
@@ -515,7 +540,10 @@ function generateDefaultEditorial(data: Omit<CampaignReportLiveData, "defaults">
     : `EUR ${data.performance.costPerThousandViews.toFixed(2)} per 1.000 views`;
 
   const keyTakeaways = [
-    `${data.campaign.brandName} behaalde ${formatNumber(data.performance.approvedViews)} goedgekeurde views, ${goalText}.`,
+    `${data.campaign.brandName} behaalde ${formatNumber(data.performance.currentViews)} huidige goedgekeurde views, ${goalText}.${overdeliveryText}`,
+    data.performance.targetViews
+      ? `De doelviews waren ${formatNumber(data.performance.targetViews)}, berekend uit budget en CPM.`
+      : "Er is geen betrouwbaar berekend viewdoel beschikbaar voor deze campagne.",
     topPlatform
       ? `${topPlatform.platform} leverde het grootste bereik met ${formatNumber(topPlatform.views)} views.`
       : "Er is nog onvoldoende platformdata om een kanaalwinnaar te kiezen.",
@@ -547,7 +575,7 @@ function generateDefaultEditorial(data: Omit<CampaignReportLiveData, "defaults">
 
   return {
     title: `${data.campaign.brandName} campagnerapport`,
-    executiveSummary: `${data.campaign.brandName} behaalde ${formatNumber(data.performance.approvedViews)} goedgekeurde views met ${data.performance.approvedClips} goedgekeurde clips. ${topPlatform ? `${topPlatform.platform} was het sterkste bereikskanaal.` : "Er is nog geen duidelijke platformwinnaar."} Voor de volgende campagne adviseren we de best presterende creators opnieuw te activeren, de winnende hooks expliciet in de brief te zetten en het budget te verschuiven naar de kanalen met de laagste effectieve CPV.`,
+    executiveSummary: `${data.campaign.brandName} behaalde ${formatNumber(data.performance.currentViews)} huidige goedgekeurde views met ${data.performance.approvedClips} goedgekeurde clips. ${data.performance.targetViews ? `Het afgesproken doel was ${formatNumber(data.performance.targetViews)} views.` : ""}${overdeliveryText} ${topPlatform ? `${topPlatform.platform} was het sterkste bereikskanaal.` : "Er is nog geen duidelijke platformwinnaar."} Voor de volgende campagne adviseren we de best presterende creators opnieuw te activeren, de winnende hooks expliciet in de brief te zetten en het budget te verschuiven naar de kanalen met de laagste CPM.`,
     keyTakeaways,
     learnings,
     nextCampaignRecommendations,
@@ -727,8 +755,7 @@ async function loadAudienceSnapshots(profileIds: string[]): Promise<CampaignRepo
 }
 
 function submissionViews(submission: CampaignReportSubmissionInput) {
-  const latest = latestSnapshot(submission);
-  return Number(submission.eligibleViews ?? latest?.viewCount ?? submission.viewCount ?? submission.claimedViews ?? 0);
+  return submissionLiveViews(submission);
 }
 
 function submissionEngagement(submission: CampaignReportSubmissionInput) {

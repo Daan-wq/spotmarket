@@ -33,6 +33,7 @@ function createRequest() {
       name: "Draft campaign",
       platforms: ["INSTAGRAM"],
       totalBudget: 1000,
+      creatorRatePerK: 0.5,
       deadline: "2026-06-01T00:00:00.000Z",
       minimumPaidViews: 3000,
       maximumPaidViews: 150000,
@@ -58,6 +59,16 @@ describe("POST /api/campaigns", () => {
     const response = await POST(createRequest());
 
     expect(response.status).toBe(201);
+    expect(routeMocks.campaignCreate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          creatorCpv: 0.0005,
+          businessCpv: 0.0005,
+          adminMargin: 0,
+          goalViews: BigInt(2_000_000),
+        }),
+      }),
+    );
     expect(routeMocks.campaignCreate).toHaveBeenCalledWith(
       expect.objectContaining({
         data: expect.not.objectContaining({ status: "active" }),

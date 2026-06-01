@@ -1,6 +1,7 @@
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { calculateDerivedGoalViews } from "@/lib/campaign-delivery";
 import { z } from "zod";
 
 const createCampaignSchema = z.object({
@@ -28,6 +29,7 @@ const createCampaignSchema = z.object({
   // Section 3 - budget/goals via per-1K rate
   totalBudget: z.number().positive(),
   goalViews: z.number().int().positive().optional(),
+  creatorRatePerK: z.number().positive().optional(),
   minimumPaidViews: z.number().int().min(0).optional().default(0),
   maximumPaidViews: z.number().int().min(0).nullable().optional(),
   adminMarginPerK: z.number().min(0).optional().default(0),
@@ -132,13 +134,14 @@ export async function POST(req: Request) {
 
   const d = parsed.data;
 
-  const adminMarginCpv = d.adminMarginPerK / 1_000;
-  const businessCpv = d.goalViews ? d.totalBudget / d.goalViews : adminMarginCpv;
-  const creatorCpv = businessCpv - adminMarginCpv;
-
-  if (creatorCpv < 0) {
-    return NextResponse.json({ error: "Admin margin is too high - creator rate would be negative" }, { status: 400 });
-  }
+  const creatorCpv = d.creatorRatePerK ? d.creatorRatePerK / 1_000 : d.goalViews ? d.totalBudget / d.goalViews : 0;
+  const adminMarginCpv = 0;
+  const businessCpv = creatorCpv;
+  const targetViews = calculateDerivedGoalViews({
+    totalBudget: d.totalBudget,
+    creatorCpv,
+    goalViews: d.goalViews,
+  });
 
   // Derive targetGeo from targetCountry for creator matching
   const targetGeo = d.targetCountry ? [d.targetCountry.toUpperCase()] : [];
@@ -164,7 +167,7 @@ export async function POST(req: Request) {
         creatorCpv,
         adminMargin: adminMarginCpv,
         businessCpv,
-        goalViews: d.goalViews ? BigInt(d.goalViews) : null,
+        goalViews: targetViews ? BigInt(targetViews) : null,
         minimumPaidViews: d.minimumPaidViews,
         maximumPaidViews: d.maximumPaidViews ?? null,
         deadline: new Date(d.deadline),

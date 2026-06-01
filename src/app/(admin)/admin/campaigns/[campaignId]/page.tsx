@@ -11,6 +11,7 @@ import {
 import { prisma } from "@/lib/prisma";
 import { isExcludedFromLeaderboards } from "@/lib/leaderboard-exclusions";
 import { calculateCampaignReferralReport } from "@/lib/campaign-referrals";
+import { calculateCampaignDelivery, submissionLiveViews } from "@/lib/campaign-delivery";
 import { CampaignSubmissionsOverview } from "./campaign-submissions-overview";
 
 export const dynamic = "force-dynamic";
@@ -57,6 +58,11 @@ export default async function CampaignHealthPage({ params }: PageProps) {
             },
             select: { id: true, type: true, severity: true },
           },
+          metricSnapshots: {
+            orderBy: { capturedAt: "desc" },
+            take: 1,
+            select: { capturedAt: true, viewCount: true },
+          },
         },
         orderBy: { createdAt: "desc" },
       },
@@ -89,20 +95,26 @@ export default async function CampaignHealthPage({ params }: PageProps) {
   });
   if (!campaign) return notFound();
 
-  const totalEligibleViews = campaign.campaignSubmissions.reduce(
-    (sum, submission) => sum + (submission.eligibleViews ?? 0),
-    0,
-  );
   const totalEarned = campaign.campaignSubmissions.reduce(
     (sum, submission) => sum + Number(submission.earnedAmount ?? 0),
     0,
   );
   const totalBudget = Number(campaign.totalBudget);
-  const goalViews = campaign.goalViews ? Number(campaign.goalViews) : 0;
+  const delivery = calculateCampaignDelivery({
+    campaign: {
+      totalBudget,
+      creatorCpv: campaign.creatorCpv,
+      goalViews: campaign.goalViews ? Number(campaign.goalViews) : null,
+    },
+    submissions: campaign.campaignSubmissions,
+  });
+  const targetViews = delivery.targetViews;
+  const currentViews = delivery.currentViews;
+  const overdeliveryViews = delivery.overdeliveryViews;
   const minimumPaidViews = campaign.minimumPaidViews ?? 0;
   const maximumPaidViews = campaign.maximumPaidViews;
   const burnPct = totalBudget > 0 ? totalEarned / totalBudget : 0;
-  const goalPct = goalViews > 0 ? totalEligibleViews / goalViews : 0;
+  const goalPct = delivery.deliveryProgress ?? 0;
   const earnedByInvitedCreator = new Map<string, number>();
 
   for (const submission of campaign.campaignSubmissions) {
@@ -166,7 +178,9 @@ export default async function CampaignHealthPage({ params }: PageProps) {
         flagged: 0,
       };
     current.submissions += 1;
-    current.views += submission.eligibleViews ?? 0;
+    if (submission.status === "APPROVED") {
+      current.views += submissionLiveViews(submission);
+    }
     current.earned += Number(submission.earnedAmount ?? 0);
     current.flagged += submission.submissionSignals.length > 0 ? 1 : 0;
     byCreator.set(submission.creatorId, current);
@@ -259,9 +273,24 @@ export default async function CampaignHealthPage({ params }: PageProps) {
         <div className="w-full sm:w-[220px] xl:w-[240px]">
           <KpiCard
             label="Doelviews"
-            value={totalEligibleViews.toLocaleString("nl-NL")}
-            hint={goalViews > 0 ? `van ${goalViews.toLocaleString("nl-NL")} (${Math.round(goalPct * 100)}%)` : "geen doel ingesteld"}
-            tone={goalViews > 0 && goalPct < 0.5 ? "warning" : "default"}
+            value={targetViews ? targetViews.toLocaleString("nl-NL") : "-"}
+            hint={delivery.targetViewsSource === "budget_cpm" ? "budget / CPM" : "legacy doel"}
+          />
+        </div>
+        <div className="w-full sm:w-[220px] xl:w-[240px]">
+          <KpiCard
+            label="Huidige views"
+            value={currentViews.toLocaleString("nl-NL")}
+            hint={targetViews ? `${Math.round(goalPct * 100)}% van doel` : "live approved views"}
+            tone={targetViews && goalPct < 0.5 ? "warning" : goalPct >= 1 ? "success" : "default"}
+          />
+        </div>
+        <div className="w-full sm:w-[220px] xl:w-[240px]">
+          <KpiCard
+            label="Overdelivery"
+            value={overdeliveryViews.toLocaleString("nl-NL")}
+            hint={overdeliveryViews > 0 ? "gratis extra bereik" : "nog geen bonusviews"}
+            tone={overdeliveryViews > 0 ? "success" : "default"}
           />
         </div>
         <div className="w-full sm:w-[190px] xl:w-[210px]">
@@ -289,6 +318,15 @@ export default async function CampaignHealthPage({ params }: PageProps) {
           />
         </div>
       </div>
+
+      {overdeliveryViews > 0 ? (
+        <div
+          className="mb-6 rounded-xl px-5 py-4 text-sm"
+          style={{ background: "var(--success-bg)", border: "1px solid var(--border)", color: "var(--success-text)" }}
+        >
+          <strong>Gratis bonus voor de client:</strong> deze campagne levert nog steeds views boven het afgesproken doel.
+        </div>
+      ) : null}
 
       <div className="space-y-6">
         <section

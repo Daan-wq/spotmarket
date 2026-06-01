@@ -65,6 +65,8 @@ function campaign(status = "active") {
     status,
     minimumPaidViews: 0,
     maximumPaidViews: null,
+    totalBudget: 1000,
+    goalViews: BigInt(100000),
     creatorCpv: 0.01,
     adminMargin: 0.002,
     discordRoleId: null,
@@ -153,6 +155,23 @@ describe("PATCH /api/campaigns/[campaignId]", () => {
     expect(routeMocks.removeDiscordCampaignRole).not.toHaveBeenCalled();
     expect(routeMocks.ensureDiscordCampaignResources).not.toHaveBeenCalled();
     expect(routeMocks.sendCampaignAnnouncementOnce).not.toHaveBeenCalled();
+  });
+
+  it("recalculates goal views from budget and CPM when campaign economics change", async () => {
+    const response = await PATCH(request({ totalBudget: 500, creatorRatePerK: 0.25 }), params);
+
+    expect(response.status).toBe(200);
+    expect(routeMocks.campaignUpdate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          totalBudget: 500,
+          creatorCpv: 0.00025,
+          businessCpv: 0.00025,
+          adminMargin: 0,
+          goalViews: BigInt(2_000_000),
+        }),
+      }),
+    );
   });
 
   it("provisions Discord resources and posts an announcement when a campaign becomes active", async () => {

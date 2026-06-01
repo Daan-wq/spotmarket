@@ -57,8 +57,11 @@ describe("email app URL", () => {
     const html = await render(
       React.createElement(
         EmailShell,
-        { preview: "Preview text", heading: "Mail heading" },
-        React.createElement("p", { style: styles.p }, "Mail body"),
+        {
+          preview: "Preview text",
+          heading: "Mail heading",
+          children: React.createElement("p", { style: styles.p }, "Mail body"),
+        },
       ),
     );
 

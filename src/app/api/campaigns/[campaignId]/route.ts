@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { Platform, Niche } from "@prisma/client";
 import { z } from "zod";
 import { ratePerKToCpv } from "@/lib/campaign-edit";
+import { calculateDerivedGoalViews } from "@/lib/campaign-delivery";
 import {
   ensureDiscordCampaignResources,
   removeDiscordCampaignRole,
@@ -205,16 +206,28 @@ export async function PATCH(
   if (platforms) {
     data.platforms = platforms as Platform[];
   }
-  if (goalViews !== undefined) data.goalViews = goalViews ? BigInt(goalViews) : null;
   if (minEngagementRate !== undefined) data.minEngagementRate = minEngagementRate;
-  if (creatorRatePerK !== undefined || adminMarginPerK !== undefined) {
-    const nextCreatorRatePerK = creatorRatePerK ?? Number(authorized.campaign.creatorCpv) * 1_000;
-    const nextAdminMarginPerK = adminMarginPerK ?? Number(authorized.campaign.adminMargin) * 1_000;
-    const creatorCpv = ratePerKToCpv(nextCreatorRatePerK);
-    const adminMargin = ratePerKToCpv(nextAdminMarginPerK);
+  if (
+    rest.totalBudget !== undefined ||
+    creatorRatePerK !== undefined ||
+    adminMarginPerK !== undefined ||
+    goalViews !== undefined
+  ) {
+    const nextTotalBudget = rest.totalBudget ?? Number(authorized.campaign.totalBudget ?? 0);
+    const creatorCpv = creatorRatePerK !== undefined && creatorRatePerK > 0
+      ? ratePerKToCpv(creatorRatePerK)
+      : goalViews && nextTotalBudget > 0
+        ? nextTotalBudget / goalViews
+        : Number(authorized.campaign.creatorCpv ?? 0);
+    const targetViews = calculateDerivedGoalViews({
+      totalBudget: nextTotalBudget,
+      creatorCpv,
+      goalViews,
+    });
     data.creatorCpv = creatorCpv;
-    data.adminMargin = adminMargin;
-    data.businessCpv = creatorCpv + adminMargin;
+    data.adminMargin = 0;
+    data.businessCpv = creatorCpv;
+    data.goalViews = targetViews ? BigInt(targetViews) : null;
   }
 
   try {

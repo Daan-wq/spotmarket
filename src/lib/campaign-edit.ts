@@ -1,3 +1,5 @@
+import { calculateDerivedGoalViews } from "@/lib/campaign-delivery";
+
 const THOUSAND = 1_000;
 
 export interface CampaignEditFormState {
@@ -78,8 +80,14 @@ function dateOrNull(value: string): string | null {
 }
 
 export function buildCampaignEditPayload(state: CampaignEditFormState) {
+  const totalBudget = numberOrZero(state.totalBudget);
   const creatorRatePerK = numberOrZero(state.creatorRatePerK);
-  const adminMarginPerK = numberOrZero(state.adminMarginPerK);
+  const creatorCpv = ratePerKToCpv(creatorRatePerK);
+  const goalViews = calculateDerivedGoalViews({
+    totalBudget,
+    creatorCpv,
+    goalViews: numberOrNull(state.goalViews),
+  });
 
   return {
     name: state.name.trim(),
@@ -110,12 +118,12 @@ export function buildCampaignEditPayload(state: CampaignEditFormState) {
     minEngagementRate: numberOrZero(state.minEngagementRate),
     bioRequirement: emptyToNull(state.bioRequirement),
     linkInBioRequired: emptyToNull(state.linkInBioRequired),
-    totalBudget: numberOrZero(state.totalBudget),
-    goalViews: numberOrNull(state.goalViews),
+    totalBudget,
+    goalViews,
     minimumPaidViews: numberOrZero(state.minimumPaidViews),
     maximumPaidViews: numberOrNull(state.maximumPaidViews),
     creatorRatePerK,
-    adminMarginPerK,
+    adminMarginPerK: 0,
     deadline: dateOrNull(state.deadline),
     startsAt: dateOrNull(state.startsAt),
     maxSlots: numberOrNull(state.maxSlots),

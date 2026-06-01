@@ -121,7 +121,11 @@ describe("buildCampaignReportLiveData", () => {
     });
 
     expect(report.performance.approvedViews).toBe(400_000);
-    expect(report.performance.goalCompletion).toBe(0.4);
+    expect(report.performance.currentViews).toBe(400_000);
+    expect(report.performance.paidEligibleViews).toBe(400_000);
+    expect(report.performance.targetViews).toBe(1_666_666);
+    expect(report.performance.targetViewsSource).toBe("budget_cpm");
+    expect(report.performance.goalCompletion).toBeCloseTo(0.24);
     expect(report.performance.budgetUsed).toBe(320);
     expect(report.performance.budgetUsedPercent).toBe(0.32);
     expect(report.performance.costPerThousandViews).toBe(0.8);
@@ -138,6 +142,37 @@ describe("buildCampaignReportLiveData", () => {
     expect(report.defaults.title).toBe("Bram's Fruit campagnerapport");
     expect(report.defaults.executiveSummary).toContain("goedgekeurde views");
     expect(report.defaults.keyTakeaways.length).toBeGreaterThanOrEqual(3);
+  });
+
+  it("shows live approved views and overdelivery above the CPM target", () => {
+    const report = buildCampaignReportLiveData({
+      campaign: { ...campaign, totalBudget: 500, creatorCpv: 0.00025, goalViews: 100_000 },
+      submissions: [
+        {
+          id: "sub-over",
+          creatorId: "creator-1",
+          creatorLabel: "Alice",
+          postUrl: "https://tiktok.com/@alice/video/over",
+          sourcePlatform: "TIKTOK",
+          status: "APPROVED",
+          createdAt: new Date("2026-05-02T00:00:00.000Z"),
+          eligibleViews: 2_000_000,
+          viewCount: 2_600_000,
+          earnedAmount: 500,
+          metricSnapshots: [],
+          signals: [],
+          qcReviews: [],
+        },
+      ],
+      attributions: [],
+      audienceSnapshots: [],
+    });
+
+    expect(report.performance.targetViews).toBe(2_000_000);
+    expect(report.performance.currentViews).toBe(2_600_000);
+    expect(report.performance.paidEligibleViews).toBe(2_000_000);
+    expect(report.performance.overdeliveryViews).toBe(600_000);
+    expect(report.defaults.executiveSummary).toContain("overdelivery");
   });
 });
 
