@@ -254,6 +254,17 @@ summary {
     break-after: auto;
     page-break-after: auto;
   }
+
+  .report-inline-control {
+    display: none !important;
+  }
+
+  .report-inline-edit {
+    border-color: transparent !important;
+    background: transparent !important;
+    box-shadow: none !important;
+    outline: none !important;
+  }
 }
 
 @keyframes fadeInUp {

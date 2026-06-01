@@ -4,7 +4,6 @@ import {
   BarChart3,
   CalendarDays,
   CheckCircle2,
-  Eye,
   FileText,
   Plus,
   Printer,
@@ -89,6 +88,17 @@ interface CampaignReportStudioProps {
   liveData: CampaignReportLiveData | null;
   initialEditorial: CampaignReportEditorial | null;
   filters: ReportFilters;
+}
+
+interface ReportInlineEditors {
+  setTitle: (value: string) => void;
+  setExecutiveSummary: (value: string) => void;
+  updateKeyTakeaway: (index: number, value: string) => void;
+  addKeyTakeaway: () => void;
+  updateLearning: (index: number, value: string) => void;
+  addLearning: () => void;
+  updateRecommendation: (index: number, value: string) => void;
+  addRecommendation: () => void;
 }
 
 const SECTION_LABELS: Record<CampaignReportSectionKey, string> = {
@@ -281,6 +291,18 @@ function CampaignReportStudioEditor({
     router.push(buildHref({ campaignId, reportId: null }));
   }
 
+  function updateKeyTakeaway(index: number, value: string) {
+    setKeyTakeaways((items) => replaceTextListItem(items, index, value));
+  }
+
+  function updateLearning(index: number, value: string) {
+    setLearnings((items) => replaceTextListItem(items, index, value));
+  }
+
+  function updateRecommendation(index: number, value: string) {
+    setNextCampaignRecommendations((items) => replaceTextListItem(items, index, value));
+  }
+
   return (
     <div className="report-studio-shell space-y-5">
       <header className="report-studio-chrome flex flex-col gap-4 border-b border-neutral-200 pb-5 xl:flex-row xl:items-end xl:justify-between">
@@ -332,56 +354,51 @@ function CampaignReportStudioEditor({
         </div>
       </header>
 
-      <div className="grid gap-5 xl:grid-cols-[18rem_25rem_minmax(0,1fr)]">
-        <aside className="report-studio-chrome space-y-4">
-          <HistoryPanel
-            reports={reports}
-            brands={brands}
-            campaigns={campaigns}
-            filters={filters}
-            selectedReportId={selectedReport?.id ?? null}
-            historyCounts={historyCounts}
-            buildHref={buildHref}
-          />
-        </aside>
+      <section className="report-studio-chrome">
+        <HistoryPanel
+          reports={reports}
+          brands={brands}
+          campaigns={campaigns}
+          filters={filters}
+          selectedReportId={selectedReport?.id ?? null}
+          historyCounts={historyCounts}
+          buildHref={buildHref}
+        />
+      </section>
 
-        <section className="report-studio-chrome space-y-4">
-          <EditorPanel
-            title={title}
-            setTitle={setTitle}
-            executiveSummary={executiveSummary}
-            setExecutiveSummary={setExecutiveSummary}
-            keyTakeaways={keyTakeaways}
-            setKeyTakeaways={setKeyTakeaways}
-            learnings={learnings}
-            setLearnings={setLearnings}
-            nextCampaignRecommendations={nextCampaignRecommendations}
-            setNextCampaignRecommendations={setNextCampaignRecommendations}
-            periodStart={periodStart}
-            setPeriodStart={setPeriodStart}
-            periodEnd={periodEnd}
-            setPeriodEnd={setPeriodEnd}
-            sectionSettings={sectionSettings}
-            setSectionSettings={setSectionSettings}
-            liveData={liveData}
-          />
-        </section>
+      <ReportMetaControls
+        periodStart={periodStart}
+        setPeriodStart={setPeriodStart}
+        periodEnd={periodEnd}
+        setPeriodEnd={setPeriodEnd}
+        sectionSettings={sectionSettings}
+        setSectionSettings={setSectionSettings}
+      />
 
-        <main className="report-studio-preview min-w-0">
-          <ReportPreview
-            liveData={liveData}
-            title={title}
-            executiveSummary={executiveSummary}
-            keyTakeaways={keyTakeaways}
-            learnings={learnings}
-            recommendations={nextCampaignRecommendations}
-            sectionSettings={sectionSettings}
-            status={selectedReport?.status ?? "DRAFT"}
-            periodStart={periodStart}
-            periodEnd={periodEnd}
-          />
-        </main>
-      </div>
+      <main className="report-studio-preview min-w-0">
+        <ReportPreview
+          liveData={liveData}
+          title={title}
+          executiveSummary={executiveSummary}
+          keyTakeaways={keyTakeaways}
+          learnings={learnings}
+          recommendations={nextCampaignRecommendations}
+          sectionSettings={sectionSettings}
+          status={selectedReport?.status ?? "DRAFT"}
+          periodStart={periodStart}
+          periodEnd={periodEnd}
+          editors={{
+            setTitle,
+            setExecutiveSummary,
+            updateKeyTakeaway,
+            addKeyTakeaway: () => setKeyTakeaways((items) => [...items, "Nieuw inzicht"]),
+            updateLearning,
+            addLearning: () => setLearnings((items) => [...items, "Nieuwe learning"]),
+            updateRecommendation,
+            addRecommendation: () => setNextCampaignRecommendations((items) => [...items, "Nieuwe aanbeveling"]),
+          }}
+        />
+      </main>
     </div>
   );
 }
@@ -404,31 +421,32 @@ function HistoryPanel({
   buildHref: (overrides: Partial<ReportFilters> & { reportId?: string | null; campaignId?: string | null }) => string;
 }) {
   return (
-    <div className="space-y-4 rounded-lg border border-neutral-200 bg-white p-4">
-      <div className="flex items-center justify-between gap-3">
+    <div className="rounded-lg border border-neutral-200 bg-white p-4">
+      <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
         <div>
           <h2 className="text-sm font-semibold text-neutral-950">Rapporthistorie</h2>
-          <p className="mt-1 text-xs text-neutral-500">Totaal: {historyCounts.all}</p>
+          <p className="mt-1 text-xs text-neutral-500">
+            Totaal: {historyCounts.all} / Concept: {historyCounts.draft} / Definitief: {historyCounts.final}
+          </p>
         </div>
-        <FileText className="h-4 w-4 text-neutral-400" />
+
+        <div className="grid w-full grid-cols-3 gap-1 rounded-lg bg-neutral-100 p-1 sm:w-auto sm:min-w-[260px]">
+          {STATUS_TABS.map((tab) => (
+            <Link
+              key={tab.value}
+              href={buildHref({ status: tab.value })}
+              className={cn(
+                "rounded-md px-3 py-2 text-center text-xs font-semibold text-neutral-500 transition",
+                filters.status === tab.value && "bg-white text-neutral-950 shadow-sm",
+              )}
+            >
+              {tab.label}
+            </Link>
+          ))}
+        </div>
       </div>
 
-      <div className="grid grid-cols-3 gap-1 rounded-lg bg-neutral-100 p-1">
-        {STATUS_TABS.map((tab) => (
-          <Link
-            key={tab.value}
-            href={buildHref({ status: tab.value })}
-            className={cn(
-              "rounded-md px-2 py-1.5 text-center text-xs font-semibold text-neutral-500 transition",
-              filters.status === tab.value && "bg-white text-neutral-950 shadow-sm",
-            )}
-          >
-            {tab.label}
-          </Link>
-        ))}
-      </div>
-
-      <form action="/admin/reports" className="space-y-3">
+      <form action="/admin/reports" className="mt-4 grid gap-3 lg:grid-cols-[minmax(220px,1.2fr)_minmax(160px,0.8fr)_minmax(180px,0.9fr)_minmax(140px,0.65fr)_minmax(140px,0.65fr)_auto]">
         <label className="relative block">
           <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-neutral-400" />
           <input
@@ -458,142 +476,112 @@ function HistoryPanel({
         </select>
 
         <input type="hidden" name="status" value={filters.status === "ALL" ? "" : filters.status} />
-        <div className="grid grid-cols-2 gap-2">
-          <input name="dateFrom" type="date" defaultValue={filters.dateFrom} className="h-10 min-w-0 rounded-lg border border-neutral-200 bg-white px-3 text-xs outline-none focus:border-neutral-400" />
-          <input name="dateTo" type="date" defaultValue={filters.dateTo} className="h-10 min-w-0 rounded-lg border border-neutral-200 bg-white px-3 text-xs outline-none focus:border-neutral-400" />
-        </div>
-        <Button type="submit" variant="outline" size="sm" className="w-full rounded-lg">
+        <input name="dateFrom" type="date" defaultValue={filters.dateFrom} className="h-10 min-w-0 rounded-lg border border-neutral-200 bg-white px-3 text-xs outline-none focus:border-neutral-400" />
+        <input name="dateTo" type="date" defaultValue={filters.dateTo} className="h-10 min-w-0 rounded-lg border border-neutral-200 bg-white px-3 text-xs outline-none focus:border-neutral-400" />
+        <Button type="submit" variant="outline" size="sm" className="h-10 rounded-lg px-4">
           <SlidersHorizontal className="h-4 w-4" />
           Filteren
         </Button>
       </form>
 
-      <div className="space-y-2">
+      <div className="mt-4">
+        <div className="mb-2 flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.14em] text-neutral-400">
+          <FileText className="h-4 w-4" />
+          Opgeslagen rapporten
+        </div>
         {reports.length === 0 ? (
-          <div className="rounded-lg border border-dashed border-neutral-200 px-3 py-8 text-center">
+          <div className="rounded-lg border border-dashed border-neutral-200 px-4 py-5 text-center">
             <p className="text-sm font-medium text-neutral-950">Geen rapporten</p>
             <p className="mt-1 text-xs leading-5 text-neutral-500">Nieuwe concepten verschijnen hier na het opslaan.</p>
           </div>
         ) : (
-          reports.map((report) => (
-            <Link
-              key={report.id}
-              href={buildHref({ reportId: report.id, campaignId: report.campaignId })}
-              className={cn(
-                "block rounded-lg border border-neutral-200 bg-white p-3 transition hover:border-neutral-300 hover:bg-neutral-50",
-                selectedReportId === report.id && "border-neutral-900 bg-neutral-50",
-              )}
-            >
-              <div className="flex items-start justify-between gap-2">
-                <p className="line-clamp-2 text-sm font-semibold leading-5 text-neutral-950">{report.title}</p>
-                <Badge variant={report.status === "FINAL" ? "verified" : "pending"}>{reportStatusLabel(report.status)}</Badge>
-              </div>
-              <p className="mt-2 text-xs text-neutral-500">{report.brand?.name ?? "Geen merk"} / {report.campaign?.name ?? "Campagne"}</p>
-              <p className="mt-1 text-xs text-neutral-400">{formatDate(report.updatedAt, "nl")}</p>
-            </Link>
-          ))
+          <div className="grid gap-2 md:grid-cols-2 xl:grid-cols-4">
+            {reports.map((report) => (
+              <Link
+                key={report.id}
+                href={buildHref({ reportId: report.id, campaignId: report.campaignId })}
+                className={cn(
+                  "block rounded-lg border border-neutral-200 bg-white p-3 transition hover:border-neutral-300 hover:bg-neutral-50",
+                  selectedReportId === report.id && "border-neutral-900 bg-neutral-50",
+                )}
+              >
+                <div className="flex items-start justify-between gap-2">
+                  <p className="line-clamp-2 text-sm font-semibold leading-5 text-neutral-950">{report.title}</p>
+                  <Badge variant={report.status === "FINAL" ? "verified" : "pending"}>{reportStatusLabel(report.status)}</Badge>
+                </div>
+                <p className="mt-2 truncate text-xs text-neutral-500">{report.brand?.name ?? "Geen merk"} / {report.campaign?.name ?? "Campagne"}</p>
+                <p className="mt-1 text-xs text-neutral-400">{formatDate(report.updatedAt, "nl")}</p>
+              </Link>
+            ))}
+          </div>
         )}
       </div>
     </div>
   );
 }
 
-function EditorPanel({
-  title,
-  setTitle,
-  executiveSummary,
-  setExecutiveSummary,
-  keyTakeaways,
-  setKeyTakeaways,
-  learnings,
-  setLearnings,
-  nextCampaignRecommendations,
-  setNextCampaignRecommendations,
+function ReportMetaControls({
   periodStart,
   setPeriodStart,
   periodEnd,
   setPeriodEnd,
   sectionSettings,
   setSectionSettings,
-  liveData,
 }: {
-  title: string;
-  setTitle: (value: string) => void;
-  executiveSummary: string;
-  setExecutiveSummary: (value: string) => void;
-  keyTakeaways: string[];
-  setKeyTakeaways: (value: string[]) => void;
-  learnings: string[];
-  setLearnings: (value: string[]) => void;
-  nextCampaignRecommendations: string[];
-  setNextCampaignRecommendations: (value: string[]) => void;
   periodStart: string;
   setPeriodStart: (value: string) => void;
   periodEnd: string;
   setPeriodEnd: (value: string) => void;
   sectionSettings: CampaignReportSectionSettings;
   setSectionSettings: (value: CampaignReportSectionSettings) => void;
-  liveData: CampaignReportLiveData | null;
 }) {
   return (
-    <div className="space-y-4 rounded-lg border border-neutral-200 bg-white p-4">
-      <div className="flex items-center justify-between gap-3">
+    <section className="report-studio-chrome rounded-lg border border-neutral-200 bg-white p-4">
+      <div className="grid gap-4 xl:grid-cols-[18rem_minmax(0,1fr)]">
         <div>
-          <h2 className="text-sm font-semibold text-neutral-950">Editor</h2>
-          <p className="mt-1 text-xs text-neutral-500">{liveData ? liveData.campaign.brandName : "Geen campagne geselecteerd"}</p>
+          <h2 className="text-sm font-semibold text-neutral-950">Rapportinstellingen</h2>
+          <p className="mt-1 text-xs leading-5 text-neutral-500">Pas periode en zichtbare secties aan; tekst wijzig je direct in het rapport.</p>
+          <div className="mt-3 grid grid-cols-2 gap-2">
+            <label>
+              <span className="mb-1 block text-[11px] font-semibold uppercase tracking-[0.14em] text-neutral-400">Start</span>
+              <input type="date" value={periodStart} onChange={(event) => setPeriodStart(event.target.value)} className="h-10 w-full rounded-lg border border-neutral-200 bg-white px-3 text-xs outline-none focus:border-neutral-400" />
+            </label>
+            <label>
+              <span className="mb-1 block text-[11px] font-semibold uppercase tracking-[0.14em] text-neutral-400">Einde</span>
+              <input type="date" value={periodEnd} onChange={(event) => setPeriodEnd(event.target.value)} className="h-10 w-full rounded-lg border border-neutral-200 bg-white px-3 text-xs outline-none focus:border-neutral-400" />
+            </label>
+          </div>
         </div>
-        <Sparkles className="h-4 w-4 text-neutral-400" />
-      </div>
 
-      <Field label="Titel">
-        <input value={title} onChange={(event) => setTitle(event.target.value)} className="report-input h-10" />
-      </Field>
-
-      <div className="grid grid-cols-2 gap-3">
-        <Field label="Start periode">
-          <input type="date" value={periodStart} onChange={(event) => setPeriodStart(event.target.value)} className="report-input h-10" />
-        </Field>
-        <Field label="Einde periode">
-          <input type="date" value={periodEnd} onChange={(event) => setPeriodEnd(event.target.value)} className="report-input h-10" />
-        </Field>
-      </div>
-
-      <Field label="Samenvatting">
-        <textarea value={executiveSummary} onChange={(event) => setExecutiveSummary(event.target.value)} rows={7} className="report-input resize-y leading-6" />
-      </Field>
-
-      <Field label="Belangrijkste inzichten">
-        <textarea value={keyTakeaways.join("\n")} onChange={(event) => setKeyTakeaways(textAreaToList(event.target.value))} rows={5} className="report-input resize-y leading-6" />
-      </Field>
-
-      <Field label="Learnings">
-        <textarea value={learnings.join("\n")} onChange={(event) => setLearnings(textAreaToList(event.target.value))} rows={5} className="report-input resize-y leading-6" />
-      </Field>
-
-      <Field label="Aanbevelingen voor volgende campagne">
-        <textarea value={nextCampaignRecommendations.join("\n")} onChange={(event) => setNextCampaignRecommendations(textAreaToList(event.target.value))} rows={5} className="report-input resize-y leading-6" />
-      </Field>
-
-      <div>
-        <div className="mb-2 flex items-center justify-between">
-          <p className="text-xs font-semibold uppercase tracking-[0.14em] text-neutral-400">Secties</p>
-          <Eye className="h-4 w-4 text-neutral-400" />
-        </div>
-        <div className="space-y-1.5">
+        <div>
+          <div className="mb-2 flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.14em] text-neutral-400">
+            <SlidersHorizontal className="h-4 w-4" />
+            Secties
+          </div>
+          <div className="flex flex-wrap gap-2">
           {CAMPAIGN_REPORT_SECTION_KEYS.map((sectionKey) => (
-            <label key={sectionKey} className="flex items-center justify-between gap-3 rounded-lg border border-neutral-200 px-3 py-2 text-sm">
-              <span className="font-medium text-neutral-700">{SECTION_LABELS[sectionKey]}</span>
+            <label
+              key={sectionKey}
+              className={cn(
+                "inline-flex cursor-pointer items-center gap-2 rounded-full border px-3 py-2 text-xs font-semibold transition",
+                sectionSettings[sectionKey]
+                  ? "border-neutral-950 bg-neutral-950 text-white"
+                  : "border-neutral-200 bg-white text-neutral-500 hover:border-neutral-300",
+              )}
+            >
               <input
                 type="checkbox"
                 checked={sectionSettings[sectionKey]}
                 onChange={(event) => setSectionSettings({ ...sectionSettings, [sectionKey]: event.target.checked })}
-                className="h-4 w-4 accent-neutral-950"
+                className="sr-only"
               />
+              {SECTION_LABELS[sectionKey]}
             </label>
           ))}
+          </div>
         </div>
       </div>
-    </div>
+    </section>
   );
 }
 
@@ -608,6 +596,7 @@ function ReportPreview({
   status,
   periodStart,
   periodEnd,
+  editors,
 }: {
   liveData: CampaignReportLiveData | null;
   title: string;
@@ -619,6 +608,7 @@ function ReportPreview({
   status: CampaignReportStatusValue;
   periodStart: string;
   periodEnd: string;
+  editors?: ReportInlineEditors;
 }) {
   if (!liveData) {
     return (
@@ -651,7 +641,13 @@ function ReportPreview({
                 <p className="text-xs font-semibold uppercase tracking-[0.24em] text-neutral-300">Campagnerapport</p>
                 <Badge variant={status === "FINAL" ? "verified" : "pending"}>{reportStatusLabel(status)}</Badge>
               </div>
-              <h2 className="mt-20 max-w-2xl text-5xl font-semibold leading-tight tracking-normal">{title}</h2>
+              <InlineEditable
+                value={title}
+                onChange={editors?.setTitle}
+                placeholder="Rapporttitel"
+                className="mt-20 max-w-4xl text-5xl font-semibold leading-tight tracking-normal text-white"
+                dark
+              />
             </div>
             <div className="grid gap-6 border-t border-white/20 pt-8 md:grid-cols-3">
               <CoverFact label="Merk" value={liveData.campaign.brandName} />
@@ -664,12 +660,23 @@ function ReportPreview({
         {enabled("executiveSummary") ? (
           <ReportPage>
             <ReportHeading icon={<FileText className="h-5 w-5" />} kicker={liveData.campaign.brandName} title="Samenvatting" />
-            <p className="mt-6 max-w-3xl text-lg leading-8 text-neutral-700">{executiveSummary}</p>
+            <InlineEditable
+              value={executiveSummary}
+              onChange={editors?.setExecutiveSummary}
+              placeholder="Schrijf hier de samenvatting."
+              className="mt-6 max-w-5xl text-lg leading-8 text-neutral-700"
+            />
             <div className="mt-8 grid gap-3 md:grid-cols-2">
               {keyTakeaways.map((takeaway, index) => (
-                <NumberedItem key={`${takeaway}-${index}`} index={index + 1} text={takeaway} />
+                <NumberedItem key={index} index={index + 1} text={takeaway} onChange={editors ? (value) => editors.updateKeyTakeaway(index, value) : undefined} />
               ))}
             </div>
+            {editors ? (
+              <Button type="button" variant="outline" size="sm" className="report-inline-control mt-4 rounded-lg" onClick={editors.addKeyTakeaway}>
+                <Plus className="h-4 w-4" />
+                Inzicht toevoegen
+              </Button>
+            ) : null}
           </ReportPage>
         ) : null}
 
@@ -778,11 +785,11 @@ function ReportPreview({
             <div className="mt-7 grid gap-6 md:grid-cols-2">
               <div>
                 <h3 className="text-sm font-semibold text-neutral-950">Learnings</h3>
-                <BulletList items={learnings} />
+                <BulletList items={learnings} onItemChange={editors?.updateLearning} onAdd={editors?.addLearning} addLabel="Learning toevoegen" />
               </div>
               <div>
                 <h3 className="text-sm font-semibold text-neutral-950">Aanbevelingen</h3>
-                <BulletList items={recommendations} />
+                <BulletList items={recommendations} onItemChange={editors?.updateRecommendation} onAdd={editors?.addRecommendation} addLabel="Aanbeveling toevoegen" />
               </div>
             </div>
           </ReportPage>
@@ -792,18 +799,52 @@ function ReportPreview({
   );
 }
 
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
+function InlineEditable({
+  value,
+  onChange,
+  placeholder,
+  className,
+  dark = false,
+}: {
+  value: string;
+  onChange?: (value: string) => void;
+  placeholder: string;
+  className?: string;
+  dark?: boolean;
+}) {
+  if (!onChange) {
+    return <div className={cn("whitespace-pre-line", className)}>{value || placeholder}</div>;
+  }
+
   return (
-    <label className="block">
-      <span className="mb-1.5 block text-xs font-semibold uppercase tracking-[0.14em] text-neutral-400">{label}</span>
-      {children}
-    </label>
+    <div
+      contentEditable
+      suppressContentEditableWarning
+      role="textbox"
+      tabIndex={0}
+      className={cn(
+        "report-inline-edit -mx-2 -my-1 min-h-[1.5em] whitespace-pre-wrap rounded-md border border-transparent px-2 py-1 outline-none transition focus:border-neutral-200 focus:bg-white focus:ring-4 focus:ring-neutral-950/5",
+        dark && "focus:border-white/20 focus:bg-white/5 focus:ring-white/10",
+        className,
+        !value && "text-neutral-400",
+      )}
+      onFocus={(event) => {
+        if (!value) event.currentTarget.textContent = "";
+      }}
+      onBlur={(event) => {
+        const nextValue = event.currentTarget.innerText.trim();
+        onChange(nextValue);
+        if (!nextValue) event.currentTarget.textContent = placeholder;
+      }}
+    >
+      {value || placeholder}
+    </div>
   );
 }
 
 function ReportPage({ children, className }: { children: React.ReactNode; className?: string }) {
   return (
-    <article className={cn("report-print-page mx-auto min-h-[840px] w-full max-w-[820px] rounded-lg border border-neutral-200 bg-white p-8 shadow-sm", className)}>
+    <article className={cn("report-print-page mx-auto min-h-[840px] w-full max-w-none rounded-lg border border-neutral-200 bg-white p-8 shadow-sm", className)}>
       {children}
     </article>
   );
@@ -830,11 +871,11 @@ function CoverFact({ label, value }: { label: string; value: string }) {
   );
 }
 
-function NumberedItem({ index, text }: { index: number; text: string }) {
+function NumberedItem({ index, text, onChange }: { index: number; text: string; onChange?: (value: string) => void }) {
   return (
     <div className="flex gap-3 rounded-lg border border-neutral-200 p-4">
       <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-neutral-950 text-xs font-semibold text-white">{index}</span>
-      <p className="text-sm leading-6 text-neutral-700">{text}</p>
+      <InlineEditable value={text} onChange={onChange} placeholder="Nieuw inzicht" className="w-full text-sm leading-6 text-neutral-700" />
     </div>
   );
 }
@@ -1027,16 +1068,47 @@ function QualityMetric({ label, value }: { label: string; value: number }) {
   );
 }
 
-function BulletList({ items }: { items: string[] }) {
-  if (items.length === 0) return <p className="mt-3 text-sm text-neutral-500">Geen items.</p>;
+function BulletList({
+  items,
+  onItemChange,
+  onAdd,
+  addLabel,
+}: {
+  items: string[];
+  onItemChange?: (index: number, value: string) => void;
+  onAdd?: () => void;
+  addLabel?: string;
+}) {
+  if (items.length === 0) {
+    return (
+      <div className="mt-3">
+        <p className="text-sm text-neutral-500">Geen items.</p>
+        {onAdd ? (
+          <Button type="button" variant="outline" size="sm" className="report-inline-control mt-3 rounded-lg" onClick={onAdd}>
+            <Plus className="h-4 w-4" />
+            {addLabel ?? "Item toevoegen"}
+          </Button>
+        ) : null}
+      </div>
+    );
+  }
+
   return (
-    <ul className="mt-4 space-y-3">
-      {items.map((item, index) => (
-        <li key={`${item}-${index}`} className="rounded-lg border border-neutral-200 p-4 text-sm leading-6 text-neutral-700">
-          {item}
-        </li>
-      ))}
-    </ul>
+    <>
+      <ul className="mt-4 space-y-3">
+        {items.map((item, index) => (
+          <li key={index} className="rounded-lg border border-neutral-200 p-4">
+            <InlineEditable value={item} onChange={onItemChange ? (value) => onItemChange(index, value) : undefined} placeholder="Nieuw item" className="text-sm leading-6 text-neutral-700" />
+          </li>
+        ))}
+      </ul>
+      {onAdd ? (
+        <Button type="button" variant="outline" size="sm" className="report-inline-control mt-3 rounded-lg" onClick={onAdd}>
+          <Plus className="h-4 w-4" />
+          {addLabel ?? "Item toevoegen"}
+        </Button>
+      ) : null}
+    </>
   );
 }
 
@@ -1060,8 +1132,8 @@ function dateInputValue(value: string | null | undefined) {
   return value.slice(0, 10);
 }
 
-function textAreaToList(value: string) {
-  return value.split("\n").map((line) => line.trim()).filter(Boolean).slice(0, 12);
+function replaceTextListItem(items: string[], index: number, value: string) {
+  return items.map((item, itemIndex) => (itemIndex === index ? value.trim() : item)).filter(Boolean).slice(0, 12);
 }
 
 function formatPeriod(start: string | null | undefined, end: string | null | undefined) {
