@@ -92,10 +92,17 @@ export const getCreatorPlatformVerification = cache(
 );
 
 export const getCreatorActiveCampaigns = cache(async (profileId: string) => {
+  const startOfToday = new Date();
+  startOfToday.setHours(0, 0, 0, 0);
+
   return prisma.campaignApplication.findMany({
     where: {
       creatorProfileId: profileId,
       status: { in: ["pending", "approved", "active"] },
+      campaign: {
+        status: "active",
+        deadline: { gte: startOfToday },
+      },
     },
     select: {
       id: true,

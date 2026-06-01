@@ -740,7 +740,7 @@ export function CampaignCreateForm() {
             />
           </div>
           <div>
-            <label style={labelStyle}>Contentasset-URL's</label>
+            <label style={labelStyle}>Contentasset-URL&apos;s</label>
             <textarea
               style={{ ...inputStyle, minHeight: "88px", resize: "vertical" }}
               value={contentAssetUrlsText}

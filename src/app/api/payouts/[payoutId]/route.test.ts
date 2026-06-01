@@ -43,6 +43,7 @@ describe("PATCH /api/payouts/[payoutId]", () => {
       status: "pending",
       paymentMethod: "BANK_TRANSFER",
       bankReference: null,
+      rejectionReason: null,
     });
     routeMocks.payoutUpdate.mockImplementation(({ data }) =>
       Promise.resolve({
@@ -96,6 +97,77 @@ describe("PATCH /api/payouts/[payoutId]", () => {
         }),
       }),
     });
+  });
+
+  it("allows sent bank-transfer payouts to become confirmed with the stored bank reference", async () => {
+    routeMocks.payoutFindUnique.mockResolvedValueOnce({
+      id: "payout-1",
+      status: "sent",
+      paymentMethod: "BANK_TRANSFER",
+      bankReference: "ABN transfer 123",
+      rejectionReason: null,
+    });
+
+    const response = await PATCH(patchRequest({ status: "confirmed" }), params);
+
+    expect(response.status).toBe(200);
+    expect(routeMocks.payoutUpdate).toHaveBeenCalledWith({
+      where: { id: "payout-1" },
+      data: expect.objectContaining({
+        status: "confirmed",
+        confirmedAt: expect.any(Date),
+        processedAt: expect.any(Date),
+      }),
+    });
+  });
+
+  it("rejects administrative rollback of confirmed payouts", async () => {
+    routeMocks.payoutFindUnique.mockResolvedValueOnce({
+      id: "payout-1",
+      status: "confirmed",
+      paymentMethod: "BANK_TRANSFER",
+      bankReference: "ABN transfer 123",
+      rejectionReason: null,
+    });
+
+    const response = await PATCH(
+      patchRequest({
+        status: "failed",
+        rejectionReason: "Accidental rollback after payment.",
+      }),
+      params,
+    );
+
+    expect(response.status).toBe(409);
+    await expect(response.json()).resolves.toEqual({
+      error: "Confirmed payouts are terminal. Create a financial adjustment instead.",
+    });
+    expect(routeMocks.payoutUpdate).not.toHaveBeenCalled();
+    expect(routeMocks.auditLogCreate).not.toHaveBeenCalled();
+  });
+
+  it("rejects moving sent payouts anywhere except confirmed", async () => {
+    routeMocks.payoutFindUnique.mockResolvedValueOnce({
+      id: "payout-1",
+      status: "sent",
+      paymentMethod: "BANK_TRANSFER",
+      bankReference: "ABN transfer 123",
+      rejectionReason: null,
+    });
+
+    const response = await PATCH(
+      patchRequest({
+        status: "failed",
+        rejectionReason: "Rollback attempt.",
+      }),
+      params,
+    );
+
+    expect(response.status).toBe(409);
+    await expect(response.json()).resolves.toEqual({
+      error: "Sent payouts can only be confirmed. Create a financial adjustment instead.",
+    });
+    expect(routeMocks.payoutUpdate).not.toHaveBeenCalled();
   });
 
   it("requires a transaction hash before confirming a crypto payout", async () => {
@@ -159,8 +231,24 @@ describe("PATCH /api/payouts/[payoutId]", () => {
     });
   });
 
-  it("marks a rejected payout request as failed without mutating balance directly", async () => {
+  it("requires an internal rejection reason before rejecting a payout request", async () => {
     const response = await PATCH(patchRequest({ status: "failed" }), params);
+
+    expect(response.status).toBe(400);
+    await expect(response.json()).resolves.toEqual({
+      error: "Internal rejection reason is required.",
+    });
+    expect(routeMocks.payoutUpdate).not.toHaveBeenCalled();
+  });
+
+  it("marks a rejected payout request as failed without mutating balance directly", async () => {
+    const response = await PATCH(
+      patchRequest({
+        status: "failed",
+        rejectionReason: "Marked paid before the manual bank transfer was sent.",
+      }),
+      params,
+    );
 
     expect(response.status).toBe(200);
     expect(routeMocks.payoutUpdate).toHaveBeenCalledWith({
@@ -168,6 +256,17 @@ describe("PATCH /api/payouts/[payoutId]", () => {
       data: expect.objectContaining({
         status: "failed",
         processedAt: expect.any(Date),
+        rejectionReason: "Marked paid before the manual bank transfer was sent.",
+      }),
+    });
+    expect(routeMocks.auditLogCreate).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        action: "payout.failed",
+        entityId: "payout-1",
+        metadata: expect.objectContaining({
+          rejectionReason: "Marked paid before the manual bank transfer was sent.",
+          paymentMethod: "BANK_TRANSFER",
+        }),
       }),
     });
   });

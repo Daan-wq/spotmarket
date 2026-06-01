@@ -55,6 +55,7 @@ interface CampaignData {
   eligibility: Eligibility;
   applicationId?: string;
   closedForSubmissions: boolean;
+  closedForSubmissionsReason: "paused" | "ended";
 }
 
 interface CampaignsClientProps {
@@ -402,20 +403,30 @@ function sortCampaigns(list: CampaignData[], sort: SortKey): CampaignData[] {
   const arr = [...list];
   switch (sort) {
     case "newest":
-      return arr.sort((a, b) => b.createdAtIso.localeCompare(a.createdAtIso));
+      return arr.sort(
+        (a, b) => compareAvailability(a, b) || b.createdAtIso.localeCompare(a.createdAtIso),
+      );
     case "highest-cpv":
-      return arr.sort((a, b) => b.rewardRate - a.rewardRate);
+      return arr.sort((a, b) => compareAvailability(a, b) || b.rewardRate - a.rewardRate);
     case "ending-soon":
-      return arr.sort((a, b) => a.deadlineIso.localeCompare(b.deadlineIso));
+      return arr.sort(
+        (a, b) => compareAvailability(a, b) || a.deadlineIso.localeCompare(b.deadlineIso),
+      );
     case "recommended":
     default:
       return arr.sort((a, b) => {
+        const availability = compareAvailability(a, b);
+        if (availability !== 0) return availability;
         const aEligible = a.eligibility.status === "eligible" ? 0 : 1;
         const bEligible = b.eligibility.status === "eligible" ? 0 : 1;
         if (aEligible !== bEligible) return aEligible - bEligible;
         return b.rewardRate - a.rewardRate;
       });
   }
+}
+
+function compareAvailability(a: CampaignData, b: CampaignData) {
+  return Number(a.closedForSubmissions) - Number(b.closedForSubmissions);
 }
 
 function CampaignCard({ campaign }: { campaign: CampaignData }) {
@@ -427,10 +438,19 @@ function CampaignCard({ campaign }: { campaign: CampaignData }) {
   const primaryHref = campaign.applicationId && !campaign.closedForSubmissions
     ? `/creator/applications/${campaign.applicationId}/submit`
     : campaignHref;
-  const primaryLabel = campaign.applicationId ? sharedT("actions.submitClip") : sharedT("actions.campaignInfo");
+  const primaryLabel = campaign.applicationId
+    ? campaign.closedForSubmissions
+      ? t("submitClosed")
+      : sharedT("actions.submitClip")
+    : sharedT("actions.campaignInfo");
   const submitDisabled = Boolean(campaign.applicationId && campaign.closedForSubmissions);
   const cardLabel = `${sharedT("actions.campaignInfo")}: ${campaign.name}`;
   const campaignActionClass = "inline-flex min-h-11 items-center justify-center rounded-xl px-4 py-3 text-sm font-semibold leading-none";
+  const closedMessage = campaign.closedForSubmissions
+    ? campaign.closedForSubmissionsReason === "paused"
+      ? t("pausedDescription")
+      : t("endedDescription")
+    : null;
 
   function openCampaign() {
     router.push(campaignHref);
@@ -485,7 +505,13 @@ function CampaignCard({ campaign }: { campaign: CampaignData }) {
       </div>
 
       <div className="mt-5">
-        <CampaignBudgetProgress totalPaid={campaign.totalPaid} totalBudget={campaign.totalBudget} compact />
+        <CampaignBudgetProgress
+          totalPaid={campaign.totalPaid}
+          totalBudget={campaign.totalBudget}
+          compact
+          status={campaign.status}
+          deadline={campaign.deadlineIso}
+        />
       </div>
 
       <div className="mt-5 flex flex-wrap items-center justify-between gap-3">
@@ -496,6 +522,12 @@ function CampaignCard({ campaign }: { campaign: CampaignData }) {
           </span>
         ) : null}
       </div>
+
+      {closedMessage ? (
+        <p className="mt-5 rounded-xl border border-neutral-200 bg-white px-3 py-2 text-sm leading-5 text-neutral-600">
+          {closedMessage}
+        </p>
+      ) : null}
 
       <div className="mt-5 flex flex-col gap-2 sm:flex-row">
         {submitDisabled ? (

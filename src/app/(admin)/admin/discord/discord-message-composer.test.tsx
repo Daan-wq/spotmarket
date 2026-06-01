@@ -7,11 +7,11 @@ describe("DiscordMessageComposer", () => {
     const html = renderToStaticMarkup(<DiscordMessageComposer />);
     const sendButton = html
       .match(/<button\b[^>]*>[\s\S]*?<\/button>/g)
-      ?.find((button) => button.includes("Preview and send"));
+      ?.find((button) => button.includes("Previewen en verzenden"));
 
     expect(sendButton).toBeTruthy();
     expect(sendButton).not.toContain("disabled=\"\"");
-    expect(html).toContain("Discord channels and emojis are still loading.");
+    expect(html).toContain("Discord-kanalen en emoji&#x27;s laden nog.");
   });
 
   it("only patches a loaded template when the saved name and kind still match", () => {

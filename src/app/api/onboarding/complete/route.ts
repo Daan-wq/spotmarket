@@ -8,6 +8,7 @@ import {
   CLIPPROFIT_CAMPAIGN_SLUG,
   normalizeCampaignSlug,
 } from "@/lib/campaign-referrals";
+import { buildFirstClipOnboardingStatus } from "@/lib/first-clip-onboarding";
 import { normalizeReferralCode } from "@/lib/referral";
 import { createUniqueUsername } from "@/lib/username";
 
@@ -207,7 +208,19 @@ export async function POST(req: Request) {
     });
   }
 
-  return NextResponse.json({ success: true, redirect: "/creator/campaigns" });
+  const firstClipStatus = buildFirstClipOnboardingStatus({
+    discordConnected: Boolean(user.discordId ?? discordId),
+    accountConnected: false,
+    joinedApplicationId: null,
+    firstClipSubmitted: false,
+  });
+
+  return NextResponse.json({
+    success: true,
+    redirect: firstClipStatus.nextHref,
+    firstClipNextHref: firstClipStatus.nextHref,
+    firstClipNextStep: firstClipStatus.nextStep,
+  });
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     console.error("[onboarding/complete]", message);

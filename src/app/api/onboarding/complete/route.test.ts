@@ -115,6 +115,10 @@ describe("POST /api/onboarding/complete", () => {
     );
 
     expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toMatchObject({
+      firstClipNextHref: "/creator/connections?firstClip=1",
+      firstClipNextStep: "connect_account",
+    });
     expect(routeMocks.userUpsert).toHaveBeenCalledWith(
       expect.objectContaining({
         create: expect.not.objectContaining({

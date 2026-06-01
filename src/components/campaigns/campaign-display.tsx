@@ -5,7 +5,7 @@ import { Badge, type BadgeVariant } from "@/components/ui/badge";
 import { cn } from "@/lib/cn";
 import { getCampaignDeadlineState } from "@/lib/campaign-submission-state";
 import { formatCurrency } from "@/lib/i18n-format";
-import { Clock } from "lucide-react";
+import { AlertTriangle, Clock } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
 
 type CampaignStatus =
@@ -162,15 +162,50 @@ export function CampaignBudgetProgress({
   totalPaid,
   totalBudget,
   compact = false,
+  status,
+  deadline,
 }: {
   totalPaid: number;
   totalBudget: number;
   compact?: boolean;
+  status?: CampaignStatus;
+  deadline?: Date | string | null;
 }) {
   const locale = useLocale();
-  const t = useTranslations("creator.campaigns.deadline");
+  const deadlineT = useTranslations("creator.campaigns.deadline");
+  const budgetT = useTranslations("creator.campaigns.budget");
   const progress =
     totalBudget > 0 ? Math.min((totalPaid / totalBudget) * 100, 100) : 0;
+  const remaining = Math.max(0, totalBudget - totalPaid);
+  const budgetState = getCampaignBudgetState(totalPaid, totalBudget);
+  const showBudgetStatus = shouldShowCampaignBudgetNotice({
+    totalPaid,
+    totalBudget,
+    status,
+    deadline,
+  });
+  const statusMeta = !showBudgetStatus
+    ? null
+    : budgetState === "full"
+      ? {
+          label: budgetT("fullLabel"),
+          detail: budgetT("fullDetail"),
+          className: "border-red-200 bg-red-50 text-red-800",
+          barClassName: "bg-red-600",
+        }
+      : budgetState === "near-limit"
+        ? {
+            label: budgetT("nearLimitLabel"),
+            detail: budgetT("nearLimitDetail", {
+              remaining: formatCurrency(remaining, locale, {
+                minimumFractionDigits: 0,
+                maximumFractionDigits: 0,
+              }),
+            }),
+            className: "border-orange-200 bg-orange-50 text-orange-800",
+            barClassName: "bg-orange-500",
+          }
+        : null;
   const moneyOptions = compact
     ? { minimumFractionDigits: 0, maximumFractionDigits: 0 }
     : undefined;
@@ -179,21 +214,75 @@ export function CampaignBudgetProgress({
     <div>
       <div className="h-1.5 overflow-hidden rounded-full bg-neutral-200">
         <div
-          className="h-full rounded-full bg-neutral-950 transition-all"
+          className={cn(
+            "h-full rounded-full transition-all",
+            statusMeta?.barClassName ?? "bg-neutral-950",
+          )}
           style={{ width: `${progress}%` }}
         />
       </div>
       <div className="mt-2 flex justify-between text-xs text-neutral-500">
         <span>
-          {t("paidProgress", {
+          {deadlineT("paidProgress", {
             paid: formatCurrency(totalPaid, locale, moneyOptions),
             budget: formatCurrency(totalBudget, locale, moneyOptions),
           })}
         </span>
         <span>{progress.toFixed(0)}%</span>
       </div>
+      {statusMeta ? (
+        <div
+          className={cn(
+            "mt-2 rounded-lg border px-3 py-2 text-xs leading-5",
+            statusMeta.className,
+          )}
+        >
+          <p className="flex items-center gap-1.5 font-semibold">
+            <AlertTriangle className="h-3.5 w-3.5 shrink-0" aria-hidden />
+            {statusMeta.label}
+          </p>
+          {!compact ? (
+            <p className="mt-1 text-[11px] leading-5 opacity-90">
+              {statusMeta.detail}
+            </p>
+          ) : null}
+        </div>
+      ) : null}
     </div>
   );
+}
+
+function getCampaignBudgetState(totalPaid: number, totalBudget: number) {
+  if (totalBudget <= 0) return "open";
+  const ratio = totalPaid / totalBudget;
+  if (ratio >= 1) return "full";
+  if (ratio >= 0.9) return "near-limit";
+  return "open";
+}
+
+export function shouldShowCampaignBudgetNotice({
+  totalPaid,
+  totalBudget,
+  status,
+  deadline,
+}: {
+  totalPaid: number;
+  totalBudget: number;
+  status?: CampaignStatus | null;
+  deadline?: Date | string | null;
+}) {
+  return (
+    getCampaignBudgetState(totalPaid, totalBudget) !== "open" &&
+    !isCampaignDisplayedAsEnded(status, deadline)
+  );
+}
+
+export function isCampaignDisplayedAsEnded(
+  status: CampaignStatus | null | undefined,
+  deadline?: Date | string | null,
+) {
+  if (!status) return false;
+  return campaignStatusDisplay(status, deadline).labelKey === "ended";
 }
 
 function deadlineLabel(

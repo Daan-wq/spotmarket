@@ -97,7 +97,13 @@
       "description": "Beantwoord een paar korte vragen zodat je kunt starten."
     },
     "form": {
-      "steps": ["Bron", "Info", "Niche", "Ervaring", "Klaar"],
+      "steps": [
+        "Bron",
+        "Info",
+        "Niche",
+        "Ervaring",
+        "Klaar"
+      ],
       "sourceQuestion": "Waar heb je ons gevonden?",
       "sourceOtherPlaceholder": "Vertel ons waar...",
       "nameLabel": "Je naam of paginanaam",
@@ -111,8 +117,8 @@
       "submitting": "Instellen...",
       "submitFailed": "Instellen is mislukt",
       "unknownError": "Er ging iets mis",
-      "completeTitle": "Je bent klaar",
-      "completeBody": "Nog twee dingen ontgrendelen je eerste uitbetaling: koppel een social account en doe mee aan een campagne. Kies waarmee je wilt starten.",
+      "completeTitle": "Je account staat. Nu je eerste clip.",
+      "completeBody": "Je plaatst de video op je eigen social, daarna dien je die post in via ClipProfit. Vanaf dat moment kunnen we views volgen.",
       "connectAccount": "Social account koppelen",
       "browseCampaigns": "Campagnes bekijken",
       "skip": "Overslaan - naar campagnes",
@@ -213,6 +219,35 @@
       "ariaLabel": "Dashboardtaal",
       "saved": "Taal bijgewerkt.",
       "error": "Taal kon niet worden bijgewerkt."
+    },
+    "payoutSettings": {
+      "title": "Uitbetalingsgegevens",
+      "description": "Sla hier beide uitbetalingsbestemmingen op. Bij opnemen kun je nog steeds kiezen tussen bankoverschrijving of USDC op Solana.",
+      "bankTitle": "Bankoverschrijving",
+      "bankDescription": "Sla je IBAN en rekeninghoudernaam op voor handmatige EUR-bankoverschrijvingen.",
+      "ibanLabel": "IBAN",
+      "ibanPlaceholder": "NL00 BANK 0000 0000 00",
+      "accountNameLabel": "Naam rekeninghouder",
+      "accountNamePlaceholder": "Naam op de bankrekening",
+      "savedBankDetails": "Opgeslagen bankgegevens",
+      "cryptoTitle": "USDC op Solana",
+      "cryptoDescription": "Sla het Solana walletadres op dat USDC-payouts kan ontvangen.",
+      "solanaAddressLabel": "Solana walletadres",
+      "solanaAddressPlaceholder": "Solana adres",
+      "savedCryptoAddress": "Opgeslagen walletadres",
+      "cryptoNetwork": "USDC op Solana",
+      "cryptoWarning": "Gebruik alleen een Solana walletadres dat USDC op Solana kan ontvangen.",
+      "ibanError": "Vul een geldige IBAN in.",
+      "accountNameError": "Vul de naam van de rekeninghouder in.",
+      "solanaAddressError": "Vul een geldig Solana walletadres in.",
+      "saveBankDetails": "Bankgegevens opslaan",
+      "saveCryptoDetails": "USDC-wallet opslaan",
+      "saveFailed": "Bankgegevens opslaan mislukt",
+      "saveCryptoFailed": "Solana walletadres opslaan mislukt",
+      "saveError": "Er ging iets mis bij het opslaan van bankgegevens.",
+      "saveCryptoError": "Er ging iets mis bij het opslaan van de USDC-wallet.",
+      "bankSaved": "Bankgegevens opgeslagen.",
+      "cryptoSaved": "USDC-wallet opgeslagen."
     },
     "profile": {
       "title": "Profiel",
@@ -699,6 +734,58 @@
     }
   },
   "creator": {
+    "firstClipOnboarding": {
+      "eyebrow": "Onboarding",
+      "title": "Stuur je eerste clip in",
+      "current": "Volgende stap",
+      "learnMore": "Hoe werkt dit?",
+      "steps": {
+        "discord": {
+          "label": "Discord",
+          "description": "Koppel Discord zodat je toegang krijgt tot campagnekanalen en campagne-updates.",
+          "cta": "Discord koppelen"
+        },
+        "connect_account": {
+          "label": "Social koppelen",
+          "description": "Koppel het social account waarop je clips post. Zo kan ClipProfit je posts laden en views meten.",
+          "cta": "Social account koppelen"
+        },
+        "join_campaign": {
+          "label": "Campagne kiezen",
+          "description": "Kies een campagne die past bij je account, lees de brief en join voordat je content indient.",
+          "cta": "Campagnes bekijken"
+        },
+        "submit_clip": {
+          "label": "Clip indienen",
+          "description": "Post je clip eerst op je social kanaal. Kom daarna terug om de post te selecteren en in te dienen.",
+          "cta": "Clip indienen"
+        }
+      },
+      "details": [
+        "Lees de brief",
+        "Maak en plaats je clip op je eigen kanaal",
+        "Gebruik verplichte hashtags",
+        "Kom terug naar ClipProfit, ververs je posts en klik Indienen"
+      ],
+      "drawer": {
+        "title": "Zo werkt je eerste clip",
+        "description": "ClipProfit meet de post die jij indient. De video zelf plaats je dus eerst op je eigen kanaal.",
+        "beforeTitle": "Voor je indient",
+        "notFoundTitle": "Zie je je clip niet?",
+        "notFoundBody": "Controleer of je het juiste platform en account hebt geselecteerd. Staat je clip net live, wacht dan een paar minuten en klik opnieuw op Verversen."
+      },
+      "submitHint": {
+        "eyebrow": "Eerste clip",
+        "title": "Selecteer de post die je net hebt geplaatst",
+        "help": "Clip niet zichtbaar?",
+        "notFound": "Controleer het juiste account, wacht een paar minuten na posten en klik opnieuw op Verversen.",
+        "steps": [
+          "Selecteer het platform en account waarop je hebt gepost.",
+          "Klik Verversen als je clip net live staat.",
+          "Selecteer je post en klik Indienen."
+        ]
+      }
+    },
     "shared": {
       "fallbackCreator": "Creator",
       "emptyValue": "-",
@@ -841,7 +928,7 @@
       "page": {
         "eyebrow": "Campagnes",
         "title": "Campagnes",
-        "description": "{count, plural, one {# campagne beschikbaar} other {# campagnes beschikbaar}}",
+        "description": "{count, plural, one {# campagne zichtbaar} other {# campagnes zichtbaar}}",
         "marketplace": "Alle Campagnes",
         "joined": "Gejoinde campagnes",
         "searchLabel": "Campagnes zoeken",
@@ -849,8 +936,8 @@
         "platform": "Platform",
         "type": "Type",
         "sort": "Sorteren",
-        "marketplaceDescription": "Campagnes standaard gesorteerd op geschiktheid en payout.",
-        "joinedDescription": "Campagnes waarop je nu actie kunt nemen."
+        "marketplaceDescription": "Actieve campagnes eerst, daarna eerdere campagnes.",
+        "joinedDescription": "Campagnes die je hebt gejoind, inclusief gesloten campagnes."
       },
       "guide": {
         "intro": "Nieuw met campagnes? Leer hoe ze werken.",
@@ -879,6 +966,8 @@
         "payout": "Payout",
         "youQualify": "Je komt in aanmerking",
         "submitClosed": "Inzendingen gesloten",
+        "pausedDescription": "Deze campagne is gepauzeerd en accepteert tijdelijk geen joins of inzendingen.",
+        "endedDescription": "Deze campagne is succesvol beëindigd en accepteert geen joins of inzendingen meer.",
         "connectPlatforms": "Koppel {platforms}",
         "needFollowers": "{count} volgers nodig"
       },
@@ -984,6 +1073,8 @@
         "connectDiscord": "Discord koppelen",
         "closed": "Inzendingen zijn gesloten",
         "closedDescription": "Deze campagne is afgelopen en accepteert geen inzendingen meer.",
+        "pausedDescription": "Deze campagne is gepauzeerd en accepteert tijdelijk geen joins of inzendingen.",
+        "endedDescription": "Deze campagne is succesvol beëindigd en accepteert geen joins of inzendingen meer.",
         "applying": "Joinen...",
         "processing": "Verwerken...",
         "error": "Campagne joinen is mislukt.",
@@ -1030,6 +1121,12 @@
         "oneDay": "1 dag over",
         "days": "{days} dagen over",
         "paidProgress": "{paid} van {budget} betaald"
+      },
+      "budget": {
+        "nearLimitLabel": "Campagnebudget bijna vol",
+        "nearLimitDetail": "Er is nog ongeveer {remaining} beschikbaar. Nieuwe of later goedgekeurde clips kunnen deels gecapt worden.",
+        "fullLabel": "Budget vol",
+        "fullDetail": "Campagnebudget limiet is bereikt. Views blijven meetellen, maar extra projected earnings kunnen door het budgetlimiet op 0 uitkomen."
       }
     },
     "videos": {
@@ -1096,13 +1193,14 @@
         "focusProcessing": "{amount} wordt al verwerkt",
         "focusApproved": "{amount} tot nu toe goedgekeurd",
         "focusNone": "Nog geen goedgekeurd saldo",
-        "missingDestination": "Voeg een opnamebestemming toe voordat je je volgende payout aanvraagt."
+        "missingDestination": "Voeg een opnamebestemming toe voordat je je volgende payout aanvraagt.",
+        "missingDestinationCta": "Bestemmingen beheren"
       },
       "overview": {
         "availableBalance": "Beschikbaar saldo",
         "readyUnlocks": "Klaar zodra opnemen vrij is",
         "pendingReview": "In review",
-        "pendingReviewDetail": "Goedgekeurde clips die wachten op fraudcheck",
+        "pendingReviewDetail": "Afwachten op goedkeuring",
         "pending": "In behandeling",
         "requestsProgress": "Verzoeken in verwerking",
         "paid": "Betaald",
@@ -1145,6 +1243,7 @@
         "maxAmount": "Max",
         "bankPanelTitle": "Uitbetaling naar",
         "destinationPanelTitle": "Uitbetaling naar",
+        "manageInSettings": "Beheren in instellingen",
         "bankMethod": "Bank",
         "cryptoMethod": "USDC (Solana)",
         "ibanLabel": "IBAN",
@@ -1331,7 +1430,11 @@
         "longestStreak": "Langste streak",
         "dayCount": "{count, plural, one {# clip} other {# clips}} op {date}",
         "days": "{count}d",
-        "dayLabels": ["Ma", "Wo", "Vr"]
+        "dayLabels": [
+          "Ma",
+          "Wo",
+          "Vr"
+        ]
       }
     },
     "connections": {

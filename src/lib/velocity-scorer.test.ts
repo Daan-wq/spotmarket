@@ -66,6 +66,52 @@ describe("scoreVelocity", () => {
     expect(out.flags.some((f) => f.type === "BOT_SUSPECTED")).toBe(true);
   });
 
+  it("does not alert on a high relative spike when the latest growth is below 2000 views", () => {
+    const out = scoreVelocity({
+      snapshots: [
+        snap(5, 6665),
+        snap(4, 6666),
+        snap(3, 6667),
+        snap(2, 6668),
+        snap(1, 6669),
+        snap(0, 6737),
+      ],
+      accountSnapshot: { audienceCount: 275 },
+    });
+
+    const antiBot = antiBotOf(out);
+    expect(out.velocity?.spikeMultiplier).toBeGreaterThan(10);
+    expect(antiBot?.riskScore).toBe(0);
+    expect(antiBot?.evidence).toHaveLength(0);
+    expect(out.flags.some((f) => f.type === "BOT_SUSPECTED")).toBe(false);
+  });
+
+  it("suppresses account plausibility warnings when latest growth is below 2000 views", () => {
+    const out = scoreVelocity({
+      snapshots: [snap(1, 6600, 50, 1, 0), snap(0, 6737, 50, 1, 0)],
+      accountSnapshot: { audienceCount: 275 },
+    });
+
+    const antiBot = antiBotOf(out);
+    expect(antiBot?.riskScore).toBe(0);
+    expect(antiBot?.evidence.map((item) => item.kind)).not.toContain("ACCOUNT_PLAUSIBILITY");
+    expect(out.flags.some((f) => f.type === "BOT_SUSPECTED")).toBe(false);
+  });
+
+  it("allows account plausibility warnings once latest growth reaches 2000 views", () => {
+    const out = scoreVelocity({
+      snapshots: [snap(1, 4000, 80, 0, 0), snap(0, 6500, 100, 3, 0)],
+      accountSnapshot: { audienceCount: 300 },
+    });
+
+    const antiBot = antiBotOf(out);
+    expect(antiBot?.riskScore).toBeGreaterThanOrEqual(40);
+    expect(antiBot?.evidence.map((item) => item.kind)).toContain("ACCOUNT_PLAUSIBILITY");
+    expect(out.flags).toContainEqual(
+      expect.objectContaining({ type: "BOT_SUSPECTED", severity: "WARN" }),
+    );
+  });
+
   it("flags BOT_SUSPECTED when comments+shares collapse against view spike", () => {
     const out = scoreVelocity({
       snapshots: [
@@ -74,6 +120,34 @@ describe("scoreVelocity", () => {
       ],
     });
     expect(out.flags.some((f) => f.type === "BOT_SUSPECTED")).toBe(true);
+  });
+
+  it("does not treat near-zero engagement as collapse below 2000 latest-growth views", () => {
+    const out = scoreVelocity({
+      snapshots: [snap(1, 5000, 0, 0, 0), snap(0, 6999, 0, 0, 0)],
+    });
+
+    const antiBot = antiBotOf(out);
+    expect(antiBot?.riskScore).toBe(0);
+    expect(antiBot?.evidence.map((item) => item.kind)).not.toContain(
+      "ENGAGEMENT_COLLAPSE",
+    );
+    expect(out.flags.some((f) => f.type === "BOT_SUSPECTED")).toBe(false);
+  });
+
+  it("treats near-zero engagement as collapse from 2000 latest-growth views", () => {
+    const out = scoreVelocity({
+      snapshots: [snap(1, 5000, 0, 0, 0), snap(0, 7000, 0, 0, 0)],
+    });
+
+    const antiBot = antiBotOf(out);
+    expect(antiBot?.riskScore).toBeGreaterThanOrEqual(40);
+    expect(antiBot?.evidence.map((item) => item.kind)).toContain(
+      "ENGAGEMENT_COLLAPSE",
+    );
+    expect(out.flags).toContainEqual(
+      expect.objectContaining({ type: "BOT_SUSPECTED", severity: "WARN" }),
+    );
   });
 
   it("does not flag BOT when engagement is healthy", () => {

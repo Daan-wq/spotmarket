@@ -57,7 +57,7 @@ export async function ActivationCard({ activation }: ActivationCardProps) {
       status: activation.paymentMethodAdded ? "complete" : "incomplete",
       cta: activation.paymentMethodAdded
         ? undefined
-        : { label: t("payment.cta"), href: "/creator/payouts" },
+        : { label: t("payment.cta"), href: "/creator/settings#payout-settings" },
     },
     {
       key: "firstApproval",

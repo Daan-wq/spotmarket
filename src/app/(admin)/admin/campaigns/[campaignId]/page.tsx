@@ -230,7 +230,12 @@ export default async function CampaignHealthPage({ params }: PageProps) {
             {campaign.platforms.map((p) => p.toLowerCase()).join(" / ")}
           </p>
           <div className="mt-5 max-w-xl">
-            <CampaignBudgetProgress totalPaid={totalEarned} totalBudget={totalBudget} />
+            <CampaignBudgetProgress
+              totalPaid={totalEarned}
+              totalBudget={totalBudget}
+              status={campaign.status}
+              deadline={campaign.deadline}
+            />
           </div>
         </div>
         <Link

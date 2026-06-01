@@ -3,6 +3,7 @@ import { POST } from "./route";
 
 const routeMocks = vi.hoisted(() => ({
   requireAuth: vi.fn(),
+  transaction: vi.fn(),
   userFindUnique: vi.fn(),
   payoutFindFirst: vi.fn(),
   payoutCreate: vi.fn(),
@@ -15,6 +16,7 @@ vi.mock("@/lib/auth", () => ({
 
 vi.mock("@/lib/prisma", () => ({
   prisma: {
+    $transaction: routeMocks.transaction,
     user: { findUnique: routeMocks.userFindUnique },
     payout: {
       findFirst: routeMocks.payoutFindFirst,
@@ -69,6 +71,18 @@ describe("POST /api/wallet/withdraw", () => {
       bankAccountNameSnapshot: "Clipper Name",
       requestedAt: new Date("2026-05-19T12:00:00.000Z"),
     });
+    routeMocks.transaction.mockImplementation(async (callback, options) =>
+      callback(
+        {
+          user: { findUnique: routeMocks.userFindUnique },
+          payout: {
+            findFirst: routeMocks.payoutFindFirst,
+            create: routeMocks.payoutCreate,
+          },
+        },
+        options,
+      ),
+    );
   });
 
   it("requires saved IBAN details before requesting payout", async () => {
@@ -96,11 +110,52 @@ describe("POST /api/wallet/withdraw", () => {
 
     const response = await postWithdraw({ amount: 20 });
 
-    expect(response.status).toBe(400);
+    expect(response.status).toBe(409);
     await expect(response.json()).resolves.toEqual({
       error: "You already have a payout request in progress.",
     });
     expect(routeMocks.payoutCreate).not.toHaveBeenCalled();
+  });
+
+  it("checks balance and creates the payout inside a serializable transaction", async () => {
+    const response = await postWithdraw({ amount: 25.5 });
+
+    expect(response.status).toBe(201);
+    expect(routeMocks.transaction).toHaveBeenCalledWith(
+      expect.any(Function),
+      expect.objectContaining({ isolationLevel: "Serializable" }),
+    );
+    expect(routeMocks.getCreatorPaymentSummary).toHaveBeenCalledWith(
+      "creator-user-1",
+      "creator-profile-1",
+      expect.objectContaining({
+        user: expect.any(Object),
+        payout: expect.any(Object),
+      }),
+    );
+    expect(routeMocks.payoutCreate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          creatorProfileId: "creator-profile-1",
+          amount: 25.5,
+          requestedAt: expect.any(Date),
+        }),
+      }),
+    );
+  });
+
+  it("returns conflict when the open payout unique index wins a race", async () => {
+    routeMocks.transaction.mockRejectedValueOnce({
+      code: "P2002",
+      meta: { target: ["creatorProfileId", "status"] },
+    });
+
+    const response = await postWithdraw({ amount: 25.5 });
+
+    expect(response.status).toBe(409);
+    await expect(response.json()).resolves.toEqual({
+      error: "You already have a payout request in progress.",
+    });
   });
 
   it("requires an amount", async () => {

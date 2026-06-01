@@ -101,7 +101,7 @@ describe("POST /api/admin/payout-runs", () => {
     routeMocks.auditLogCreate.mockResolvedValue({});
   });
 
-  it("only creates payout items for fraud-cleared positive approved submissions", async () => {
+  it("returns gone without creating payout-run records", async () => {
     routeMocks.tx.campaignSubmission.findMany
       .mockResolvedValueOnce([{ campaignId: "campaign-1" }])
       .mockResolvedValueOnce([
@@ -116,30 +116,13 @@ describe("POST /api/admin/payout-runs", () => {
 
     const response = await postRun();
 
-    expect(response.status).toBe(201);
-    expect(routeMocks.tx.payoutRun.create).toHaveBeenCalledWith(
-      expect.objectContaining({
-        data: expect.objectContaining({
-          totalGross: 50,
-          totalNet: 50,
-          items: {
-            create: [
-              expect.objectContaining({
-                submissionId: "clear-submission",
-                total: 50,
-              }),
-            ],
-          },
-        }),
-      }),
-    );
-    expect(routeMocks.reconcileReferralPayoutForSubmission).toHaveBeenCalledWith(
-      routeMocks.tx,
-      "clear-submission",
-    );
-    expect(routeMocks.reconcileCampaignBudgetCap).toHaveBeenCalledWith(
-      routeMocks.tx,
-      "campaign-1",
-    );
+    expect(response.status).toBe(410);
+    await expect(response.json()).resolves.toEqual({
+      error: "Payout runs are disabled. Use manual creator payout requests.",
+    });
+    expect(routeMocks.transaction).not.toHaveBeenCalled();
+    expect(routeMocks.tx.payoutRun.create).not.toHaveBeenCalled();
+    expect(routeMocks.reconcileReferralPayoutForSubmission).not.toHaveBeenCalled();
+    expect(routeMocks.reconcileCampaignBudgetCap).not.toHaveBeenCalled();
   });
 });

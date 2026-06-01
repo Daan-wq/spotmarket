@@ -3,6 +3,8 @@ import {
   getCampaignClosedForSubmissionsMessage,
   getCampaignDeadlineState,
   isCampaignClosedForSubmissions,
+  isCampaignPubliclyVisible,
+  isCampaignUsableForCreator,
 } from "./campaign-submission-state";
 
 const NOW = new Date("2026-05-17T12:00:00.000Z");
@@ -48,5 +50,57 @@ describe("campaign submission state", () => {
     expect(getCampaignClosedForSubmissionsMessage({ status: "paused" })).toBe(
       "This campaign is paused and temporarily does not accept submissions.",
     );
+  });
+
+  test.each(["active", "paused", "completed", "cancelled"])(
+    "keeps %s campaigns publicly visible",
+    (status) => {
+      expect(isCampaignPubliclyVisible(status)).toBe(true);
+    },
+  );
+
+  test.each(["draft", "pending_payment", "pending_review", null, undefined])(
+    "keeps %s campaigns private",
+    (status) => {
+      expect(isCampaignPubliclyVisible(status)).toBe(false);
+    },
+  );
+
+  test("only treats active campaigns before the deadline as usable for creators", () => {
+    expect(
+      isCampaignUsableForCreator({
+        status: "active",
+        deadline: "2026-06-17T00:00:00.000Z",
+        now: NOW,
+      }),
+    ).toBe(true);
+    expect(
+      isCampaignUsableForCreator({
+        status: "paused",
+        deadline: "2026-06-17T00:00:00.000Z",
+        now: NOW,
+      }),
+    ).toBe(false);
+    expect(
+      isCampaignUsableForCreator({
+        status: "completed",
+        deadline: "2026-06-17T00:00:00.000Z",
+        now: NOW,
+      }),
+    ).toBe(false);
+    expect(
+      isCampaignUsableForCreator({
+        status: "cancelled",
+        deadline: "2026-06-17T00:00:00.000Z",
+        now: NOW,
+      }),
+    ).toBe(false);
+    expect(
+      isCampaignUsableForCreator({
+        status: "active",
+        deadline: "2026-05-15T12:00:00.000Z",
+        now: NOW,
+      }),
+    ).toBe(false);
   });
 });

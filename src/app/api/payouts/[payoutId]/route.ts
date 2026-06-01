@@ -7,6 +7,7 @@ const patchSchema = z.object({
   status: z.enum(["processing", "sent", "confirmed", "failed", "disputed"]),
   txHash: z.string().trim().optional(),
   bankReference: z.string().trim().optional(),
+  rejectionReason: z.string().trim().max(1000).optional(),
 });
 
 export async function PATCH(
@@ -35,6 +36,11 @@ export async function PATCH(
   const next = parsed.data;
   const bankReference = next.bankReference || payout.bankReference;
   const txHash = next.txHash || payout.txHash;
+  const rejectionReason = next.rejectionReason;
+  const transitionError = payoutTransitionError(payout.status, next.status);
+  if (transitionError) {
+    return NextResponse.json({ error: transitionError }, { status: 409 });
+  }
 
   if (
     payout.paymentMethod === "BANK_TRANSFER" &&
@@ -56,6 +62,12 @@ export async function PATCH(
       { status: 400 },
     );
   }
+  if (next.status === "failed" && !rejectionReason) {
+    return NextResponse.json(
+      { error: "Internal rejection reason is required." },
+      { status: 400 },
+    );
+  }
 
   const updated = await prisma.payout.update({
     where: { id: payoutId },
@@ -66,7 +78,7 @@ export async function PATCH(
       ...(next.status === "processing" && { initiatedAt: now }),
       ...(next.status === "sent" && { initiatedAt: now }),
       ...(next.status === "confirmed" && { confirmedAt: now, processedAt: now }),
-      ...(next.status === "failed" && { processedAt: now }),
+      ...(next.status === "failed" && { processedAt: now, rejectionReason }),
     },
   });
 
@@ -79,10 +91,27 @@ export async function PATCH(
       metadata: {
         txHash: next.txHash,
         bankReference: next.bankReference,
+        rejectionReason,
         paymentMethod: payout.paymentMethod,
       },
     },
   });
 
   return NextResponse.json(updated);
+}
+
+function payoutTransitionError(currentStatus: string, nextStatus: string) {
+  if (currentStatus === "confirmed" && nextStatus !== "confirmed") {
+    return "Confirmed payouts are terminal. Create a financial adjustment instead.";
+  }
+  if (currentStatus === "sent" && nextStatus !== "confirmed" && nextStatus !== "sent") {
+    return "Sent payouts can only be confirmed. Create a financial adjustment instead.";
+  }
+  if (
+    (currentStatus === "failed" || currentStatus === "disputed") &&
+    nextStatus !== currentStatus
+  ) {
+    return "Failed or disputed payouts cannot be reopened. Create a financial adjustment instead.";
+  }
+  return null;
 }

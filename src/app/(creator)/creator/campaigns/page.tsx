@@ -5,7 +5,11 @@ import { CampaignsClient } from "./_components/campaigns-client";
 import {
   evaluateCampaignJoinEligibility,
 } from "@/lib/campaign-eligibility";
-import { isCampaignClosedForSubmissions } from "@/lib/campaign-submission-state";
+import {
+  campaignClosedForSubmissionsReason,
+  isCampaignClosedForSubmissions,
+  PUBLIC_CAMPAIGN_STATUSES,
+} from "@/lib/campaign-submission-state";
 import { getSocialAccountSummariesForProfile } from "@/lib/social-account-summary";
 
 export default async function CampaignsPage() {
@@ -22,7 +26,7 @@ export default async function CampaignsPage() {
     socialAccounts,
   ] = await Promise.all([
     prisma.campaign.findMany({
-      where: { status: "active" },
+      where: { status: { in: [...PUBLIC_CAMPAIGN_STATUSES] } },
       select: {
         id: true,
         name: true,
@@ -161,6 +165,9 @@ export default async function CampaignsPage() {
       closedForSubmissions: isCampaignClosedForSubmissions({
         status: c.status,
         deadline: c.deadline,
+      }),
+      closedForSubmissionsReason: campaignClosedForSubmissionsReason({
+        status: c.status,
       }),
     };
   }

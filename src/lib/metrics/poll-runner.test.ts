@@ -503,7 +503,7 @@ describe("pollSubmissions earnings refresh", () => {
       reasons: [],
       evidence: [],
       evaluatedAt: capturedAt.toISOString(),
-      version: "anti-bot-v2",
+      version: "anti-bot-v3",
     };
     findManySubmissionMock.mockResolvedValueOnce([
       {
@@ -590,7 +590,7 @@ describe("pollSubmissions earnings refresh", () => {
       reasons: ["risk"],
       evidence: [],
       evaluatedAt: capturedAt.toISOString(),
-      version: "anti-bot-v2",
+      version: "anti-bot-v3",
     };
     findManySubmissionMock.mockResolvedValueOnce([
       {

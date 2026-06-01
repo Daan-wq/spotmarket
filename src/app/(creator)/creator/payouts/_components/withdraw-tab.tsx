@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import type { FormEvent } from "react";
+import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { AlertBanner } from "@/components/ui/alert-banner";
 import { Dialog } from "@/components/ui/dialog";
@@ -396,16 +397,24 @@ export function WithdrawTab() {
               <div>
                 <div className="flex items-center justify-between gap-3">
                   <h2 className="text-base font-semibold text-neutral-950">{t("destinationPanelTitle")}</h2>
-                  {method === "BANK_TRANSFER" && !showBankInput ? (
-                    <Button type="button" variant="ghost" size="sm" onClick={startEditingBank}>
-                      {sharedT("actions.edit")}
-                    </Button>
-                  ) : null}
-                  {method === "USDC_SOLANA" && !showCryptoInput ? (
-                    <Button type="button" variant="ghost" size="sm" onClick={startEditingCrypto}>
-                      {sharedT("actions.edit")}
-                    </Button>
-                  ) : null}
+                  <div className="flex items-center gap-2">
+                    <Link
+                      href="/creator/settings#payout-settings"
+                      className="text-xs font-semibold text-neutral-500 underline-offset-2 hover:text-neutral-950 hover:underline"
+                    >
+                      {t("manageInSettings")}
+                    </Link>
+                    {method === "BANK_TRANSFER" && !showBankInput ? (
+                      <Button type="button" variant="ghost" size="sm" onClick={startEditingBank}>
+                        {sharedT("actions.edit")}
+                      </Button>
+                    ) : null}
+                    {method === "USDC_SOLANA" && !showCryptoInput ? (
+                      <Button type="button" variant="ghost" size="sm" onClick={startEditingCrypto}>
+                        {sharedT("actions.edit")}
+                      </Button>
+                    ) : null}
+                  </div>
                 </div>
 
                 <div className="mt-4 grid grid-cols-2 gap-1 rounded-xl border border-neutral-200 bg-neutral-50 p-1">

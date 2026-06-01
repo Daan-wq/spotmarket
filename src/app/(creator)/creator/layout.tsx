@@ -12,6 +12,7 @@ import {
 import { MobileCreatorChrome } from "../_components/mobile-creator-chrome";
 import { ScopeErrorDialog } from "@/components/auth/scope-error-dialog";
 import { DashboardShell } from "@/components/layout/dashboard-shell";
+import { FirstClipCoach } from "@/components/onboarding/first-clip-coach";
 import { PostHogIdentify } from "@/components/providers/posthog-identify";
 
 export default async function CreatorLayout({
@@ -60,6 +61,9 @@ export default async function CreatorLayout({
         }
       >
         <PostHogIdentify userId={supabaseId} role="creator" />
+        <Suspense fallback={null}>
+          <FirstClipCoach supabaseId={supabaseId} />
+        </Suspense>
         {children}
       </DashboardShell>
       <Suspense fallback={null}>

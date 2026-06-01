@@ -18,7 +18,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { formatCurrency, formatDate, formatNumber } from "@/lib/admin/agency-format";
@@ -141,36 +141,67 @@ export function CampaignReportStudio({
   initialEditorial,
   filters,
 }: CampaignReportStudioProps) {
-  const router = useRouter();
   const selectedCampaignId = liveData?.campaign.id ?? selectedReport?.campaignId ?? filters.campaignId ?? campaigns[0]?.id ?? "";
   const selectedCampaign = campaigns.find((campaign) => campaign.id === selectedCampaignId) ?? null;
   const baseEditorial = initialEditorial ?? liveData?.defaults ?? createEmptyEditorial(selectedCampaign?.name ?? "Campagne");
+  const initialPeriodStart = dateInputValue(selectedReport?.periodStart ?? liveData?.period.start ?? liveData?.campaign.startsAt ?? null);
+  const initialPeriodEnd = dateInputValue(selectedReport?.periodEnd ?? liveData?.period.end ?? liveData?.campaign.deadline ?? null);
+  const editorKey = [
+    selectedReport?.id ?? "new",
+    selectedReport?.updatedAt ?? "",
+    liveData?.campaign.id ?? selectedCampaignId,
+    initialPeriodStart,
+    initialPeriodEnd,
+  ].join(":");
+
+  return (
+    <CampaignReportStudioEditor
+      key={editorKey}
+      brands={brands}
+      campaigns={campaigns}
+      reports={reports}
+      selectedReport={selectedReport}
+      liveData={liveData}
+      filters={filters}
+      selectedCampaignId={selectedCampaignId}
+      baseEditorial={baseEditorial}
+      initialPeriodStart={initialPeriodStart}
+      initialPeriodEnd={initialPeriodEnd}
+    />
+  );
+}
+
+function CampaignReportStudioEditor({
+  brands,
+  campaigns,
+  reports,
+  selectedReport,
+  liveData,
+  filters,
+  selectedCampaignId,
+  baseEditorial,
+  initialPeriodStart,
+  initialPeriodEnd,
+}: Omit<CampaignReportStudioProps, "initialEditorial"> & {
+  selectedCampaignId: string;
+  baseEditorial: CampaignReportEditorial;
+  initialPeriodStart: string;
+  initialPeriodEnd: string;
+}) {
+  const router = useRouter();
 
   const [title, setTitle] = useState(baseEditorial.title);
   const [executiveSummary, setExecutiveSummary] = useState(baseEditorial.executiveSummary);
-  const [keyTakeaways, setKeyTakeaways] = useState(baseEditorial.keyTakeaways);
-  const [learnings, setLearnings] = useState(baseEditorial.learnings);
-  const [nextCampaignRecommendations, setNextCampaignRecommendations] = useState(baseEditorial.nextCampaignRecommendations);
+  const [keyTakeaways, setKeyTakeaways] = useState(() => normalizeTextList(baseEditorial.keyTakeaways));
+  const [learnings, setLearnings] = useState(() => normalizeTextList(baseEditorial.learnings));
+  const [nextCampaignRecommendations, setNextCampaignRecommendations] = useState(() => normalizeTextList(baseEditorial.nextCampaignRecommendations));
   const [sectionSettings, setSectionSettings] = useState<CampaignReportSectionSettings>(
-    normalizeSectionSettings(baseEditorial.sectionSettings),
+    () => normalizeSectionSettings(baseEditorial.sectionSettings),
   );
-  const [periodStart, setPeriodStart] = useState(dateInputValue(selectedReport?.periodStart ?? liveData?.period.start ?? liveData?.campaign.startsAt ?? null));
-  const [periodEnd, setPeriodEnd] = useState(dateInputValue(selectedReport?.periodEnd ?? liveData?.period.end ?? liveData?.campaign.deadline ?? null));
+  const [periodStart, setPeriodStart] = useState(initialPeriodStart);
+  const [periodEnd, setPeriodEnd] = useState(initialPeriodEnd);
   const [savingMode, setSavingMode] = useState<"draft" | "final" | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
-
-  useEffect(() => {
-    const next = initialEditorial ?? liveData?.defaults ?? createEmptyEditorial(selectedCampaign?.name ?? "Campagne");
-    setTitle(next.title);
-    setExecutiveSummary(next.executiveSummary);
-    setKeyTakeaways(normalizeTextList(next.keyTakeaways));
-    setLearnings(normalizeTextList(next.learnings));
-    setNextCampaignRecommendations(normalizeTextList(next.nextCampaignRecommendations));
-    setSectionSettings(normalizeSectionSettings(next.sectionSettings));
-    setPeriodStart(dateInputValue(selectedReport?.periodStart ?? liveData?.period.start ?? liveData?.campaign.startsAt ?? null));
-    setPeriodEnd(dateInputValue(selectedReport?.periodEnd ?? liveData?.period.end ?? liveData?.campaign.deadline ?? null));
-    setNotice(null);
-  }, [initialEditorial, liveData?.campaign.id, selectedCampaign?.name, selectedReport?.id, selectedReport?.periodEnd, selectedReport?.periodStart]);
 
   const historyCounts = useMemo(() => {
     return reports.reduce(

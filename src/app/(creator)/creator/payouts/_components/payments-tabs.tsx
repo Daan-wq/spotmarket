@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import type { ReactNode } from "react";
 import { CreatorSectionHeader } from "../../_components/creator-journey";
@@ -61,7 +62,13 @@ export function PaymentsTabs({
     <div className="space-y-8">
       {!hasPaymentMethod && balance > 0 ? (
         <div className="rounded-2xl border border-orange-200 bg-orange-50 p-5 text-sm text-orange-800">
-          {t("missingDestination")}
+          <span>{t("missingDestination")}</span>{" "}
+          <Link
+            href="/creator/settings#payout-settings"
+            className="font-semibold underline-offset-2 hover:underline"
+          >
+            {t("missingDestinationCta")}
+          </Link>
         </div>
       ) : null}
 

@@ -310,6 +310,16 @@ export async function DELETE(
   const authorized = await getAuthorizedAdmin(authUser.id, campaignId);
   if (!authorized) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
+  const submissionCount = await prisma.campaignSubmission.count({
+    where: { campaignId },
+  });
+  if (submissionCount > 0) {
+    return NextResponse.json(
+      { error: "Cannot delete campaign with submissions; archive or cancel it instead." },
+      { status: 409 },
+    );
+  }
+
   const activeCount = await prisma.campaignApplication.count({
     where: { campaignId, status: { in: ["approved", "active"] } },
   });
@@ -318,8 +328,6 @@ export async function DELETE(
   }
 
   try {
-    // Delete submissions directly linked to this campaign (avoids FK constraint on campaignId)
-    await prisma.campaignSubmission.deleteMany({ where: { campaignId } });
     // Delete all applications (Payouts.applicationId is optional → SetNull on DB level)
     await prisma.campaignApplication.deleteMany({ where: { campaignId } });
     // Now safe to delete the campaign

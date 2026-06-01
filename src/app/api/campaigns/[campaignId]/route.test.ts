@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { PATCH } from "./route";
+import { DELETE, PATCH } from "./route";
 
 const routeMocks = vi.hoisted(() => ({
   getUser: vi.fn(),
@@ -7,6 +7,10 @@ const routeMocks = vi.hoisted(() => ({
   campaignFindUnique: vi.fn(),
   campaignUpdate: vi.fn(),
   applicationFindMany: vi.fn(),
+  applicationCount: vi.fn(),
+  applicationDeleteMany: vi.fn(),
+  submissionCount: vi.fn(),
+  campaignDelete: vi.fn(),
   ensureDiscordCampaignResources: vi.fn(),
   removeDiscordCampaignRole: vi.fn(),
   sendCampaignAnnouncementOnce: vi.fn(),
@@ -24,8 +28,14 @@ vi.mock("@/lib/prisma", () => ({
     campaign: {
       findUnique: routeMocks.campaignFindUnique,
       update: routeMocks.campaignUpdate,
+      delete: routeMocks.campaignDelete,
     },
-    campaignApplication: { findMany: routeMocks.applicationFindMany },
+    campaignApplication: {
+      findMany: routeMocks.applicationFindMany,
+      count: routeMocks.applicationCount,
+      deleteMany: routeMocks.applicationDeleteMany,
+    },
+    campaignSubmission: { count: routeMocks.submissionCount },
   },
 }));
 
@@ -65,6 +75,12 @@ function campaign(status = "active") {
   };
 }
 
+function deleteRequest() {
+  return new Request("https://app.test/api/campaigns/campaign-1", {
+    method: "DELETE",
+  });
+}
+
 describe("PATCH /api/campaigns/[campaignId]", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -77,6 +93,10 @@ describe("PATCH /api/campaigns/[campaignId]", () => {
       { creatorProfile: { user: { discordId: null } } },
       { creatorProfile: { user: { discordId: "discord-user-2" } } },
     ]);
+    routeMocks.applicationCount.mockResolvedValue(0);
+    routeMocks.applicationDeleteMany.mockResolvedValue({ count: 0 });
+    routeMocks.submissionCount.mockResolvedValue(0);
+    routeMocks.campaignDelete.mockResolvedValue(campaign("draft"));
     routeMocks.ensureDiscordCampaignResources.mockResolvedValue({
       roleId: "discord-role-1",
       channelId: "discord-channel-1",
@@ -210,5 +230,43 @@ describe("PATCH /api/campaigns/[campaignId]", () => {
         },
       }),
     );
+  });
+});
+
+describe("DELETE /api/campaigns/[campaignId]", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    routeMocks.getUser.mockResolvedValue({ data: { user: { id: "admin-supabase-1" } } });
+    routeMocks.userFindUnique.mockResolvedValue({ id: "admin-user-1", role: "admin" });
+    routeMocks.campaignFindUnique.mockResolvedValue(campaign("draft"));
+    routeMocks.applicationCount.mockResolvedValue(0);
+    routeMocks.applicationDeleteMany.mockResolvedValue({ count: 0 });
+    routeMocks.submissionCount.mockResolvedValue(0);
+    routeMocks.campaignDelete.mockResolvedValue(campaign("draft"));
+  });
+
+  it("blocks hard delete when the campaign has submissions to preserve duplicate/audit history", async () => {
+    routeMocks.submissionCount.mockResolvedValueOnce(2);
+
+    const response = await DELETE(deleteRequest(), params);
+
+    expect(response.status).toBe(409);
+    await expect(response.json()).resolves.toEqual({
+      error: "Cannot delete campaign with submissions; archive or cancel it instead.",
+    });
+    expect(routeMocks.applicationDeleteMany).not.toHaveBeenCalled();
+    expect(routeMocks.campaignDelete).not.toHaveBeenCalled();
+  });
+
+  it("allows delete only when there are no submissions and no active applications", async () => {
+    const response = await DELETE(deleteRequest(), params);
+
+    expect(response.status).toBe(204);
+    expect(routeMocks.submissionCount).toHaveBeenCalledWith({ where: { campaignId: "campaign-1" } });
+    expect(routeMocks.applicationCount).toHaveBeenCalledWith({
+      where: { campaignId: "campaign-1", status: { in: ["approved", "active"] } },
+    });
+    expect(routeMocks.applicationDeleteMany).toHaveBeenCalledWith({ where: { campaignId: "campaign-1" } });
+    expect(routeMocks.campaignDelete).toHaveBeenCalledWith({ where: { id: "campaign-1" } });
   });
 });

@@ -14,7 +14,6 @@ export function CampaignActions({ campaignId, status }: CampaignActionsProps) {
   const [isPending, startTransition] = useTransition();
   const [optimisticStatus, setOptimisticStatus] = useOptimistic(status);
   const [deleteState, setDeleteState] = useState<"idle" | "confirming" | "loading" | "error">("idle");
-  const [settleState, setSettleState] = useState<"idle" | "loading" | "done" | "error">("idle");
 
   function handleStatusChange() {
     if (isPending) return;
@@ -75,30 +74,6 @@ export function CampaignActions({ campaignId, status }: CampaignActionsProps) {
     optimisticStatus === "active" ? "Pause" :
     "Resume";
 
-  function handleSettle() {
-    setSettleState("loading");
-    startTransition(async () => {
-      try {
-        const res = await fetch(`/api/campaigns/${campaignId}/settle`, { method: "POST" });
-        if (!res.ok) {
-          setSettleState("error");
-          toast.error("Vastzetten mislukt");
-          setTimeout(() => setSettleState("idle"), 3000);
-          return;
-        }
-        setSettleState("done");
-        toast.success("Campagne vastgezet");
-        router.refresh();
-        setTimeout(() => setSettleState("idle"), 2000);
-      } catch (err) {
-        console.error("[settle]", err);
-        setSettleState("error");
-        toast.error("Netwerkfout");
-        setTimeout(() => setSettleState("idle"), 3000);
-      }
-    });
-  }
-
   const deleteButtonLabel =
     deleteState === "confirming" ? "Confirm delete?" :
     deleteState === "error" ? "Has active applications" :
@@ -124,35 +99,6 @@ export function CampaignActions({ campaignId, status }: CampaignActionsProps) {
         }}
       >
         {isPending ? "…" : statusButtonLabel}
-      </button>
-
-      {/* Settle button */}
-      <button
-        onClick={handleSettle}
-        disabled={settleState === "loading"}
-        style={{
-          background:
-            settleState === "done" ? "var(--success-bg, #bbf7d0)" :
-            settleState === "error" ? "var(--error-bg, #fecaca)" :
-            "#f59e0b",
-          color:
-            settleState === "done" ? "var(--success-text, #166534)" :
-            settleState === "error" ? "var(--error-text, #dc2626)" :
-            "#fff",
-          border: "none",
-          borderRadius: "6px",
-          padding: "4px 10px",
-          fontSize: "12px",
-          fontWeight: 500,
-          cursor: settleState === "loading" ? "default" : "pointer",
-          opacity: settleState === "loading" ? 0.7 : 1,
-          whiteSpace: "nowrap",
-        }}
-      >
-        {settleState === "loading" ? "..." :
-         settleState === "done" ? "Afgewikkeld" :
-         settleState === "error" ? "Geen inzendingen" :
-         "Afrekenen"}
       </button>
 
       {/* Delete button */}
