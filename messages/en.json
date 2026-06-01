@@ -1196,7 +1196,7 @@
         "availableBalance": "Available balance",
         "readyUnlocks": "Ready when withdrawal unlocks",
         "pendingReview": "Under review",
-        "pendingReviewDetail": "Approved clips waiting on fraud checks",
+        "pendingReviewDetail": "Waiting for review",
         "pending": "Pending",
         "requestsProgress": "Requests in progress",
         "paid": "Paid",
