@@ -17,7 +17,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useMemo, useState } from "react";
+import { createContext, useContext, useMemo, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { formatCurrency, formatDate, formatNumber } from "@/lib/admin/agency-format";
@@ -100,6 +100,16 @@ interface ReportInlineEditors {
   updateRecommendation: (index: number, value: string) => void;
   addRecommendation: () => void;
 }
+
+interface TokenPreviewContextValue {
+  liveData: CampaignReportLiveData;
+  status: CampaignReportStatusValue;
+  periodStart: string;
+  periodEnd: string;
+  showValues: boolean;
+}
+
+const TokenPreviewContext = createContext<TokenPreviewContextValue | null>(null);
 
 const SECTION_LABELS: Record<CampaignReportSectionKey, string> = {
   cover: "Omslag",
@@ -210,6 +220,7 @@ function CampaignReportStudioEditor({
   );
   const [periodStart, setPeriodStart] = useState(initialPeriodStart);
   const [periodEnd, setPeriodEnd] = useState(initialPeriodEnd);
+  const [showTokenValues, setShowTokenValues] = useState(false);
   const [savingMode, setSavingMode] = useState<"draft" | "final" | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
 
@@ -373,6 +384,8 @@ function CampaignReportStudioEditor({
         setPeriodEnd={setPeriodEnd}
         sectionSettings={sectionSettings}
         setSectionSettings={setSectionSettings}
+        showTokenValues={showTokenValues}
+        setShowTokenValues={setShowTokenValues}
       />
 
       <main className="report-studio-preview min-w-0">
@@ -387,6 +400,7 @@ function CampaignReportStudioEditor({
           status={selectedReport?.status ?? "DRAFT"}
           periodStart={periodStart}
           periodEnd={periodEnd}
+          showTokenValues={showTokenValues}
           editors={{
             setTitle,
             setExecutiveSummary,
@@ -527,6 +541,8 @@ function ReportMetaControls({
   setPeriodEnd,
   sectionSettings,
   setSectionSettings,
+  showTokenValues,
+  setShowTokenValues,
 }: {
   periodStart: string;
   setPeriodStart: (value: string) => void;
@@ -534,6 +550,8 @@ function ReportMetaControls({
   setPeriodEnd: (value: string) => void;
   sectionSettings: CampaignReportSectionSettings;
   setSectionSettings: (value: CampaignReportSectionSettings) => void;
+  showTokenValues: boolean;
+  setShowTokenValues: (value: boolean) => void;
 }) {
   return (
     <section className="report-studio-chrome rounded-lg border border-neutral-200 bg-white p-4">
@@ -551,6 +569,18 @@ function ReportMetaControls({
               <input type="date" value={periodEnd} onChange={(event) => setPeriodEnd(event.target.value)} className="h-10 w-full rounded-lg border border-neutral-200 bg-white px-3 text-xs outline-none focus:border-neutral-400" />
             </label>
           </div>
+          <label className="mt-3 flex cursor-pointer items-center justify-between gap-3 rounded-lg border border-neutral-200 px-3 py-2">
+            <span>
+              <span className="block text-xs font-semibold text-neutral-950">Live waarden tonen</span>
+              <span className="block text-[11px] leading-4 text-neutral-500">Toon actuele databasewaarde onder elke token.</span>
+            </span>
+            <input
+              type="checkbox"
+              checked={showTokenValues}
+              onChange={(event) => setShowTokenValues(event.target.checked)}
+              className="h-4 w-4 accent-neutral-950"
+            />
+          </label>
         </div>
 
         <div>
@@ -596,6 +626,7 @@ function ReportPreview({
   status,
   periodStart,
   periodEnd,
+  showTokenValues,
   editors,
 }: {
   liveData: CampaignReportLiveData | null;
@@ -608,6 +639,7 @@ function ReportPreview({
   status: CampaignReportStatusValue;
   periodStart: string;
   periodEnd: string;
+  showTokenValues: boolean;
   editors?: ReportInlineEditors;
 }) {
   if (!liveData) {
@@ -623,8 +655,9 @@ function ReportPreview({
   const enabled = (sectionKey: CampaignReportSectionKey) => sectionSettings[sectionKey];
 
   return (
-    <div className="report-print-root rounded-lg bg-neutral-200 px-3 py-6 sm:px-6">
-      <div className="report-print-scroll space-y-6 overflow-visible">
+    <TokenPreviewContext.Provider value={{ liveData, status, periodStart, periodEnd, showValues: showTokenValues }}>
+      <div className="report-print-root rounded-lg bg-neutral-200 px-3 py-6 sm:px-6">
+        <div className="report-print-scroll space-y-6 overflow-visible">
         {enabled("cover") ? (
           <ReportPage>
             <div>
@@ -957,17 +990,138 @@ function ReportPreview({
             </ReportPage>
           </>
         ) : null}
+        </div>
       </div>
-    </div>
+    </TokenPreviewContext.Provider>
   );
 }
 
 function Token({ name }: { name: string }) {
+  const tokenContext = useContext(TokenPreviewContext);
+  const previewValue = tokenContext?.showValues
+    ? formatTokenPreviewValue(name, resolveTokenPreviewValue(name, tokenContext))
+    : null;
+
   return (
-    <span className="inline-flex max-w-full items-center rounded-md border border-neutral-300 bg-neutral-100 px-1.5 py-0.5 align-baseline font-mono text-[0.85em] font-semibold leading-5 text-neutral-700">
-      {"{{"}{name}{"}}"}
+    <span
+      className={cn(
+        "inline-flex max-w-full items-center rounded-md border border-neutral-300 bg-neutral-100 px-1.5 py-0.5 align-baseline font-mono text-[0.85em] font-semibold leading-5 text-neutral-700",
+        previewValue && "flex-col items-start gap-0.5 py-1 align-middle",
+      )}
+    >
+      <span className="max-w-full truncate">
+        {"{{"}{name}{"}}"}
+      </span>
+      {previewValue ? (
+        <span className="max-w-[210px] truncate rounded bg-white px-1 py-0.5 text-[10px] font-medium leading-4 text-neutral-500">
+          = {previewValue}
+        </span>
+      ) : null}
     </span>
   );
+}
+
+function resolveTokenPreviewValue(name: string, context: TokenPreviewContextValue) {
+  const tokenSource = {
+    ...context.liveData,
+    report: { status: reportStatusLabel(context.status) },
+    period: {
+      start: context.periodStart || context.liveData.period.start,
+      end: context.periodEnd || context.liveData.period.end,
+    },
+    computed: {
+      trafficQualityStatus: trafficQualityStatus(context.liveData),
+    },
+  };
+
+  return resolveTokenPath(tokenSource, name);
+}
+
+function resolveTokenPath(source: unknown, path: string): unknown {
+  let current = source;
+  for (const segment of path.split(".")) {
+    if (current == null) return null;
+    const arrayMatch = segment.match(/^(.+)\[(\d*)\]$/);
+    if (arrayMatch) {
+      const [, key, index] = arrayMatch;
+      current = readObjectKey(current, key);
+      if (!Array.isArray(current)) return current;
+      current = index === "" ? current : current[Number(index)];
+      continue;
+    }
+    current = readObjectKey(current, segment);
+  }
+  return current;
+}
+
+function readObjectKey(value: unknown, key: string) {
+  if (!value || typeof value !== "object") return null;
+  return (value as Record<string, unknown>)[key];
+}
+
+function formatTokenPreviewValue(name: string, value: unknown): string {
+  if (value == null || value === "") return "geen waarde";
+  if (typeof value === "number") return formatTokenNumber(name, value);
+  if (typeof value === "boolean") return value ? "true" : "false";
+  if (typeof value === "string") return truncateTokenValue(formatTokenString(value));
+  if (Array.isArray(value)) {
+    if (value.length === 0) return "lege lijst";
+    return truncateTokenValue(value.slice(0, 3).map(formatTokenArrayItem).join(", ") + (value.length > 3 ? ` +${value.length - 3}` : ""));
+  }
+  if (typeof value === "object") {
+    const entries = Object.entries(value as Record<string, unknown>).slice(0, 4);
+    if (entries.length === 0) return "{}";
+    return truncateTokenValue(entries.map(([key, entryValue]) => `${key}: ${formatTokenPreviewValue(key, entryValue)}`).join(", "));
+  }
+  return truncateTokenValue(String(value));
+}
+
+function formatTokenNumber(name: string, value: number) {
+  const lowerName = name.toLowerCase();
+  if (lowerName.includes("percent") || lowerName.includes("progress") || lowerName.includes("rate")) {
+    return formatPercent(value);
+  }
+  if (
+    lowerName.includes("budget") ||
+    lowerName.includes("cost") ||
+    lowerName.includes("cpm") ||
+    lowerName.includes("cpv") ||
+    lowerName.includes("cpa") ||
+    lowerName.includes("amount") ||
+    lowerName.includes("earned")
+  ) {
+    return formatCurrency(value, "EUR", "nl");
+  }
+  return formatNumber(value, "nl");
+}
+
+function formatTokenString(value: string) {
+  if (/^\d{4}-\d{2}-\d{2}/.test(value)) return formatDate(value, "nl");
+  return value;
+}
+
+function formatTokenArrayItem(value: unknown) {
+  if (value == null) return "geen waarde";
+  if (typeof value === "string") return formatTokenString(value);
+  if (typeof value === "number") return formatNumber(value, "nl");
+  if (typeof value === "object") {
+    const record = value as Record<string, unknown>;
+    if ("code" in record && "share" in record) return `${record.code}: ${formatNumber(Number(record.share) || 0, "nl")}%`;
+    if ("platform" in record && "views" in record) return `${record.platform}: ${formatNumber(Number(record.views) || 0, "nl")}`;
+    if ("creator" in record && "views" in record) return `${record.creator}: ${formatNumber(Number(record.views) || 0, "nl")}`;
+    return Object.entries(record).slice(0, 2).map(([key, item]) => `${key}: ${String(item)}`).join(", ");
+  }
+  return String(value);
+}
+
+function truncateTokenValue(value: string, maxLength = 96) {
+  return value.length > maxLength ? `${value.slice(0, maxLength - 1)}...` : value;
+}
+
+function trafficQualityStatus(data: CampaignReportLiveData) {
+  if (data.quality.criticalSignals > 0) return "Needs attention";
+  if (data.quality.openSignals > 0 || data.quality.resolvedSignals > 0) return "Passed with exclusions";
+  return "Passed";
 }
 
 function EditableMarker({ name }: { name: string }) {
