@@ -1,4 +1,5 @@
 import { calculatePaidViews } from "@/lib/paid-views";
+import type { Prisma } from "@prisma/client";
 import {
   getSubmissionFinancialState,
   isOpenPayoutStatus,
@@ -6,6 +7,10 @@ import {
 } from "@/lib/financial-eligibility";
 
 type NumericLike = number | string | { toString(): string } | null | undefined;
+type CreatorPaymentSummaryClient = Pick<
+  Prisma.TransactionClient,
+  "campaignSubmission" | "payout"
+>;
 
 export interface CreatorPaymentSubmission {
   campaignId: string;
@@ -160,10 +165,11 @@ function sumSubmissionsByState(
 export async function getCreatorPaymentSummary(
   userId: string,
   creatorProfileId: string,
+  client?: CreatorPaymentSummaryClient,
 ): Promise<CreatorPaymentSummary> {
-  const { prisma } = await import("@/lib/prisma");
+  const db = client ?? (await import("@/lib/prisma")).prisma;
   const [submissions, payouts] = await Promise.all([
-    prisma.campaignSubmission.findMany({
+    db.campaignSubmission.findMany({
       where: { creatorId: userId, status: "APPROVED" },
       select: {
         campaignId: true,
@@ -197,7 +203,7 @@ export async function getCreatorPaymentSummary(
       },
       orderBy: { createdAt: "desc" },
     }),
-    prisma.payout.findMany({
+    db.payout.findMany({
       where: { creatorProfileId },
       select: { amount: true, status: true },
     }),

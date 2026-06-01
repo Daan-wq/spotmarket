@@ -1,5 +1,4 @@
 import { Download } from "@/components/animate-ui/icons/download";
-import { Plus } from "@/components/animate-ui/icons/plus";
 import { Badge } from "@/components/ui/badge";
 import { DataTable } from "@/components/ui/data-table";
 import { EmptyState } from "@/components/ui/empty-state";
@@ -8,7 +7,6 @@ import { prisma } from "@/lib/prisma";
 import { getEurUsdRate, type ExchangeRate } from "@/lib/exchange-rates";
 import { formatAdminPayoutAmount } from "@/lib/admin/payout-amount-display";
 import { formatCurrencyPrecise, formatDate, titleCaseEnum } from "@/lib/admin/agency-format";
-import { PayoutRunForm } from "./payout-run-form";
 import { PaymentRequestActions } from "./payment-request-actions";
 
 export const dynamic = "force-dynamic";
@@ -16,7 +14,7 @@ export const dynamic = "force-dynamic";
 const PAID_LIKE_STATUSES = new Set(["sent", "confirmed"]);
 
 export default async function PayoutsPage() {
-  const [paymentRequests, runs, payouts, approvedUnpaid, eurUsdRate] = await Promise.all([
+  const [paymentRequests, runs, payouts, legacyAudit, eurUsdRate] = await Promise.all([
     prisma.payout.findMany({
       where: {
         paymentMethod: { in: ["BANK_TRANSFER", "CRYPTO"] },
@@ -47,16 +45,10 @@ export default async function PayoutsPage() {
       orderBy: { createdAt: "desc" },
       take: 100,
     }),
-    prisma.campaignSubmission.findMany({
-      where: { status: "APPROVED", payoutRunItems: { none: {} } },
-      select: { id: true, earnedAmount: true, creator: { select: { email: true } }, campaign: { select: { name: true } } },
-      take: 100,
-    }),
+    getLegacyFinancialAudit(),
     getEurUsdRate(),
   ]);
 
-  const openRuns = runs.filter((run) => ["DRAFT", "FINALIZED", "PROCESSING"].includes(run.status));
-  const owed = approvedUnpaid.reduce((sum, submission) => sum + Number(submission.earnedAmount), 0);
   const runNet = runs.reduce((sum, run) => sum + Number(run.totalNet), 0);
 
   return (
@@ -64,18 +56,17 @@ export default async function PayoutsPage() {
       <PageHeader
         eyebrow="Financiele ops"
         title="Uitbetalingen"
-        description="Uitbetalingsruns groeperen goedgekeurd onbetaald werk per creator en periode, inclusief bonussen, inhoudingen, CSV-export, bewijs en betaalstatus."
+        description="Handmatige creator betaalverzoeken zijn de enige actieve payout-flow. Legacy runs, settled submissions en wallet-saldi blijven hier alleen zichtbaar voor audit."
         actions={[
-          { label: "Nieuwe uitbetalingsrun", href: "/admin/payouts?new=1", icon: Plus },
           { label: "Export CSV", href: "/api/admin/payout-runs?format=csv", icon: Download },
         ]}
       />
 
       <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
         <StatCard label="Betaalverzoeken" value={String(paymentRequests.length)} detail="Handmatige overboekingen wachten" tone={paymentRequests.length > 0 ? "warning" : "neutral"} />
-        <StatCard label="Open uitbetalingsruns" value={String(openRuns.length)} detail="Concept, afgerond of in verwerking" />
-        <StatCard label="Netto run-totaal" value={formatCurrencyPrecise(runNet)} detail="Alle netto bedragen uit uitbetalingsruns" />
-        <StatCard label="Goedgekeurd onbetaald" value={formatCurrencyPrecise(owed)} detail={`${approvedUnpaid.length} inzendingen nog niet in een run`} tone={approvedUnpaid.length > 0 ? "warning" : "neutral"} />
+        <StatCard label="Legacy runs" value={String(runs.length)} detail={`${formatCurrencyPrecise(runNet)} historische runwaarde`} />
+        <StatCard label="Legacy settled" value={String(legacyAudit.settledSubmissionCount)} detail={`${formatCurrencyPrecise(legacyAudit.settledSubmissionTotal)} via settledAt`} />
+        <StatCard label="Legacy wallets" value={formatCurrencyPrecise(legacyAudit.walletBalanceTotal)} detail={`${legacyAudit.walletCount} oude wallets, ${legacyAudit.payoutRunItemCount} run-items`} />
       </div>
 
       <section>
@@ -171,16 +162,11 @@ export default async function PayoutsPage() {
       </section>
 
       <section>
-        <SectionHeader title="Uitbetalingsrun maken" description="Groepeer goedgekeurd onbetaald werk in een periodegebonden uitbetalingsrun." />
-        <PayoutRunForm />
-      </section>
-
-      <section>
-        <SectionHeader title="Uitbetalingsruns" description="Wekelijkse of periodegebonden gegroepeerde uitbetalingsruns." />
+        <SectionHeader title="Legacy-uitbetalingsruns" description="Read-only audit van oude gegroepeerde uitbetalingsruns. Nieuwe runs zijn uitgeschakeld." />
         <DataTable
           rows={runs}
           rowKey={(run) => run.id}
-          emptyState={<EmptyState title="Nog geen uitbetalingsruns" description="Maak een run van goedgekeurd onbetaald werk. De API kan items per creator en periode groeperen." />}
+          emptyState={<EmptyState title="Geen legacy-runs" description="Payout-runs zijn uitgeschakeld; nieuwe betalingen lopen via handmatige betaalverzoeken." />}
           columns={[
             {
               key: "run",
@@ -204,70 +190,74 @@ export default async function PayoutsPage() {
       </section>
 
       <section>
-        <SectionHeader title="Details" description="Open bronmateriaal of legacy-records alleen wanneer uitbetalingswerk daarom vraagt." />
-        <div className="grid grid-cols-1 gap-3">
-          <div>
-            <SectionHeader title="Goedgekeurd onbetaald werk" description="Bronmateriaal voor de volgende uitbetalingsrun." />
-            <DataTable
-              rows={approvedUnpaid}
-              rowKey={(submission) => submission.id}
-              emptyState={<EmptyState title="Geen goedgekeurde onbetaalde inzendingen" description="Al het goedgekeurde werk zit al in een uitbetalingsrun of er is geen goedgekeurd werk." />}
-              columns={[
-                { key: "campaign", header: "Campagne", cell: (submission) => submission.campaign.name },
-                { key: "creator", header: "Creator", cell: (submission) => submission.creator.email },
-                { key: "amount", header: "Bedrag", align: "right", cell: (submission) => formatCurrencyPrecise(submission.earnedAmount, "EUR") },
-              ]}
-            />
-          </div>
-
-          <div>
-            <SectionHeader title="Legacy-uitbetalingsrecords" description="Bestaande uitbetalingshistorie, betaalbewijs, bestemmingen, timestamps en ID's voor audit en support." />
-            <DataTable
-              rows={payouts}
-              rowKey={(payout) => payout.id}
-              emptyState={<EmptyState title="Nog geen uitbetalingen" description="Creatoruitbetalingsrecords verschijnen hier na verwerking." />}
-              columns={[
-                {
-                  key: "creator",
-                  header: "Creator",
-                  cell: (payout) => (
-                    <div className="min-w-[170px]">
-                      <p className="font-semibold text-neutral-950">
-                        {payout.creatorProfile?.displayName || payout.creatorProfile?.user?.email || "-"}
-                      </p>
-                      <p className="mt-1 text-xs text-neutral-500">
-                        {payout.creatorProfile?.user?.email || "-"}
-                      </p>
-                    </div>
-                  ),
-                },
-                {
-                  key: "amount",
-                  header: "Bedrag",
-                  align: "right",
-                  cell: (payout) => (
-                    <AdminPayoutAmount
-                      amount={payout.amount}
-                      currency={payout.currency}
-                      paymentMethod={payout.paymentMethod}
-                      eurUsdRate={eurUsdRate}
-                    />
-                  ),
-                },
-                { key: "status", header: "Status", cell: (payout) => <Badge variant={payout.status === "confirmed" || payout.status === "sent" ? "verified" : payout.status === "failed" ? "failed" : "pending"}>{titleCaseEnum(payout.status)}</Badge> },
-                { key: "method", header: "Methode", cell: (payout) => payout.paymentMethod || "-" },
-                { key: "evidence", header: "Betaalbewijs", cell: (payout) => <PayoutEvidence payout={payout} /> },
-                { key: "destination", header: "Bestemming", cell: (payout) => <PayoutDestination payout={payout} /> },
-                { key: "timeline", header: "Tijdlijn", cell: (payout) => <PayoutTimeline payout={payout} /> },
-                { key: "reason", header: "Interne reden", cell: (payout) => <LongValue value={payout.rejectionReason} empty="Geen interne reden" /> },
-                { key: "ids", header: "IDs", cell: (payout) => <PayoutIds payout={payout} /> },
-              ]}
-            />
-          </div>
-        </div>
+        <SectionHeader title="Legacy-uitbetalingsrecords" description="Bestaande uitbetalingshistorie, betaalbewijs, bestemmingen, timestamps en ID's voor audit en support." />
+        <DataTable
+          rows={payouts}
+          rowKey={(payout) => payout.id}
+          emptyState={<EmptyState title="Nog geen uitbetalingen" description="Creatoruitbetalingsrecords verschijnen hier na verwerking." />}
+          columns={[
+            {
+              key: "creator",
+              header: "Creator",
+              cell: (payout) => (
+                <div className="min-w-[170px]">
+                  <p className="font-semibold text-neutral-950">
+                    {payout.creatorProfile?.displayName || payout.creatorProfile?.user?.email || "-"}
+                  </p>
+                  <p className="mt-1 text-xs text-neutral-500">
+                    {payout.creatorProfile?.user?.email || "-"}
+                  </p>
+                </div>
+              ),
+            },
+            {
+              key: "amount",
+              header: "Bedrag",
+              align: "right",
+              cell: (payout) => (
+                <AdminPayoutAmount
+                  amount={payout.amount}
+                  currency={payout.currency}
+                  paymentMethod={payout.paymentMethod}
+                  eurUsdRate={eurUsdRate}
+                />
+              ),
+            },
+            { key: "status", header: "Status", cell: (payout) => <Badge variant={payout.status === "confirmed" || payout.status === "sent" ? "verified" : payout.status === "failed" ? "failed" : "pending"}>{titleCaseEnum(payout.status)}</Badge> },
+            { key: "method", header: "Methode", cell: (payout) => payout.paymentMethod || "-" },
+            { key: "evidence", header: "Betaalbewijs", cell: (payout) => <PayoutEvidence payout={payout} /> },
+            { key: "destination", header: "Bestemming", cell: (payout) => <PayoutDestination payout={payout} /> },
+            { key: "timeline", header: "Tijdlijn", cell: (payout) => <PayoutTimeline payout={payout} /> },
+            { key: "reason", header: "Interne reden", cell: (payout) => <LongValue value={payout.rejectionReason} empty="Geen interne reden" /> },
+            { key: "ids", header: "IDs", cell: (payout) => <PayoutIds payout={payout} /> },
+          ]}
+        />
       </section>
     </div>
   );
+}
+
+async function getLegacyFinancialAudit() {
+  const [settledSubmissions, wallets, payoutRunItemCount] = await Promise.all([
+    prisma.campaignSubmission.aggregate({
+      where: { settledAt: { not: null } },
+      _count: { _all: true },
+      _sum: { earnedAmount: true },
+    }),
+    prisma.wallet.aggregate({
+      _count: { _all: true },
+      _sum: { balance: true },
+    }),
+    prisma.payoutRunItem.count(),
+  ]);
+
+  return {
+    settledSubmissionCount: settledSubmissions._count._all,
+    settledSubmissionTotal: settledSubmissions._sum.earnedAmount ?? 0,
+    walletCount: wallets._count._all,
+    walletBalanceTotal: wallets._sum.balance ?? 0,
+    payoutRunItemCount,
+  };
 }
 
 function AdminPayoutAmount({

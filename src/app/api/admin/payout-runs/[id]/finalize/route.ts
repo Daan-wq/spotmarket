@@ -1,30 +1,21 @@
 import { NextResponse } from "next/server";
 import { requireAuth } from "@/lib/auth";
-import { prisma } from "@/lib/prisma";
-import { jsonError, serialize } from "@/lib/admin/agency-api";
+import { jsonError } from "@/lib/admin/agency-api";
+
+const PAYOUT_RUNS_DISABLED_ERROR =
+  "Payout runs are disabled. Use manual creator payout requests.";
 
 export async function POST(
   _req: Request,
   { params }: { params: Promise<{ id: string }> },
 ) {
   try {
-    const { userId } = await requireAuth("admin");
-    const { id } = await params;
-    const run = await prisma.payoutRun.update({
-      where: { id },
-      data: { status: "FINALIZED", finalizedAt: new Date() },
-      include: { items: true },
-    });
-    await prisma.auditLog.create({
-      data: {
-        userId,
-        action: "payoutRun.finalize",
-        entityType: "PayoutRun",
-        entityId: id,
-        metadata: { itemCount: run.items.length },
-      },
-    });
-    return NextResponse.json(serialize(run));
+    await requireAuth("admin");
+    await params;
+    return NextResponse.json(
+      { error: PAYOUT_RUNS_DISABLED_ERROR },
+      { status: 410 },
+    );
   } catch (error) {
     return jsonError(error, "[POST /api/admin/payout-runs/[id]/finalize]");
   }

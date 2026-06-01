@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { requireAuth } from "@/lib/auth";
 import { getCreatorPaymentSummary } from "@/lib/creator-payment-summary";
@@ -38,95 +39,116 @@ export async function POST(request: Request) {
       );
     }
 
-    const user = await prisma.user.findUnique({
-      where: { supabaseId: userId },
-      select: {
-        id: true,
-        creatorProfile: {
-          select: {
-            id: true,
-            payoutIban: true,
-            payoutAccountName: true,
-            payoutSolanaAddress: true,
+    const result = await prisma.$transaction(async (tx) => {
+      const user = await tx.user.findUnique({
+        where: { supabaseId: userId },
+        select: {
+          id: true,
+          creatorProfile: {
+            select: {
+              id: true,
+              payoutIban: true,
+              payoutAccountName: true,
+              payoutSolanaAddress: true,
+            },
           },
         },
-      },
-    });
+      });
 
-    if (!user) {
-      return NextResponse.json({ error: "User not found" }, { status: 404 });
-    }
-    if (!user.creatorProfile) {
-      return NextResponse.json({ error: "Creator profile not found" }, { status: 404 });
-    }
+      if (!user) {
+        return { kind: "error" as const, status: 404, error: "User not found" };
+      }
+      if (!user.creatorProfile) {
+        return { kind: "error" as const, status: 404, error: "Creator profile not found" };
+      }
 
-    const { id: creatorProfileId, payoutIban, payoutAccountName, payoutSolanaAddress } =
-      user.creatorProfile;
-    if (method === "BANK_TRANSFER" && (!payoutIban || !payoutAccountName)) {
+      const { id: creatorProfileId, payoutIban, payoutAccountName, payoutSolanaAddress } =
+        user.creatorProfile;
+      if (method === "BANK_TRANSFER" && (!payoutIban || !payoutAccountName)) {
+        return {
+          kind: "error" as const,
+          status: 400,
+          error: "Add your IBAN and account holder name before requesting a payout.",
+        };
+      }
+      if (method === "USDC_SOLANA" && !payoutSolanaAddress) {
+        return {
+          kind: "error" as const,
+          status: 400,
+          error: "Add your Solana wallet address before requesting a USDC payout.",
+        };
+      }
+
+      const existingOpenRequest = await tx.payout.findFirst({
+        where: {
+          creatorProfileId,
+          status: { in: [...OPEN_PAYOUT_STATUSES] },
+          payoutRunId: null,
+          payoutRunItemId: null,
+          requestedAt: { not: null },
+        },
+        select: { id: true },
+      });
+
+      if (existingOpenRequest) {
+        return {
+          kind: "error" as const,
+          status: 409,
+          error: "You already have a payout request in progress.",
+        };
+      }
+
+      const summary = await getCreatorPaymentSummary(user.id, creatorProfileId, tx);
+
+      if (summary.availableBalance < MIN_WITHDRAWAL_EUR) {
+        return {
+          kind: "error" as const,
+          status: 400,
+          error: `Minimum withdrawal amount is EUR ${MIN_WITHDRAWAL_EUR}`,
+        };
+      }
+
+      if (amount > roundToCents(summary.availableBalance)) {
+        return {
+          kind: "error" as const,
+          status: 400,
+          error: "Withdrawal amount exceeds available balance.",
+        };
+      }
+
+      const now = new Date();
+      const payout = await tx.payout.create({
+        data: {
+          creatorProfileId,
+          amount,
+          currency: "EUR",
+          status: "pending",
+          type: "final",
+          paymentMethod: method === "USDC_SOLANA" ? "CRYPTO" : "BANK_TRANSFER",
+          ...(method === "BANK_TRANSFER"
+            ? {
+                bankIbanSnapshot: payoutIban,
+                bankAccountNameSnapshot: payoutAccountName,
+              }
+            : {
+                walletAddress: payoutSolanaAddress,
+              }),
+          requestedAt: now,
+          applicationIds: [],
+        },
+      });
+
+      return { kind: "created" as const, payout };
+    }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
+
+    if (result.kind === "error") {
       return NextResponse.json(
-        { error: "Add your IBAN and account holder name before requesting a payout." },
-        { status: 400 },
+        { error: result.error },
+        { status: result.status },
       );
     }
-    if (method === "USDC_SOLANA" && !payoutSolanaAddress) {
-      return NextResponse.json(
-        { error: "Add your Solana wallet address before requesting a USDC payout." },
-        { status: 400 },
-      );
-    }
 
-    const existingOpenRequest = await prisma.payout.findFirst({
-      where: {
-        creatorProfileId,
-        status: { in: [...OPEN_PAYOUT_STATUSES] },
-      },
-      select: { id: true },
-    });
-
-    if (existingOpenRequest) {
-      return NextResponse.json(
-        { error: "You already have a payout request in progress." },
-        { status: 400 },
-      );
-    }
-
-    const summary = await getCreatorPaymentSummary(user.id, creatorProfileId);
-
-    if (summary.availableBalance < MIN_WITHDRAWAL_EUR) {
-      return NextResponse.json(
-        { error: `Minimum withdrawal amount is EUR ${MIN_WITHDRAWAL_EUR}` },
-        { status: 400 },
-      );
-    }
-
-    if (amount > roundToCents(summary.availableBalance)) {
-      return NextResponse.json(
-        { error: "Withdrawal amount exceeds available balance." },
-        { status: 400 },
-      );
-    }
-
-    const now = new Date();
-    const payout = await prisma.payout.create({
-      data: {
-        creatorProfileId,
-        amount,
-        currency: "EUR",
-        status: "pending",
-        type: "final",
-        paymentMethod: method === "USDC_SOLANA" ? "CRYPTO" : "BANK_TRANSFER",
-        ...(method === "BANK_TRANSFER"
-          ? {
-              bankIbanSnapshot: payoutIban,
-              bankAccountNameSnapshot: payoutAccountName,
-            }
-          : {
-              walletAddress: payoutSolanaAddress,
-            }),
-        requestedAt: now,
-        applicationIds: [],
-      },
-    });
+    const payout = result.payout;
 
     return NextResponse.json(
       {
@@ -146,6 +168,12 @@ export async function POST(request: Request) {
       { status: 201 },
     );
   } catch (err: unknown) {
+    if (isPayoutRequestConflict(err)) {
+      return NextResponse.json(
+        { error: "You already have a payout request in progress." },
+        { status: 409 },
+      );
+    }
     console.error("[wallet withdraw]", err);
     return NextResponse.json(
       { error: err instanceof Error ? err.message : "Internal error" },
@@ -183,4 +211,10 @@ function parseWithdrawalMethod(value: unknown):
 
 function roundToCents(value: number) {
   return Math.round(value * 100) / 100;
+}
+
+function isPayoutRequestConflict(err: unknown) {
+  if (!err || typeof err !== "object" || !("code" in err)) return false;
+  const code = (err as { code?: unknown }).code;
+  return code === "P2002" || code === "P2034";
 }

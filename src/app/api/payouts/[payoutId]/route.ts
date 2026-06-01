@@ -37,6 +37,10 @@ export async function PATCH(
   const bankReference = next.bankReference || payout.bankReference;
   const txHash = next.txHash || payout.txHash;
   const rejectionReason = next.rejectionReason;
+  const transitionError = payoutTransitionError(payout.status, next.status);
+  if (transitionError) {
+    return NextResponse.json({ error: transitionError }, { status: 409 });
+  }
 
   if (
     payout.paymentMethod === "BANK_TRANSFER" &&
@@ -94,4 +98,20 @@ export async function PATCH(
   });
 
   return NextResponse.json(updated);
+}
+
+function payoutTransitionError(currentStatus: string, nextStatus: string) {
+  if (currentStatus === "confirmed" && nextStatus !== "confirmed") {
+    return "Confirmed payouts are terminal. Create a financial adjustment instead.";
+  }
+  if (currentStatus === "sent" && nextStatus !== "confirmed" && nextStatus !== "sent") {
+    return "Sent payouts can only be confirmed. Create a financial adjustment instead.";
+  }
+  if (
+    (currentStatus === "failed" || currentStatus === "disputed") &&
+    nextStatus !== currentStatus
+  ) {
+    return "Failed or disputed payouts cannot be reopened. Create a financial adjustment instead.";
+  }
+  return null;
 }

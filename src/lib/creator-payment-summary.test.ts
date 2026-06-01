@@ -88,6 +88,18 @@ describe("buildCreatorPaymentSummary", () => {
     expect(summary.availableBalance).toBe(50);
   });
 
+  it("keeps the post total visible while only later earnings delta becomes available after manual payout", () => {
+    const summary = buildCreatorPaymentSummary({
+      submissions: [submission({ earnedAmount: 80, eligibleViews: 200_000 })],
+      payouts: [payout({ amount: 40, status: "confirmed" })],
+    });
+
+    expect(summary.totalEarned).toBe(80);
+    expect(summary.profit).toBe(40);
+    expect(summary.availableBalance).toBe(40);
+    expect(summary.earningsByCampaign[0]?.totalEarned).toBe(80);
+  });
+
   it("ignores failed payouts so rejected requests return to available balance", () => {
     const summary = buildCreatorPaymentSummary({
       submissions: [submission({ earnedAmount: 100 })],

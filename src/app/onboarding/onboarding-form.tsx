@@ -283,7 +283,7 @@ export function OnboardingForm() {
           <h2 className="text-xl font-bold text-gray-900">{t("completeTitle")}</h2>
           <p className="mt-1.5 text-sm text-gray-600 max-w-sm mx-auto">
             {t("completeBody")}
-          </p>
+      </p>
 
           <div className="mt-6 grid gap-2.5">
             <Link

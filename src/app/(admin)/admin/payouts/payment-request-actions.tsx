@@ -48,10 +48,6 @@ export function PaymentRequestActions({
       toast.error("Voeg een interne afwijsreden toe voordat je afwijst.");
       return;
     }
-    if (status === "failed" && !rejectionReason.trim()) {
-      toast.error("Add an internal rejection reason before rejecting.");
-      return;
-    }
 
     startTransition(async () => {
       try {

@@ -21,6 +21,9 @@ interface MobileCreatorChromeProps {
 export const MOBILE_CREATOR_TOP_CHROME_CLASS =
   "sticky top-0 z-40 border-b border-neutral-200 bg-white/95 px-3 py-3 backdrop-blur lg:hidden";
 
+export const MOBILE_CREATOR_BOTTOM_NAV_CLASS =
+  "fixed inset-x-3 bottom-[calc(0.75rem+env(safe-area-inset-bottom))] z-40 mx-auto grid max-w-[520px] grid-cols-4 gap-1 rounded-2xl border border-neutral-200 bg-white p-1.5 shadow-[0_16px_40px_rgba(0,0,0,0.16)] lg:hidden";
+
 export function MobileCreatorChrome({
   identitySlot,
   balanceSlot,
@@ -132,8 +135,9 @@ export function MobileCreatorChrome({
       ) : null}
 
       <nav
+        data-testid="creator-bottom-nav"
         aria-label={t("menu")}
-        className="fixed inset-x-3 bottom-3 z-40 mx-auto grid max-w-[520px] grid-cols-4 gap-1 rounded-2xl border border-neutral-200 bg-white p-1.5 shadow-[0_16px_40px_rgba(0,0,0,0.16)] lg:hidden"
+        className={MOBILE_CREATOR_BOTTOM_NAV_CLASS}
       >
         {CREATOR_BOTTOM_NAV_ITEMS.map((item) => {
           const Icon = item.icon;
