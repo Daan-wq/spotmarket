@@ -53,15 +53,16 @@ describe("email app URL", () => {
     const React = await import("react");
     const { render } = await import("@react-email/components");
     const { EmailShell, styles } = await import("./_layout");
+    const Shell = EmailShell as React.ComponentType<{ preview: string; heading: string }>;
 
     const html = await render(
       React.createElement(
-        EmailShell,
+        Shell,
         {
           preview: "Preview text",
           heading: "Mail heading",
-          children: React.createElement("p", { style: styles.p }, "Mail body"),
         },
+        React.createElement("p", { style: styles.p }, "Mail body"),
       ),
     );
 

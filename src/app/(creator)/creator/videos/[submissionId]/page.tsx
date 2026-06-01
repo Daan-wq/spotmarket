@@ -96,6 +96,7 @@ export default async function VideoDetailPage({
     FLAGGED: { bg: "rgba(139,92,246,0.1)", color: "#8B5CF6" },
     REJECTED: { bg: "var(--error-bg)", color: "var(--error-text)" },
     APPROVED: { bg: "var(--success-bg)", color: "var(--success-text)" },
+    BIO_FAILED: { bg: "var(--error-bg)", color: "var(--error-text)" },
   };
   const statusStyle = statusStyles[submission.status] ?? statusStyles.PENDING;
 

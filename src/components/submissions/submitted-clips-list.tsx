@@ -69,14 +69,19 @@ export function SubmittedClipsList({
   const [queue, setQueue] = useState<QueueKey>("ALL");
   const [sort, setSort] = useState<SortKey>("newest");
 
-  const issueCount = (statusCounts.FLAGGED ?? 0) + (statusCounts.REJECTED ?? 0);
+  const issueCount =
+    (statusCounts.FLAGGED ?? 0) +
+    (statusCounts.REJECTED ?? 0) +
+    (statusCounts.BIO_FAILED ?? 0);
   const pendingCount = statusCounts.PENDING ?? 0;
   const approvedCount = statusCounts.APPROVED ?? 0;
 
   const filtered = useMemo(() => {
     const base = videos.filter((video) => {
       if (queue === "ALL") return true;
-      if (queue === "ISSUES") return video.status === "FLAGGED" || video.status === "REJECTED";
+      if (queue === "ISSUES") {
+        return video.status === "FLAGGED" || video.status === "REJECTED" || video.status === "BIO_FAILED";
+      }
       return video.status === queue;
     });
     const sorted = [...base];
@@ -495,6 +500,7 @@ function SubmissionStatusBadge({ status }: { status: string }) {
     FLAGGED: { bg: "#f5f3ff", color: "#7c3aed", label: statusT("FLAGGED") },
     REJECTED: { bg: "#fef2f2", color: "#dc2626", label: statusT("REJECTED") },
     APPROVED: { bg: "#ecfdf5", color: "#059669", label: statusT("APPROVED") },
+    BIO_FAILED: { bg: "#fef2f2", color: "#b91c1c", label: statusT("BIO_FAILED") },
   };
   const s = styles[status] ?? styles.PENDING;
   return (

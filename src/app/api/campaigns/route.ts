@@ -25,6 +25,7 @@ const createCampaignSchema = z.object({
   minEngagementRate: z.number().min(0).max(100).optional().default(0),
   bioRequirement: z.string().max(500).optional(),
   linkInBioRequired: z.string().max(500).optional(),
+  bioKeywords: z.array(z.string().trim().min(1).max(200)).optional().default([]),
 
   // Section 3 - budget/goals via per-1K rate
   totalBudget: z.number().positive(),
@@ -58,6 +59,13 @@ const createCampaignSchema = z.object({
       code: "custom",
       path: ["maximumPaidViews"],
       message: "Maximum paid views must be blank or greater than or equal to minimum paid views",
+    });
+  }
+  if (data.requiresApproval && data.bioKeywords.length === 0) {
+    ctx.addIssue({
+      code: "custom",
+      path: ["bioKeywords"],
+      message: "Bio keywords are required when approval is enabled",
     });
   }
 });
@@ -186,6 +194,7 @@ export async function POST(req: Request) {
         guidelinesUrl: d.guidelinesUrl,
         bioRequirement: d.bioRequirement,
         linkInBioRequired: d.linkInBioRequired,
+        bioKeywords: d.bioKeywords,
         createdByUserId: user.id,
       },
     });

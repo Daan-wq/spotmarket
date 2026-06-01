@@ -36,6 +36,7 @@ import {
 } from "@/lib/campaign-submission-state";
 import { buildCreatorCampaignConfigSections } from "@/lib/creator-campaign-display";
 import { buildCampaignLeaderboardRows } from "@/lib/campaign-leaderboard";
+import { getCreatorCampaignAccountOptions } from "@/lib/campaign-bio-gate";
 import {
   SubmittedClipsList,
   type SubmittedClipData,
@@ -113,7 +114,19 @@ export default async function CampaignDetailPage({
 
   const existingApplication = await prisma.campaignApplication.findFirst({
     where: { campaignId, creatorProfileId: profile.id },
+    include: {
+      connections: {
+        where: { status: "VERIFIED" },
+        select: { connectionType: true, connectionId: true },
+      },
+    },
   });
+  const applicationCanSubmit =
+    !!existingApplication &&
+    ["active", "approved"].includes(existingApplication.status);
+  const bioGateAccounts = campaign.requiresApproval
+    ? await getCreatorCampaignAccountOptions(profile.id, campaign.platforms)
+    : [];
 
   const mySubmissions = await prisma.campaignSubmission.findMany({
     where: { campaignId, creatorId: user.id },
@@ -197,7 +210,7 @@ export default async function CampaignDetailPage({
   });
   const canApply =
     eligibility.eligible &&
-    !existingApplication &&
+    !applicationCanSubmit &&
     hasDiscord &&
     !isClosedForSubmissions;
   const configSections = buildCreatorCampaignConfigSections(
@@ -300,6 +313,7 @@ export default async function CampaignDetailPage({
     PENDING: videos.filter((v) => v.status === "PENDING").length,
     FLAGGED: videos.filter((v) => v.status === "FLAGGED").length,
     REJECTED: videos.filter((v) => v.status === "REJECTED").length,
+    BIO_FAILED: videos.filter((v) => v.status === "BIO_FAILED").length,
     APPROVED: videos.filter((v) => v.status === "APPROVED").length,
     ALL: videos.length,
   };
@@ -367,8 +381,15 @@ export default async function CampaignDetailPage({
         campaignId={campaignId}
         campaignName={campaign.name}
         canApply={canApply}
-        hasApplication={!!existingApplication}
-        applicationId={existingApplication?.id}
+        hasApplication={applicationCanSubmit}
+        applicationId={applicationCanSubmit ? existingApplication?.id : undefined}
+        requiresBioGate={campaign.requiresApproval}
+        bioRequirement={campaign.bioRequirement}
+        bioKeywords={campaign.bioKeywords}
+        bioGateAccounts={bioGateAccounts}
+        verifiedBioGateAccountKeys={(existingApplication?.connections ?? []).map(
+          (connection) => `${connection.connectionType}:${connection.connectionId}`,
+        )}
         hasRequiredPlatform={eligibility.eligible}
         missingPlatformLabels={eligibility.missingPlatformLabels}
         hasDiscord={hasDiscord}
@@ -457,7 +478,7 @@ export default async function CampaignDetailPage({
               title: t("noClipsTitle"),
               description: t("noClipsDescription"),
               primaryCta:
-                existingApplication?.id && !isClosedForSubmissions
+                applicationCanSubmit && existingApplication?.id && !isClosedForSubmissions
                   ? {
                       label: sharedT("actions.submitClip"),
                       href: `/creator/applications/${existingApplication.id}/submit`,

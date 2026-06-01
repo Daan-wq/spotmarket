@@ -916,15 +916,15 @@ function ReportPreview({
 
         {enabled("quality") ? (
           <ReportPage>
-            <ReportHeading icon={<ShieldCheck className="h-5 w-5" />} kicker="Client-safe wording" title="Quality & Compliance Review" />
+            <ReportHeading icon={<ShieldCheck className="h-5 w-5" />} kicker="Klantveilige formulering" title="Kwaliteit & compliance review" />
             <TemplateVariableGrid
               rows={[
-                ["Traffic Quality Status", "computed.trafficQualityStatus"],
-                ["Open signals", "quality.openSignals"],
-                ["Critical signals", "quality.criticalSignals"],
-                ["Resolved signals", "quality.resolvedSignals"],
-                ["Signal counts", "quality.signalCounts"],
-                ["QC decisions", "quality.qcDecisionCounts"],
+                ["Status verkeerskwaliteit", "computed.trafficQualityStatus"],
+                ["Open signalen", "quality.openSignals"],
+                ["Kritieke signalen", "quality.criticalSignals"],
+                ["Opgeloste signalen", "quality.resolvedSignals"],
+                ["Signaalaantallen", "quality.signalCounts"],
+                ["QC-beslissingen", "quality.qcDecisionCounts"],
               ]}
             />
             <TemplateParagraph>
@@ -969,13 +969,13 @@ function ReportPreview({
                   <>Maak 3 concrete hook-angles voor de volgende briefing.</>,
                   <>Gebruik winnende topclips als voorbeeldmateriaal in de creator brief.</>,
                   <>Stuur budget op basis van CPM, approved views en overdelivery.</>,
-                  <>Houd quality review actief op brand placement, duplicate content en engagementratio's.</>,
+                  <>Houd quality review actief op brand placement, duplicate content en engagementratio&apos;s.</>,
                 ]}
               />
             </ReportPage>
 
             <ReportPage>
-              <ReportHeading icon={<FileText className="h-5 w-5" />} kicker="Admin appendix" title="Appendix / Raw Data" />
+              <ReportHeading icon={<FileText className="h-5 w-5" />} kicker="Adminbijlage" title="Bijlage / ruwe data" />
               <TemplateVariableGrid
                 rows={[
                   ["Campagne ID", "campaign.id"],

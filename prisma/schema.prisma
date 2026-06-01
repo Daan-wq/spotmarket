@@ -525,6 +525,7 @@ model Campaign {
   maxSlots         Int?
   claimedSlots     Int     @default(0)
   requiresApproval Boolean @default(false)
+  bioKeywords      String[] @default([])
 
   // Brief fields
   targetCountry         String?
@@ -703,6 +704,7 @@ model CampaignApplication {
 
   submissions CampaignSubmission[]
   payouts     Payout[]
+  connections CampaignApplicationConnection[]
 
   @@index([status])
   @@index([campaignId])
@@ -721,6 +723,31 @@ enum ApplicationStatus {
 enum ClaimType {
   INSTANT
   APPLICATION
+}
+
+model CampaignApplicationConnection {
+  id              String                              @id @default(cuid())
+  applicationId   String
+  application     CampaignApplication                 @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  connectionType  ConnectionType
+  connectionId    String
+  status          CampaignApplicationConnectionStatus @default(VERIFIED)
+  lastCheckedAt   DateTime?
+  verifiedAt      DateTime?
+  missingKeywords String[]                            @default([])
+  failureReason   String?
+  createdAt       DateTime                            @default(now())
+  updatedAt       DateTime                            @updatedAt
+
+  @@unique([applicationId, connectionType, connectionId])
+  @@index([connectionType, connectionId])
+  @@index([status])
+}
+
+enum CampaignApplicationConnectionStatus {
+  VERIFIED
+  FAILED
+  SKIPPED
 }
 
 // ─────────────────────────────────────────
@@ -754,6 +781,9 @@ model CampaignSubmission {
   baselineViews Int?
   eligibleViews Int?
   status        SubmissionStatus @default(PENDING)
+  bioCheckStatus        BioCheckStatus @default(NOT_REQUIRED)
+  bioCheckFailureReason String?
+  bioCheckedAt          DateTime?
 
   // Source tracking for bio-verify fallback flow
   sourcePlatform         BioPlatform?
@@ -810,6 +840,14 @@ enum SubmissionStatus {
   NEEDS_REVISION
   REJECTED
   FLAGGED
+  BIO_FAILED
+}
+
+enum BioCheckStatus {
+  NOT_REQUIRED
+  PENDING
+  PASSED
+  FAILED
 }
 
 enum SubmissionMethod {

@@ -360,7 +360,8 @@
           "APPROVED": "Approved",
           "NEEDS_REVISION": "Needs revision",
           "REJECTED": "Rejected",
-          "FLAGGED": "Flagged"
+          "FLAGGED": "Flagged",
+          "BIO_FAILED": "Bio failed"
         },
         "operatingArea": {
           "live": "Live",
@@ -849,7 +850,8 @@
           "PENDING": "Pending",
           "FLAGGED": "Flagged",
           "REJECTED": "Rejected",
-          "APPROVED": "Approved"
+          "APPROVED": "Approved",
+          "BIO_FAILED": "Bio failed"
         },
         "campaign": {
           "active": "Active",
@@ -1081,7 +1083,20 @@
         "unexpectedError": "An error occurred",
         "alreadyApplied": "You have already joined this campaign.",
         "profileMissing": "Creator profile not found.",
-        "notFound": "Campaign not found."
+        "notFound": "Campaign not found.",
+        "bioGateTitle": "Select campaign accounts",
+        "bioGateDescription": "Select the page or account you will use for this campaign. Every selected page must have the required bio before you can join.",
+        "requiredBio": "Required bio",
+        "selectBioAccount": "Select at least one page or account for this campaign.",
+        "noBioAccounts": "No connected accounts match this campaign. Connect the right platform first.",
+        "checkingBio": "Checking bio...",
+        "verifyBio": "Check bio and join",
+        "skipFailed": "Skip failed pages",
+        "bioAccountFailed": "{page} does not meet the bio requirements. Change the bio, refresh this page, and try again.",
+        "bioAccountVerified": "Bio verified.",
+        "missingKeywords": "Missing: {keywords}.",
+        "bioGateNotConfigured": "Campaign bio gate is not configured.",
+        "bioVerificationFailed": "One or more selected pages do not meet the bio requirements."
       },
       "contact": {
         "title": "Campaign contact",
@@ -1612,8 +1627,9 @@
         "to": "to",
         "reset": "Reset",
         "containsRequiredHashtags": "Contains required hashtags",
-        "submitted": "Submitted",
-        "loadError": "Could not load your {platform} posts. Please try again.",
+      "submitted": "Submitted",
+      "submittedBackgroundCheck": "Clip submitted. We are checking the campaign bio in the background.",
+      "loadError": "Could not load your {platform} posts. Please try again.",
         "submissionFailed": "Submission failed. Please try again.",
         "submittedSuccess": "{submitted} of {total} posts submitted successfully.",
         "campaignEnded": "This campaign has ended and no longer accepts submissions.",

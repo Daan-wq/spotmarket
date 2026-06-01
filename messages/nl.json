@@ -360,7 +360,8 @@
           "APPROVED": "Goedgekeurd",
           "NEEDS_REVISION": "Aanpassing nodig",
           "REJECTED": "Afgewezen",
-          "FLAGGED": "Gemarkeerd"
+          "FLAGGED": "Gemarkeerd",
+          "BIO_FAILED": "Bio mislukt"
         },
         "operatingArea": {
           "live": "Live",
@@ -849,7 +850,8 @@
           "PENDING": "In behandeling",
           "FLAGGED": "Gemarkeerd",
           "REJECTED": "Afgewezen",
-          "APPROVED": "Goedgekeurd"
+          "APPROVED": "Goedgekeurd",
+          "BIO_FAILED": "Bio mislukt"
         },
         "campaign": {
           "active": "Actief",
@@ -1081,7 +1083,20 @@
         "unexpectedError": "Er is iets misgegaan",
         "alreadyApplied": "Je hebt deze campagne al gejoind.",
         "profileMissing": "Creatorprofiel niet gevonden.",
-        "notFound": "Campagne niet gevonden."
+        "notFound": "Campagne niet gevonden.",
+        "bioGateTitle": "Selecteer campagnepagina's",
+        "bioGateDescription": "Selecteer de pagina of het account dat je voor deze campagne gebruikt. Elke geselecteerde pagina moet de juiste bio hebben voordat je kunt joinen.",
+        "requiredBio": "Vereiste bio",
+        "selectBioAccount": "Selecteer minimaal een pagina of account voor deze campagne.",
+        "noBioAccounts": "Geen gekoppelde accounts passen bij deze campagne. Koppel eerst het juiste platform.",
+        "checkingBio": "Bio controleren...",
+        "verifyBio": "Bio controleren en joinen",
+        "skipFailed": "Mislukte pagina's overslaan",
+        "bioAccountFailed": "{page} voldoet niet aan de bio eisen. Verander de bio, herlaad deze pagina en probeer opnieuw.",
+        "bioAccountVerified": "Bio geverifieerd.",
+        "missingKeywords": "Mist: {keywords}.",
+        "bioGateNotConfigured": "De bio-gate van deze campagne is nog niet ingesteld.",
+        "bioVerificationFailed": "Een of meer geselecteerde pagina's voldoen niet aan de bio eisen."
       },
       "contact": {
         "title": "Campagnecontact",
@@ -1612,8 +1627,9 @@
         "to": "tot",
         "reset": "Resetten",
         "containsRequiredHashtags": "Bevat vereiste hashtags",
-        "submitted": "Ingediend",
-        "loadError": "Je {platform}-posts konden niet worden geladen. Probeer het opnieuw.",
+      "submitted": "Ingediend",
+      "submittedBackgroundCheck": "Clip ingediend. We controleren de campagnebio op de achtergrond.",
+      "loadError": "Je {platform}-posts konden niet worden geladen. Probeer het opnieuw.",
         "submissionFailed": "Indienen mislukt. Probeer het opnieuw.",
         "submittedSuccess": "{submitted} van {total} posts succesvol ingediend.",
         "campaignEnded": "Deze campagne is afgelopen en accepteert geen inzendingen meer.",

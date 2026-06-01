@@ -102,6 +102,7 @@ export interface TikTokProfile {
   username: string;
   displayName: string;
   avatarUrl: string | null;
+  bioDescription: string | null;
   followerCount: number | null;
   followingCount: number | null;
   likesCount: number | null;
@@ -130,7 +131,7 @@ export interface TikTokVideo {
 export async function fetchTikTokProfile(
   accessToken: string
 ): Promise<TikTokProfile> {
-  const fields = "open_id,union_id,avatar_url,display_name,username,follower_count,following_count,likes_count,video_count,is_verified";
+  const fields = "open_id,union_id,avatar_url,display_name,username,bio_description,follower_count,following_count,likes_count,video_count,is_verified";
   const res = await fetch(`${TIKTOK_API_BASE}/user/info/?fields=${fields}`, {
     headers: { Authorization: `Bearer ${accessToken}` },
   });
@@ -153,6 +154,7 @@ export async function fetchTikTokProfile(
     username: user.username ?? user.display_name ?? user.open_id,
     displayName: user.display_name ?? user.username ?? user.open_id,
     avatarUrl: user.avatar_url ?? null,
+    bioDescription: user.bio_description ?? null,
     followerCount: user.follower_count ?? null,
     followingCount: user.following_count ?? null,
     likesCount: user.likes_count ?? null,

@@ -6,6 +6,7 @@ import { CampaignImageUploadField } from "@/components/campaigns/campaign-image-
 import {
   buildCampaignEditPayload,
   cpvToRatePerK,
+  parseLines,
   type CampaignEditFormState,
 } from "@/lib/campaign-edit";
 
@@ -119,6 +120,7 @@ interface CampaignData {
   minEngagementRate?: NumericValue;
   bioRequirement?: string | null;
   linkInBioRequired?: string | null;
+  bioKeywords?: string[];
   totalBudget?: NumericValue;
   goalViews?: NumericValue;
   minimumPaidViews?: NumericValue;
@@ -191,6 +193,7 @@ export function CampaignEditForm({
     minEngagementRate: toInputValue(campaign.minEngagementRate),
     bioRequirement: campaign.bioRequirement ?? "",
     linkInBioRequired: campaign.linkInBioRequired ?? "",
+    bioKeywordsText: (campaign.bioKeywords ?? []).join("\n"),
     totalBudget: toInputValue(campaign.totalBudget),
     goalViews: toInputValue(campaign.goalViews),
     minimumPaidViews: toInputValue(campaign.minimumPaidViews),
@@ -606,6 +609,16 @@ export function CampaignEditForm({
               />
             </Field>
           </div>
+
+          <Field label="Bio keywords for automatic check">
+            <textarea
+              className={controlClass}
+              style={{ ...inputStyle, minHeight: 96, resize: "vertical" }}
+              value={form.bioKeywordsText}
+              onChange={(event) => setField("bioKeywordsText", event.target.value)}
+              placeholder="One required keyword or URL per line"
+            />
+          </Field>
         </Section>
 
         <Section title="Budget, Payout, Timeline">
@@ -790,6 +803,9 @@ function validateForm(state: CampaignEditFormState): string | null {
   if (!state.name.trim()) return "Campaign name is required";
   if (state.platforms.length === 0) return "Select at least one platform";
   if (!state.deadline) return "Deadline is required";
+  if (state.requiresApproval && parseLines(state.bioKeywordsText).length === 0) {
+    return "Bio keywords are required when approval is enabled";
+  }
 
   const positiveChecks: Array<[string, string]> = [
     ["Total budget", state.totalBudget],
