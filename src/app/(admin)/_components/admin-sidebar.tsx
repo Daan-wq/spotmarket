@@ -52,7 +52,7 @@ const NAV: Array<{ labelKey: string; items: NavItem[] }> = [
       { href: "/admin/discord", labelKey: "discord", icon: Send },
       { href: "/admin/recruitment", labelKey: "recruitment", icon: Sparkles, hiddenFromSidebar: true },
       { href: "/admin/brands", labelKey: "brands", icon: FileText },
-      { href: "/admin/brand-portals", labelKey: "brandPortals", icon: ShieldCheck },
+      { href: "/admin/client-access", labelKey: "brandPortals", icon: ShieldCheck },
       { href: "/admin/onboarding", labelKey: "onboarding", icon: ListChecks, hiddenFromSidebar: true },
     ],
   },

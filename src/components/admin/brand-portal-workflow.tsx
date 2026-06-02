@@ -59,7 +59,7 @@ export function BrandPortalWorkflow({ brands, compact = false }: BrandPortalWork
     setPendingKey(null);
 
     if (!response.ok) {
-      setError(typeof body.error === "string" ? body.error : "Brandpagina aanmaken mislukt.");
+      setError(typeof body.error === "string" ? body.error : "/brand toegang aanmaken mislukt.");
       return;
     }
 
@@ -137,7 +137,7 @@ export function BrandPortalWorkflow({ brands, compact = false }: BrandPortalWork
       <EmptyState
         icon={<FileText className="h-5 w-5" />}
         title="Nog geen merken"
-        description="Zet eerst een CRM-lead om naar een merk. Daarna kun je hier de brandpagina aanmaken."
+        description="Zet eerst een CRM-lead om naar een merk. Daarna kun je hier toegang tot /brand aanmaken."
       />
     );
   }
@@ -175,11 +175,11 @@ export function BrandPortalWorkflow({ brands, compact = false }: BrandPortalWork
             <div className="mt-5 grid gap-4 lg:grid-cols-3">
               <section className="rounded-lg border border-neutral-100 bg-neutral-50 px-4 py-4">
                 <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-neutral-400">Stap 1</p>
-                <h4 className="mt-2 text-sm font-semibold text-neutral-950">Brandpagina</h4>
+                <h4 className="mt-2 text-sm font-semibold text-neutral-950">/brand toegang</h4>
                 <p className="mt-1 min-h-[40px] text-sm text-neutral-500">
                   {brand.portalEnabled
                     ? `Aangemaakt${brand.portalCreatedAt ? ` op ${formatDate(brand.portalCreatedAt, "nl")}` : ""}.`
-                    : "Maak eerst de klantomgeving aan voor dit merk."}
+                    : "Maak eerst toegang tot /brand aan voor dit merk."}
                 </p>
                 <Button
                   type="button"
@@ -191,13 +191,13 @@ export function BrandPortalWorkflow({ brands, compact = false }: BrandPortalWork
                   disabled={brand.portalEnabled}
                 >
                   {brand.portalEnabled ? <CheckCircle2 className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
-                  {brand.portalEnabled ? "Aangemaakt" : "Creëer brandpagina"}
+                  {brand.portalEnabled ? "Aangemaakt" : "Maak /brand aan"}
                 </Button>
               </section>
 
               <section className="rounded-lg border border-neutral-100 bg-neutral-50 px-4 py-4">
                 <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-neutral-400">Stap 2</p>
-                <h4 className="mt-2 text-sm font-semibold text-neutral-950">Invite voor brandpagina</h4>
+                <h4 className="mt-2 text-sm font-semibold text-neutral-950">Invite naar /brand</h4>
                 <form
                   className="mt-3 space-y-2"
                   onSubmit={async (event) => {
@@ -230,7 +230,7 @@ export function BrandPortalWorkflow({ brands, compact = false }: BrandPortalWork
                     disabled={!brand.portalEnabled}
                   >
                     <Mail className="h-4 w-4" />
-                    Invite voor brandpagina
+                    Invite naar /brand
                   </Button>
                 </form>
               </section>
@@ -247,11 +247,11 @@ export function BrandPortalWorkflow({ brands, compact = false }: BrandPortalWork
                 </p>
                 {brand.latestVisibleReportId ? (
                   <Link
-                    href={`/brand/reports/${brand.latestVisibleReportId}`}
+                    href="/brand"
                     className="mt-3 inline-flex h-9 items-center justify-center gap-2 rounded-lg bg-neutral-950 px-3 text-sm font-semibold text-white hover:bg-neutral-800"
                   >
                     <ExternalLink className="h-4 w-4" />
-                    Bekijk als brand
+                    Open /brand
                   </Link>
                 ) : (
                   <Link
@@ -268,7 +268,7 @@ export function BrandPortalWorkflow({ brands, compact = false }: BrandPortalWork
             <div className="mt-5 space-y-2">
               {brand.contacts.length === 0 ? (
                 <p className="rounded-lg border border-dashed border-neutral-200 px-3 py-3 text-sm text-neutral-500">
-                  Nog geen brandcontacten. Na stap 2 krijgt het contact een mail of invite-link om zelf in te loggen.
+                  Nog geen brandcontacten. Na stap 2 krijgt het contact een mail of invite-link om zelf op /brand in te loggen.
                 </p>
               ) : (
                 brand.contacts.map((contact) => (
@@ -338,7 +338,7 @@ export function BrandPortalWorkflow({ brands, compact = false }: BrandPortalWork
 }
 
 function PortalBadge({ enabled }: { enabled: boolean }) {
-  return enabled ? <Badge variant="verified">Brandpagina actief</Badge> : <Badge variant="pending">Nog niet aangemaakt</Badge>;
+  return enabled ? <Badge variant="verified">/brand actief</Badge> : <Badge variant="pending">Nog niet aangemaakt</Badge>;
 }
 
 function ContactStatusBadge({ status }: { status: BrandPortalWorkflowContact["status"] }) {

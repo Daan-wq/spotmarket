@@ -334,10 +334,10 @@ export default async function CampaignHealthPage({ params }: PageProps) {
       <section className="mb-6">
         <div className="mb-3">
           <h2 className="text-base font-semibold" style={{ color: "var(--text-primary)" }}>
-            Brand portal
+            /brand toegang
           </h2>
           <p className="mt-1 text-sm" style={{ color: "var(--text-secondary)" }}>
-            Maak de klantpagina voor deze campagne aan, verstuur de invite en publiceer daarna het rapport.
+            Maak toegang tot /brand aan voor deze campagne, verstuur de invite en publiceer daarna het rapport.
           </p>
         </div>
         {campaign.brand ? (
@@ -347,7 +347,7 @@ export default async function CampaignHealthPage({ params }: PageProps) {
             className="rounded-xl px-5 py-4 text-sm"
             style={{ background: "var(--bg-card)", border: "1px solid var(--border)", color: "var(--text-secondary)" }}
           >
-            Deze campagne heeft nog geen merk-koppeling. Koppel eerst een brand voordat je een brandpagina kunt aanmaken.
+            Deze campagne heeft nog geen merk-koppeling. Koppel eerst een brand voordat je /brand toegang kunt aanmaken.
           </div>
         )}
       </section>

@@ -56,7 +56,7 @@ describe("POST /api/admin/brands/[id]/portal", () => {
     expect(routeMocks.brandUpdate).not.toHaveBeenCalled();
   });
 
-  it("creates the brand portal and audits the action", async () => {
+  it("creates /brand access and audits the action", async () => {
     const response = await POST(new Request("http://localhost/api/admin/brands/brand-1/portal"), {
       params: Promise.resolve({ id: "brand-1" }),
     });

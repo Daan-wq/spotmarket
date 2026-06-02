@@ -66,7 +66,7 @@ export default async function BrandsPage() {
             { key: "owner", header: "Eigenaar", cell: (brand) => brand.owner || "-" },
             { key: "value", header: "Maandwaarde", align: "right", cell: (brand) => formatCurrency(brand.monthlyValue, brand.currency) },
             { key: "campaigns", header: "Campagnes", align: "right", cell: (brand) => brand.campaigns.length },
-            { key: "portal", header: "Brandpagina", align: "right", cell: (brand) => brand.portalEnabled ? <Badge variant="verified">Actief</Badge> : <Badge variant="pending">Niet aangemaakt</Badge> },
+            { key: "portal", header: "/brand", align: "right", cell: (brand) => brand.portalEnabled ? <Badge variant="verified">Actief</Badge> : <Badge variant="pending">Niet aangemaakt</Badge> },
             {
               key: "production",
               header: "Opdrachten",
@@ -89,7 +89,7 @@ export default async function BrandsPage() {
       </section>
 
       <section>
-        <SectionHeader title="Brandportalen" description="Maak de klantpagina aan, verstuur invites en publiceer rapporten vanuit een vaste flow." />
+        <SectionHeader title="/brand toegang" description="Maak toegang tot /brand aan, verstuur invites en publiceer rapporten vanuit een vaste flow." />
         <BrandPortalWorkflow brands={serialize(brands.map(toBrandPortalWorkflowBrand)) as BrandPortalWorkflowBrand[]} />
       </section>
     </div>

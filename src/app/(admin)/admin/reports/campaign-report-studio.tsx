@@ -449,11 +449,11 @@ function CampaignReportStudioEditor({
           )}
           {selectedReport?.visibleToBrand ? (
             <Link
-              href={`/brand/reports/${selectedReport.id}`}
+              href="/brand"
               className="inline-flex h-11 items-center justify-center gap-2 rounded-lg px-3 text-sm font-semibold text-neutral-600 hover:bg-neutral-100 hover:text-neutral-950"
             >
               <ExternalLink className="h-4 w-4" />
-              Bekijk als brand
+              Open /brand
             </Link>
           ) : null}
           <Button type="button" variant="ghost" className="rounded-lg" onClick={printReport} disabled={!liveData}>
@@ -469,22 +469,22 @@ function CampaignReportStudioEditor({
             <div>
               <div className="flex flex-wrap items-center gap-2">
                 <Badge variant={selectedBrand.portalEnabled ? "verified" : "pending"}>
-                  {selectedBrand.portalEnabled ? "Brandpagina aangemaakt" : "Brandpagina ontbreekt"}
+                  {selectedBrand.portalEnabled ? "/brand toegang aangemaakt" : "/brand toegang ontbreekt"}
                 </Badge>
                 <span className="text-sm font-semibold text-neutral-950">{selectedBrand.name}</span>
               </div>
               <p className="mt-1 text-sm text-neutral-500">
                 {selectedBrand.portalEnabled
-                  ? "Je kunt een definitief rapport zichtbaar maken voor deze brand."
-                  : "Maak eerst de brandpagina aan en nodig een contact uit voordat je een rapport publiceert."}
+                  ? "Je kunt een definitief rapport zichtbaar maken op /brand."
+                  : "Maak eerst /brand toegang aan en nodig een contact uit voordat je een rapport publiceert."}
               </p>
             </div>
             <Link
-              href={`/admin/brand-portals?brandId=${selectedBrand.id}`}
+              href={`/admin/client-access?brandId=${selectedBrand.id}`}
               className="inline-flex h-10 items-center justify-center gap-2 rounded-lg border border-neutral-200 px-3 text-sm font-semibold text-neutral-700 hover:border-neutral-300 hover:text-neutral-950"
             >
               <ShieldCheck className="h-4 w-4" />
-              Beheer brandpagina
+              Beheer /brand toegang
             </Link>
           </div>
         </section>

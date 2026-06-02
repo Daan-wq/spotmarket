@@ -359,7 +359,7 @@ describe("PATCH /api/admin/campaign-reports/[id]", () => {
     );
   });
 
-  it("does not publish reports before the brand portal exists", async () => {
+  it("does not publish reports before /brand access exists", async () => {
     routeMocks.campaignReportFindUnique.mockResolvedValueOnce({
       ...report,
       status: "FINAL",
@@ -378,7 +378,7 @@ describe("PATCH /api/admin/campaign-reports/[id]", () => {
     expect(response.status).toBe(400);
     expect(routeMocks.campaignReportUpdate).not.toHaveBeenCalled();
     await expect(response.json()).resolves.toEqual({
-      error: "Maak eerst de brandpagina aan voordat je dit rapport zichtbaar maakt.",
+      error: "Maak eerst /brand toegang aan voordat je dit rapport zichtbaar maakt.",
     });
   });
 });

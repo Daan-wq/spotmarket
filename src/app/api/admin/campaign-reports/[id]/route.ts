@@ -83,7 +83,7 @@ export async function PATCH(req: Request, { params }: RouteContext) {
       }
       if (parsed.visibleToBrand && (!current.brandId || !current.brand?.portalEnabled)) {
         return NextResponse.json(
-          { error: "Maak eerst de brandpagina aan voordat je dit rapport zichtbaar maakt." },
+          { error: "Maak eerst /brand toegang aan voordat je dit rapport zichtbaar maakt." },
           { status: 400 },
         );
       }
