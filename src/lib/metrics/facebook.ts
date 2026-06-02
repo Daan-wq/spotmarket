@@ -177,6 +177,7 @@ export async function fetchFacebookMetric(
       replays,
       avgTimeWatched,
       viewTime,
+      watchTimeKind: viewTime != null ? "total" : avgTimeWatched != null ? "average" : null,
       socialActions: extractInsight(data, "post_video_social_actions"),
       videoFollowers: extractInsight(data, "post_video_followers"),
     };

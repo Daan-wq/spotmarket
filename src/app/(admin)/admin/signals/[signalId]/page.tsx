@@ -2,12 +2,14 @@ import type { BioPlatform, ConnectionType, Prisma } from "@prisma/client";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { SignalResolveButton } from "@/components/admin/signal-resolve-button";
+import { SignalViewGrowthChart } from "@/components/admin/signal-view-growth-chart";
 import { Badge } from "@/components/ui/badge";
 import { PageHeader, SectionHeader, StatCard } from "@/components/ui/page";
 import { formatDate, formatNumber, titleCaseEnum } from "@/lib/admin/agency-format";
 import { metricAvailabilityValue, type MetricAvailabilityKey } from "@/lib/contracts/metrics";
 import { AUTO_ANTIBOT_RESOLVED_BY } from "@/lib/metrics/anti-bot-signal";
 import { prisma } from "@/lib/prisma";
+import { viewsPerHourFromLatestValidPair } from "@/lib/stats/view-growth-buckets";
 
 export const dynamic = "force-dynamic";
 
@@ -17,11 +19,20 @@ interface PageProps {
 
 type SnapshotPoint = {
   capturedAt: Date;
+  source?: string | null;
   viewCount: bigint;
   likeCount: number;
   commentCount: number;
   shareCount: number;
   saveCount: number | null;
+  watchTimeSec?: number | null;
+  reachCount?: number | null;
+  totalInteractions?: number | null;
+  followsFromMedia?: number | null;
+  profileVisits?: number | null;
+  reactionsByType?: Prisma.JsonValue | null;
+  profileActivity?: Prisma.JsonValue | null;
+  raw?: Prisma.JsonValue | null;
   metricAvailability: Prisma.JsonValue | null;
 };
 
@@ -63,11 +74,20 @@ export default async function SignalDetailPage({ params }: PageProps) {
             take: 96,
             select: {
               capturedAt: true,
+              source: true,
               viewCount: true,
               likeCount: true,
               commentCount: true,
               shareCount: true,
               saveCount: true,
+              watchTimeSec: true,
+              reachCount: true,
+              totalInteractions: true,
+              followsFromMedia: true,
+              profileVisits: true,
+              reactionsByType: true,
+              profileActivity: true,
+              raw: true,
               metricAvailability: true,
             },
           },
@@ -80,13 +100,31 @@ export default async function SignalDetailPage({ params }: PageProps) {
 
   const submission = signal.submission;
   const snapshots = [...submission.metricSnapshots].reverse();
-  const latest = latestSnapshot(snapshots);
-  const previous = snapshots.length >= 2 ? snapshots[snapshots.length - 2] : null;
+  const latest = latestSnapshot(snapshots.filter((snapshot) => snapshot.source !== "OAUTH_FAILED"));
   const currentViews = latest ? Number(latest.viewCount) : (submission.viewCount ?? submission.claimedViews);
   const currentEngagements = latest
     ? snapshotEngagements(latest)
     : legacyEngagements(submission);
-  const currentVelocity = previous && latest ? viewsPerHour(previous, latest) : null;
+  const currentVelocity = viewsPerHourFromLatestValidPair(snapshots);
+  const chartSnapshots = snapshots.map((snapshot) => ({
+    capturedAt: snapshot.capturedAt.toISOString(),
+    viewCount: Number(snapshot.viewCount),
+    engagementCount: snapshotEngagements(snapshot),
+    likeCount: snapshot.likeCount,
+    commentCount: snapshot.commentCount,
+    shareCount: snapshot.shareCount,
+    saveCount: snapshot.saveCount,
+    watchTimeSec: snapshot.watchTimeSec,
+    reachCount: snapshot.reachCount,
+    totalInteractions: snapshot.totalInteractions,
+    followsFromMedia: snapshot.followsFromMedia,
+    profileVisits: snapshot.profileVisits,
+    reactionsByType: snapshot.reactionsByType,
+    profileActivity: snapshot.profileActivity,
+    raw: snapshot.raw,
+    metricAvailability: snapshot.metricAvailability,
+    source: snapshot.source ?? null,
+  }));
   const payload = asPayloadRecord(signal.payload);
   const evidence = getEvidence(payload);
   const riskScore = getRiskScore(payload);
@@ -153,7 +191,7 @@ export default async function SignalDetailPage({ params }: PageProps) {
             </div>
             <Badge variant={signal.severity === "CRITICAL" ? "failed" : "pending"}>{severityLabel(signal.severity)}</Badge>
           </div>
-          <DeltaBarChart snapshots={snapshots} />
+          <SignalViewGrowthChart snapshots={chartSnapshots} signalReason={topReason} />
         </div>
 
         <div className="rounded-2xl border border-neutral-200 bg-white p-5">
@@ -281,42 +319,6 @@ async function loadComparisonRows(submission: {
       recentVelocity: previous && latest ? viewsPerHour(previous, latest) : null,
     };
   });
-}
-
-function DeltaBarChart({ snapshots }: { snapshots: SnapshotPoint[] }) {
-  const deltas = snapshots.slice(1).map((snapshot, index) => {
-    const previous = snapshots[index];
-    const delta = Math.max(0, Number(snapshot.viewCount) - Number(previous.viewCount));
-    return { capturedAt: snapshot.capturedAt, delta, views: Number(snapshot.viewCount) };
-  });
-  const maxDelta = Math.max(1, ...deltas.map((point) => point.delta));
-
-  if (deltas.length === 0) {
-    return <div className="flex h-56 items-center justify-center rounded-xl bg-neutral-50 text-sm text-neutral-500">Er zijn minstens twee metingen nodig om groei te tonen.</div>;
-  }
-
-  return (
-    <div>
-      <div className="flex h-56 items-end gap-1 rounded-xl bg-neutral-50 px-3 py-3">
-        {deltas.map((point) => {
-          const height = Math.max(4, (point.delta / maxDelta) * 100);
-          return (
-            <div
-              key={point.capturedAt.toISOString()}
-              className="min-w-1 flex-1 rounded-t bg-neutral-950"
-              style={{ height: `${height}%`, opacity: point.delta === maxDelta ? 1 : 0.45 }}
-              title={`${formatDateTime(point.capturedAt)}: +${formatNumber(point.delta)} views (${formatNumber(point.views)} totaal)`}
-            />
-          );
-        })}
-      </div>
-      <div className="mt-3 flex justify-between text-xs text-neutral-500">
-        <span>{formatDateTime(deltas[0].capturedAt)}</span>
-        <span>Grootste groei: +{formatNumber(maxDelta)}</span>
-        <span>{formatDateTime(deltas[deltas.length - 1].capturedAt)}</span>
-      </div>
-    </div>
-  );
 }
 
 function EvidenceCard({ item }: { item: EvidenceItem }) {
@@ -555,11 +557,3 @@ function formatRate(value: number | null) {
   return value == null ? "Niet beschikbaar" : `${value.toLocaleString("nl-NL", { maximumFractionDigits: 2 })}% engagement`;
 }
 
-function formatDateTime(value: Date) {
-  return value.toLocaleString("nl-NL", {
-    month: "short",
-    day: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
-}

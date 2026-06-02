@@ -140,6 +140,12 @@ export async function fetchInstagramMetric(
         };
 
   // Watch time seconds — prefer total_watch_time, fall back to avg_watch_time
+  const watchTimeKind =
+    insights.totalWatchTime != null
+      ? "total"
+      : insights.avgWatchTime != null
+        ? "average"
+        : null;
   const watchTimeSec =
     insights.totalWatchTime != null
       ? Math.round(insights.totalWatchTime)
@@ -216,6 +222,9 @@ export async function fetchInstagramMetric(
       mediaProductType: matched.mediaProductType,
       permalink: matched.permalink,
       timestamp: matched.timestamp,
+      watchTimeKind,
+      totalWatchTimeSec: insights.totalWatchTime ?? null,
+      averageWatchTimeSec: insights.avgWatchTime ?? null,
       navigation:
         mediaType === "STORY"
           ? {

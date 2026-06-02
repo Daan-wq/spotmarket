@@ -174,6 +174,8 @@ export async function fetchYoutubeMetric(
       title: item.snippet?.title ?? null,
       publishedAt: item.snippet?.publishedAt ?? null,
       duration: item.contentDetails?.duration ?? null,
+      watchTimeKind: estimatedMinutesWatched != null ? "total" : averageViewDuration != null ? "average" : null,
+      estimatedMinutesWatched,
       averageViewDuration,
       playlistAdds: analytics.metric("videosAddedToPlaylists"),
       playlistRemoves: analytics.metric("videosRemovedFromPlaylists"),

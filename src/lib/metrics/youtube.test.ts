@@ -107,6 +107,8 @@ describe("fetchYoutubeMetric", () => {
     expect(r.raw).toMatchObject({
       videoId: "vid_1",
       title: "Video title",
+      watchTimeKind: "total",
+      estimatedMinutesWatched: 9000,
       averageViewDuration: 22,
       playlistAdds: 18,
       analyticsAvailable: true,
