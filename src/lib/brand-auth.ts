@@ -33,6 +33,17 @@ export async function getBrandPortalContext() {
 
   const role = await resolveRoleFor(claims);
   if (role === "admin") {
+    const user = await getActiveBrandMembershipsForSupabaseId(claims.sub);
+    if (user?.brandContacts.length) {
+      return {
+        isAdminPreview: true,
+        user,
+        brandIds: user.brandContacts.map((contact) => contact.brandId),
+        memberships: user.brandContacts,
+        email: user.email,
+      };
+    }
+
     return {
       isAdminPreview: true,
       user: null,

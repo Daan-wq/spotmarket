@@ -83,38 +83,43 @@ export async function POST(req: Request, { params }: RouteContext) {
       where: { email },
       select: { id: true, role: true },
     });
+    const attachExistingUser = existingUser?.role === "brand" || existingUser?.role === "admin";
+    const activateExistingAdmin = existingUser?.role === "admin";
 
     const contact = await prisma.brandContact.upsert({
       where: { brandId_email: { brandId: id, email } },
       create: {
         brandId: id,
-        userId: existingUser?.role === "brand" ? existingUser.id : null,
+        userId: attachExistingUser ? existingUser.id : null,
         email,
         name,
-        status: "INVITED",
-        inviteTokenHash: hashBrandInviteToken(token),
-        inviteExpiresAt: brandInviteExpiresAt(),
+        status: activateExistingAdmin ? "ACTIVE" : "INVITED",
+        inviteTokenHash: activateExistingAdmin ? null : hashBrandInviteToken(token),
+        inviteExpiresAt: activateExistingAdmin ? null : brandInviteExpiresAt(),
         invitedBy: userId,
+        acceptedAt: activateExistingAdmin ? new Date() : null,
       },
       update: {
-        userId: existingUser?.role === "brand" ? existingUser.id : undefined,
+        userId: attachExistingUser ? existingUser.id : undefined,
         name,
-        status: "INVITED",
-        inviteTokenHash: hashBrandInviteToken(token),
-        inviteExpiresAt: brandInviteExpiresAt(),
+        status: activateExistingAdmin ? "ACTIVE" : "INVITED",
+        inviteTokenHash: activateExistingAdmin ? null : hashBrandInviteToken(token),
+        inviteExpiresAt: activateExistingAdmin ? null : brandInviteExpiresAt(),
         invitedBy: userId,
         invitedAt: new Date(),
-        acceptedAt: null,
+        acceptedAt: activateExistingAdmin ? new Date() : null,
         revokedAt: null,
       },
       include: contactInclude,
     });
 
-    const emailSent = await sendBrandInviteEmail({
-      to: email,
-      brandName: brand.name,
-      inviteUrl,
-    });
+    const emailSent = activateExistingAdmin
+      ? false
+      : await sendBrandInviteEmail({
+          to: email,
+          brandName: brand.name,
+          inviteUrl,
+        });
 
     await prisma.auditLog.create({
       data: {
@@ -122,14 +127,20 @@ export async function POST(req: Request, { params }: RouteContext) {
         action: "brandContact.invite",
         entityType: "BrandContact",
         entityId: contact.id,
-        metadata: { brandId: id, email, emailSent, portalCreated: !brand.portalEnabled },
+        metadata: {
+          brandId: id,
+          email,
+          emailSent,
+          portalCreated: !brand.portalEnabled,
+          activatedExistingAdmin: activateExistingAdmin,
+        },
       },
     });
 
     return NextResponse.json({
       contact: serialize(contact),
       brand: serialize(portalBrand),
-      inviteUrl,
+      inviteUrl: activateExistingAdmin ? null : inviteUrl,
       emailSent,
     }, { status: 201 });
   } catch (error) {
