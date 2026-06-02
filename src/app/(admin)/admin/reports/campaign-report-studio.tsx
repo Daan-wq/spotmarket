@@ -791,12 +791,19 @@ function ReportPreview({
         <div className="report-print-scroll mx-auto w-full max-w-[1480px] space-y-5">
           {enabled("cover") ? (
             <ReportSection className="flex min-h-[500px] items-center bg-white p-8 text-neutral-950 sm:p-12 lg:p-16">
-              <EditablePlainText
-                value={title}
-                onChange={editors?.setTitle}
-                placeholder="Campagnerapport"
-                className="max-w-5xl text-6xl font-black leading-[0.98] tracking-normal text-neutral-950 md:text-8xl"
-              />
+              <div className="max-w-5xl">
+                <CopyBlock
+                  value={blocks["cover.kicker"] ?? "Campagne prestatierapport"}
+                  onChange={(value) => editors?.updateTemplateBlock("cover.kicker", value)}
+                  className="mb-8 text-xs font-semibold uppercase tracking-[0.22em] text-neutral-400"
+                />
+                <EditablePlainText
+                  value={title}
+                  onChange={editors?.setTitle}
+                  placeholder="Campagnerapport"
+                  className="text-6xl font-black leading-[0.98] tracking-normal text-neutral-950 md:text-8xl"
+                />
+              </div>
             </ReportSection>
           ) : null}
 

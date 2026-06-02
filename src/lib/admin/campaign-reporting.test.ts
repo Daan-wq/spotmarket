@@ -201,6 +201,33 @@ describe("buildCampaignReportLiveData", () => {
     expect(report.audience.genderSplit.female).toBeCloseTo(0.75);
     expect(report.audience.topCountries[0]?.code).toBe("NL");
     expect(report.audience.topCountries[0]?.share).toBeCloseTo(0.8);
+    expect(report.audience.topCountries.some((country) => country.code === "IN")).toBe(false);
+  });
+
+  it("filters selected Asian countries from client-facing top audience countries", () => {
+    const report = buildCampaignReportLiveData({
+      campaign,
+      submissions: [],
+      attributions: [],
+      audienceSnapshots: [
+        {
+          connectionType: "IG",
+          connectionId: "ig-1",
+          kind: "FOLLOWER",
+          capturedAt: new Date("2026-05-02T00:00:00.000Z"),
+          ageBuckets: {},
+          genderSplit: {},
+          topCountries: [
+            { code: "IN", share: 0.9 },
+            { code: "PK", share: 0.8 },
+            { code: "NL", share: 0.7 },
+            { code: "US", share: 0.2 },
+          ],
+        },
+      ],
+    });
+
+    expect(report.audience.topCountries.map((country) => country.code)).toEqual(["NL", "US"]);
   });
 
   it("shows live approved views and overdelivery above the CPM target", () => {

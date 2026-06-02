@@ -44,6 +44,57 @@ const AUDIENCE_PLATFORM_LABELS: Record<string, string> = {
   FB: "Facebook",
 };
 
+const CLIENT_HIDDEN_AUDIENCE_COUNTRY_CODES = new Set([
+  "AF",
+  "AM",
+  "AZ",
+  "BH",
+  "BD",
+  "BT",
+  "BN",
+  "KH",
+  "CN",
+  "GE",
+  "HK",
+  "IN",
+  "ID",
+  "IR",
+  "IQ",
+  "JP",
+  "JO",
+  "KZ",
+  "KW",
+  "KG",
+  "LA",
+  "LB",
+  "MO",
+  "MY",
+  "MV",
+  "MN",
+  "MM",
+  "NP",
+  "KP",
+  "OM",
+  "PK",
+  "PS",
+  "PH",
+  "QA",
+  "SA",
+  "SG",
+  "KR",
+  "LK",
+  "SY",
+  "TW",
+  "TJ",
+  "TH",
+  "TL",
+  "TM",
+  "AE",
+  "UZ",
+  "VN",
+  "YE",
+]);
+
 export interface CampaignReportCampaignInput {
   id: string;
   name: string;
@@ -786,6 +837,7 @@ function buildAudienceSummary(snapshots: CampaignReportAudienceSnapshotInput[]) 
     genderSplit: averageAudienceMap(genderSplit, genderSampleCount),
     topCountries: Object.entries(countryTotals)
       .map(([code, share]) => ({ code, share: countrySampleCount > 0 ? share / countrySampleCount : 0 }))
+      .filter((country) => !CLIENT_HIDDEN_AUDIENCE_COUNTRY_CODES.has(country.code.trim().toUpperCase()))
       .sort((a, b) => b.share - a.share)
       .slice(0, 8)
   };
