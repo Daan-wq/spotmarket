@@ -12,6 +12,10 @@ function normalizeBaseUrl(url: string): string {
   return url.replace(/\/+$/, "");
 }
 
+function normalizeVercelUrl(url: string): string {
+  return normalizeBaseUrl(url.startsWith("http") ? url : `https://${url}`);
+}
+
 export function getAppUrlForLocale(locale: Locale = DEFAULT_LOCALE): string {
   void locale;
   return normalizeBaseUrl(
@@ -60,6 +64,21 @@ export function getAppUrlFromRequest(request: Request): string {
   }
 
   return getAppUrlFromHost(host);
+}
+
+export function getAppUrlForSharedLinks(request: Request): string {
+  const requestUrl = new URL(request.url);
+  const host = request.headers.get("host") ?? requestUrl.host;
+  const hostname = host.split(":")[0] ?? "";
+
+  if (LOCAL_HOSTS.has(hostname)) return normalizeBaseUrl(requestUrl.origin);
+
+  if (process.env.VERCEL_ENV === "preview") {
+    const vercelUrl = process.env.VERCEL_BRANCH_URL ?? process.env.VERCEL_URL;
+    if (vercelUrl) return normalizeVercelUrl(vercelUrl);
+  }
+
+  return getAppUrlForLocale(getLocaleFromRequest(request));
 }
 
 export function buildAppUrl(path: string, baseUrl: string): string {

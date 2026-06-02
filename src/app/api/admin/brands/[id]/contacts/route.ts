@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { requireAuth } from "@/lib/auth";
-import { buildAppUrl, getAppUrlFromRequest } from "@/lib/app-url";
+import { buildAppUrl, getAppUrlForSharedLinks } from "@/lib/app-url";
 import {
   brandInviteExpiresAt,
   createBrandInviteToken,
@@ -77,7 +77,7 @@ export async function POST(req: Request, { params }: RouteContext) {
         });
 
     const token = createBrandInviteToken();
-    const inviteUrl = buildAppUrl(`/brand-invite/${token}`, getAppUrlFromRequest(req));
+    const inviteUrl = buildAppUrl(`/brand-invite/${token}`, getAppUrlForSharedLinks(req));
     const existingUser = await prisma.user.findUnique({
       where: { email },
       select: { id: true, role: true },
