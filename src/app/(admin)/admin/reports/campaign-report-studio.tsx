@@ -993,9 +993,7 @@ function ReportPreview({
 
 function Token({ name }: { name: string }) {
   const tokenContext = useContext(TokenPreviewContext);
-  const previewValue = tokenContext?.showValues
-    ? formatTokenPreviewValue(name, resolveTokenPreviewValue(name, tokenContext))
-    : null;
+  const previewValue = resolveTokenLabel(name, tokenContext);
 
   if (tokenContext?.showValues) {
     return <span className="align-baseline">{previewValue ?? "geen waarde"}</span>;
@@ -1019,11 +1017,9 @@ function CopyBlock({
   className?: string;
   placeholder?: string;
 }) {
-  const tokenContext = useContext(TokenPreviewContext);
-  if (!tokenContext?.showValues && onChange) {
+  if (onChange) {
     return (
-      <EditablePlainText
-        key="template-editor"
+      <EditableTemplateText
         value={value}
         onChange={onChange}
         placeholder={placeholder}
@@ -1034,6 +1030,49 @@ function CopyBlock({
   return (
     <div key="live-preview" className={cn("whitespace-pre-wrap", className)}>
       {renderTemplateText(value || placeholder)}
+    </div>
+  );
+}
+
+function EditableTemplateText({
+  value,
+  onChange,
+  placeholder,
+  className,
+}: {
+  value: string;
+  onChange: (value: string) => void;
+  placeholder: string;
+  className?: string;
+}) {
+  const tokenContext = useContext(TokenPreviewContext);
+  const isEmpty = !value.trim();
+  const displayValue = isEmpty ? placeholder : value;
+
+  return (
+    <div
+      key={`${tokenContext?.showValues ? "live" : "template"}:${displayValue}`}
+      contentEditable
+      suppressContentEditableWarning
+      spellCheck
+      role="textbox"
+      tabIndex={0}
+      className={cn(
+        "min-h-[1.25em] cursor-text whitespace-pre-wrap rounded-sm outline-none transition focus:bg-neutral-950/[0.025]",
+        "selection:bg-neutral-950 selection:text-white",
+        isEmpty && "text-neutral-400",
+        className,
+      )}
+      onFocus={(event) => {
+        if (isEmpty) event.currentTarget.textContent = "";
+      }}
+      onBlur={(event) => {
+        const nextValue = serializeEditableTemplate(event.currentTarget);
+        onChange(nextValue);
+        if (!nextValue) event.currentTarget.textContent = placeholder;
+      }}
+    >
+      {renderEditableTemplateText(displayValue, tokenContext)}
     </div>
   );
 }
@@ -1085,6 +1124,57 @@ function renderTemplateText(value: string) {
     const match = part.match(/^\{\{([^}]+)\}\}$/);
     return match ? <Token key={`${part}-${index}`} name={match[1].trim()} /> : <React.Fragment key={`${part}-${index}`}>{part}</React.Fragment>;
   });
+}
+
+function renderEditableTemplateText(value: string, tokenContext: TokenPreviewContextValue | null) {
+  const parts = value.split(/(\{\{[^}]+\}\})/g).filter(Boolean);
+  return parts.map((part, index) => {
+    const match = part.match(/^\{\{([^}]+)\}\}$/);
+    if (!match) return <React.Fragment key={`${part}-${index}`}>{part}</React.Fragment>;
+    const tokenName = match[1].trim();
+    return (
+      <span
+        key={`${part}-${index}`}
+        contentEditable={false}
+        data-report-token={tokenName}
+        className="align-baseline"
+      >
+        {resolveTokenLabel(tokenName, tokenContext)}
+      </span>
+    );
+  });
+}
+
+function resolveTokenLabel(name: string, tokenContext: TokenPreviewContextValue | null) {
+  if (tokenContext?.showValues) {
+    return formatTokenPreviewValue(name, resolveTokenPreviewValue(name, tokenContext));
+  }
+  return `{{${name}}}`;
+}
+
+function serializeEditableTemplate(element: HTMLElement) {
+  return Array.from(element.childNodes)
+    .map(serializeEditableTemplateNode)
+    .join("")
+    .replace(/\u00a0/g, " ")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+}
+
+function serializeEditableTemplateNode(node: ChildNode): string {
+  if (node.nodeType === Node.TEXT_NODE) return node.textContent ?? "";
+  if (node.nodeType !== Node.ELEMENT_NODE) return "";
+
+  const element = node as HTMLElement;
+  const token = element.dataset.reportToken;
+  if (token) return `{{${token}}}`;
+
+  const tagName = element.tagName.toLowerCase();
+  if (tagName === "br") return "\n";
+
+  const content = Array.from(element.childNodes).map(serializeEditableTemplateNode).join("");
+  if (["div", "p", "li"].includes(tagName)) return `${content}\n`;
+  return content;
 }
 
 function ReportSection({ children, className }: { children: React.ReactNode; className?: string }) {
