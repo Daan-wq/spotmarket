@@ -10,11 +10,13 @@ function snap(
   capturedAt: Date,
   viewCount: number,
   source = "OAUTH_TT",
+  engagementCount: number | null = null,
 ) {
   return {
     capturedAt,
     viewCount: BigInt(viewCount),
     source,
+    engagementCount,
   };
 }
 
@@ -36,11 +38,11 @@ describe("computeBucketedViewGrowth", () => {
   it("groups multiple polls on the same calendar day into one daily bucket", () => {
     const buckets = computeBucketedViewGrowth(
       [
-        snap(localDate(2026, 5, 29, 0, 0), 1_000),
-        snap(localDate(2026, 5, 29, 3, 0), 1_150),
-        snap(localDate(2026, 5, 29, 9, 0), 1_450),
-        snap(localDate(2026, 5, 29, 16, 0), 1_850),
-        snap(localDate(2026, 5, 29, 23, 45), 2_100),
+        snap(localDate(2026, 5, 29, 0, 0), 1_000, "OAUTH_TT", 10),
+        snap(localDate(2026, 5, 29, 3, 0), 1_150, "OAUTH_TT", 16),
+        snap(localDate(2026, 5, 29, 9, 0), 1_450, "OAUTH_TT", 29),
+        snap(localDate(2026, 5, 29, 16, 0), 1_850, "OAUTH_TT", 41),
+        snap(localDate(2026, 5, 29, 23, 45), 2_100, "OAUTH_TT", 55),
       ],
       "1d",
     );
@@ -49,6 +51,7 @@ describe("computeBucketedViewGrowth", () => {
     expect(buckets[0].start).toEqual(localDate(2026, 5, 29));
     expect(buckets[0].end).toEqual(localDate(2026, 5, 30));
     expect(buckets[0].views).toBeCloseTo(1_100, 5);
+    expect(buckets[0].engagements).toBe(45);
   });
 
   it("uses fixed bucket durations for each supported zoom level", () => {
@@ -91,15 +94,28 @@ describe("computeBucketedViewGrowth", () => {
   it("places exact-boundary poll deltas in the completed bucket", () => {
     const buckets = computeBucketedViewGrowth(
       [
-        snap(localDate(2026, 5, 29, 10, 0), 1_000),
-        snap(localDate(2026, 5, 29, 10, 15), 1_040),
-        snap(localDate(2026, 5, 29, 10, 30), 1_100),
-        snap(localDate(2026, 5, 29, 10, 45), 1_125),
+        snap(localDate(2026, 5, 29, 10, 0), 1_000, "OAUTH_TT", 10),
+        snap(localDate(2026, 5, 29, 10, 15), 1_040, "OAUTH_TT", 12),
+        snap(localDate(2026, 5, 29, 10, 30), 1_100, "OAUTH_TT", 20),
+        snap(localDate(2026, 5, 29, 10, 45), 1_125, "OAUTH_TT", 20),
       ],
       "15m",
     );
 
     expect(buckets.map((bucket) => bucket.views)).toEqual([40, 60, 25]);
+    expect(buckets.map((bucket) => bucket.engagements)).toEqual([2, 8, 0]);
+  });
+
+  it("keeps engagement unavailable when snapshots do not have engagement counts", () => {
+    const buckets = computeBucketedViewGrowth(
+      [
+        snap(localDate(2026, 5, 29, 10, 0), 1_000),
+        snap(localDate(2026, 5, 29, 10, 15), 1_040),
+      ],
+      "15m",
+    );
+
+    expect(buckets[0].engagements).toBeNull();
   });
 
   it("ignores failed snapshots so rebounds from zero do not create spikes", () => {

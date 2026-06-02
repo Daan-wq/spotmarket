@@ -13,6 +13,7 @@ import {
 type SignalViewGrowthSnapshot = {
   capturedAt: string;
   viewCount: number;
+  engagementCount: number | null;
   source: string | null;
 };
 
@@ -37,6 +38,7 @@ type ActiveTooltip = {
   y: number;
   range: string;
   views: number;
+  engagements: number | null;
 };
 
 export function SignalViewGrowthChart({
@@ -52,6 +54,7 @@ export function SignalViewGrowthChart({
       snapshots.map((snapshot) => ({
         capturedAt: snapshot.capturedAt,
         viewCount: snapshot.viewCount,
+        engagementCount: snapshot.engagementCount,
         source: snapshot.source,
       })),
     [snapshots],
@@ -85,6 +88,7 @@ export function SignalViewGrowthChart({
       y,
       range: formatBucketRange(bucket.start, bucket.end),
       views: Math.round(bucket.views),
+      engagements: bucket.engagements == null ? null : Math.round(bucket.engagements),
     });
   };
   const hideTooltip = () => setActiveTooltip(null);
@@ -114,8 +118,9 @@ export function SignalViewGrowthChart({
           >
             {buckets.map((bucket) => {
               const roundedViews = Math.round(bucket.views);
+              const roundedEngagements = bucket.engagements == null ? null : Math.round(bucket.engagements);
               const height = Math.max(4, (bucket.views / maxViews) * 100);
-              const label = `${formatBucketRange(bucket.start, bucket.end)}: +${formatNumber(roundedViews)} views`;
+              const label = `${formatBucketRange(bucket.start, bucket.end)}: +${formatNumber(roundedViews)} views, ${formatEngagements(roundedEngagements)} engagement`;
               return (
                 <button
                   key={bucket.key}
@@ -149,6 +154,7 @@ export function SignalViewGrowthChart({
             }}
           >
             <p className="font-semibold tabular-nums text-neutral-950">+{formatNumber(activeTooltip.views)} views</p>
+            <p className="mt-1 tabular-nums text-neutral-700">{formatEngagements(activeTooltip.engagements)} engagement</p>
             <p className="mt-1 whitespace-nowrap text-neutral-500">{activeTooltip.range}</p>
           </div>
         ) : null}
@@ -188,6 +194,10 @@ function isViewGrowthZoom(value: string): value is ViewGrowthZoom {
 
 function formatNumber(value: number) {
   return new Intl.NumberFormat("nl-NL").format(value);
+}
+
+function formatEngagements(value: number | null) {
+  return value == null ? "Niet beschikbaar" : `+${formatNumber(value)}`;
 }
 
 function formatBucketRange(start: Date, end: Date) {

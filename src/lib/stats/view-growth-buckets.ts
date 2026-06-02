@@ -6,12 +6,14 @@ export type ViewGrowthZoom = "auto" | ViewGrowthBucketSize;
 export type ViewGrowthSnapshotInput = {
   capturedAt: Date | string;
   viewCount: bigint | number | string;
+  engagementCount?: number | string | null;
   source?: string | null;
 };
 
 export type ViewGrowthSnapshot = {
   capturedAt: Date;
   viewCount: number;
+  engagementCount: number | null;
   source?: string | null;
 };
 
@@ -20,6 +22,7 @@ export type ViewGrowthBucket = {
   start: Date;
   end: Date;
   views: number;
+  engagements: number | null;
 };
 
 const MINUTE_MS = 60 * 1000;
@@ -38,6 +41,7 @@ export function normalizeViewGrowthSnapshots(
 
     const capturedAt = toValidDate(snapshot.capturedAt);
     const viewCount = toValidViewCount(snapshot.viewCount);
+    const engagementCount = toValidOptionalCount(snapshot.engagementCount);
     if (!capturedAt || viewCount == null) continue;
 
     const timestamp = capturedAt.getTime();
@@ -46,6 +50,7 @@ export function normalizeViewGrowthSnapshots(
       byTime.set(timestamp, {
         capturedAt,
         viewCount,
+        engagementCount,
         source: snapshot.source,
       });
     }
@@ -86,7 +91,11 @@ export function computeBucketedViewGrowth(
     const previous = validSnapshots[index - 1];
     const current = validSnapshots[index];
     const deltaViews = current.viewCount - previous.viewCount;
-    if (deltaViews <= 0) continue;
+    const deltaEngagements =
+      current.engagementCount == null || previous.engagementCount == null
+        ? null
+        : Math.max(0, current.engagementCount - previous.engagementCount);
+    if (deltaViews <= 0 && (deltaEngagements == null || deltaEngagements <= 0)) continue;
 
     const pairEndMs = current.capturedAt.getTime();
     const elapsedMs = pairEndMs - previous.capturedAt.getTime();
@@ -94,7 +103,10 @@ export function computeBucketedViewGrowth(
 
     const bucketStart = floorBucketForDeltaEnd(current.capturedAt, bucketSize);
     const bucket = bucketByStart.get(bucketStart.getTime());
-    if (bucket) bucket.views += deltaViews;
+    if (bucket) {
+      if (deltaViews > 0) bucket.views += deltaViews;
+      if (deltaEngagements != null) bucket.engagements = (bucket.engagements ?? 0) + deltaEngagements;
+    }
   }
 
   return buckets;
@@ -153,6 +165,7 @@ function buildBuckets(
       start,
       end,
       views: 0,
+      engagements: null,
     });
     cursor = end;
   }
@@ -228,6 +241,13 @@ function toValidDate(value: Date | string) {
 
 function toValidViewCount(value: bigint | number | string) {
   const numberValue = typeof value === "bigint" ? Number(value) : Number(value);
+  if (!Number.isFinite(numberValue) || numberValue < 0) return null;
+  return numberValue;
+}
+
+function toValidOptionalCount(value: number | string | null | undefined) {
+  if (value == null) return null;
+  const numberValue = Number(value);
   if (!Number.isFinite(numberValue) || numberValue < 0) return null;
   return numberValue;
 }

@@ -93,6 +93,7 @@ export default async function SignalDetailPage({ params }: PageProps) {
   const chartSnapshots = snapshots.map((snapshot) => ({
     capturedAt: snapshot.capturedAt.toISOString(),
     viewCount: Number(snapshot.viewCount),
+    engagementCount: snapshotEngagements(snapshot),
     source: snapshot.source,
   }));
   const payload = asPayloadRecord(signal.payload);
