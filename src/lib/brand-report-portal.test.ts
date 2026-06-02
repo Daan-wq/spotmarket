@@ -157,6 +157,7 @@ describe("brand report portal helpers", () => {
   it("filters reports to final visible reports for the brand memberships", () => {
     expect(buildBrandVisibleReportWhere(["brand-1", "brand-2"])).toEqual({
       brandId: { in: ["brand-1", "brand-2"] },
+      brand: { portalEnabled: true },
       status: "FINAL",
       visibleToBrand: true,
     });

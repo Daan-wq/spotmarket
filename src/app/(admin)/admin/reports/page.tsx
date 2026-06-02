@@ -40,7 +40,7 @@ interface PageProps {
 }
 
 const reportInclude = {
-  brand: { select: { id: true, name: true, currency: true } },
+  brand: { select: { id: true, name: true, currency: true, portalEnabled: true, portalCreatedAt: true } },
   campaign: { select: { id: true, name: true } },
 } as const;
 
@@ -66,7 +66,7 @@ export default async function ReportsPage({ searchParams }: PageProps) {
     prisma.brand.findMany({
       where: { campaigns: { some: {} } },
       orderBy: { name: "asc" },
-      select: { id: true, name: true, currency: true },
+      select: { id: true, name: true, currency: true, portalEnabled: true, portalCreatedAt: true },
       take: 100,
     }),
     prisma.campaign.findMany({
@@ -78,7 +78,7 @@ export default async function ReportsPage({ searchParams }: PageProps) {
         brandId: true,
         startsAt: true,
         deadline: true,
-        brand: { select: { id: true, name: true, currency: true } },
+        brand: { select: { id: true, name: true, currency: true, portalEnabled: true, portalCreatedAt: true } },
       },
       take: 150,
     }),

@@ -30,7 +30,7 @@ export default async function BrandReportPage({ params }: PageProps) {
   const context = await getBrandPortalContext();
   const where: Prisma.CampaignReportWhereInput = context.brandIds
     ? { id: reportId, ...buildBrandVisibleReportWhere(context.brandIds) }
-    : { id: reportId, status: "FINAL" as const, visibleToBrand: true };
+    : { id: reportId, status: "FINAL" as const, visibleToBrand: true, brand: { portalEnabled: true } };
   const report: ReportWithRelations | null = await prisma.campaignReport.findFirst({
     where,
     include: reportInclude,

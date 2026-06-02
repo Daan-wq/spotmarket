@@ -5,6 +5,7 @@ import {
   CalendarDays,
   CheckCircle2,
   Eye,
+  ExternalLink,
   FileText,
   Plus,
   Printer,
@@ -43,6 +44,8 @@ export interface BrandOption {
   id: string;
   name: string;
   currency: string;
+  portalEnabled: boolean;
+  portalCreatedAt: string | null;
 }
 
 export interface CampaignOption {
@@ -163,6 +166,7 @@ export function CampaignReportStudio({
   const selectedCampaignId = liveData?.campaign.id ?? selectedReport?.campaignId ?? filters.campaignId ?? campaigns[0]?.id ?? "";
   const selectedCampaign = campaigns.find((campaign) => campaign.id === selectedCampaignId) ?? null;
   const baseEditorial = initialEditorial ?? liveData?.defaults ?? createEmptyEditorial(selectedCampaign?.name ?? "Campagne");
+  const selectedBrand = selectedReport?.brand ?? selectedCampaign?.brand ?? null;
 
   const [title, setTitle] = useState(baseEditorial.title);
   const [executiveSummary, setExecutiveSummary] = useState(baseEditorial.executiveSummary);
@@ -396,7 +400,7 @@ export function CampaignReportStudio({
               className="rounded-lg"
               onClick={() => toggleBrandVisibility(true)}
               isPending={sharingMode === "show"}
-              disabled={!selectedReport || selectedReport.status !== "FINAL"}
+              disabled={!selectedReport || selectedReport.status !== "FINAL" || !selectedBrand?.portalEnabled}
             >
               Zichtbaar voor brand
             </Button>

@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { BrandPortalWorkflow } from "@/components/admin/brand-portal-workflow";
 import { KpiCard } from "@/components/admin/kpi-card";
 import {
   CampaignAvatar,
@@ -9,6 +10,7 @@ import {
   CampaignStatusBadge,
 } from "@/components/campaigns/campaign-display";
 import { prisma } from "@/lib/prisma";
+import { brandPortalWorkflowInclude, toBrandPortalWorkflowBrand } from "@/lib/admin/brand-portal-workflow";
 import { isExcludedFromLeaderboards } from "@/lib/leaderboard-exclusions";
 import { calculateCampaignReferralReport } from "@/lib/campaign-referrals";
 import { CampaignSubmissionsOverview } from "./campaign-submissions-overview";
@@ -25,6 +27,7 @@ export default async function CampaignHealthPage({ params }: PageProps) {
   const campaign = await prisma.campaign.findUnique({
     where: { id: campaignId },
     include: {
+      brand: { include: brandPortalWorkflowInclude },
       campaignSubmissions: {
         select: {
           id: true,
@@ -289,6 +292,27 @@ export default async function CampaignHealthPage({ params }: PageProps) {
           />
         </div>
       </div>
+
+      <section className="mb-6">
+        <div className="mb-3">
+          <h2 className="text-base font-semibold" style={{ color: "var(--text-primary)" }}>
+            Brand portal
+          </h2>
+          <p className="mt-1 text-sm" style={{ color: "var(--text-secondary)" }}>
+            Maak de klantpagina voor deze campagne aan, verstuur de invite en publiceer daarna het rapport.
+          </p>
+        </div>
+        {campaign.brand ? (
+          <BrandPortalWorkflow brands={[toBrandPortalWorkflowBrand(campaign.brand)]} compact />
+        ) : (
+          <div
+            className="rounded-xl px-5 py-4 text-sm"
+            style={{ background: "var(--bg-card)", border: "1px solid var(--border)", color: "var(--text-secondary)" }}
+          >
+            Deze campagne heeft nog geen merk-koppeling. Koppel eerst een brand voordat je een brandpagina kunt aanmaken.
+          </div>
+        )}
+      </section>
 
       <div className="space-y-6">
         <section

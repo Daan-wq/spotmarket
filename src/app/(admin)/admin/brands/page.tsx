@@ -4,10 +4,11 @@ import { Badge } from "@/components/ui/badge";
 import { DataTable } from "@/components/ui/data-table";
 import { EmptyState } from "@/components/ui/empty-state";
 import { PageHeader, SectionHeader, StatCard } from "@/components/ui/page";
+import { BrandPortalWorkflow, type BrandPortalWorkflowBrand } from "@/components/admin/brand-portal-workflow";
 import { prisma } from "@/lib/prisma";
 import { formatCurrency, titleCaseEnum } from "@/lib/admin/agency-format";
 import { serialize } from "@/lib/admin/agency-api";
-import { BrandContactsPanel, type BrandContactPanelBrand } from "./brand-contacts-panel";
+import { brandPortalWorkflowInclude, toBrandPortalWorkflowBrand } from "@/lib/admin/brand-portal-workflow";
 
 export const dynamic = "force-dynamic";
 
@@ -16,19 +17,7 @@ export default async function BrandsPage() {
     orderBy: [{ status: "asc" }, { updatedAt: "desc" }],
     include: {
       onboarding: true,
-      contacts: {
-        select: {
-          id: true,
-          brandId: true,
-          email: true,
-          name: true,
-          status: true,
-          inviteExpiresAt: true,
-          invitedAt: true,
-          acceptedAt: true,
-        },
-        orderBy: [{ status: "asc" }, { updatedAt: "desc" }],
-      },
+      ...brandPortalWorkflowInclude,
       campaigns: { select: { id: true, status: true } },
       productionAssignments: { select: { id: true, status: true } },
     },
@@ -77,7 +66,7 @@ export default async function BrandsPage() {
             { key: "owner", header: "Eigenaar", cell: (brand) => brand.owner || "-" },
             { key: "value", header: "Maandwaarde", align: "right", cell: (brand) => formatCurrency(brand.monthlyValue, brand.currency) },
             { key: "campaigns", header: "Campagnes", align: "right", cell: (brand) => brand.campaigns.length },
-            { key: "contacts", header: "Brandlogins", align: "right", cell: (brand) => brand.contacts.filter((contact) => contact.status === "ACTIVE").length },
+            { key: "portal", header: "Brandpagina", align: "right", cell: (brand) => brand.portalEnabled ? <Badge variant="verified">Actief</Badge> : <Badge variant="pending">Niet aangemaakt</Badge> },
             {
               key: "production",
               header: "Opdrachten",
@@ -100,8 +89,8 @@ export default async function BrandsPage() {
       </section>
 
       <section>
-        <SectionHeader title="Brandlogins" description="Contacten die campagnerapporten mogen bekijken zodra rapporten zichtbaar zijn gezet." />
-        <BrandContactsPanel brands={serialize(brands) as unknown as BrandContactPanelBrand[]} />
+        <SectionHeader title="Brandportalen" description="Maak de klantpagina aan, verstuur invites en publiceer rapporten vanuit een vaste flow." />
+        <BrandPortalWorkflow brands={serialize(brands.map(toBrandPortalWorkflowBrand)) as BrandPortalWorkflowBrand[]} />
       </section>
     </div>
   );

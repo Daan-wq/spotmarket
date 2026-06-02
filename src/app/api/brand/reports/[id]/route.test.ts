@@ -79,6 +79,7 @@ describe("GET /api/brand/reports/[id]", () => {
         where: {
           id: "report-1",
           brandId: { in: ["brand-1"] },
+          brand: { portalEnabled: true },
           status: "FINAL",
           visibleToBrand: true,
         },
@@ -112,6 +113,7 @@ describe("GET /api/brand/reports/[id]", () => {
           id: "report-1",
           status: "FINAL",
           visibleToBrand: true,
+          brand: { portalEnabled: true },
         },
       }),
     );
