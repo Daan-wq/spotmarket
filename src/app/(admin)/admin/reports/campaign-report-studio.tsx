@@ -790,38 +790,13 @@ function ReportPreview({
       <div className="report-print-root rounded-xl bg-[#efede8] px-3 py-5 sm:px-6" style={{ fontFamily: "var(--font-report), var(--font-sans)" }}>
         <div className="report-print-scroll mx-auto w-full max-w-[1480px] space-y-5">
           {enabled("cover") ? (
-            <ReportSection className="relative min-h-[500px] overflow-hidden bg-neutral-950 p-8 text-white sm:p-12 lg:p-16">
-              <div className="pointer-events-none absolute inset-0">
-                <div className="absolute -right-20 top-16 h-40 w-[72%] rounded-full border border-white/10" />
-                <div className="absolute -right-28 top-28 h-40 w-[76%] rounded-full border border-white/10" />
-                <div className="absolute -bottom-16 left-10 h-56 w-[88%] -rotate-6 rounded-full border border-white/10" />
-                <div className="absolute inset-x-0 bottom-0 h-28 bg-gradient-to-t from-white/[0.07] to-transparent" />
-              </div>
-              <div className="relative z-10 flex h-full min-h-[420px] flex-col justify-between gap-16">
-                <div className="flex flex-wrap items-start justify-between gap-8">
-                  <div className="max-w-4xl">
-                    <p className="text-xs font-semibold uppercase tracking-[0.22em] text-neutral-300">
-                      <CopyBlock
-                        value={blocks["cover.kicker"] ?? "Campagne prestatierapport"}
-                        onChange={(value) => editors?.updateTemplateBlock("cover.kicker", value)}
-                      />
-                    </p>
-                    <EditablePlainText
-                      value={title}
-                      onChange={editors?.setTitle}
-                      placeholder="Campagnerapport"
-                      className="mt-8 text-5xl font-semibold leading-[1.02] tracking-normal text-white md:text-7xl"
-                    />
-                  </div>
-                  <Badge variant={status === "FINAL" ? "verified" : "pending"}>{reportStatusLabel(status)}</Badge>
-                </div>
-                <div className="grid gap-6 border-t border-white/20 pt-8 md:grid-cols-4">
-                  <CoverLiveFact label="Merk" token="campaign.brandName" />
-                  <CoverLiveFact label="Campagne" token="campaign.name" />
-                  <CoverLiveFact label="Periode" value={formatPeriod(periodStart || liveData.period.start, periodEnd || liveData.period.end)} />
-                  <CoverLiveFact label="Rapportdatum" token="generatedAt" />
-                </div>
-              </div>
+            <ReportSection className="flex min-h-[500px] items-center bg-white p-8 text-neutral-950 sm:p-12 lg:p-16">
+              <EditablePlainText
+                value={title}
+                onChange={editors?.setTitle}
+                placeholder="Campagnerapport"
+                className="max-w-5xl text-6xl font-black leading-[0.98] tracking-normal text-neutral-950 md:text-8xl"
+              />
             </ReportSection>
           ) : null}
 
@@ -1121,15 +1096,6 @@ function SectionHeader({ kicker, title, icon }: { kicker: string; title: string;
         <h2 className="mt-2 text-3xl font-semibold leading-tight tracking-normal text-neutral-950 md:text-4xl">{title}</h2>
       </div>
       <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-neutral-100 text-neutral-700">{icon}</div>
-    </div>
-  );
-}
-
-function CoverLiveFact({ label, token, value }: { label: string; token?: string; value?: string }) {
-  return (
-    <div>
-      <p className="text-xs font-semibold text-neutral-500">{label}</p>
-      <p className="mt-2 text-lg font-semibold text-white">{token ? <Token name={token} /> : value}</p>
     </div>
   );
 }
@@ -2084,13 +2050,6 @@ function dateInputValue(value: string | null | undefined) {
 
 function replaceTextListItem(items: string[], index: number, value: string) {
   return items.map((item, itemIndex) => (itemIndex === index ? value.trim() : item)).filter(Boolean).slice(0, 12);
-}
-
-function formatPeriod(start: string | null | undefined, end: string | null | undefined) {
-  if (!start && !end) return "-";
-  if (!start) return `Tot ${formatDate(end, "nl")}`;
-  if (!end) return `Vanaf ${formatDate(start, "nl")}`;
-  return `${formatDate(start, "nl")} - ${formatDate(end, "nl")}`;
 }
 
 function formatPercent(value: number | null | undefined) {
