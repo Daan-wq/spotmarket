@@ -115,6 +115,8 @@ function liveData(): CampaignReportLiveData {
     },
     audience: {
       sampleCount: 2,
+      sourcePlatforms: ["Instagram"],
+      platformsLabel: "Instagram",
       ageBuckets: { "18-24": 55 },
       genderSplit: { female: 65 },
       topCountries: [{ code: "NL", share: 80 }],

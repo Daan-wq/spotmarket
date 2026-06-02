@@ -5,7 +5,6 @@ import {
   CheckCircle2,
   ExternalLink,
   FileText,
-  ImageIcon,
   Plus,
   Printer,
   RefreshCw,
@@ -16,14 +15,12 @@ import {
   Sparkles,
   Target,
   TrendingUp,
-  Trash2,
-  Upload,
   Users,
   Wallet,
 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import React, { createContext, useContext, useMemo, useRef, useState } from "react";
+import React, { createContext, useContext, useMemo, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { formatCurrency, formatDate, formatNumber } from "@/lib/admin/agency-format";
@@ -114,7 +111,6 @@ interface ReportInlineEditors {
   setTitle: (value: string) => void;
   updateTemplateBlock: (key: string, value: string) => void;
   updateContentPatternTags: (value: string[]) => void;
-  updateCoverImageUrl: (value: string | null) => void;
 }
 
 interface TokenPreviewContextValue {
@@ -368,13 +364,6 @@ function CampaignReportStudioEditor({
     }));
   }
 
-  function updateCoverImageUrl(value: string | null) {
-    setEditorialContent((current) => ({
-      ...current,
-      coverImageUrl: value,
-    }));
-  }
-
   function printReport() {
     setShowTokenValues(true);
     window.setTimeout(() => window.print(), 50);
@@ -451,6 +440,7 @@ function CampaignReportStudioEditor({
           {selectedReport?.visibleToBrand ? (
             <Link
               href="/brand"
+              prefetch={false}
               className="inline-flex h-11 items-center justify-center gap-2 rounded-lg px-3 text-sm font-semibold text-neutral-600 hover:bg-neutral-100 hover:text-neutral-950"
             >
               <ExternalLink className="h-4 w-4" />
@@ -482,6 +472,7 @@ function CampaignReportStudioEditor({
             </div>
             <Link
               href={`/admin/client-access?brandId=${selectedBrand.id}`}
+              prefetch={false}
               className="inline-flex h-10 items-center justify-center gap-2 rounded-lg border border-neutral-200 px-3 text-sm font-semibold text-neutral-700 hover:border-neutral-300 hover:text-neutral-950"
             >
               <ShieldCheck className="h-4 w-4" />
@@ -512,9 +503,6 @@ function CampaignReportStudioEditor({
         setSectionSettings={setSectionSettings}
         showTokenValues={showTokenValues}
         setShowTokenValues={setShowTokenValues}
-        coverImageUrl={editorialContent.coverImageUrl}
-        fallbackCoverImageUrl={liveData?.campaign.bannerUrl ?? null}
-        setCoverImageUrl={updateCoverImageUrl}
       />
 
       <main className="report-studio-preview min-w-0">
@@ -534,7 +522,6 @@ function CampaignReportStudioEditor({
             setTitle,
             updateTemplateBlock,
             updateContentPatternTags,
-            updateCoverImageUrl,
           }}
         />
       </main>
@@ -574,6 +561,7 @@ function HistoryPanel({
             <Link
               key={tab.value}
               href={buildHref({ status: tab.value })}
+              prefetch={false}
               className={cn(
                 "rounded-md px-3 py-2 text-center text-xs font-semibold text-neutral-500 transition",
                 filters.status === tab.value && "bg-white text-neutral-950 shadow-sm",
@@ -639,6 +627,7 @@ function HistoryPanel({
               <Link
                 key={report.id}
                 href={buildHref({ reportId: report.id, campaignId: report.campaignId })}
+                prefetch={false}
                 className={cn(
                   "block rounded-lg border border-neutral-200 bg-white p-3 transition hover:border-neutral-300 hover:bg-neutral-50",
                   selectedReportId === report.id && "border-neutral-900 bg-neutral-50",
@@ -668,9 +657,6 @@ function ReportMetaControls({
   setSectionSettings,
   showTokenValues,
   setShowTokenValues,
-  coverImageUrl,
-  fallbackCoverImageUrl,
-  setCoverImageUrl,
 }: {
   periodStart: string;
   setPeriodStart: (value: string) => void;
@@ -680,13 +666,10 @@ function ReportMetaControls({
   setSectionSettings: (value: CampaignReportSectionSettings) => void;
   showTokenValues: boolean;
   setShowTokenValues: (value: boolean) => void;
-  coverImageUrl: string | null;
-  fallbackCoverImageUrl: string | null;
-  setCoverImageUrl: (value: string | null) => void;
 }) {
   return (
     <section className="report-studio-chrome rounded-lg border border-neutral-200 bg-white p-4">
-      <div className="grid gap-4 xl:grid-cols-[18rem_minmax(0,1fr)_20rem]">
+      <div className="grid gap-4 xl:grid-cols-[18rem_minmax(0,1fr)]">
         <div>
           <h2 className="text-sm font-semibold text-neutral-950">Rapportinstellingen</h2>
           <p className="mt-1 text-xs leading-5 text-neutral-500">Pas periode en zichtbare secties aan; tekst wijzig je direct in het rapport.</p>
@@ -743,111 +726,8 @@ function ReportMetaControls({
           ))}
           </div>
         </div>
-        <CoverImageControl
-          value={coverImageUrl}
-          fallbackValue={fallbackCoverImageUrl}
-          onChange={setCoverImageUrl}
-        />
       </div>
     </section>
-  );
-}
-
-function CoverImageControl({
-  value,
-  fallbackValue,
-  onChange,
-}: {
-  value: string | null;
-  fallbackValue: string | null;
-  onChange: (value: string | null) => void;
-}) {
-  const inputRef = useRef<HTMLInputElement>(null);
-  const [uploading, setUploading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const effectiveValue = value ?? fallbackValue;
-
-  async function handleFile(file: File | undefined) {
-    if (!file) return;
-    setError(null);
-    if (!file.type.startsWith("image/")) {
-      setError("Kies een afbeeldingsbestand.");
-      return;
-    }
-    if (file.size > 5 * 1024 * 1024) {
-      setError("Afbeelding mag maximaal 5MB zijn.");
-      return;
-    }
-
-    const formData = new FormData();
-    formData.append("file", file);
-    setUploading(true);
-    try {
-      const response = await fetch("/api/admin/campaign-assets", {
-        method: "POST",
-        body: formData,
-      });
-      const body = await response.json().catch(() => ({}));
-      if (!response.ok || !body.secureUrl) {
-        throw new Error(typeof body.error === "string" ? body.error : "Upload mislukt.");
-      }
-      onChange(body.secureUrl);
-    } catch (uploadError) {
-      setError(uploadError instanceof Error ? uploadError.message : "Upload mislukt.");
-    } finally {
-      setUploading(false);
-      if (inputRef.current) inputRef.current.value = "";
-    }
-  }
-
-  return (
-    <div className="rounded-lg border border-neutral-200 bg-neutral-50 p-3">
-      <div className="flex items-center gap-3">
-        <div className="h-14 w-20 overflow-hidden rounded-md bg-neutral-200">
-          {effectiveValue ? (
-            <img src={effectiveValue} alt="" className="h-full w-full object-cover" />
-          ) : (
-            <div className="flex h-full w-full items-center justify-center text-neutral-400">
-              <ImageIcon className="h-5 w-5" />
-            </div>
-          )}
-        </div>
-        <div className="min-w-0 flex-1">
-          <p className="text-sm font-semibold text-neutral-950">Coverfoto</p>
-          <p className="mt-0.5 text-xs leading-5 text-neutral-500">
-            {value ? "Aangepast voor dit rapport." : fallbackValue ? "Gebruikt campagnebeeld als fallback." : "Optioneel breed rapportbeeld."}
-          </p>
-        </div>
-      </div>
-      {error ? <p className="mt-2 text-xs font-medium text-red-600">{error}</p> : null}
-      <div className="mt-3 flex flex-wrap gap-2">
-        <input
-          ref={inputRef}
-          type="file"
-          accept="image/*"
-          className="hidden"
-          onChange={(event) => handleFile(event.target.files?.[0])}
-        />
-        <Button
-          type="button"
-          variant="outline"
-          size="sm"
-          className="h-9 rounded-lg"
-          isPending={uploading}
-          disabled={uploading}
-          onClick={() => inputRef.current?.click()}
-        >
-          {value ? <ImageIcon className="h-4 w-4" /> : <Upload className="h-4 w-4" />}
-          {value ? "Vervangen" : "Coverfoto uploaden"}
-        </Button>
-        {value ? (
-          <Button type="button" variant="ghost" size="sm" className="h-9 rounded-lg" disabled={uploading} onClick={() => onChange(null)}>
-            <Trash2 className="h-4 w-4" />
-            Verwijderen
-          </Button>
-        ) : null}
-      </div>
-    </div>
   );
 }
 
@@ -901,7 +781,6 @@ function ReportPreview({
     ? null
     : Math.round(liveData.performance.deliveryProgress * 100);
   const qualityStatus = trafficQualityStatus(liveData);
-  const coverImageUrl = editorialContent.coverImageUrl ?? liveData.campaign.bannerUrl ?? null;
   const summaryLine = liveData.performance.overdeliveryViews > 0
     ? "De campagne heeft het afgesproken viewdoel ruim overtroffen, met extra bereik zonder extra mediabudget."
     : "De campagneprestaties worden afgezet tegen het afgesproken viewdoel en de beschikbare live performance.";
@@ -912,13 +791,12 @@ function ReportPreview({
         <div className="report-print-scroll mx-auto w-full max-w-[1480px] space-y-5">
           {enabled("cover") ? (
             <ReportSection className="relative min-h-[500px] overflow-hidden bg-neutral-950 p-8 text-white sm:p-12 lg:p-16">
-              {coverImageUrl ? (
-                <>
-                  <img src={coverImageUrl} alt="" className="absolute inset-0 h-full w-full object-cover" />
-                  <div className="absolute inset-0 bg-neutral-950/72" />
-                  <div className="absolute inset-0 bg-gradient-to-r from-neutral-950/40 via-transparent to-neutral-950/20" />
-                </>
-              ) : null}
+              <div className="pointer-events-none absolute inset-0">
+                <div className="absolute -right-20 top-16 h-40 w-[72%] rounded-full border border-white/10" />
+                <div className="absolute -right-28 top-28 h-40 w-[76%] rounded-full border border-white/10" />
+                <div className="absolute -bottom-16 left-10 h-56 w-[88%] -rotate-6 rounded-full border border-white/10" />
+                <div className="absolute inset-x-0 bottom-0 h-28 bg-gradient-to-t from-white/[0.07] to-transparent" />
+              </div>
               <div className="relative z-10 flex h-full min-h-[420px] flex-col justify-between gap-16">
                 <div className="flex flex-wrap items-start justify-between gap-8">
                   <div className="max-w-4xl">
