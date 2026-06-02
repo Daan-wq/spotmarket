@@ -30,12 +30,6 @@ vi.mock("@/lib/prisma", () => ({
   },
 }));
 
-vi.mock("resend", () => ({
-  Resend: vi.fn(() => ({
-    emails: { send: vi.fn() },
-  })),
-}));
-
 const brand = {
   id: "brand-1",
   name: "ClipProfit",
@@ -57,6 +51,18 @@ const activeContact = {
   acceptedAt: new Date("2026-06-02T12:00:00.000Z"),
   brand: { id: "brand-1", name: "ClipProfit" },
   user: { id: "admin-user-1", email: "info@daansoftware.nl", role: "admin" },
+};
+
+const invitedContact = {
+  ...activeContact,
+  id: "contact-2",
+  userId: null,
+  email: "client@example.com",
+  name: "Client",
+  status: "INVITED",
+  inviteExpiresAt: new Date("2026-06-09T12:00:00.000Z"),
+  acceptedAt: null,
+  user: null,
 };
 
 describe("POST /api/admin/brands/[id]/contacts", () => {
@@ -116,5 +122,49 @@ describe("POST /api/admin/brands/[id]/contacts", () => {
         contact: expect.objectContaining({ status: "ACTIVE" }),
       }),
     );
+  });
+
+  it("returns an invite link without sending email for external brand contacts", async () => {
+    routeMocks.userFindUnique.mockResolvedValueOnce(null);
+    routeMocks.brandContactUpsert.mockResolvedValueOnce(invitedContact);
+
+    const response = await POST(
+      new Request("http://localhost/api/admin/brands/brand-1/contacts", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: "client@example.com", name: "Client" }),
+      }),
+      { params: Promise.resolve({ id: "brand-1" }) },
+    );
+
+    expect(response.status).toBe(201);
+    expect(routeMocks.brandContactUpsert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        create: expect.objectContaining({
+          email: "client@example.com",
+          status: "INVITED",
+          inviteTokenHash: expect.any(String),
+          inviteExpiresAt: expect.any(Date),
+        }),
+        update: expect.objectContaining({
+          status: "INVITED",
+          inviteTokenHash: expect.any(String),
+          inviteExpiresAt: expect.any(Date),
+        }),
+      }),
+    );
+    expect(routeMocks.auditLogCreate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          metadata: expect.objectContaining({
+            emailSent: false,
+            activatedExistingAdmin: false,
+          }),
+        }),
+      }),
+    );
+    const body = await response.json();
+    expect(body.emailSent).toBe(false);
+    expect(body.inviteUrl).toContain("/brand-invite/");
   });
 });
