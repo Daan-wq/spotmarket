@@ -2,12 +2,14 @@ import type { BioPlatform, ConnectionType, Prisma } from "@prisma/client";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { SignalResolveButton } from "@/components/admin/signal-resolve-button";
+import { SignalViewGrowthChart } from "@/components/admin/signal-view-growth-chart";
 import { Badge } from "@/components/ui/badge";
 import { PageHeader, SectionHeader, StatCard } from "@/components/ui/page";
 import { formatDate, formatNumber, titleCaseEnum } from "@/lib/admin/agency-format";
 import { metricAvailabilityValue, type MetricAvailabilityKey } from "@/lib/contracts/metrics";
 import { AUTO_ANTIBOT_RESOLVED_BY } from "@/lib/metrics/anti-bot-signal";
 import { prisma } from "@/lib/prisma";
+import { viewsPerHourFromLatestValidPair } from "@/lib/stats/view-growth-buckets";
 
 export const dynamic = "force-dynamic";
 
@@ -17,6 +19,7 @@ interface PageProps {
 
 type SnapshotPoint = {
   capturedAt: Date;
+  source: string;
   viewCount: bigint;
   likeCount: number;
   commentCount: number;
@@ -63,6 +66,7 @@ export default async function SignalDetailPage({ params }: PageProps) {
             take: 96,
             select: {
               capturedAt: true,
+              source: true,
               viewCount: true,
               likeCount: true,
               commentCount: true,
@@ -80,13 +84,17 @@ export default async function SignalDetailPage({ params }: PageProps) {
 
   const submission = signal.submission;
   const snapshots = [...submission.metricSnapshots].reverse();
-  const latest = latestSnapshot(snapshots);
-  const previous = snapshots.length >= 2 ? snapshots[snapshots.length - 2] : null;
+  const latest = latestSnapshot(snapshots.filter((snapshot) => snapshot.source !== "OAUTH_FAILED"));
   const currentViews = latest ? Number(latest.viewCount) : (submission.viewCount ?? submission.claimedViews);
   const currentEngagements = latest
     ? snapshotEngagements(latest)
     : legacyEngagements(submission);
-  const currentVelocity = previous && latest ? viewsPerHour(previous, latest) : null;
+  const currentVelocity = viewsPerHourFromLatestValidPair(snapshots);
+  const chartSnapshots = snapshots.map((snapshot) => ({
+    capturedAt: snapshot.capturedAt.toISOString(),
+    viewCount: Number(snapshot.viewCount),
+    source: snapshot.source,
+  }));
   const payload = asPayloadRecord(signal.payload);
   const evidence = getEvidence(payload);
   const riskScore = getRiskScore(payload);
@@ -146,14 +154,14 @@ export default async function SignalDetailPage({ params }: PageProps) {
         <div className="rounded-2xl border border-neutral-200 bg-white p-5">
           <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
             <div>
-              <h2 className="text-base font-semibold text-neutral-950">Viewgroei per poll</h2>
+              <h2 className="text-base font-semibold text-neutral-950">Viewgroei per tijdvak</h2>
               <p className="mt-1 text-sm text-neutral-500">
-                Elke balk toont de viewgroei tussen twee opeenvolgende metingen.
+                Elke balk toont de geschatte viewgroei binnen hetzelfde vaste tijdvak.
               </p>
             </div>
             <Badge variant={signal.severity === "CRITICAL" ? "failed" : "pending"}>{severityLabel(signal.severity)}</Badge>
           </div>
-          <DeltaBarChart snapshots={snapshots} />
+          <SignalViewGrowthChart snapshots={chartSnapshots} />
         </div>
 
         <div className="rounded-2xl border border-neutral-200 bg-white p-5">
@@ -250,9 +258,10 @@ async function loadComparisonRows(submission: {
       shareCount: true,
       metricSnapshots: {
         orderBy: { capturedAt: "desc" },
-        take: 2,
+        take: 5,
         select: {
           capturedAt: true,
+          source: true,
           viewCount: true,
           likeCount: true,
           commentCount: true,
@@ -266,8 +275,7 @@ async function loadComparisonRows(submission: {
 
   return rows.map((row): ComparisonRow => {
     const ordered = [...row.metricSnapshots].reverse();
-    const latest = latestSnapshot(ordered);
-    const previous = ordered.length >= 2 ? ordered[ordered.length - 2] : null;
+    const latest = latestSnapshot(ordered.filter((snapshot) => snapshot.source !== "OAUTH_FAILED"));
     const latestViews = latest ? Number(latest.viewCount) : (row.viewCount ?? row.claimedViews);
     const latestEngagements = latest
       ? snapshotEngagements(latest)
@@ -278,45 +286,9 @@ async function loadComparisonRows(submission: {
       createdAt: row.createdAt,
       latestViews,
       latestEngagements,
-      recentVelocity: previous && latest ? viewsPerHour(previous, latest) : null,
+      recentVelocity: viewsPerHourFromLatestValidPair(ordered),
     };
   });
-}
-
-function DeltaBarChart({ snapshots }: { snapshots: SnapshotPoint[] }) {
-  const deltas = snapshots.slice(1).map((snapshot, index) => {
-    const previous = snapshots[index];
-    const delta = Math.max(0, Number(snapshot.viewCount) - Number(previous.viewCount));
-    return { capturedAt: snapshot.capturedAt, delta, views: Number(snapshot.viewCount) };
-  });
-  const maxDelta = Math.max(1, ...deltas.map((point) => point.delta));
-
-  if (deltas.length === 0) {
-    return <div className="flex h-56 items-center justify-center rounded-xl bg-neutral-50 text-sm text-neutral-500">Er zijn minstens twee metingen nodig om groei te tonen.</div>;
-  }
-
-  return (
-    <div>
-      <div className="flex h-56 items-end gap-1 rounded-xl bg-neutral-50 px-3 py-3">
-        {deltas.map((point) => {
-          const height = Math.max(4, (point.delta / maxDelta) * 100);
-          return (
-            <div
-              key={point.capturedAt.toISOString()}
-              className="min-w-1 flex-1 rounded-t bg-neutral-950"
-              style={{ height: `${height}%`, opacity: point.delta === maxDelta ? 1 : 0.45 }}
-              title={`${formatDateTime(point.capturedAt)}: +${formatNumber(point.delta)} views (${formatNumber(point.views)} totaal)`}
-            />
-          );
-        })}
-      </div>
-      <div className="mt-3 flex justify-between text-xs text-neutral-500">
-        <span>{formatDateTime(deltas[0].capturedAt)}</span>
-        <span>Grootste groei: +{formatNumber(maxDelta)}</span>
-        <span>{formatDateTime(deltas[deltas.length - 1].capturedAt)}</span>
-      </div>
-    </div>
-  );
 }
 
 function EvidenceCard({ item }: { item: EvidenceItem }) {
@@ -376,12 +348,6 @@ function ComparisonLine({
 
 function latestSnapshot<T>(snapshots: T[]): T | null {
   return snapshots.length > 0 ? snapshots[snapshots.length - 1] : null;
-}
-
-function viewsPerHour(previous: SnapshotPoint, latest: SnapshotPoint) {
-  const elapsedHours = (latest.capturedAt.getTime() - previous.capturedAt.getTime()) / (60 * 60 * 1000);
-  if (elapsedHours <= 0) return 0;
-  return Math.max(0, Number(latest.viewCount) - Number(previous.viewCount)) / elapsedHours;
 }
 
 function engagementRate(engagements: number, views: number) {
@@ -553,13 +519,4 @@ function formatMetricValue(value: number | string | null) {
 
 function formatRate(value: number | null) {
   return value == null ? "Niet beschikbaar" : `${value.toLocaleString("nl-NL", { maximumFractionDigits: 2 })}% engagement`;
-}
-
-function formatDateTime(value: Date) {
-  return value.toLocaleString("nl-NL", {
-    month: "short",
-    day: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
 }
