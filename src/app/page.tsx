@@ -13,6 +13,7 @@ export default async function HomePage() {
     });
     const role = user?.role;
     if (role === "admin") redirect("/admin");
+    if (role === "brand") redirect("/brand");
     if (role === "creator") redirect("/creator/campaigns");
     redirect("/onboarding");
   }
