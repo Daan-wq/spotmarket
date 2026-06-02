@@ -1,5 +1,4 @@
 import { NextResponse } from "next/server";
-import { Resend } from "resend";
 import { z } from "zod";
 import { requireAuth } from "@/lib/auth";
 import { buildAppUrl, getAppUrlFromRequest } from "@/lib/app-url";
@@ -113,13 +112,7 @@ export async function POST(req: Request, { params }: RouteContext) {
       include: contactInclude,
     });
 
-    const emailSent = activateExistingAdmin
-      ? false
-      : await sendBrandInviteEmail({
-          to: email,
-          brandName: brand.name,
-          inviteUrl,
-        });
+    const emailSent = false;
 
     await prisma.auditLog.create({
       data: {
@@ -146,44 +139,4 @@ export async function POST(req: Request, { params }: RouteContext) {
   } catch (error) {
     return jsonError(error, "[POST /api/admin/brands/[id]/contacts]");
   }
-}
-
-async function sendBrandInviteEmail({
-  to,
-  brandName,
-  inviteUrl,
-}: {
-  to: string;
-  brandName: string;
-  inviteUrl: string;
-}) {
-  if (!process.env.RESEND_API_KEY) return false;
-
-  await new Resend(process.env.RESEND_API_KEY).emails.send({
-    from: "ClipProfit <noreply@clipprofit.com>",
-    to,
-    subject: `Je ClipProfit rapportomgeving voor ${brandName}`,
-    html: `
-      <div style="background:#f7f9f9;margin:0;padding:40px 20px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">
-        <div style="max-width:560px;margin:0 auto;">
-          <div style="margin-bottom:18px;color:#010405;font-size:20px;font-weight:900;font-style:italic;line-height:1;text-transform:uppercase;">ClipProfit</div>
-          <div style="background:#fff;border:1px solid #d2d9db;border-radius:20px;padding:30px;">
-            <h1 style="margin:0 0 14px;color:#010405;font-size:26px;line-height:1.1;">Je rapportomgeving staat klaar</h1>
-            <p style="margin:0 0 20px;color:#5a6569;font-size:15px;line-height:1.65;">Maak een wachtwoord aan om de campagnerapporten voor ${escapeHtml(brandName)} te bekijken.</p>
-            <a href="${inviteUrl}" style="display:inline-block;background:#010405;color:#fff;text-decoration:none;padding:13px 22px;border-radius:999px;font-size:14px;font-weight:700;">Account activeren</a>
-          </div>
-        </div>
-      </div>
-    `,
-  });
-
-  return true;
-}
-
-function escapeHtml(value: string) {
-  return value
-    .replaceAll("&", "&amp;")
-    .replaceAll("<", "&lt;")
-    .replaceAll(">", "&gt;")
-    .replaceAll('"', "&quot;");
 }
