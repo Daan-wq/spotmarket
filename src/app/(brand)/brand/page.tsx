@@ -37,7 +37,7 @@ export default async function BrandPortalPage() {
   return (
     <div className="space-y-8">
       <PageHeader
-        eyebrow="Brand portal"
+        eyebrow="/brand"
         title={latest ? latest.title : "Campagnerapporten"}
         description="Bekijk vrijgegeven campagnerapporten en eerdere rapportages."
       />
@@ -48,10 +48,10 @@ export default async function BrandPortalPage() {
           title={context.isAdminPreview ? "Geen brandrapporten in preview" : "Nog geen rapporten zichtbaar"}
           description={
             context.isAdminPreview
-              ? "Dit is de klantkant. Maak in admin eerst een brandpagina aan, invite een brandcontact en publiceer daarna een FINAL rapport."
+              ? "Dit is de klantkant op /brand. Maak in admin eerst /brand toegang aan, invite een brandcontact en publiceer daarna een FINAL rapport."
               : "Zodra ClipProfit een definitief rapport vrijgeeft, verschijnt het hier."
           }
-          primaryCta={context.isAdminPreview ? { label: "Naar Brandportalen", href: "/admin/brand-portals" } : undefined}
+          primaryCta={context.isAdminPreview ? { label: "Naar /brand toegang", href: "/admin/client-access" } : undefined}
           secondaryCta={context.isAdminPreview ? { label: "Naar Rapportages", href: "/admin/reports" } : undefined}
         />
       ) : (

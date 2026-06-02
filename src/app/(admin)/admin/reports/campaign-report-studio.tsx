@@ -407,11 +407,11 @@ export function CampaignReportStudio({
           )}
           {selectedReport?.visibleToBrand ? (
             <Link
-              href={`/brand/reports/${selectedReport.id}`}
+              href="/brand"
               className="inline-flex h-11 items-center justify-center gap-2 rounded-lg px-3 text-sm font-semibold text-neutral-600 hover:bg-neutral-100 hover:text-neutral-950"
             >
               <ExternalLink className="h-4 w-4" />
-              Bekijk als brand
+              Open /brand
             </Link>
           ) : null}
           <Button type="button" variant="ghost" className="rounded-lg" onClick={printReport} disabled={!liveData}>

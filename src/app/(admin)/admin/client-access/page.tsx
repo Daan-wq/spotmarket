@@ -10,7 +10,7 @@ interface PageProps {
   searchParams: Promise<{ brandId?: string }>;
 }
 
-export default async function BrandPortalsPage({ searchParams }: PageProps) {
+export default async function ClientAccessPage({ searchParams }: PageProps) {
   const sp = await searchParams;
   const brands = await prisma.brand.findMany({
     orderBy: [{ portalEnabled: "desc" }, { status: "asc" }, { updatedAt: "desc" }],
@@ -32,13 +32,13 @@ export default async function BrandPortalsPage({ searchParams }: PageProps) {
   return (
     <div className="space-y-9">
       <PageHeader
-        eyebrow="Brand portal"
-        title="Brandportalen"
-        description="Maak per merk een klantomgeving aan, nodig brandcontacten uit en publiceer definitieve campagnerapporten."
+        eyebrow="/brand"
+        title="/brand toegang"
+        description="Maak per merk toegang tot de klantomgeving op /brand, nodig brandcontacten uit en publiceer definitieve campagnerapporten."
       />
 
       <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
-        <StatCard label="Aangemaakte portals" value={String(activePortals)} detail="Merken met brandpagina" />
+        <StatCard label="/brand aangemaakt" value={String(activePortals)} detail="Merken met klanttoegang" />
         <StatCard label="Actieve logins" value={String(activeLogins)} detail="Geaccepteerde brandcontacten" />
         <StatCard label="Zichtbare rapporten" value={String(visibleReports)} detail="FINAL en gepubliceerd" />
         <StatCard
