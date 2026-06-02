@@ -36,6 +36,7 @@ model User {
   ownedCampaigns               Campaign[]                    @relation("OwnedCampaigns")
   createdDiscordTemplates      DiscordMessageTemplate[]      @relation("DiscordTemplateCreatedBy")
   updatedDiscordTemplates      DiscordMessageTemplate[]      @relation("DiscordTemplateUpdatedBy")
+  brandContacts                BrandContact[]
   notifications                Notification[]
   campaignSubmissions          CampaignSubmission[]
   wallet                       Wallet?
@@ -51,6 +52,7 @@ model User {
 enum UserRole {
   admin
   creator
+  brand
 }
 
 model CreatorProfile {
@@ -373,6 +375,7 @@ model Brand {
   updatedAt       DateTime    @updatedAt
 
   onboarding            BrandOnboarding?
+  contacts              BrandContact[]
   campaigns             Campaign[]
   convertedLeads        BrandLead[]            @relation("ConvertedBrand")
   productionAssignments ProductionAssignment[]
@@ -495,6 +498,36 @@ enum BrandStatus {
   ACTIVE
   PAUSED
   CHURNED
+}
+
+model BrandContact {
+  id              String             @id @default(cuid())
+  brandId         String
+  brand           Brand              @relation(fields: [brandId], references: [id], onDelete: Cascade)
+  userId          String?
+  user            User?              @relation(fields: [userId], references: [id], onDelete: SetNull)
+  email           String
+  name            String?
+  status          BrandContactStatus @default(INVITED)
+  inviteTokenHash String?            @unique
+  inviteExpiresAt DateTime?
+  invitedBy       String?
+  invitedAt       DateTime           @default(now())
+  acceptedAt      DateTime?
+  revokedAt       DateTime?
+  createdAt       DateTime           @default(now())
+  updatedAt       DateTime           @updatedAt
+
+  @@unique([brandId, email])
+  @@index([brandId, status])
+  @@index([email])
+  @@index([userId])
+}
+
+enum BrandContactStatus {
+  INVITED
+  ACTIVE
+  REVOKED
 }
 
 enum BrandLeadStage {
@@ -628,6 +661,9 @@ model CampaignReport {
   id                          String               @id @default(cuid())
   title                       String
   status                      CampaignReportStatus @default(DRAFT)
+  visibleToBrand              Boolean              @default(false)
+  brandVisibleAt              DateTime?
+  brandVisibleBy              String?
   brandId                     String?
   brand                       Brand?               @relation(fields: [brandId], references: [id], onDelete: SetNull)
   campaignId                  String
@@ -646,6 +682,7 @@ model CampaignReport {
 
   @@index([status, updatedAt])
   @@index([brandId])
+  @@index([brandId, status, visibleToBrand, updatedAt])
   @@index([campaignId])
   @@index([periodStart, periodEnd])
 }

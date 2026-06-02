@@ -43,6 +43,8 @@ export async function PATCH(req: Request, { params }: RouteContext) {
     const { id } = await params;
     const parsed = campaignReportUpdateSchema.parse(await req.json());
     const data: Record<string, unknown> = {};
+    let auditAction = "campaignReport.update";
+    let auditMetadata: Record<string, unknown> | null = null;
 
     for (const key of [
       "title",
@@ -58,6 +60,26 @@ export async function PATCH(req: Request, { params }: RouteContext) {
     }
     if (parsed.periodStart !== undefined) data.periodStart = parsed.periodStart;
     if (parsed.periodEnd !== undefined) data.periodEnd = parsed.periodEnd;
+    if (parsed.visibleToBrand !== undefined) {
+      const current = await prisma.campaignReport.findUnique({
+        where: { id },
+        select: { status: true, campaignId: true },
+      });
+
+      if (!current) return NextResponse.json({ error: "Report not found" }, { status: 404 });
+      if (parsed.visibleToBrand && current.status !== "FINAL") {
+        return NextResponse.json(
+          { error: "Only final reports can be made visible to brands." },
+          { status: 400 },
+        );
+      }
+
+      data.visibleToBrand = parsed.visibleToBrand;
+      data.brandVisibleAt = parsed.visibleToBrand ? new Date() : null;
+      data.brandVisibleBy = parsed.visibleToBrand ? userId : null;
+      auditAction = "campaignReport.publishToBrand";
+      auditMetadata = { campaignId: current.campaignId, visibleToBrand: parsed.visibleToBrand };
+    }
 
     const report = await prisma.campaignReport.update({
       where: { id },
@@ -68,10 +90,10 @@ export async function PATCH(req: Request, { params }: RouteContext) {
     await prisma.auditLog.create({
       data: {
         userId,
-        action: "campaignReport.update",
+        action: auditAction,
         entityType: "CampaignReport",
         entityId: report.id,
-        metadata: { campaignId: report.campaignId, status: report.status },
+        metadata: (auditMetadata ?? { campaignId: report.campaignId, status: report.status }) as Prisma.InputJsonValue,
       },
     });
 

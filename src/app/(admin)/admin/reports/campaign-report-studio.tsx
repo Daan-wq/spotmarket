@@ -69,6 +69,9 @@ export interface ReportHistoryItem {
   id: string;
   title: string;
   status: CampaignReportStatusValue;
+  visibleToBrand: boolean;
+  brandVisibleAt: string | null;
+  brandVisibleBy: string | null;
   brandId: string | null;
   campaignId: string;
   updatedAt: string;
@@ -175,6 +178,7 @@ export function CampaignReportStudio({
   const [periodStart, setPeriodStart] = useState(dateInputValue(selectedReport?.periodStart ?? liveData?.period.start ?? liveData?.campaign.startsAt ?? null));
   const [periodEnd, setPeriodEnd] = useState(dateInputValue(selectedReport?.periodEnd ?? liveData?.period.end ?? liveData?.campaign.deadline ?? null));
   const [savingMode, setSavingMode] = useState<"draft" | "final" | null>(null);
+  const [sharingMode, setSharingMode] = useState<"show" | "hide" | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<ReportStudioTab>(filters.tab);
   const [printWhenReportTabIsReady, setPrintWhenReportTabIsReady] = useState(false);
@@ -304,6 +308,27 @@ export function CampaignReportStudio({
     router.refresh();
   }
 
+  async function toggleBrandVisibility(nextVisible: boolean) {
+    if (!selectedReport) return;
+    setNotice(null);
+    setSharingMode(nextVisible ? "show" : "hide");
+    const response = await fetch(`/api/admin/campaign-reports/${selectedReport.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ visibleToBrand: nextVisible }),
+    });
+    const payload = await response.json().catch(() => ({}));
+    setSharingMode(null);
+
+    if (!response.ok) {
+      setNotice(typeof payload.error === "string" ? payload.error : "Publicatie mislukt.");
+      return;
+    }
+
+    setNotice(nextVisible ? "Rapport zichtbaar voor brand." : "Rapport verborgen voor brand.");
+    router.refresh();
+  }
+
   function selectCampaign(campaignId: string) {
     router.push(buildHref({ campaignId, reportId: null, tab: "edit" }));
   }
@@ -318,6 +343,7 @@ export function CampaignReportStudio({
             <Badge variant={selectedReport?.status === "FINAL" ? "verified" : "pending"}>
               {selectedReport?.status ? reportStatusLabel(selectedReport.status) : "Niet-opgeslagen concept"}
             </Badge>
+            {selectedReport?.visibleToBrand ? <Badge variant="verified">Zichtbaar voor brand</Badge> : null}
             {selectedReport ? <span>Bijgewerkt {formatDate(selectedReport.updatedAt, "nl")}</span> : null}
             {notice ? <span className="font-medium text-neutral-700">{notice}</span> : null}
           </div>
@@ -352,6 +378,38 @@ export function CampaignReportStudio({
             <CheckCircle2 className="h-4 w-4" />
             Definitief opslaan
           </Button>
+          {selectedReport?.visibleToBrand ? (
+            <Button
+              type="button"
+              variant="outline"
+              className="rounded-lg"
+              onClick={() => toggleBrandVisibility(false)}
+              isPending={sharingMode === "hide"}
+              disabled={selectedReport.status !== "FINAL"}
+            >
+              Verbergen
+            </Button>
+          ) : (
+            <Button
+              type="button"
+              variant="outline"
+              className="rounded-lg"
+              onClick={() => toggleBrandVisibility(true)}
+              isPending={sharingMode === "show"}
+              disabled={!selectedReport || selectedReport.status !== "FINAL"}
+            >
+              Zichtbaar voor brand
+            </Button>
+          )}
+          {selectedReport?.visibleToBrand ? (
+            <Link
+              href={`/brand/reports/${selectedReport.id}`}
+              className="inline-flex h-11 items-center justify-center gap-2 rounded-lg px-3 text-sm font-semibold text-neutral-600 hover:bg-neutral-100 hover:text-neutral-950"
+            >
+              <ExternalLink className="h-4 w-4" />
+              Bekijk als brand
+            </Link>
+          ) : null}
           <Button type="button" variant="ghost" className="rounded-lg" onClick={printReport} disabled={!liveData}>
             <Printer className="h-4 w-4" />
             Printen

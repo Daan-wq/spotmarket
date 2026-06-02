@@ -5,7 +5,7 @@ import posthog from "posthog-js";
 
 interface PostHogIdentifyProps {
   userId: string;
-  role: "admin" | "creator";
+  role: "admin" | "creator" | "brand";
 }
 
 export function PostHogIdentify({ userId, role }: PostHogIdentifyProps) {

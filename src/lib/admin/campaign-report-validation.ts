@@ -58,6 +58,7 @@ export const campaignReportCreateSchema = z.object({
 export const campaignReportUpdateSchema = z.object({
   title: z.string().trim().min(1).max(180).optional(),
   status: reportStatus.optional(),
+  visibleToBrand: z.boolean().optional(),
   periodStart: optionalIsoDate,
   periodEnd: optionalIsoDate,
   executiveSummary: z.string().trim().max(5000).optional(),
