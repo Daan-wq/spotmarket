@@ -75,7 +75,7 @@ describe("computeBucketedViewGrowth", () => {
     ]);
   });
 
-  it("distributes growth across bucket boundaries by time overlap", () => {
+  it("assigns each poll delta to the bucket for the new measurement", () => {
     const buckets = computeBucketedViewGrowth(
       [
         snap(localDate(2026, 5, 29, 10, 30), 1_000),
@@ -84,8 +84,22 @@ describe("computeBucketedViewGrowth", () => {
       "1h",
     );
 
-    expect(buckets.map((bucket) => bucket.views)).toEqual([30, 60, 30]);
+    expect(buckets.map((bucket) => bucket.views)).toEqual([0, 0, 120]);
     expect(totalViews(buckets)).toBeCloseTo(120, 5);
+  });
+
+  it("places exact-boundary poll deltas in the completed bucket", () => {
+    const buckets = computeBucketedViewGrowth(
+      [
+        snap(localDate(2026, 5, 29, 10, 0), 1_000),
+        snap(localDate(2026, 5, 29, 10, 15), 1_040),
+        snap(localDate(2026, 5, 29, 10, 30), 1_100),
+        snap(localDate(2026, 5, 29, 10, 45), 1_125),
+      ],
+      "15m",
+    );
+
+    expect(buckets.map((bucket) => bucket.views)).toEqual([40, 60, 25]);
   });
 
   it("ignores failed snapshots so rebounds from zero do not create spikes", () => {
@@ -99,7 +113,7 @@ describe("computeBucketedViewGrowth", () => {
     );
 
     expect(totalViews(buckets)).toBeCloseTo(100, 5);
-    expect(Math.max(...buckets.map((bucket) => bucket.views))).toBeCloseTo(50, 5);
+    expect(Math.max(...buckets.map((bucket) => bucket.views))).toBeCloseTo(100, 5);
   });
 
   it("skips lower non-monotone snapshots and compares later points to the last valid high", () => {

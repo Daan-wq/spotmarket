@@ -156,7 +156,7 @@ export default async function SignalDetailPage({ params }: PageProps) {
             <div>
               <h2 className="text-base font-semibold text-neutral-950">Viewgroei per tijdvak</h2>
               <p className="mt-1 text-sm text-neutral-500">
-                Elke balk toont de geschatte viewgroei binnen hetzelfde vaste tijdvak.
+                Elke balk toont de gemeten viewgroei binnen hetzelfde vaste tijdvak.
               </p>
             </div>
             <Badge variant={signal.severity === "CRITICAL" ? "failed" : "pending"}>{severityLabel(signal.severity)}</Badge>

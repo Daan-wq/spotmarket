@@ -88,24 +88,13 @@ export function computeBucketedViewGrowth(
     const deltaViews = current.viewCount - previous.viewCount;
     if (deltaViews <= 0) continue;
 
-    const pairStartMs = previous.capturedAt.getTime();
     const pairEndMs = current.capturedAt.getTime();
-    const elapsedMs = pairEndMs - pairStartMs;
+    const elapsedMs = pairEndMs - previous.capturedAt.getTime();
     if (elapsedMs <= 0) continue;
 
-    let cursor = floorBucket(previous.capturedAt, bucketSize);
-    while (cursor.getTime() < pairEndMs) {
-      const next = addBucket(cursor, bucketSize);
-      const overlapMs = Math.max(
-        0,
-        Math.min(pairEndMs, next.getTime()) - Math.max(pairStartMs, cursor.getTime()),
-      );
-      if (overlapMs > 0) {
-        const bucket = bucketByStart.get(cursor.getTime());
-        if (bucket) bucket.views += deltaViews * (overlapMs / elapsedMs);
-      }
-      cursor = next;
-    }
+    const bucketStart = floorBucketForDeltaEnd(current.capturedAt, bucketSize);
+    const bucket = bucketByStart.get(bucketStart.getTime());
+    if (bucket) bucket.views += deltaViews;
   }
 
   return buckets;
@@ -206,6 +195,14 @@ function floorBucket(value: Date, bucketSize: ViewGrowthBucketSize) {
 function ceilBucket(value: Date, bucketSize: ViewGrowthBucketSize) {
   const floor = floorBucket(value, bucketSize);
   return floor.getTime() === value.getTime() ? floor : addBucket(floor, bucketSize);
+}
+
+function floorBucketForDeltaEnd(value: Date, bucketSize: ViewGrowthBucketSize) {
+  const floor = floorBucket(value, bucketSize);
+  if (floor.getTime() !== value.getTime()) return floor;
+
+  const previousMoment = new Date(value.getTime() - 1);
+  return floorBucket(previousMoment, bucketSize);
 }
 
 function addBucket(value: Date, bucketSize: ViewGrowthBucketSize) {
