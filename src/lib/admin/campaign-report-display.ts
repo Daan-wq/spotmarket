@@ -18,10 +18,12 @@ export function formatAudienceCountryLabel(code: string, locale = "nl-NL"): stri
 }
 
 export function formatAudienceShare(value: number, locale = "nl-NL"): string {
+  const numeric = Number(value) || 0;
+  const percentage = numeric > 1 ? numeric : numeric * 100;
   return `${new Intl.NumberFormat(locale, {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
-  }).format(value)}%`;
+  }).format(percentage)}%`;
 }
 
 export function reportQualityStatusLabel(status: ReportQualityStatus): string {

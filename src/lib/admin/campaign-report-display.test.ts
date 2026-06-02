@@ -14,8 +14,9 @@ describe("campaign report display helpers", () => {
   });
 
   it("formats audience percentages with two decimals", () => {
+    expect(formatAudienceShare(0.8)).toBe("80,00%");
+    expect(formatAudienceShare(0.02562)).toBe("2,56%");
     expect(formatAudienceShare(2.562)).toBe("2,56%");
-    expect(formatAudienceShare(0.128)).toBe("0,13%");
   });
 
   it("uses Dutch brand-safe quality status labels", () => {

@@ -146,12 +146,56 @@ describe("buildCampaignReportLiveData", () => {
     expect(report.quality.openSignals).toBe(1);
     expect(report.quality.resolvedSignals).toBe(1);
     expect(report.audience.sampleCount).toBe(1);
-    expect(report.audience.ageBuckets["18-24"]).toBe(60);
+    expect(report.audience.ageBuckets["18-24"]).toBe(0.6);
+    expect(report.audience.topCountries[0]).toEqual({ code: "NL", share: 0.65 });
     expect(report.referral.inviteCount).toBe(1);
     expect(report.defaults.title).toBe("Bram's Fruit campagnerapport");
     expect(report.defaults.executiveSummary).toContain("goedgekeurde views");
     expect(report.defaults.keyTakeaways.length).toBeGreaterThanOrEqual(3);
     expect(report.defaults.editorialContent.templateBlocks["summary.body"]).toContain("{{performance.currentViews}}");
+  });
+
+  it("averages account-level audience demographics and prefers engaged snapshots per account", () => {
+    const report = buildCampaignReportLiveData({
+      campaign,
+      submissions: [],
+      attributions: [],
+      audienceSnapshots: [
+        {
+          connectionType: "IG",
+          connectionId: "ig-1",
+          kind: "FOLLOWER",
+          capturedAt: new Date("2026-05-01T00:00:00.000Z"),
+          ageBuckets: { "18-24": 0.5, "25-34": 0.5 },
+          genderSplit: { male: 0.2, female: 0.8 },
+          topCountries: [{ code: "NL", share: 0.6 }, { code: "BE", share: 0.4 }],
+        },
+        {
+          connectionType: "IG",
+          connectionId: "ig-1",
+          kind: "ENGAGED",
+          capturedAt: new Date("2026-05-02T00:00:00.000Z"),
+          ageBuckets: { "18-24": 0.8, "25-34": 0.2 },
+          genderSplit: { male: 0.1, female: 0.9 },
+          topCountries: [{ code: "NL", share: 0.9 }, { code: "BE", share: 0.1 }],
+        },
+        {
+          connectionType: "IG",
+          connectionId: "ig-2",
+          kind: "FOLLOWER",
+          capturedAt: new Date("2026-05-02T00:00:00.000Z"),
+          ageBuckets: { "18-24": 0.6, "25-34": 0.4 },
+          genderSplit: { male: 0.4, female: 0.6 },
+          topCountries: [{ code: "NL", share: 0.7 }, { code: "IN", share: 0.3 }],
+        },
+      ],
+    });
+
+    expect(report.audience.sampleCount).toBe(2);
+    expect(report.audience.ageBuckets["18-24"]).toBeCloseTo(0.7);
+    expect(report.audience.genderSplit.female).toBeCloseTo(0.75);
+    expect(report.audience.topCountries[0]?.code).toBe("NL");
+    expect(report.audience.topCountries[0]?.share).toBeCloseTo(0.8);
   });
 
   it("shows live approved views and overdelivery above the CPM target", () => {

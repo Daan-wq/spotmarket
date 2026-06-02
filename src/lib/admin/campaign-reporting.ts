@@ -734,31 +734,48 @@ function buildQualitySummary(submissions: CampaignReportSubmissionInput[]) {
 }
 
 function buildAudienceSummary(snapshots: CampaignReportAudienceSnapshotInput[]) {
-  const latest = latestAudienceSnapshots(snapshots);
+  const latest = preferredAudienceSnapshots(snapshots);
   const ageBuckets: Record<string, number> = {};
   const genderSplit: Record<string, number> = {};
   const countryTotals: Record<string, number> = {};
+  let ageSampleCount = 0;
+  let genderSampleCount = 0;
+  let countrySampleCount = 0;
 
   for (const snapshot of latest) {
-    for (const [bucket, value] of Object.entries(snapshot.ageBuckets ?? {})) {
-      ageBuckets[bucket] = (ageBuckets[bucket] ?? 0) + (Number(value) || 0);
+    const normalizedAgeBuckets = normalizeAudienceMap(snapshot.ageBuckets);
+    if (Object.keys(normalizedAgeBuckets).length > 0) {
+      ageSampleCount++;
+      for (const [bucket, value] of Object.entries(normalizedAgeBuckets)) {
+        ageBuckets[bucket] = (ageBuckets[bucket] ?? 0) + value;
+      }
     }
-    for (const [bucket, value] of Object.entries(snapshot.genderSplit ?? {})) {
-      genderSplit[bucket] = (genderSplit[bucket] ?? 0) + (Number(value) || 0);
+
+    const normalizedGenderSplit = normalizeAudienceMap(snapshot.genderSplit);
+    if (Object.keys(normalizedGenderSplit).length > 0) {
+      genderSampleCount++;
+      for (const [bucket, value] of Object.entries(normalizedGenderSplit)) {
+        genderSplit[bucket] = (genderSplit[bucket] ?? 0) + value;
+      }
     }
-    for (const country of snapshot.topCountries ?? []) {
-      countryTotals[country.code] = (countryTotals[country.code] ?? 0) + (Number(country.share) || 0);
+
+    const normalizedCountries = normalizeCountryShares(snapshot.topCountries);
+    if (normalizedCountries.length > 0) {
+      countrySampleCount++;
+      for (const country of normalizedCountries) {
+        countryTotals[country.code] = (countryTotals[country.code] ?? 0) + country.share;
+      }
     }
   }
 
   return {
     sampleCount: latest.length,
-    ageBuckets,
-    genderSplit,
+    ageBuckets: averageAudienceMap(ageBuckets, ageSampleCount),
+    genderSplit: averageAudienceMap(genderSplit, genderSampleCount),
     topCountries: Object.entries(countryTotals)
-      .sort((a, b) => b[1] - a[1])
+      .map(([code, share]) => ({ code, share: countrySampleCount > 0 ? share / countrySampleCount : 0 }))
+      .sort((a, b) => b.share - a.share)
       .slice(0, 8)
-      .map(([code, share]) => ({ code, share })),
   };
 }
 
@@ -773,6 +790,59 @@ function latestAudienceSnapshots(snapshots: CampaignReportAudienceSnapshotInput[
     latest.push(snapshot);
   }
   return latest;
+}
+
+function preferredAudienceSnapshots(snapshots: CampaignReportAudienceSnapshotInput[]) {
+  const latestByKind = latestAudienceSnapshots(snapshots);
+  const byConnection = new Map<string, CampaignReportAudienceSnapshotInput[]>();
+  for (const snapshot of latestByKind) {
+    const key = `${snapshot.connectionType}:${snapshot.connectionId}`;
+    const rows = byConnection.get(key) ?? [];
+    rows.push(snapshot);
+    byConnection.set(key, rows);
+  }
+
+  return Array.from(byConnection.values()).map((rows) => {
+    const engaged = rows.find((snapshot) => snapshot.kind === "ENGAGED" && hasAudienceData(snapshot));
+    if (engaged) return engaged;
+    return rows.find(hasAudienceData) ?? rows[0];
+  });
+}
+
+function hasAudienceData(snapshot: CampaignReportAudienceSnapshotInput) {
+  return (
+    Object.keys(snapshot.ageBuckets ?? {}).length > 0 ||
+    Object.keys(snapshot.genderSplit ?? {}).length > 0 ||
+    (snapshot.topCountries ?? []).length > 0
+  );
+}
+
+function normalizeAudienceMap(input?: Record<string, number> | null) {
+  const normalized: Record<string, number> = {};
+  for (const [key, value] of Object.entries(input ?? {})) {
+    const share = normalizeAudienceShare(value);
+    if (share > 0) normalized[key] = share;
+  }
+  return normalized;
+}
+
+function normalizeCountryShares(input?: Array<{ code: string; share: number }> | null) {
+  return (input ?? [])
+    .map((country) => ({ code: country.code, share: normalizeAudienceShare(country.share) }))
+    .filter((country) => country.code && country.share > 0);
+}
+
+function normalizeAudienceShare(value: number) {
+  const numeric = Number(value) || 0;
+  if (numeric <= 0) return 0;
+  return numeric > 1 ? numeric / 100 : numeric;
+}
+
+function averageAudienceMap(input: Record<string, number>, sampleCount: number) {
+  if (sampleCount <= 0) return input;
+  return Object.fromEntries(
+    Object.entries(input).map(([key, value]) => [key, value / sampleCount]),
+  );
 }
 
 async function loadAudienceSnapshots(profileIds: string[]): Promise<CampaignReportAudienceSnapshotInput[]> {
