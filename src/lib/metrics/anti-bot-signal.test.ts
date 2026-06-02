@@ -30,7 +30,7 @@ function payload(riskScore: number): AntiBotPayload {
     reasons: riskScore > 0 ? ["risk"] : [],
     evidence: [],
     evaluatedAt: "2026-05-25T12:00:00.000Z",
-    version: "anti-bot-v2",
+    version: "anti-bot-v3",
   };
 }
 
@@ -58,7 +58,7 @@ describe("syncAntiBotSignal", () => {
         submissionId: "sub_1",
         type: "BOT_SUSPECTED",
         severity: "CRITICAL",
-        payload: expect.objectContaining({ riskScore: 78, version: "anti-bot-v2" }),
+        payload: expect.objectContaining({ riskScore: 78, version: "anti-bot-v3" }),
       },
       select: { id: true, createdAt: true },
     });
@@ -87,7 +87,7 @@ describe("syncAntiBotSignal", () => {
       where: { id: "sig_existing" },
       data: {
         severity: "WARN",
-        payload: expect.objectContaining({ riskScore: 55, version: "anti-bot-v2" }),
+        payload: expect.objectContaining({ riskScore: 55, version: "anti-bot-v3" }),
       },
     });
   });
@@ -106,7 +106,7 @@ describe("syncAntiBotSignal", () => {
       where: { id: "sig_existing" },
       data: {
         severity: "WARN",
-        payload: expect.objectContaining({ riskScore: 45, version: "anti-bot-v2" }),
+        payload: expect.objectContaining({ riskScore: 45, version: "anti-bot-v3" }),
       },
     });
   });
@@ -126,7 +126,7 @@ describe("syncAntiBotSignal", () => {
       where: { id: "sig_existing" },
       data: {
         severity: "INFO",
-        payload: expect.objectContaining({ riskScore: 25, version: "anti-bot-v2" }),
+        payload: expect.objectContaining({ riskScore: 25, version: "anti-bot-v3" }),
         resolvedAt: now,
         resolvedBy: AUTO_ANTIBOT_RESOLVED_BY,
       },

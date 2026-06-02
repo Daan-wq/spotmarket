@@ -54,6 +54,8 @@ export interface ScorerOutput {
 
 const HOUR_MS = 60 * 60 * 1000;
 const SEVEN_DAYS_MS = 7 * 24 * HOUR_MS;
+export const MIN_BOT_ALERT_DELTA_VIEWS = 2_000;
+export const MIN_BOT_ALERT_TOTAL_VIEWS = 2_000;
 
 /**
  * Compute velocity window from the most-recent two snapshots,
@@ -219,6 +221,24 @@ interface AntiBotInput {
 function evaluateAntiBot(input: AntiBotInput): AntiBotPayload {
   const evidence: AntiBotEvidence[] = [];
 
+  if (
+    input.deltaViews < MIN_BOT_ALERT_DELTA_VIEWS ||
+    input.lastViews < MIN_BOT_ALERT_TOTAL_VIEWS
+  ) {
+    return {
+      reason: "Anti-bot risk 0/100: below minimum alert volume",
+      riskScore: 0,
+      confidence: "LOW",
+      reasons: [],
+      evidence: [],
+      deltaViews: input.deltaViews,
+      minimumAlertDeltaViews: MIN_BOT_ALERT_DELTA_VIEWS,
+      minimumAlertTotalViews: MIN_BOT_ALERT_TOTAL_VIEWS,
+      evaluatedAt: input.evaluatedAt.toISOString(),
+      version: "anti-bot-v3",
+    };
+  }
+
   if (input.spikeMultiplier != null && input.spikeMultiplier > 10) {
     evidence.push({
       kind: "VELOCITY_ANOMALY",
@@ -264,7 +284,7 @@ function evaluateAntiBot(input: AntiBotInput): AntiBotPayload {
       : null;
 
   if (
-    input.deltaViews > 1000 &&
+    input.deltaViews >= MIN_BOT_ALERT_DELTA_VIEWS &&
     input.ratios.engagementRate != null &&
     input.ratios.engagementRate < 0.03 &&
     deltaEngagementRatios.length >= 2 &&
@@ -337,8 +357,11 @@ function evaluateAntiBot(input: AntiBotInput): AntiBotPayload {
     confidence,
     reasons,
     evidence: orderedEvidence,
+    deltaViews: input.deltaViews,
+    minimumAlertDeltaViews: MIN_BOT_ALERT_DELTA_VIEWS,
+    minimumAlertTotalViews: MIN_BOT_ALERT_TOTAL_VIEWS,
     evaluatedAt: input.evaluatedAt.toISOString(),
-    version: "anti-bot-v2",
+    version: "anti-bot-v3",
   };
 }
 
