@@ -1,6 +1,7 @@
 import { calculateCampaignReferralReport, type CampaignReferralReport } from "@/lib/campaign-referrals";
 import {
   DEFAULT_CAMPAIGN_REPORT_SECTIONS,
+  DEFAULT_AUDIENCE_INSIGHT_TEMPLATE,
   normalizeEditorialContent,
   type CampaignReportEditorial,
   type CampaignReportSectionSettings,
@@ -35,6 +36,13 @@ const PLATFORM_LABELS: Record<string, string> = {
 };
 
 const INTERNAL_METRIC_SOURCES = new Set(["OAUTH_FAILED"]);
+
+const AUDIENCE_PLATFORM_LABELS: Record<string, string> = {
+  IG: "Instagram",
+  TT: "TikTok",
+  YT: "YouTube",
+  FB: "Facebook",
+};
 
 export interface CampaignReportCampaignInput {
   id: string;
@@ -238,6 +246,8 @@ export interface CampaignReportLiveData {
   };
   audience: {
     sampleCount: number;
+    sourcePlatforms: string[];
+    platformsLabel: string;
     ageBuckets: Record<string, number>;
     genderSplit: Record<string, number>;
     topCountries: Array<{ code: string; share: number }>;
@@ -595,7 +605,7 @@ function generateDefaultEditorial(data: Omit<CampaignReportLiveData, "defaults">
     "content.insight": "De best presterende clips combineren een snelle hook, zichtbare merkplaatsing in de eerste seconden en een editstijl die natuurlijk voelt voor het platform.",
     "platform.insight": "{{platformBreakdown[0].platform}} leverde het grootste deel van het bereik en verdient extra focus in de volgende campagne.",
     "creator.insight": "Voor de volgende campagne raden we aan creators opnieuw te activeren die hoge views combineren met consistente kwaliteit en duidelijke merkfit.",
-    "audience.insight": "Publieksdata is gebaseerd op beschikbare platformdata. De beschikbaarheid kan per platform verschillen.",
+    "audience.insight": DEFAULT_AUDIENCE_INSIGHT_TEMPLATE,
     "budget.insight": "Betaalde views zijn gemaximeerd op het afgesproken doel. Extra views boven dit doel worden gerapporteerd als extra bereik zonder extra kosten.",
     "quality.insight": "Alle clips en views zijn gecontroleerd op campagnevoorwaarden, dubbele activiteit en verkeerskwaliteit. Alleen prestaties die voldeden aan de voorwaarden zijn meegenomen in de goedgekeurde resultaten.",
     "next.plan": "Voor de volgende campagne adviseren we om de best presterende creators opnieuw te activeren, de winnende hooks expliciet in de briefing te zetten en budget te sturen naar de kanalen met de laagste effectieve CPM.",
@@ -770,6 +780,8 @@ function buildAudienceSummary(snapshots: CampaignReportAudienceSnapshotInput[]) 
 
   return {
     sampleCount: latest.length,
+    sourcePlatforms: audienceSourcePlatforms(latest),
+    platformsLabel: formatDutchList(audienceSourcePlatforms(latest)),
     ageBuckets: averageAudienceMap(ageBuckets, ageSampleCount),
     genderSplit: averageAudienceMap(genderSplit, genderSampleCount),
     topCountries: Object.entries(countryTotals)
@@ -777,6 +789,22 @@ function buildAudienceSummary(snapshots: CampaignReportAudienceSnapshotInput[]) 
       .sort((a, b) => b.share - a.share)
       .slice(0, 8)
   };
+}
+
+function audienceSourcePlatforms(snapshots: CampaignReportAudienceSnapshotInput[]) {
+  return Array.from(
+    new Set(
+      snapshots
+        .map((snapshot) => AUDIENCE_PLATFORM_LABELS[snapshot.connectionType] ?? null)
+        .filter((platform): platform is string => Boolean(platform)),
+    ),
+  );
+}
+
+function formatDutchList(items: string[]) {
+  if (items.length === 0) return "beschikbare platformen";
+  if (items.length === 1) return items[0];
+  return `${items.slice(0, -1).join(", ")} en ${items[items.length - 1]}`;
 }
 
 function latestAudienceSnapshots(snapshots: CampaignReportAudienceSnapshotInput[]) {

@@ -32,6 +32,14 @@ export const DEFAULT_CAMPAIGN_REPORT_SECTIONS: CampaignReportSectionSettings = {
   appendix: false,
 };
 
+export const DEFAULT_AUDIENCE_INSIGHT_TEMPLATE =
+  "Demografische data is gebaseerd op beschikbare accountdata van {{audience.platformsLabel}}. De beschikbaarheid kan per platform en account verschillen.";
+
+const LEGACY_AUDIENCE_INSIGHT_TEMPLATES = new Set([
+  "Publieksdata is gebaseerd op beschikbare platformdata. De beschikbaarheid kan per platform verschillen.",
+  "Publieksdata is gebaseerd op beschikbare platformdata. Beschikbaarheid kan per platform verschillen.",
+]);
+
 export interface CampaignReportEditorialContent {
   templateBlocks: Record<string, string>;
   contentPatternTags: string[];
@@ -88,7 +96,7 @@ export function normalizeTextList(value: unknown): string[] {
 export function normalizeEditorialContent(value: unknown): CampaignReportEditorialContent {
   const input = value && typeof value === "object" ? value as Record<string, unknown> : {};
   return {
-    templateBlocks: normalizeTextRecord(input.templateBlocks),
+    templateBlocks: normalizeTemplateBlocks(input.templateBlocks),
     contentPatternTags: normalizeTextList(input.contentPatternTags),
     topContentNotes: normalizeTextRecord(input.topContentNotes),
     platformRecommendations: normalizeTextRecord(input.platformRecommendations),
@@ -97,6 +105,14 @@ export function normalizeEditorialContent(value: unknown): CampaignReportEditori
     nextCampaignPlan: typeof input.nextCampaignPlan === "string" ? input.nextCampaignPlan : "",
     coverImageUrl: normalizeOptionalUrl(input.coverImageUrl),
   };
+}
+
+function normalizeTemplateBlocks(value: unknown): Record<string, string> {
+  const records = normalizeTextRecord(value);
+  if (LEGACY_AUDIENCE_INSIGHT_TEMPLATES.has(records["audience.insight"] ?? "")) {
+    records["audience.insight"] = DEFAULT_AUDIENCE_INSIGHT_TEMPLATE;
+  }
+  return records;
 }
 
 function normalizeOptionalUrl(value: unknown): string | null {

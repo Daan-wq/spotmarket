@@ -4,7 +4,10 @@ import {
   formatAudienceShare,
   reportQualityStatusLabel,
 } from "@/lib/admin/campaign-report-display";
-import { normalizeEditorialContent } from "@/lib/admin/campaign-report-shared";
+import {
+  DEFAULT_AUDIENCE_INSIGHT_TEMPLATE,
+  normalizeEditorialContent,
+} from "@/lib/admin/campaign-report-shared";
 
 describe("campaign report display helpers", () => {
   it("formats audience countries as Dutch full names", () => {
@@ -29,5 +32,15 @@ describe("campaign report display helpers", () => {
     expect(normalizeEditorialContent({ coverImageUrl: "https://example.com/cover.jpg" }).coverImageUrl).toBe("https://example.com/cover.jpg");
     expect(normalizeEditorialContent({ coverImageUrl: "javascript:alert(1)" }).coverImageUrl).toBeNull();
     expect(normalizeEditorialContent({}).coverImageUrl).toBeNull();
+  });
+
+  it("upgrades the legacy audience disclaimer to the dynamic platform disclaimer", () => {
+    const content = normalizeEditorialContent({
+      templateBlocks: {
+        "audience.insight": "Publieksdata is gebaseerd op beschikbare platformdata. De beschikbaarheid kan per platform verschillen.",
+      },
+    });
+
+    expect(content.templateBlocks["audience.insight"]).toBe(DEFAULT_AUDIENCE_INSIGHT_TEMPLATE);
   });
 });

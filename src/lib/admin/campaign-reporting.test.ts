@@ -146,6 +146,8 @@ describe("buildCampaignReportLiveData", () => {
     expect(report.quality.openSignals).toBe(1);
     expect(report.quality.resolvedSignals).toBe(1);
     expect(report.audience.sampleCount).toBe(1);
+    expect(report.audience.sourcePlatforms).toEqual(["TikTok"]);
+    expect(report.audience.platformsLabel).toBe("TikTok");
     expect(report.audience.ageBuckets["18-24"]).toBe(0.6);
     expect(report.audience.topCountries[0]).toEqual({ code: "NL", share: 0.65 });
     expect(report.referral.inviteCount).toBe(1);
@@ -153,6 +155,7 @@ describe("buildCampaignReportLiveData", () => {
     expect(report.defaults.executiveSummary).toContain("goedgekeurde views");
     expect(report.defaults.keyTakeaways.length).toBeGreaterThanOrEqual(3);
     expect(report.defaults.editorialContent.templateBlocks["summary.body"]).toContain("{{performance.currentViews}}");
+    expect(report.defaults.editorialContent.templateBlocks["audience.insight"]).toContain("{{audience.platformsLabel}}");
   });
 
   it("averages account-level audience demographics and prefers engaged snapshots per account", () => {
@@ -192,6 +195,8 @@ describe("buildCampaignReportLiveData", () => {
     });
 
     expect(report.audience.sampleCount).toBe(2);
+    expect(report.audience.sourcePlatforms).toEqual(["Instagram"]);
+    expect(report.audience.platformsLabel).toBe("Instagram");
     expect(report.audience.ageBuckets["18-24"]).toBeCloseTo(0.7);
     expect(report.audience.genderSplit.female).toBeCloseTo(0.75);
     expect(report.audience.topCountries[0]?.code).toBe("NL");

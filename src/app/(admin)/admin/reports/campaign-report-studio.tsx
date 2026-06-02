@@ -35,6 +35,7 @@ import {
 } from "@/lib/admin/campaign-report-display";
 import {
   CAMPAIGN_REPORT_SECTION_KEYS,
+  DEFAULT_AUDIENCE_INSIGHT_TEMPLATE,
   DEFAULT_CAMPAIGN_REPORT_SECTIONS,
   normalizeSectionSettings,
   normalizeTextList,
@@ -1067,7 +1068,7 @@ function ReportPreview({
               <AudienceSnapshot data={liveData.audience} />
               <InsightLine>
                 <CopyBlock
-                  value={blocks["audience.insight"] ?? "Publieksdata is gebaseerd op beschikbare platformdata. Beschikbaarheid kan per platform verschillen."}
+                  value={blocks["audience.insight"] ?? DEFAULT_AUDIENCE_INSIGHT_TEMPLATE}
                   onChange={(value) => editors?.updateTemplateBlock("audience.insight", value)}
                 />
               </InsightLine>
@@ -2187,7 +2188,7 @@ function defaultTemplateBlocks(editorial: CampaignReportEditorial): Record<strin
     "content.insight": "De best presterende clips combineren een snelle hook, duidelijke merkplaatsing en een editstijl die natuurlijk voelt voor het platform.",
     "platform.insight": "{{platformBreakdown[0].platform}} leverde het grootste deel van het bereik en verdient extra focus in de volgende campagne.",
     "creator.insight": "Heractiveer creators die hoge views combineren met consistente kwaliteit en duidelijke merkfit.",
-    "audience.insight": "Publieksdata is gebaseerd op beschikbare platformdata. Beschikbaarheid kan per platform verschillen.",
+    "audience.insight": DEFAULT_AUDIENCE_INSIGHT_TEMPLATE,
     "budget.insight": "Betaalde views zijn gemaximeerd op het afgesproken doel. Extra views boven dit doel worden gerapporteerd als extra bereik zonder extra kosten.",
     "quality.insight": "Alle clips en views zijn gecontroleerd op campagnevoorwaarden, dubbele activiteit en verkeerskwaliteit. Alleen geldige prestaties zijn meegenomen in de goedgekeurde resultaten.",
     "next.plan": editorial.nextCampaignRecommendations[0] || "Voor de volgende campagne adviseren we om de best presterende creators opnieuw te activeren, winnende hooks expliciet in de briefing te zetten en budget te sturen naar kanalen met de laagste effectieve CPM.",
