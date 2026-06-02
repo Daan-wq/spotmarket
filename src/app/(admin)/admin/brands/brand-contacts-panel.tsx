@@ -29,6 +29,7 @@ export function BrandContactsPanel({ brands }: { brands: BrandContactPanelBrand[
   });
   const [pendingKey, setPendingKey] = useState<string | null>(null);
   const [inviteUrls, setInviteUrls] = useState<Record<string, string>>({});
+  const [inviteEmailSent, setInviteEmailSent] = useState<Record<string, boolean>>({});
   const [error, setError] = useState<string | null>(null);
 
   async function inviteContact(brandId: string, formData: FormData) {
@@ -56,6 +57,7 @@ export function BrandContactsPanel({ brands }: { brands: BrandContactPanelBrand[
     }));
     if (body.inviteUrl) {
       setInviteUrls((current) => ({ ...current, [body.contact.id]: body.inviteUrl }));
+      setInviteEmailSent((current) => ({ ...current, [body.contact.id]: Boolean(body.emailSent) }));
     }
   }
 
@@ -139,7 +141,14 @@ export function BrandContactsPanel({ brands }: { brands: BrandContactPanelBrand[
                         </div>
                         <p className="mt-1 truncate text-xs text-neutral-500">{contact.email}</p>
                         {inviteUrls[contact.id] ? (
-                          <p className="mt-1 break-all text-xs text-neutral-500">{inviteUrls[contact.id]}</p>
+                          <div className="mt-2 rounded-lg bg-neutral-50 px-3 py-2">
+                            <p className="break-all text-xs text-neutral-600">{inviteUrls[contact.id]}</p>
+                            <p className="mt-1 text-xs text-neutral-500">
+                              {inviteEmailSent[contact.id]
+                                ? "Mail verzonden. De link blijft beschikbaar om opnieuw te delen."
+                                : "Mail niet verzonden; kopieer de link en stuur hem zelf door."}
+                            </p>
+                          </div>
                         ) : null}
                       </div>
                       <div className="flex items-center gap-2">

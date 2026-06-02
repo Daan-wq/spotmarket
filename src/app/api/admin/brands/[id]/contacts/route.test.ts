@@ -8,6 +8,7 @@ const routeMocks = vi.hoisted(() => ({
   userFindUnique: vi.fn(),
   brandContactUpsert: vi.fn(),
   auditLogCreate: vi.fn(),
+  resendSend: vi.fn(),
 }));
 
 vi.mock("@/lib/auth", () => ({
@@ -28,6 +29,14 @@ vi.mock("@/lib/prisma", () => ({
     },
     auditLog: { create: routeMocks.auditLogCreate },
   },
+}));
+
+vi.mock("resend", () => ({
+  Resend: vi.fn(function Resend() {
+    return {
+      emails: { send: routeMocks.resendSend },
+    };
+  }),
 }));
 
 const brand = {
@@ -69,6 +78,7 @@ const savedEnv = {
   VERCEL_ENV: process.env.VERCEL_ENV,
   VERCEL_URL: process.env.VERCEL_URL,
   VERCEL_BRANCH_URL: process.env.VERCEL_BRANCH_URL,
+  RESEND_API_KEY: process.env.RESEND_API_KEY,
 };
 
 describe("POST /api/admin/brands/[id]/contacts", () => {
@@ -77,11 +87,13 @@ describe("POST /api/admin/brands/[id]/contacts", () => {
     delete process.env.VERCEL_ENV;
     delete process.env.VERCEL_URL;
     delete process.env.VERCEL_BRANCH_URL;
+    delete process.env.RESEND_API_KEY;
     routeMocks.requireAuth.mockResolvedValue({ userId: "admin-supabase-1" });
     routeMocks.brandFindUnique.mockResolvedValue(brand);
     routeMocks.userFindUnique.mockResolvedValue({ id: "admin-user-1", role: "admin" });
     routeMocks.brandContactUpsert.mockResolvedValue(activeContact);
     routeMocks.auditLogCreate.mockResolvedValue({});
+    routeMocks.resendSend.mockResolvedValue({});
   });
 
   afterEach(() => {
@@ -99,6 +111,11 @@ describe("POST /api/admin/brands/[id]/contacts", () => {
       delete process.env.VERCEL_BRANCH_URL;
     } else {
       process.env.VERCEL_BRANCH_URL = savedEnv.VERCEL_BRANCH_URL;
+    }
+    if (savedEnv.RESEND_API_KEY === undefined) {
+      delete process.env.RESEND_API_KEY;
+    } else {
+      process.env.RESEND_API_KEY = savedEnv.RESEND_API_KEY;
     }
   });
 
@@ -186,6 +203,66 @@ describe("POST /api/admin/brands/[id]/contacts", () => {
           metadata: expect.objectContaining({
             emailSent: false,
             activatedExistingAdmin: false,
+          }),
+        }),
+      }),
+    );
+    const body = await response.json();
+    expect(body.emailSent).toBe(false);
+    expect(body.inviteUrl).toContain("/brand-invite/");
+    expect(routeMocks.resendSend).not.toHaveBeenCalled();
+  });
+
+  it("sends a professional invite email when Resend is configured", async () => {
+    process.env.RESEND_API_KEY = "test-resend-key";
+    routeMocks.userFindUnique.mockResolvedValueOnce(null);
+    routeMocks.brandContactUpsert.mockResolvedValueOnce(invitedContact);
+
+    const response = await POST(
+      new Request("http://localhost/api/admin/brands/brand-1/contacts", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: "client@example.com", name: "Client" }),
+      }),
+      { params: Promise.resolve({ id: "brand-1" }) },
+    );
+
+    expect(response.status).toBe(201);
+    expect(routeMocks.resendSend).toHaveBeenCalledWith(
+      expect.objectContaining({
+        from: "ClipProfit <noreply@clipprofit.com>",
+        to: "client@example.com",
+        subject: "Je ClipProfit rapportomgeving voor ClipProfit",
+        html: expect.stringContaining("Account activeren"),
+      }),
+    );
+    const body = await response.json();
+    expect(body.emailSent).toBe(true);
+    expect(body.inviteUrl).toContain("/brand-invite/");
+  });
+
+  it("keeps the invite link when Resend fails", async () => {
+    process.env.RESEND_API_KEY = "test-resend-key";
+    routeMocks.resendSend.mockRejectedValueOnce(new Error("Resend unavailable"));
+    routeMocks.userFindUnique.mockResolvedValueOnce(null);
+    routeMocks.brandContactUpsert.mockResolvedValueOnce(invitedContact);
+
+    const response = await POST(
+      new Request("http://localhost/api/admin/brands/brand-1/contacts", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: "client@example.com", name: "Client" }),
+      }),
+      { params: Promise.resolve({ id: "brand-1" }) },
+    );
+
+    expect(response.status).toBe(201);
+    expect(routeMocks.auditLogCreate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          metadata: expect.objectContaining({
+            emailSent: false,
+            emailError: "Resend unavailable",
           }),
         }),
       }),

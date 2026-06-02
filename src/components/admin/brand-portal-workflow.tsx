@@ -45,6 +45,7 @@ export function BrandPortalWorkflow({ brands, compact = false }: BrandPortalWork
   });
   const [pendingKey, setPendingKey] = useState<string | null>(null);
   const [inviteUrls, setInviteUrls] = useState<Record<string, string>>({});
+  const [inviteEmailSent, setInviteEmailSent] = useState<Record<string, boolean>>({});
   const [copiedContactId, setCopiedContactId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -92,7 +93,10 @@ export function BrandPortalWorkflow({ brands, compact = false }: BrandPortalWork
       portalCreatedAt: body.brand?.portalCreatedAt ?? rowsById[brandId]?.portalCreatedAt ?? new Date().toISOString(),
       contacts: upsertContact(rowsById[brandId]?.contacts ?? [], body.contact),
     });
-    if (body.inviteUrl) setInviteUrls((current) => ({ ...current, [body.contact.id]: body.inviteUrl }));
+    if (body.inviteUrl) {
+      setInviteUrls((current) => ({ ...current, [body.contact.id]: body.inviteUrl }));
+      setInviteEmailSent((current) => ({ ...current, [body.contact.id]: Boolean(body.emailSent) }));
+    }
     return true;
   }
 
@@ -195,7 +199,7 @@ export function BrandPortalWorkflow({ brands, compact = false }: BrandPortalWork
 
               <section className="rounded-lg border border-neutral-100 bg-neutral-50 px-4 py-4">
                 <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-neutral-400">Stap 2</p>
-                <h4 className="mt-2 text-sm font-semibold text-neutral-950">Invite-link naar /brand</h4>
+                <h4 className="mt-2 text-sm font-semibold text-neutral-950">Brand uitnodigen</h4>
                 <form
                   className="mt-3 space-y-2"
                   onSubmit={async (event) => {
@@ -228,7 +232,7 @@ export function BrandPortalWorkflow({ brands, compact = false }: BrandPortalWork
                     disabled={!brand.portalEnabled}
                   >
                     <Mail className="h-4 w-4" />
-                    Maak invite-link
+                    Verstuur invite
                   </Button>
                 </form>
               </section>
@@ -280,7 +284,11 @@ export function BrandPortalWorkflow({ brands, compact = false }: BrandPortalWork
                       {inviteUrls[contact.id] ? (
                         <div className="mt-2 rounded-lg bg-neutral-50 px-3 py-2">
                           <p className="break-all text-xs text-neutral-600">{inviteUrls[contact.id]}</p>
-                          <p className="mt-1 text-xs text-neutral-500">Geen automatische mail; kopieer de link en stuur hem zelf door.</p>
+                          <p className="mt-1 text-xs text-neutral-500">
+                            {inviteEmailSent[contact.id]
+                              ? "Mail verzonden. De link blijft beschikbaar om opnieuw te delen."
+                              : "Mail niet verzonden; kopieer de link en stuur hem zelf door."}
+                          </p>
                         </div>
                       ) : null}
                     </div>
