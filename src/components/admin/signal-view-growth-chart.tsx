@@ -3,17 +3,33 @@
 import { useMemo, useRef, useState, type FocusEvent, type MouseEvent } from "react";
 import { Tabs } from "@/components/ui/tabs";
 import {
-  computeBucketedViewGrowth,
   resolveViewGrowthBucketSize,
   type ViewGrowthBucketSize,
   type ViewGrowthSnapshotInput,
   type ViewGrowthZoom,
 } from "@/lib/stats/view-growth-buckets";
+import {
+  computeSignalViewGrowthBuckets,
+  type SignalViewGrowthBucket,
+} from "@/lib/signals/signal-view-growth-tooltip";
 
 type SignalViewGrowthSnapshot = {
   capturedAt: string;
   viewCount: number;
   engagementCount: number | null;
+  likeCount?: number | null;
+  commentCount?: number | null;
+  shareCount?: number | null;
+  saveCount?: number | null;
+  watchTimeSec?: number | null;
+  reachCount?: number | null;
+  totalInteractions?: number | null;
+  followsFromMedia?: number | null;
+  profileVisits?: number | null;
+  reactionsByType?: unknown;
+  profileActivity?: unknown;
+  metricAvailability?: unknown;
+  raw?: unknown;
   source: string | null;
 };
 
@@ -37,14 +53,15 @@ type ActiveTooltip = {
   x: number;
   y: number;
   range: string;
-  views: number;
-  engagements: number | null;
+  bucket: SignalViewGrowthBucket;
 };
 
 export function SignalViewGrowthChart({
   snapshots,
+  signalReason,
 }: {
   snapshots: SignalViewGrowthSnapshot[];
+  signalReason?: string;
 }) {
   const [zoom, setZoom] = useState<ViewGrowthZoom>("auto");
   const [activeTooltip, setActiveTooltip] = useState<ActiveTooltip | null>(null);
@@ -64,8 +81,8 @@ export function SignalViewGrowthChart({
     [helperSnapshots, zoom],
   );
   const buckets = useMemo(
-    () => computeBucketedViewGrowth(helperSnapshots, bucketSize),
-    [bucketSize, helperSnapshots],
+    () => computeSignalViewGrowthBuckets(snapshots, bucketSize),
+    [bucketSize, snapshots],
   );
   const maxViews = Math.max(1, ...buckets.map((bucket) => bucket.views));
   const chartMinWidth = Math.max(640, buckets.length * 10);
@@ -79,7 +96,11 @@ export function SignalViewGrowthChart({
     const frameRect = frame.getBoundingClientRect();
     const targetRect = target.getBoundingClientRect();
     const rawX = targetRect.left - frameRect.left + targetRect.width / 2;
-    const x = Math.min(Math.max(rawX, 96), Math.max(96, frameRect.width - 96));
+    const tooltipHalfWidth = Math.min(170, Math.max(96, (frameRect.width - 16) / 2));
+    const x = Math.min(
+      Math.max(rawX, tooltipHalfWidth),
+      Math.max(tooltipHalfWidth, frameRect.width - tooltipHalfWidth),
+    );
     const y = targetRect.top - frameRect.top;
 
     setActiveTooltip({
@@ -87,8 +108,7 @@ export function SignalViewGrowthChart({
       x,
       y,
       range: formatBucketRange(bucket.start, bucket.end),
-      views: Math.round(bucket.views),
-      engagements: bucket.engagements == null ? null : Math.round(bucket.engagements),
+      bucket,
     });
   };
   const hideTooltip = () => setActiveTooltip(null);
@@ -118,9 +138,8 @@ export function SignalViewGrowthChart({
           >
             {buckets.map((bucket) => {
               const roundedViews = Math.round(bucket.views);
-              const roundedEngagements = bucket.engagements == null ? null : Math.round(bucket.engagements);
               const height = Math.max(4, (bucket.views / maxViews) * 100);
-              const label = `${formatBucketRange(bucket.start, bucket.end)}: +${formatNumber(roundedViews)} views, ${formatEngagements(roundedEngagements)} engagement`;
+              const label = `${formatBucketRange(bucket.start, bucket.end)}: +${formatNumber(roundedViews)} views, ${formatEngagements(bucket.engagementTotal)} engagement`;
               return (
                 <button
                   key={bucket.key}
@@ -146,16 +165,18 @@ export function SignalViewGrowthChart({
           <div
             id="signal-view-growth-tooltip"
             role="tooltip"
-            className="pointer-events-none absolute z-20 max-w-[220px] rounded-lg border border-neutral-200 bg-white px-3 py-2 text-xs shadow-lg ring-1 ring-black/5"
+            className="pointer-events-none absolute z-20 w-[min(340px,calc(100vw-2rem))] rounded-xl border border-neutral-200 bg-white p-3 text-xs shadow-xl ring-1 ring-black/5"
             style={{
               left: `${activeTooltip.x}px`,
               top: `${Math.max(8, activeTooltip.y - 8)}px`,
               transform: "translate(-50%, -100%)",
             }}
           >
-            <p className="font-semibold tabular-nums text-neutral-950">+{formatNumber(activeTooltip.views)} views</p>
-            <p className="mt-1 tabular-nums text-neutral-700">{formatEngagements(activeTooltip.engagements)} engagement</p>
-            <p className="mt-1 whitespace-nowrap text-neutral-500">{activeTooltip.range}</p>
+            <MetricTooltipContent
+              bucket={activeTooltip.bucket}
+              range={activeTooltip.range}
+              signalReason={signalReason}
+            />
           </div>
         ) : null}
       </div>
@@ -166,6 +187,142 @@ export function SignalViewGrowthChart({
       </div>
     </div>
   );
+}
+
+function MetricTooltipContent({
+  bucket,
+  range,
+  signalReason,
+}: {
+  bucket: SignalViewGrowthBucket;
+  range: string;
+  signalReason?: string;
+}) {
+  const engagementLabel = bucket.engagementTotal == null
+    ? "Niet beschikbaar"
+    : `+${formatNumber(Math.round(bucket.engagementTotal))}`;
+  const engagementQuality = bucket.engagementPerThousandViews == null
+    ? null
+    : `${bucket.engagementPerThousandViews.toLocaleString("nl-NL", { maximumFractionDigits: 1 })} / 1k nieuwe views`;
+  const extraRows = [
+    metricRow("Bereik", bucket.deltas.reach),
+    metricRow("Volgers", bucket.deltas.follows),
+    metricRow("Profielbezoeken", bucket.deltas.profileVisits),
+    metricRow("Totaal interacties", bucket.deltas.totalInteractions),
+  ].filter((row): row is { label: string; value: number } => row != null);
+
+  return (
+    <div className="space-y-3">
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-neutral-400">Tijdvak</p>
+          <p className="mt-0.5 text-xs font-medium tabular-nums text-neutral-700">{range}</p>
+        </div>
+        {bucket.source ? (
+          <span className="rounded-full bg-neutral-100 px-2 py-1 text-[10px] font-semibold text-neutral-500">
+            {sourceLabel(bucket.source)}
+          </span>
+        ) : null}
+      </div>
+
+      <div className="rounded-lg bg-neutral-50 p-2.5">
+        <div className="flex items-end justify-between gap-3">
+          <div>
+            <p className="text-[11px] font-medium text-neutral-500">Viewgroei</p>
+            <p className="text-lg font-semibold tabular-nums text-neutral-950">+{formatNumber(Math.round(bucket.views))}</p>
+          </div>
+          <p className="pb-1 text-right text-[11px] tabular-nums text-neutral-500">
+            totaal {bucket.totalViews == null ? "-" : formatNumber(bucket.totalViews)}
+          </p>
+        </div>
+      </div>
+
+      <div>
+        <div className="flex items-center justify-between gap-3">
+          <p className="font-semibold text-neutral-950">Engagement</p>
+          <span className="font-semibold tabular-nums text-neutral-800">{engagementLabel}</span>
+        </div>
+        {engagementQuality ? (
+          <p className="mt-1 text-[11px] text-neutral-500">{engagementQuality}</p>
+        ) : null}
+        <div className="mt-2 grid grid-cols-2 gap-1.5">
+          <DeltaPill label="Likes" value={bucket.deltas.likes} />
+          <DeltaPill label="Comments" value={bucket.deltas.comments} />
+          <DeltaPill label="Shares" value={bucket.deltas.shares} />
+          <DeltaPill label="Saves" value={bucket.deltas.saves} />
+        </div>
+      </div>
+
+      <div className="space-y-1.5 border-t border-neutral-100 pt-3">
+        <WatchTimeRow bucket={bucket} />
+        {extraRows.map((row) => (
+          <div key={row.label} className="flex items-center justify-between gap-3 text-neutral-600">
+            <span>{row.label}</span>
+            <span className="font-semibold tabular-nums text-neutral-800">+{formatNumber(row.value)}</span>
+          </div>
+        ))}
+      </div>
+
+      {bucket.unavailable.length > 0 ? (
+        <div className="flex flex-wrap gap-1.5 border-t border-neutral-100 pt-3">
+          {bucket.unavailable.map((key) => (
+            <span key={key} className="rounded-full bg-neutral-100 px-2 py-1 text-[10px] font-medium text-neutral-500">
+              {availabilityLabel(key)} niet beschikbaar
+            </span>
+          ))}
+        </div>
+      ) : null}
+
+      {signalReason ? (
+        <div className="border-t border-neutral-100 pt-3">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-orange-500">Waarom relevant</p>
+          <p className="mt-1 text-xs leading-5 text-neutral-600">{signalReason}</p>
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+function DeltaPill({ label, value }: { label: string; value: number | null }) {
+  return (
+    <div className="flex items-center justify-between gap-2 rounded-md border border-neutral-200 bg-white px-2 py-1">
+      <span className="text-[11px] text-neutral-500">{label}</span>
+      <span className="font-semibold tabular-nums text-neutral-800">
+        {value == null ? "-" : `+${formatNumber(value)}`}
+      </span>
+    </div>
+  );
+}
+
+function WatchTimeRow({ bucket }: { bucket: SignalViewGrowthBucket }) {
+  if (bucket.watchTime.deltaSec != null) {
+    return (
+      <div className="flex items-center justify-between gap-3 text-neutral-600">
+        <span>Watch time</span>
+        <span className="font-semibold tabular-nums text-neutral-800">+{formatDuration(bucket.watchTime.deltaSec)}</span>
+      </div>
+    );
+  }
+
+  if (bucket.watchTime.averageSec != null) {
+    return (
+      <div className="flex items-center justify-between gap-3 text-neutral-600">
+        <span>Gem. watch time</span>
+        <span className="font-semibold tabular-nums text-neutral-800">{formatDuration(bucket.watchTime.averageSec)}</span>
+      </div>
+    );
+  }
+
+  if (bucket.watchTime.unknownKind) {
+    return (
+      <div className="flex items-center justify-between gap-3 text-neutral-500">
+        <span>Watch time</span>
+        <span className="font-medium">type onbekend</span>
+      </div>
+    );
+  }
+
+  return null;
 }
 
 function ZoomTabs({
@@ -196,6 +353,27 @@ function formatNumber(value: number) {
   return new Intl.NumberFormat("nl-NL").format(value);
 }
 
+function metricRow(label: string, value: number | null) {
+  return value == null ? null : { label, value };
+}
+
+function formatDuration(seconds: number) {
+  const rounded = Math.round(seconds);
+  if (rounded < 60) return `${formatNumber(rounded)}s`;
+  const minutes = Math.floor(rounded / 60);
+  const remainingSeconds = rounded % 60;
+  if (minutes < 60) {
+    return remainingSeconds > 0
+      ? `${formatNumber(minutes)}m ${remainingSeconds}s`
+      : `${formatNumber(minutes)}m`;
+  }
+  const hours = Math.floor(minutes / 60);
+  const remainingMinutes = minutes % 60;
+  return remainingMinutes > 0
+    ? `${formatNumber(hours)}u ${remainingMinutes}m`
+    : `${formatNumber(hours)}u`;
+}
+
 function formatEngagements(value: number | null) {
   return value == null ? "Niet beschikbaar" : `+${formatNumber(value)}`;
 }
@@ -211,4 +389,27 @@ function formatDateTime(value: Date) {
     hour: "2-digit",
     minute: "2-digit",
   });
+}
+
+function sourceLabel(source: string) {
+  const labels: Record<string, string> = {
+    OAUTH_IG: "Instagram",
+    OAUTH_TT: "TikTok",
+    OAUTH_YT: "YouTube",
+    OAUTH_FB: "Facebook",
+  };
+  return labels[source] ?? source.replace("OAUTH_", "");
+}
+
+function availabilityLabel(key: string) {
+  const labels: Record<string, string> = {
+    watchTime: "Watch time",
+    saves: "Saves",
+    reach: "Reach",
+    follows: "Follows",
+    profileVisits: "Profielbezoeken",
+    totalInteractions: "Totaal interacties",
+    reactions: "Reacties",
+  };
+  return labels[key] ?? key;
 }

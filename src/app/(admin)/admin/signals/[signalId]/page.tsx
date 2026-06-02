@@ -25,6 +25,14 @@ type SnapshotPoint = {
   commentCount: number;
   shareCount: number;
   saveCount: number | null;
+  watchTimeSec?: number | null;
+  reachCount?: number | null;
+  totalInteractions?: number | null;
+  followsFromMedia?: number | null;
+  profileVisits?: number | null;
+  reactionsByType?: Prisma.JsonValue | null;
+  profileActivity?: Prisma.JsonValue | null;
+  raw?: Prisma.JsonValue | null;
   metricAvailability: Prisma.JsonValue | null;
 };
 
@@ -72,6 +80,14 @@ export default async function SignalDetailPage({ params }: PageProps) {
               commentCount: true,
               shareCount: true,
               saveCount: true,
+              watchTimeSec: true,
+              reachCount: true,
+              totalInteractions: true,
+              followsFromMedia: true,
+              profileVisits: true,
+              reactionsByType: true,
+              profileActivity: true,
+              raw: true,
               metricAvailability: true,
             },
           },
@@ -94,6 +110,19 @@ export default async function SignalDetailPage({ params }: PageProps) {
     capturedAt: snapshot.capturedAt.toISOString(),
     viewCount: Number(snapshot.viewCount),
     engagementCount: snapshotEngagements(snapshot),
+    likeCount: snapshot.likeCount,
+    commentCount: snapshot.commentCount,
+    shareCount: snapshot.shareCount,
+    saveCount: snapshot.saveCount,
+    watchTimeSec: snapshot.watchTimeSec,
+    reachCount: snapshot.reachCount,
+    totalInteractions: snapshot.totalInteractions,
+    followsFromMedia: snapshot.followsFromMedia,
+    profileVisits: snapshot.profileVisits,
+    reactionsByType: snapshot.reactionsByType,
+    profileActivity: snapshot.profileActivity,
+    raw: snapshot.raw,
+    metricAvailability: snapshot.metricAvailability,
     source: snapshot.source,
   }));
   const payload = asPayloadRecord(signal.payload);
@@ -162,7 +191,7 @@ export default async function SignalDetailPage({ params }: PageProps) {
             </div>
             <Badge variant={signal.severity === "CRITICAL" ? "failed" : "pending"}>{severityLabel(signal.severity)}</Badge>
           </div>
-          <SignalViewGrowthChart snapshots={chartSnapshots} />
+          <SignalViewGrowthChart snapshots={chartSnapshots} signalReason={topReason} />
         </div>
 
         <div className="rounded-2xl border border-neutral-200 bg-white p-5">
