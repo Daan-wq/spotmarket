@@ -7,7 +7,7 @@ import { getCampaignReportLiveData } from "@/lib/admin/campaign-reporting";
 import { prisma } from "@/lib/prisma";
 
 const reportInclude = {
-  brand: { select: { id: true, name: true } },
+  brand: { select: { id: true, name: true, portalEnabled: true, portalCreatedAt: true } },
   campaign: { select: { id: true, name: true } },
 } as const;
 
@@ -66,13 +66,24 @@ export async function PATCH(req: Request, { params }: RouteContext) {
     if (parsed.visibleToBrand !== undefined) {
       const current = await prisma.campaignReport.findUnique({
         where: { id },
-        select: { status: true, campaignId: true },
+        select: {
+          status: true,
+          campaignId: true,
+          brandId: true,
+          brand: { select: { portalEnabled: true, name: true } },
+        },
       });
 
       if (!current) return NextResponse.json({ error: "Report not found" }, { status: 404 });
       if (parsed.visibleToBrand && current.status !== "FINAL") {
         return NextResponse.json(
           { error: "Only final reports can be made visible to brands." },
+          { status: 400 },
+        );
+      }
+      if (parsed.visibleToBrand && (!current.brandId || !current.brand?.portalEnabled)) {
+        return NextResponse.json(
+          { error: "Maak eerst de brandpagina aan voordat je dit rapport zichtbaar maakt." },
           { status: 400 },
         );
       }

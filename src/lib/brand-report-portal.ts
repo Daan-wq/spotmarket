@@ -5,6 +5,7 @@ import type { Prisma } from "@prisma/client";
 export function buildBrandVisibleReportWhere(brandIds: string[]): Prisma.CampaignReportWhereInput {
   return {
     brandId: { in: brandIds },
+    brand: { portalEnabled: true },
     status: "FINAL",
     visibleToBrand: true,
   };

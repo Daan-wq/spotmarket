@@ -11,7 +11,7 @@ export const getActiveBrandMembershipsForSupabaseId = cache(async (supabaseId: s
       email: true,
       role: true,
       brandContacts: {
-        where: { status: "ACTIVE" },
+        where: { status: "ACTIVE", brand: { portalEnabled: true } },
         select: {
           id: true,
           brandId: true,

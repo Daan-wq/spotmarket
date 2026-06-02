@@ -22,7 +22,7 @@ export default async function BrandPortalPage() {
   const context = await getBrandPortalContext();
   const where: Prisma.CampaignReportWhereInput = context.brandIds
     ? buildBrandVisibleReportWhere(context.brandIds)
-    : { status: "FINAL", visibleToBrand: true };
+    : { status: "FINAL", visibleToBrand: true, brand: { portalEnabled: true } };
 
   const reports: BrandPortalReport[] = await prisma.campaignReport.findMany({
     where,
@@ -45,8 +45,14 @@ export default async function BrandPortalPage() {
       {reports.length === 0 ? (
         <EmptyState
           icon={<FileText className="h-5 w-5" />}
-          title="Nog geen rapporten zichtbaar"
-          description="Zodra ClipProfit een definitief rapport vrijgeeft, verschijnt het hier."
+          title={context.isAdminPreview ? "Geen brandrapporten in preview" : "Nog geen rapporten zichtbaar"}
+          description={
+            context.isAdminPreview
+              ? "Dit is de klantkant. Maak in admin eerst een brandpagina aan, invite een brandcontact en publiceer daarna een FINAL rapport."
+              : "Zodra ClipProfit een definitief rapport vrijgeeft, verschijnt het hier."
+          }
+          primaryCta={context.isAdminPreview ? { label: "Naar Brandportalen", href: "/admin/brand-portals" } : undefined}
+          secondaryCta={context.isAdminPreview ? { label: "Naar Rapportages", href: "/admin/reports" } : undefined}
         />
       ) : (
         <>

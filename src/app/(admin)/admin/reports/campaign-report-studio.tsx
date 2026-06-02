@@ -51,6 +51,8 @@ export interface BrandOption {
   id: string;
   name: string;
   currency: string;
+  portalEnabled: boolean;
+  portalCreatedAt: string | null;
 }
 
 export interface CampaignOption {
@@ -224,6 +226,8 @@ function CampaignReportStudioEditor({
   initialPeriodEnd: string;
 }) {
   const router = useRouter();
+  const selectedCampaign = campaigns.find((campaign) => campaign.id === selectedCampaignId) ?? null;
+  const selectedBrand = selectedReport?.brand ?? selectedCampaign?.brand ?? null;
 
   const [title, setTitle] = useState(baseEditorial.title);
   const [keyTakeaways, setKeyTakeaways] = useState(() => normalizeTextList(baseEditorial.keyTakeaways));
@@ -438,7 +442,7 @@ function CampaignReportStudioEditor({
               className="rounded-lg"
               onClick={() => toggleBrandVisibility(true)}
               isPending={sharingMode === "show"}
-              disabled={!selectedReport || selectedReport.status !== "FINAL"}
+              disabled={!selectedReport || selectedReport.status !== "FINAL" || !selectedBrand?.portalEnabled}
             >
               Zichtbaar voor brand
             </Button>
@@ -458,6 +462,33 @@ function CampaignReportStudioEditor({
           </Button>
         </div>
       </header>
+
+      {selectedBrand ? (
+        <section className="report-studio-chrome rounded-lg border border-neutral-200 bg-white px-4 py-3">
+          <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+            <div>
+              <div className="flex flex-wrap items-center gap-2">
+                <Badge variant={selectedBrand.portalEnabled ? "verified" : "pending"}>
+                  {selectedBrand.portalEnabled ? "Brandpagina aangemaakt" : "Brandpagina ontbreekt"}
+                </Badge>
+                <span className="text-sm font-semibold text-neutral-950">{selectedBrand.name}</span>
+              </div>
+              <p className="mt-1 text-sm text-neutral-500">
+                {selectedBrand.portalEnabled
+                  ? "Je kunt een definitief rapport zichtbaar maken voor deze brand."
+                  : "Maak eerst de brandpagina aan en nodig een contact uit voordat je een rapport publiceert."}
+              </p>
+            </div>
+            <Link
+              href={`/admin/brand-portals?brandId=${selectedBrand.id}`}
+              className="inline-flex h-10 items-center justify-center gap-2 rounded-lg border border-neutral-200 px-3 text-sm font-semibold text-neutral-700 hover:border-neutral-300 hover:text-neutral-950"
+            >
+              <ShieldCheck className="h-4 w-4" />
+              Beheer brandpagina
+            </Link>
+          </div>
+        </section>
+      ) : null}
 
       <section className="report-studio-chrome">
         <HistoryPanel

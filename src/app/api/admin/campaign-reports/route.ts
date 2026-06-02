@@ -7,7 +7,7 @@ import { getCampaignReportLiveData } from "@/lib/admin/campaign-reporting";
 import { prisma } from "@/lib/prisma";
 
 const reportInclude = {
-  brand: { select: { id: true, name: true } },
+  brand: { select: { id: true, name: true, portalEnabled: true, portalCreatedAt: true } },
   campaign: { select: { id: true, name: true } },
 } as const;
 

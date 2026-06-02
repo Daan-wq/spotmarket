@@ -14,7 +14,7 @@ export async function GET(_req: Request, { params }: RouteContext) {
   try {
     const auth = await requireAuth("brand", "admin");
     const { id } = await params;
-    let where: Record<string, unknown> = { id, status: "FINAL", visibleToBrand: true };
+    let where: Record<string, unknown> = { id, status: "FINAL", visibleToBrand: true, brand: { portalEnabled: true } };
 
     if (auth.role === "brand") {
       const user = await getActiveBrandMembershipsForSupabaseId(auth.userId);

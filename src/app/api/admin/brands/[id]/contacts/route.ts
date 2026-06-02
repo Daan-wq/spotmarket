@@ -22,6 +22,15 @@ const contactInclude = {
   user: { select: { id: true, email: true, role: true } },
 } as const;
 
+const brandSelect = {
+  id: true,
+  name: true,
+  contactEmail: true,
+  portalEnabled: true,
+  portalCreatedAt: true,
+  portalCreatedBy: true,
+} as const;
+
 interface RouteContext {
   params: Promise<{ id: string }>;
 }
@@ -51,10 +60,22 @@ export async function POST(req: Request, { params }: RouteContext) {
     const name = parsed.name?.trim() || null;
     const brand = await prisma.brand.findUnique({
       where: { id },
-      select: { id: true, name: true },
+      select: brandSelect,
     });
 
     if (!brand) return NextResponse.json({ error: "Brand not found" }, { status: 404 });
+
+    const portalBrand = brand.portalEnabled
+      ? brand
+      : await prisma.brand.update({
+          where: { id },
+          data: {
+            portalEnabled: true,
+            portalCreatedAt: new Date(),
+            portalCreatedBy: userId,
+          },
+          select: brandSelect,
+        });
 
     const token = createBrandInviteToken();
     const inviteUrl = buildAppUrl(`/brand-invite/${token}`, getAppUrlFromRequest(req));
@@ -101,12 +122,13 @@ export async function POST(req: Request, { params }: RouteContext) {
         action: "brandContact.invite",
         entityType: "BrandContact",
         entityId: contact.id,
-        metadata: { brandId: id, email, emailSent },
+        metadata: { brandId: id, email, emailSent, portalCreated: !brand.portalEnabled },
       },
     });
 
     return NextResponse.json({
       contact: serialize(contact),
+      brand: serialize(portalBrand),
       inviteUrl,
       emailSent,
     }, { status: 201 });

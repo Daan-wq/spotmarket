@@ -65,7 +65,7 @@ const report = {
   createdBy: "admin-1",
   createdAt: new Date("2026-05-29T08:00:00.000Z"),
   updatedAt: new Date("2026-05-29T09:00:00.000Z"),
-  brand: { id: "brand-1", name: "Bram's Fruit" },
+  brand: { id: "brand-1", name: "Bram's Fruit", portalEnabled: true },
   campaign: { id: "campaign-1", name: "Bram's Fruit mei" },
 };
 
@@ -357,5 +357,28 @@ describe("PATCH /api/admin/campaign-reports/[id]", () => {
         }),
       }),
     );
+  });
+
+  it("does not publish reports before the brand portal exists", async () => {
+    routeMocks.campaignReportFindUnique.mockResolvedValueOnce({
+      ...report,
+      status: "FINAL",
+      brand: { id: "brand-1", name: "Bram's Fruit", portalEnabled: false },
+    });
+
+    const response = await PATCH(
+      new Request("http://localhost/api/admin/campaign-reports/report-1", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ visibleToBrand: true }),
+      }),
+      { params: Promise.resolve({ id: "report-1" }) },
+    );
+
+    expect(response.status).toBe(400);
+    expect(routeMocks.campaignReportUpdate).not.toHaveBeenCalled();
+    await expect(response.json()).resolves.toEqual({
+      error: "Maak eerst de brandpagina aan voordat je dit rapport zichtbaar maakt.",
+    });
   });
 });
