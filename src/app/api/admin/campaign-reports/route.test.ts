@@ -40,6 +40,9 @@ const report = {
   id: "report-1",
   title: "Bram's Fruit Campaign Report",
   status: "DRAFT",
+  visibleToBrand: false,
+  brandVisibleAt: null,
+  brandVisibleBy: null,
   brandId: "brand-1",
   campaignId: "campaign-1",
   periodStart: new Date("2026-05-01T00:00:00.000Z"),
@@ -57,6 +60,7 @@ const report = {
     creatorRecommendations: [],
     qualityNote: "",
     nextCampaignPlan: "",
+    coverImageUrl: null,
   },
   createdBy: "admin-1",
   createdAt: new Date("2026-05-29T08:00:00.000Z"),
@@ -82,12 +86,13 @@ const liveData = {
     sectionSettings: { audience: true },
     editorialContent: {
       templateBlocks: { "summary.body": "Default {{performance.currentViews}} views." },
-      contentPatternTags: ["creator-native edit"],
+      contentPatternTags: ["platform-native editstijl"],
       topContentNotes: {},
       platformRecommendations: {},
       creatorRecommendations: [],
       qualityNote: "",
       nextCampaignPlan: "",
+      coverImageUrl: null,
     },
   },
 };
@@ -234,6 +239,7 @@ describe("PATCH /api/admin/campaign-reports/[id]", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     routeMocks.requireAuth.mockResolvedValue({ userId: "admin-1" });
+    routeMocks.campaignReportFindUnique.mockResolvedValue(report);
     routeMocks.campaignReportUpdate.mockResolvedValue({ ...report, status: "FINAL" });
     routeMocks.auditLogCreate.mockResolvedValue({});
     routeMocks.getCampaignReportLiveData.mockResolvedValue(liveData);
@@ -251,6 +257,7 @@ describe("PATCH /api/admin/campaign-reports/[id]", () => {
           editorialContent: {
             templateBlocks: { "summary.body": "Client {{performance.currentViews}} views." },
             contentPatternTags: ["snelle hook"],
+            coverImageUrl: "https://example.com/report-cover.jpg",
           },
         }),
       }),
@@ -273,6 +280,7 @@ describe("PATCH /api/admin/campaign-reports/[id]", () => {
             creatorRecommendations: [],
             qualityNote: "",
             nextCampaignPlan: "",
+            coverImageUrl: "https://example.com/report-cover.jpg",
           },
         },
       }),
@@ -287,6 +295,65 @@ describe("PATCH /api/admin/campaign-reports/[id]", () => {
         data: expect.objectContaining({
           action: "campaignReport.update",
           metadata: { campaignId: "campaign-1", status: "FINAL" },
+        }),
+      }),
+    );
+  });
+
+  it("does not publish draft reports to brands", async () => {
+    routeMocks.campaignReportFindUnique.mockResolvedValueOnce({ ...report, status: "DRAFT" });
+
+    const response = await PATCH(
+      new Request("http://localhost/api/admin/campaign-reports/report-1", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ visibleToBrand: true }),
+      }),
+      { params: Promise.resolve({ id: "report-1" }) },
+    );
+
+    expect(response.status).toBe(400);
+    expect(routeMocks.campaignReportUpdate).not.toHaveBeenCalled();
+    await expect(response.json()).resolves.toEqual({
+      error: "Only final reports can be made visible to brands.",
+    });
+  });
+
+  it("publishes final reports to brands with audit metadata", async () => {
+    routeMocks.campaignReportFindUnique.mockResolvedValueOnce({ ...report, status: "FINAL" });
+    routeMocks.campaignReportUpdate.mockResolvedValueOnce({
+      ...report,
+      status: "FINAL",
+      visibleToBrand: true,
+      brandVisibleAt: new Date("2026-06-01T12:00:00.000Z"),
+      brandVisibleBy: "admin-1",
+    });
+
+    const response = await PATCH(
+      new Request("http://localhost/api/admin/campaign-reports/report-1", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ visibleToBrand: true }),
+      }),
+      { params: Promise.resolve({ id: "report-1" }) },
+    );
+
+    expect(response.status).toBe(200);
+    expect(routeMocks.campaignReportUpdate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { id: "report-1" },
+        data: expect.objectContaining({
+          visibleToBrand: true,
+          brandVisibleAt: expect.any(Date),
+          brandVisibleBy: "admin-1",
+        }),
+      }),
+    );
+    expect(routeMocks.auditLogCreate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          action: "campaignReport.publishToBrand",
+          metadata: { campaignId: "campaign-1", visibleToBrand: true },
         }),
       }),
     );

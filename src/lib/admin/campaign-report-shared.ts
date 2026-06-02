@@ -40,6 +40,7 @@ export interface CampaignReportEditorialContent {
   creatorRecommendations: string[];
   qualityNote: string;
   nextCampaignPlan: string;
+  coverImageUrl: string | null;
 }
 
 export interface CampaignReportEditorial {
@@ -94,7 +95,14 @@ export function normalizeEditorialContent(value: unknown): CampaignReportEditori
     creatorRecommendations: normalizeTextList(input.creatorRecommendations),
     qualityNote: typeof input.qualityNote === "string" ? input.qualityNote : "",
     nextCampaignPlan: typeof input.nextCampaignPlan === "string" ? input.nextCampaignPlan : "",
+    coverImageUrl: normalizeOptionalUrl(input.coverImageUrl),
   };
+}
+
+function normalizeOptionalUrl(value: unknown): string | null {
+  if (typeof value !== "string") return null;
+  const trimmed = value.trim();
+  return /^https?:\/\//i.test(trimmed) ? trimmed : null;
 }
 
 function normalizeTextRecord(value: unknown): Record<string, string> {

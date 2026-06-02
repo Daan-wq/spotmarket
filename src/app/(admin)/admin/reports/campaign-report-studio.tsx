@@ -5,6 +5,7 @@ import {
   CheckCircle2,
   ExternalLink,
   FileText,
+  ImageIcon,
   Plus,
   Printer,
   RefreshCw,
@@ -15,15 +16,23 @@ import {
   Sparkles,
   Target,
   TrendingUp,
+  Trash2,
+  Upload,
   Users,
   Wallet,
 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import React, { createContext, useContext, useMemo, useState } from "react";
+import React, { createContext, useContext, useMemo, useRef, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { formatCurrency, formatDate, formatNumber } from "@/lib/admin/agency-format";
+import {
+  formatAudienceCountryLabel,
+  formatAudienceShare,
+  reportQualityStatusLabel,
+  type ReportQualityStatus,
+} from "@/lib/admin/campaign-report-display";
 import {
   CAMPAIGN_REPORT_SECTION_KEYS,
   DEFAULT_CAMPAIGN_REPORT_SECTIONS,
@@ -99,6 +108,7 @@ interface ReportInlineEditors {
   setTitle: (value: string) => void;
   updateTemplateBlock: (key: string, value: string) => void;
   updateContentPatternTags: (value: string[]) => void;
+  updateCoverImageUrl: (value: string | null) => void;
 }
 
 interface TokenPreviewContextValue {
@@ -114,14 +124,14 @@ const TokenPreviewContext = createContext<TokenPreviewContextValue | null>(null)
 const SECTION_LABELS: Record<CampaignReportSectionKey, string> = {
   cover: "Omslag",
   executiveSummary: "Samenvatting",
-  campaignAtAGlance: "Campaign at a glance",
-  campaignPerformance: "Campaign performance",
-  contentPerformance: "Content performance",
-  platformPerformance: "Platform performance",
-  creatorContribution: "Creator contribution",
-  audienceReach: "Audience & reach",
-  budgetValue: "Budget & value",
-  qualityAssurance: "Quality assurance",
+  campaignAtAGlance: "Campagne in het kort",
+  campaignPerformance: "Campagneprestatie",
+  contentPerformance: "Contentprestaties",
+  platformPerformance: "Platformprestaties",
+  creatorContribution: "Creatorbijdrage",
+  audienceReach: "Publiek en bereik",
+  budgetValue: "Budget en waarde",
+  qualityAssurance: "Kwaliteitscontrole",
   nextCampaign: "Volgende campagne",
   appendix: "Appendix",
 };
@@ -228,7 +238,7 @@ function CampaignReportStudioEditor({
   }));
   const [periodStart, setPeriodStart] = useState(initialPeriodStart);
   const [periodEnd, setPeriodEnd] = useState(initialPeriodEnd);
-  const [showTokenValues, setShowTokenValues] = useState(false);
+  const [showTokenValues, setShowTokenValues] = useState(true);
   const [savingMode, setSavingMode] = useState<"draft" | "final" | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
 
@@ -328,6 +338,18 @@ function CampaignReportStudioEditor({
     }));
   }
 
+  function updateCoverImageUrl(value: string | null) {
+    setEditorialContent((current) => ({
+      ...current,
+      coverImageUrl: value,
+    }));
+  }
+
+  function printReport() {
+    setShowTokenValues(true);
+    window.setTimeout(() => window.print(), 50);
+  }
+
   return (
     <div className="report-studio-shell space-y-5">
       <header className="report-studio-chrome flex flex-col gap-4 border-b border-neutral-200 pb-5 xl:flex-row xl:items-end xl:justify-between">
@@ -372,7 +394,7 @@ function CampaignReportStudioEditor({
             <CheckCircle2 className="h-4 w-4" />
             Definitief opslaan
           </Button>
-          <Button type="button" variant="ghost" className="rounded-lg" onClick={() => window.print()} disabled={!liveData}>
+          <Button type="button" variant="ghost" className="rounded-lg" onClick={printReport} disabled={!liveData}>
             <Printer className="h-4 w-4" />
             Printen
           </Button>
@@ -400,6 +422,9 @@ function CampaignReportStudioEditor({
         setSectionSettings={setSectionSettings}
         showTokenValues={showTokenValues}
         setShowTokenValues={setShowTokenValues}
+        coverImageUrl={editorialContent.coverImageUrl}
+        fallbackCoverImageUrl={liveData?.campaign.bannerUrl ?? null}
+        setCoverImageUrl={updateCoverImageUrl}
       />
 
       <main className="report-studio-preview min-w-0">
@@ -419,6 +444,7 @@ function CampaignReportStudioEditor({
             setTitle,
             updateTemplateBlock,
             updateContentPatternTags,
+            updateCoverImageUrl,
           }}
         />
       </main>
@@ -552,6 +578,9 @@ function ReportMetaControls({
   setSectionSettings,
   showTokenValues,
   setShowTokenValues,
+  coverImageUrl,
+  fallbackCoverImageUrl,
+  setCoverImageUrl,
 }: {
   periodStart: string;
   setPeriodStart: (value: string) => void;
@@ -561,10 +590,13 @@ function ReportMetaControls({
   setSectionSettings: (value: CampaignReportSectionSettings) => void;
   showTokenValues: boolean;
   setShowTokenValues: (value: boolean) => void;
+  coverImageUrl: string | null;
+  fallbackCoverImageUrl: string | null;
+  setCoverImageUrl: (value: string | null) => void;
 }) {
   return (
     <section className="report-studio-chrome rounded-lg border border-neutral-200 bg-white p-4">
-      <div className="grid gap-4 xl:grid-cols-[18rem_minmax(0,1fr)]">
+      <div className="grid gap-4 xl:grid-cols-[18rem_minmax(0,1fr)_20rem]">
         <div>
           <h2 className="text-sm font-semibold text-neutral-950">Rapportinstellingen</h2>
           <p className="mt-1 text-xs leading-5 text-neutral-500">Pas periode en zichtbare secties aan; tekst wijzig je direct in het rapport.</p>
@@ -580,7 +612,7 @@ function ReportMetaControls({
           </div>
           <label className="mt-3 flex cursor-pointer items-center justify-between gap-3 rounded-lg border border-neutral-200 px-3 py-2">
             <span>
-              <span className="block text-xs font-semibold text-neutral-950">{showTokenValues ? "Live preview" : "Template"}</span>
+              <span className="block text-xs font-semibold text-neutral-950">{showTokenValues ? "Live voorbeeld" : "Variabelen"}</span>
               <span className="block text-[11px] leading-4 text-neutral-500">
                 {showTokenValues ? "Toont het klantbeeld met actuele waarden." : "Toont bewerkbare copy met variabelen."}
               </span>
@@ -621,8 +653,111 @@ function ReportMetaControls({
           ))}
           </div>
         </div>
+        <CoverImageControl
+          value={coverImageUrl}
+          fallbackValue={fallbackCoverImageUrl}
+          onChange={setCoverImageUrl}
+        />
       </div>
     </section>
+  );
+}
+
+function CoverImageControl({
+  value,
+  fallbackValue,
+  onChange,
+}: {
+  value: string | null;
+  fallbackValue: string | null;
+  onChange: (value: string | null) => void;
+}) {
+  const inputRef = useRef<HTMLInputElement>(null);
+  const [uploading, setUploading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const effectiveValue = value ?? fallbackValue;
+
+  async function handleFile(file: File | undefined) {
+    if (!file) return;
+    setError(null);
+    if (!file.type.startsWith("image/")) {
+      setError("Kies een afbeeldingsbestand.");
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      setError("Afbeelding mag maximaal 5MB zijn.");
+      return;
+    }
+
+    const formData = new FormData();
+    formData.append("file", file);
+    setUploading(true);
+    try {
+      const response = await fetch("/api/admin/campaign-assets", {
+        method: "POST",
+        body: formData,
+      });
+      const body = await response.json().catch(() => ({}));
+      if (!response.ok || !body.secureUrl) {
+        throw new Error(typeof body.error === "string" ? body.error : "Upload mislukt.");
+      }
+      onChange(body.secureUrl);
+    } catch (uploadError) {
+      setError(uploadError instanceof Error ? uploadError.message : "Upload mislukt.");
+    } finally {
+      setUploading(false);
+      if (inputRef.current) inputRef.current.value = "";
+    }
+  }
+
+  return (
+    <div className="rounded-lg border border-neutral-200 bg-neutral-50 p-3">
+      <div className="flex items-center gap-3">
+        <div className="h-14 w-20 overflow-hidden rounded-md bg-neutral-200">
+          {effectiveValue ? (
+            <img src={effectiveValue} alt="" className="h-full w-full object-cover" />
+          ) : (
+            <div className="flex h-full w-full items-center justify-center text-neutral-400">
+              <ImageIcon className="h-5 w-5" />
+            </div>
+          )}
+        </div>
+        <div className="min-w-0 flex-1">
+          <p className="text-sm font-semibold text-neutral-950">Coverfoto</p>
+          <p className="mt-0.5 text-xs leading-5 text-neutral-500">
+            {value ? "Aangepast voor dit rapport." : fallbackValue ? "Gebruikt campagnebeeld als fallback." : "Optioneel breed rapportbeeld."}
+          </p>
+        </div>
+      </div>
+      {error ? <p className="mt-2 text-xs font-medium text-red-600">{error}</p> : null}
+      <div className="mt-3 flex flex-wrap gap-2">
+        <input
+          ref={inputRef}
+          type="file"
+          accept="image/*"
+          className="hidden"
+          onChange={(event) => handleFile(event.target.files?.[0])}
+        />
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          className="h-9 rounded-lg"
+          isPending={uploading}
+          disabled={uploading}
+          onClick={() => inputRef.current?.click()}
+        >
+          {value ? <ImageIcon className="h-4 w-4" /> : <Upload className="h-4 w-4" />}
+          {value ? "Vervangen" : "Coverfoto uploaden"}
+        </Button>
+        {value ? (
+          <Button type="button" variant="ghost" size="sm" className="h-9 rounded-lg" disabled={uploading} onClick={() => onChange(null)}>
+            <Trash2 className="h-4 w-4" />
+            Verwijderen
+          </Button>
+        ) : null}
+      </div>
+    </div>
   );
 }
 
@@ -676,45 +811,55 @@ function ReportPreview({
     ? null
     : Math.round(liveData.performance.deliveryProgress * 100);
   const qualityStatus = trafficQualityStatus(liveData);
+  const coverImageUrl = editorialContent.coverImageUrl ?? liveData.campaign.bannerUrl ?? null;
   const summaryLine = liveData.performance.overdeliveryViews > 0
     ? "De campagne heeft het afgesproken viewdoel ruim overtroffen, met extra bereik zonder extra mediabudget."
     : "De campagneprestaties worden afgezet tegen het afgesproken viewdoel en de beschikbare live performance.";
 
   return (
     <TokenPreviewContext.Provider value={{ liveData, status, periodStart, periodEnd, showValues: showTokenValues }}>
-      <div className="report-print-root rounded-xl bg-[#efede8] px-3 py-5 sm:px-6">
+      <div className="report-print-root rounded-xl bg-[#efede8] px-3 py-5 sm:px-6" style={{ fontFamily: "var(--font-report), var(--font-sans)" }}>
         <div className="report-print-scroll mx-auto w-full max-w-[1480px] space-y-5">
           {enabled("cover") ? (
-            <ReportSection className="overflow-hidden bg-neutral-950 p-8 text-white sm:p-12 lg:p-16">
-              <div className="flex flex-wrap items-start justify-between gap-8">
-                <div className="max-w-4xl">
-                  <p className="text-xs font-semibold uppercase tracking-[0.22em] text-neutral-400">
-                    <CopyBlock
-                      value={blocks["cover.kicker"] ?? "Campagne performance report"}
-                      onChange={(value) => editors?.updateTemplateBlock("cover.kicker", value)}
+            <ReportSection className="relative min-h-[500px] overflow-hidden bg-neutral-950 p-8 text-white sm:p-12 lg:p-16">
+              {coverImageUrl ? (
+                <>
+                  <img src={coverImageUrl} alt="" className="absolute inset-0 h-full w-full object-cover" />
+                  <div className="absolute inset-0 bg-neutral-950/72" />
+                  <div className="absolute inset-0 bg-gradient-to-r from-neutral-950/40 via-transparent to-neutral-950/20" />
+                </>
+              ) : null}
+              <div className="relative z-10 flex h-full min-h-[420px] flex-col justify-between gap-16">
+                <div className="flex flex-wrap items-start justify-between gap-8">
+                  <div className="max-w-4xl">
+                    <p className="text-xs font-semibold uppercase tracking-[0.22em] text-neutral-300">
+                      <CopyBlock
+                        value={blocks["cover.kicker"] ?? "Campagne prestatierapport"}
+                        onChange={(value) => editors?.updateTemplateBlock("cover.kicker", value)}
+                      />
+                    </p>
+                    <EditablePlainText
+                      value={title}
+                      onChange={editors?.setTitle}
+                      placeholder="Campagnerapport"
+                      className="mt-8 text-5xl font-semibold leading-[1.02] tracking-normal text-white md:text-7xl"
                     />
-                  </p>
-                  <EditablePlainText
-                    value={title}
-                    onChange={editors?.setTitle}
-                    placeholder="Campagnerapport"
-                    className="mt-8 text-5xl font-semibold leading-[1.02] tracking-normal text-white md:text-7xl"
-                  />
+                  </div>
+                  <Badge variant={status === "FINAL" ? "verified" : "pending"}>{reportStatusLabel(status)}</Badge>
                 </div>
-                <Badge variant={status === "FINAL" ? "verified" : "pending"}>{reportStatusLabel(status)}</Badge>
-              </div>
-              <div className="mt-16 grid gap-6 border-t border-white/15 pt-8 md:grid-cols-4">
-                <CoverLiveFact label="Merk" token="campaign.brandName" />
-                <CoverLiveFact label="Campagne" token="campaign.name" />
-                <CoverLiveFact label="Periode" value={formatPeriod(periodStart || liveData.period.start, periodEnd || liveData.period.end)} />
-                <CoverLiveFact label="Rapportdatum" token="generatedAt" />
+                <div className="grid gap-6 border-t border-white/20 pt-8 md:grid-cols-4">
+                  <CoverLiveFact label="Merk" token="campaign.brandName" />
+                  <CoverLiveFact label="Campagne" token="campaign.name" />
+                  <CoverLiveFact label="Periode" value={formatPeriod(periodStart || liveData.period.start, periodEnd || liveData.period.end)} />
+                  <CoverLiveFact label="Rapportdatum" token="generatedAt" />
+                </div>
               </div>
             </ReportSection>
           ) : null}
 
           {enabled("executiveSummary") ? (
             <ReportSection>
-              <SectionHeader kicker="Executive Summary" title="Resultaat in een oogopslag" icon={<FileText className="h-5 w-5" />} />
+              <SectionHeader kicker="Samenvatting" title="Resultaat in een oogopslag" icon={<FileText className="h-5 w-5" />} />
               <div className="grid gap-8 lg:grid-cols-[minmax(0,1.15fr)_minmax(320px,0.85fr)]">
                 <div>
                   <p className="text-5xl font-semibold leading-none tracking-normal text-neutral-950 md:text-7xl">
@@ -737,7 +882,7 @@ function ReportPreview({
               </div>
               <InsightLine>
                 <CopyBlock
-                  value={blocks["summary.conclusion"] ?? "Dit vertaalt campagneperformance naar concreet extra bereik, budgetwaarde en next-campaign richting."}
+                  value={blocks["summary.conclusion"] ?? "Dit vertaalt de campagneprestatie naar concreet extra bereik, budgetwaarde en richting voor de volgende campagne."}
                   onChange={(value) => editors?.updateTemplateBlock("summary.conclusion", value)}
                 />
               </InsightLine>
@@ -746,7 +891,7 @@ function ReportPreview({
 
           {enabled("campaignAtAGlance") ? (
             <ReportSection>
-              <SectionHeader kicker="Campaign at a glance" title="Doel, bereik en overdelivery" icon={<Target className="h-5 w-5" />} />
+              <SectionHeader kicker="Campagne in het kort" title="Doel, bereik en overdelivery" icon={<Target className="h-5 w-5" />} />
               <DeliveryProgress data={liveData} />
               <div className="mt-8 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
                 <StatTile label="Betaalde views" value={formatNumber(paidViews, "nl")} helper="Gemaximeerd op het afgesproken doel" />
@@ -756,7 +901,7 @@ function ReportPreview({
               </div>
               <InsightLine>
                 <CopyBlock
-                  value={blocks["glance.statement"] ?? "Extra bereik boven het afgesproken doel wordt zichtbaar als gratis bonus voor de client."}
+                  value={blocks["glance.statement"] ?? "Extra bereik boven het afgesproken doel wordt zichtbaar als gratis bonus voor de klant."}
                   onChange={(value) => editors?.updateTemplateBlock("glance.statement", value)}
                 />
               </InsightLine>
@@ -765,11 +910,11 @@ function ReportPreview({
 
           {enabled("campaignPerformance") ? (
             <ReportSection>
-              <SectionHeader kicker="Campaign Performance" title="Groei van de campagne" icon={<TrendingUp className="h-5 w-5" />} />
+              <SectionHeader kicker="Campagneprestatie" title="Groei van de campagne" icon={<TrendingUp className="h-5 w-5" />} />
               <CumulativeViewsChart rows={liveData.timeline} targetViews={liveData.performance.targetViews} currentViews={liveData.performance.currentViews} />
               <div className="mt-8 grid gap-4 md:grid-cols-3">
                 <StatTile label="Inzendingen" value={formatNumber(liveData.performance.totalSubmissions, "nl")} helper="Alle statussen" />
-                <StatTile label="Approval rate" value={formatPercent(liveData.performance.approvalRate)} helper="Goedgekeurd na review" />
+                <StatTile label="Goedkeuringspercentage" value={formatPercent(liveData.performance.approvalRate)} helper="Goedgekeurd na review" />
                 <StatTile label="Actieve creators" value={formatNumber(liveData.performance.activeCreators, "nl")} helper="Creators met inzendingen" />
               </div>
               <InsightLine>
@@ -783,18 +928,18 @@ function ReportPreview({
 
           {enabled("contentPerformance") && topContent.length > 0 ? (
             <ReportSection>
-              <SectionHeader kicker="Content Performance" title="Topclips en winnende patronen" icon={<Sparkles className="h-5 w-5" />} />
+              <SectionHeader kicker="Contentprestaties" title="Topclips en winnende patronen" icon={<Sparkles className="h-5 w-5" />} />
               <TopContentWall rows={topContent} blocks={blocks} editors={editors} />
               <div className="mt-8 rounded-xl bg-neutral-950 p-6 text-white">
-                <p className="text-sm font-semibold text-neutral-300">Content-pattern analyse</p>
+                <p className="text-sm font-semibold text-neutral-300">Analyse van contentpatronen</p>
                 <EditableTags
                   tags={editorialContent.contentPatternTags}
                   onChange={editors?.updateContentPatternTags}
                 />
               </div>
               <InsightLine>
-                <CopyBlock
-                  value={blocks["content.insight"] ?? "De best presterende clips combineren een snelle hook, duidelijke merkplaatsing en creator-native editing."}
+                  <CopyBlock
+                  value={blocks["content.insight"] ?? "De best presterende clips combineren een snelle hook, duidelijke merkplaatsing en een editstijl die natuurlijk voelt voor het platform."}
                   onChange={(value) => editors?.updateTemplateBlock("content.insight", value)}
                 />
               </InsightLine>
@@ -803,7 +948,7 @@ function ReportPreview({
 
           {enabled("platformPerformance") && liveData.platformBreakdown.length > 0 ? (
             <ReportSection>
-              <SectionHeader kicker="Platform Performance" title="Kanaalvergelijking" icon={<BarChart3 className="h-5 w-5" />} />
+              <SectionHeader kicker="Platformprestaties" title="Kanaalvergelijking" icon={<BarChart3 className="h-5 w-5" />} />
               <PlatformPerformanceRows rows={liveData.platformBreakdown} />
               <InsightLine>
                 <CopyBlock
@@ -816,7 +961,7 @@ function ReportPreview({
 
           {enabled("creatorContribution") && topCreators.length > 0 ? (
             <ReportSection>
-              <SectionHeader kicker="Creator Contribution" title="Bijdrage van creators" icon={<Users className="h-5 w-5" />} />
+              <SectionHeader kicker="Creatorbijdrage" title="Bijdrage van creators" icon={<Users className="h-5 w-5" />} />
               <CreatorContribution rows={topCreators} />
               <InsightLine>
                 <CopyBlock
@@ -829,11 +974,11 @@ function ReportPreview({
 
           {enabled("audienceReach") && showAudience ? (
             <ReportSection>
-              <SectionHeader kicker="Audience & Reach" title="Bereikt publiek" icon={<Users className="h-5 w-5" />} />
+              <SectionHeader kicker="Publiek en bereik" title="Bereikt publiek" icon={<Users className="h-5 w-5" />} />
               <AudienceSnapshot data={liveData.audience} />
               <InsightLine>
                 <CopyBlock
-                  value={blocks["audience.insight"] ?? "Audience-data is gebaseerd op beschikbare platformdata. Beschikbaarheid kan per platform verschillen."}
+                  value={blocks["audience.insight"] ?? "Publieksdata is gebaseerd op beschikbare platformdata. Beschikbaarheid kan per platform verschillen."}
                   onChange={(value) => editors?.updateTemplateBlock("audience.insight", value)}
                 />
               </InsightLine>
@@ -842,7 +987,7 @@ function ReportPreview({
 
           {enabled("budgetValue") ? (
             <ReportSection>
-              <SectionHeader kicker="Budget & Value" title="Betaald bereik versus extra bereik" icon={<Wallet className="h-5 w-5" />} />
+              <SectionHeader kicker="Budget en waarde" title="Betaald bereik versus extra bereik" icon={<Wallet className="h-5 w-5" />} />
               <BudgetValueVisual data={liveData} />
               <InsightLine>
                 <CopyBlock
@@ -855,11 +1000,11 @@ function ReportPreview({
 
           {enabled("qualityAssurance") ? (
             <ReportSection>
-              <SectionHeader kicker="Quality Assurance" title="Validatie van prestaties" icon={<ShieldCheck className="h-5 w-5" />} />
+              <SectionHeader kicker="Kwaliteitscontrole" title="Validatie van prestaties" icon={<ShieldCheck className="h-5 w-5" />} />
               <QualityAssurance status={qualityStatus} data={liveData} />
               <InsightLine>
                 <CopyBlock
-                  value={blocks["quality.insight"] ?? "Alle clips en views zijn gecontroleerd op campagnevoorwaarden, duplicate activity en traffic quality. Alleen geldige prestaties zijn meegenomen in de goedgekeurde resultaten."}
+                  value={blocks["quality.insight"] ?? "Alle clips en views zijn gecontroleerd op campagnevoorwaarden, dubbele activiteit en verkeerskwaliteit. Alleen geldige prestaties zijn meegenomen in de goedgekeurde resultaten."}
                   onChange={(value) => editors?.updateTemplateBlock("quality.insight", value)}
                 />
               </InsightLine>
@@ -868,7 +1013,7 @@ function ReportPreview({
 
           {enabled("nextCampaign") ? (
             <ReportSection>
-              <SectionHeader kicker="Next Campaign Recommendations" title="Concreet plan voor de volgende ronde" icon={<RefreshCw className="h-5 w-5" />} />
+              <SectionHeader kicker="Aanbevelingen voor volgende campagne" title="Concreet plan voor de volgende ronde" icon={<RefreshCw className="h-5 w-5" />} />
               <CopyBlock
                 value={blocks["next.plan"] ?? "Voor de volgende campagne adviseren we om de best presterende creators opnieuw te activeren, de winnende hooks expliciet in de briefing te zetten en budget te sturen naar de kanalen met de laagste effectieve CPM."}
                 onChange={(value) => editors?.updateTemplateBlock("next.plan", value)}
@@ -903,14 +1048,12 @@ function Token({ name }: { name: string }) {
     : null;
 
   if (tokenContext?.showValues) {
-    return <span className="align-baseline">{previewValue ?? "-"}</span>;
+    return <span className="align-baseline">{previewValue ?? "geen waarde"}</span>;
   }
 
   return (
-    <span className="inline-flex max-w-full items-center rounded-md border border-neutral-300 bg-neutral-100 px-1.5 py-0.5 align-baseline font-mono text-[0.78em] font-semibold leading-5 text-neutral-700">
-      <span className="max-w-full truncate">
-        {"{{"}{name}{"}}"}
-      </span>
+    <span className="align-baseline">
+      {"{{"}{name}{"}}"}
     </span>
   );
 }
@@ -1107,7 +1250,7 @@ function CumulativeViewsChart({
             <div
               className="w-full rounded-t bg-neutral-950 transition group-hover:bg-neutral-700"
               style={{ height: `${Math.max(4, (row.views / max) * 230)}px` }}
-              title={`${formatDate(row.date, "nl")}: ${formatNumber(row.views, "nl")} cumulative views`}
+              title={`${formatDate(row.date, "nl")}: ${formatNumber(row.views, "nl")} cumulatieve views`}
             />
           </div>
         ))}
@@ -1164,7 +1307,7 @@ function TopContentWall({
                 </div>
               </div>
               <CopyBlock
-                value={blocks[noteKey] ?? "Werkte door een snelle hook, duidelijke merkherkenning en een creator-native editstijl."}
+                value={blocks[noteKey] ?? "Werkte door een snelle hook, duidelijke merkherkenning en een editstijl die natuurlijk voelt voor het platform."}
                 onChange={(value) => editors?.updateTemplateBlock(noteKey, value)}
                 className="mt-5 text-sm leading-6 text-neutral-700"
               />
@@ -1177,7 +1320,7 @@ function TopContentWall({
 }
 
 function EditableTags({ tags, onChange }: { tags: string[]; onChange?: (value: string[]) => void }) {
-  const value = tags.length > 0 ? tags.join(", ") : "snelle hook, creator-native edit, merk zichtbaar in eerste 3 seconden";
+  const value = tags.length > 0 ? tags.join(", ") : "snelle hook, platform-native editstijl, merk zichtbaar in eerste 3 seconden";
   return (
     <EditablePlainText
       value={value}
@@ -1197,7 +1340,7 @@ function PlatformPerformanceRows({ rows }: { rows: CampaignReportLiveData["platf
           <div className="flex flex-wrap items-center justify-between gap-4">
             <div>
               <h3 className="text-xl font-semibold text-neutral-950">{row.platform}</h3>
-              <p className="mt-1 text-sm text-neutral-500">{row.clips} goedgekeurde clips / {formatPercent(row.engagementRate)} engagement rate</p>
+              <p className="mt-1 text-sm text-neutral-500">{row.clips} goedgekeurde clips / {formatPercent(row.engagementRate)} engagementpercentage</p>
             </div>
             <div className="text-right">
               <p className="text-2xl font-semibold tabular-nums text-neutral-950">{formatNumber(row.views, "nl")}</p>
@@ -1233,7 +1376,7 @@ function CreatorContribution({ rows }: { rows: CampaignReportLiveData["creators"
           </div>
           <div className="text-right">
             <p className="font-semibold tabular-nums text-neutral-950">{formatNumber(row.views, "nl")}</p>
-            <p className="text-sm text-neutral-500">{formatPercent(row.approvalRate)} approval</p>
+            <p className="text-sm text-neutral-500">{formatPercent(row.approvalRate)} goedgekeurd</p>
           </div>
         </div>
       ))}
@@ -1244,9 +1387,14 @@ function CreatorContribution({ rows }: { rows: CampaignReportLiveData["creators"
 function AudienceSnapshot({ data }: { data: CampaignReportLiveData["audience"] }) {
   return (
     <div className="grid gap-6 lg:grid-cols-3">
-      <Distribution title="Top landen" rows={data.topCountries.map((row) => ({ label: row.code, value: row.share }))} suffix="%" />
-      <Distribution title="Leeftijd" rows={objectRows(data.ageBuckets)} suffix="%" />
-      <Distribution title="Gender" rows={objectRows(data.genderSplit)} suffix="%" />
+      <Distribution
+        title="Top landen"
+        rows={data.topCountries.map((row) => ({ label: row.code, value: row.share }))}
+        formatLabel={formatAudienceCountryLabel}
+        formatValue={formatAudienceShare}
+      />
+      <Distribution title="Leeftijd" rows={objectRows(data.ageBuckets)} formatValue={formatAudienceShare} />
+      <Distribution title="Gender" rows={objectRows(data.genderSplit)} formatValue={formatAudienceShare} />
     </div>
   );
 }
@@ -1267,20 +1415,20 @@ function BudgetValueVisual({ data }: { data: CampaignReportLiveData }) {
   );
 }
 
-function QualityAssurance({ status, data }: { status: string; data: CampaignReportLiveData }) {
-  const variant = status === "Needs attention" ? "border-amber-300 bg-amber-50" : status === "Passed with exclusions" ? "border-neutral-300 bg-neutral-50" : "border-emerald-200 bg-emerald-50";
+function QualityAssurance({ status, data }: { status: ReportQualityStatus; data: CampaignReportLiveData }) {
+  const variant = status === "needs_attention" ? "border-amber-300 bg-amber-50" : status === "passed_with_exclusions" ? "border-neutral-300 bg-neutral-50" : "border-emerald-200 bg-emerald-50";
   return (
     <div className={cn("rounded-2xl border p-6", variant)}>
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
-          <p className="text-sm font-medium text-neutral-600">Traffic Quality Status</p>
-          <p className="mt-2 text-4xl font-semibold text-neutral-950">{status}</p>
+          <p className="text-sm font-medium text-neutral-600">Kwaliteitsstatus</p>
+          <p className="mt-2 text-4xl font-semibold text-neutral-950">{reportQualityStatusLabel(status)}</p>
         </div>
         <ShieldCheck className="h-12 w-12 text-neutral-800" />
       </div>
       <div className="mt-6 grid gap-3 md:grid-cols-3">
-        <StatTile label="Approved performance" value={formatNumber(data.performance.currentViews, "nl")} helper="Goedgekeurde views" />
-        <StatTile label="Uitgesloten signalen" value={formatNumber(data.quality.resolvedSignals, "nl")} helper="Niet meegenomen wanneer uitgesloten" />
+        <StatTile label="Goedgekeurde prestaties" value={formatNumber(data.performance.currentViews, "nl")} helper="Goedgekeurde views" />
+        <StatTile label="Uitgesloten activiteit" value={formatNumber(data.quality.resolvedSignals, "nl")} helper="Niet meegenomen in goedgekeurde prestaties" />
         <StatTile label="Open aandachtspunten" value={formatNumber(data.quality.criticalSignals, "nl")} helper="Kritieke reviewstatus" />
       </div>
     </div>
@@ -1381,7 +1529,12 @@ function formatTokenPreviewValue(name: string, value: unknown): string {
   if (value == null || value === "") return "geen waarde";
   if (typeof value === "number") return formatTokenNumber(name, value);
   if (typeof value === "boolean") return value ? "true" : "false";
-  if (typeof value === "string") return truncateTokenValue(formatTokenString(value));
+  if (typeof value === "string") {
+    if (name.toLowerCase().includes("trafficqualitystatus")) {
+      return isReportQualityStatus(value) ? reportQualityStatusLabel(value) : value;
+    }
+    return truncateTokenValue(formatTokenString(value));
+  }
   if (Array.isArray(value)) {
     if (value.length === 0) return "lege lijst";
     return truncateTokenValue(value.slice(0, 3).map(formatTokenArrayItem).join(", ") + (value.length > 3 ? ` +${value.length - 3}` : ""));
@@ -1424,7 +1577,7 @@ function formatTokenArrayItem(value: unknown) {
   if (typeof value === "number") return formatNumber(value, "nl");
   if (typeof value === "object") {
     const record = value as Record<string, unknown>;
-    if ("code" in record && "share" in record) return `${record.code}: ${formatNumber(Number(record.share) || 0, "nl")}%`;
+    if ("code" in record && "share" in record) return `${formatAudienceCountryLabel(String(record.code))}: ${formatAudienceShare(Number(record.share) || 0)}`;
     if ("platform" in record && "views" in record) return `${record.platform}: ${formatNumber(Number(record.views) || 0, "nl")}`;
     if ("creator" in record && "views" in record) return `${record.creator}: ${formatNumber(Number(record.views) || 0, "nl")}`;
     return Object.entries(record).slice(0, 2).map(([key, item]) => `${key}: ${String(item)}`).join(", ");
@@ -1436,10 +1589,14 @@ function truncateTokenValue(value: string, maxLength = 96) {
   return value.length > maxLength ? `${value.slice(0, maxLength - 1)}...` : value;
 }
 
-function trafficQualityStatus(data: CampaignReportLiveData) {
-  if (data.quality.criticalSignals > 0) return "Needs attention";
-  if (data.quality.openSignals > 0 || data.quality.resolvedSignals > 0) return "Passed with exclusions";
-  return "Passed";
+function trafficQualityStatus(data: CampaignReportLiveData): ReportQualityStatus {
+  if (data.quality.criticalSignals > 0) return "needs_attention";
+  if (data.quality.openSignals > 0 || data.quality.resolvedSignals > 0) return "passed_with_exclusions";
+  return "passed";
+}
+
+function isReportQualityStatus(value: string): value is ReportQualityStatus {
+  return value === "passed" || value === "passed_with_exclusions" || value === "needs_attention";
 }
 
 function EditableMarker({ name }: { name: string }) {
@@ -1820,7 +1977,17 @@ function ReferralSummary({ data }: { data: CampaignReportLiveData }) {
   );
 }
 
-function Distribution({ title, rows, suffix = "" }: { title: string; rows: Array<{ label: string; value: number }>; suffix?: string }) {
+function Distribution({
+  title,
+  rows,
+  formatLabel = adminEnumLabel,
+  formatValue = (value) => formatNumber(value, "nl"),
+}: {
+  title: string;
+  rows: Array<{ label: string; value: number }>;
+  formatLabel?: (value: string) => string;
+  formatValue?: (value: number) => string;
+}) {
   const max = Math.max(1, ...rows.map((row) => row.value));
   return (
     <div className="rounded-lg border border-neutral-200 p-4">
@@ -1830,8 +1997,8 @@ function Distribution({ title, rows, suffix = "" }: { title: string; rows: Array
         {rows.map((row) => (
           <div key={row.label}>
             <div className="mb-1 flex items-center justify-between gap-3 text-xs">
-              <span className="font-medium text-neutral-700">{adminEnumLabel(row.label)}</span>
-              <span className="text-neutral-500">{formatNumber(row.value, "nl")}{suffix}</span>
+              <span className="font-medium text-neutral-700">{formatLabel(row.label)}</span>
+              <span className="text-neutral-500">{formatValue(row.value)}</span>
             </div>
             <div className="h-2 rounded-full bg-neutral-100">
               <div className="h-2 rounded-full bg-neutral-950" style={{ width: `${Math.max(3, (row.value / max) * 100)}%` }} />
@@ -1916,23 +2083,24 @@ function createEmptyEditorial(campaignName: string): CampaignReportEditorial {
       creatorRecommendations: [],
       qualityNote: "",
       nextCampaignPlan: "",
+      coverImageUrl: null,
     },
   };
 }
 
 function defaultTemplateBlocks(editorial: CampaignReportEditorial): Record<string, string> {
   return {
-    "cover.kicker": "Campagne performance report",
+    "cover.kicker": "Campagne prestatierapport",
     "summary.body": editorial.executiveSummary || "De campagne heeft {{performance.currentViews}} totale views gegenereerd met {{performance.approvedClips}} goedgekeurde clips. Het afgesproken doel was {{performance.targetViews}} views. Extra bereik boven het doel wordt gerapporteerd als bonus zonder extra budget.",
     "summary.conclusion": "Dit betekent dat de campagneperformance direct te koppelen is aan bereik, budgetwaarde en concrete learnings voor de volgende ronde.",
-    "glance.statement": "Extra bereik boven het afgesproken doel wordt zichtbaar als gratis bonus voor de client.",
+    "glance.statement": "Extra bereik boven het afgesproken doel wordt zichtbaar als gratis bonus voor de klant.",
     "performance.insight": "De cumulatieve viewlijn laat zien wanneer de campagne tractie kreeg en welke momenten performance versnelden.",
-    "content.insight": "De best presterende clips combineren een snelle hook, duidelijke merkplaatsing en creator-native editing.",
+    "content.insight": "De best presterende clips combineren een snelle hook, duidelijke merkplaatsing en een editstijl die natuurlijk voelt voor het platform.",
     "platform.insight": "{{platformBreakdown[0].platform}} leverde het grootste deel van het bereik en verdient extra focus in de volgende campagne.",
     "creator.insight": "Heractiveer creators die hoge views combineren met consistente kwaliteit en duidelijke merkfit.",
-    "audience.insight": "Audience-data is gebaseerd op beschikbare platformdata. Beschikbaarheid kan per platform verschillen.",
+    "audience.insight": "Publieksdata is gebaseerd op beschikbare platformdata. Beschikbaarheid kan per platform verschillen.",
     "budget.insight": "Betaalde views zijn gemaximeerd op het afgesproken doel. Extra views boven dit doel worden gerapporteerd als extra bereik zonder extra kosten.",
-    "quality.insight": "Alle clips en views zijn gecontroleerd op campagnevoorwaarden, duplicate activity en traffic quality. Alleen geldige prestaties zijn meegenomen in de goedgekeurde resultaten.",
+    "quality.insight": "Alle clips en views zijn gecontroleerd op campagnevoorwaarden, dubbele activiteit en verkeerskwaliteit. Alleen geldige prestaties zijn meegenomen in de goedgekeurde resultaten.",
     "next.plan": editorial.nextCampaignRecommendations[0] || "Voor de volgende campagne adviseren we om de best presterende creators opnieuw te activeren, winnende hooks expliciet in de briefing te zetten en budget te sturen naar kanalen met de laagste effectieve CPM.",
   };
 }

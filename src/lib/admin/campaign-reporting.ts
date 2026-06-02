@@ -40,6 +40,7 @@ export interface CampaignReportCampaignInput {
   id: string;
   name: string;
   description?: string | null;
+  bannerUrl?: string | null;
   platforms: string[];
   totalBudget: number | string;
   creatorCpv: number | string;
@@ -151,6 +152,7 @@ export interface CampaignReportLiveData {
     brandId: string | null;
     brandName: string;
     description: string | null;
+    bannerUrl: string | null;
     platforms: string[];
     totalBudget: number;
     creatorCpv: number;
@@ -286,6 +288,7 @@ export function buildCampaignReportLiveData(input: CampaignReportBuildInput): Ca
       brandId: input.campaign.brand?.id ?? null,
       brandName: input.campaign.brand?.name ?? input.campaign.name,
       description: input.campaign.description ?? null,
+      bannerUrl: input.campaign.bannerUrl ?? null,
       platforms: input.campaign.platforms.map(platformLabel),
       totalBudget,
       creatorCpv,
@@ -359,6 +362,7 @@ export async function getCampaignReportLiveData({
       id: true,
       name: true,
       description: true,
+      bannerUrl: true,
       platforms: true,
       totalBudget: true,
       creatorCpv: true,
@@ -540,7 +544,7 @@ function generateDefaultEditorial(data: Omit<CampaignReportLiveData, "defaults">
     ? "zonder betrouwbaar viewdoel"
     : `${formatPercent(data.performance.goalCompletion)} van de doelviews`;
   const overdeliveryText = data.performance.overdeliveryViews > 0
-    ? ` Daarnaast leverde de campagne ${formatNumber(data.performance.overdeliveryViews)} views overdelivery als gratis extra bereik voor de client.`
+    ? ` Daarnaast leverde de campagne ${formatNumber(data.performance.overdeliveryViews)} views overdelivery als gratis extra bereik voor de klant.`
     : "";
   const qualityText = data.quality.criticalSignals === 0
     ? "zonder open kritieke kwaliteitsissues"
@@ -583,17 +587,17 @@ function generateDefaultEditorial(data: Omit<CampaignReportLiveData, "defaults">
     "Houd quality checks actief op logo/brand placement, duplicate content en afwijkende engagementratio's.",
   ];
   const defaultTemplateBlocks = {
-    "cover.kicker": "Campagne performance report",
-    "summary.body": "De campagne heeft het afgesproken doel van {{performance.targetViews}} views ruim overtroffen. In totaal genereerden goedgekeurde clips {{performance.currentViews}} views, goed voor {{performance.overdeliveryViews}} extra views boven het afgesproken doel. Het volledige budget van {{campaign.totalBudget}} is benut, waardoor de effectieve CPM op het totale bereik uitkomt op {{performance.costPerThousandViews}}. De best presterende content kwam voort uit snelle hooks, duidelijke merkherkenning en creator-native edits.",
+    "cover.kicker": "Campagne prestatierapport",
+    "summary.body": "De campagne heeft het afgesproken doel van {{performance.targetViews}} views ruim overtroffen. In totaal genereerden goedgekeurde clips {{performance.currentViews}} views, goed voor {{performance.overdeliveryViews}} extra views boven het afgesproken doel. Het volledige budget van {{campaign.totalBudget}} is benut, waardoor de effectieve CPM op het totale bereik uitkomt op {{performance.costPerThousandViews}}. De best presterende content kwam voort uit snelle hooks, duidelijke merkherkenning en een platform-native editstijl.",
     "summary.conclusion": "Dit betekent dat de campagne het afgesproken bereik ruim heeft overtroffen zonder extra mediabudget.",
-    "glance.statement": "De campagne leverde extra bereik boven het afgesproken doel. Extra bereik wordt niet extra doorbelast en blijft zichtbaar als gratis bonus voor de client.",
+    "glance.statement": "De campagne leverde extra bereik boven het afgesproken doel. Extra bereik wordt niet extra doorbelast en blijft zichtbaar als gratis bonus voor de klant.",
     "performance.insight": "De groei laat zien wanneer de campagne tractie kreeg. Sterke clipmomenten versnellen de cumulatieve viewlijn en vormen de basis voor optimalisatie in de volgende ronde.",
-    "content.insight": "De best presterende clips combineren een snelle hook, zichtbare merkplaatsing in de eerste seconden en een editstijl die native voelt voor het platform.",
+    "content.insight": "De best presterende clips combineren een snelle hook, zichtbare merkplaatsing in de eerste seconden en een editstijl die natuurlijk voelt voor het platform.",
     "platform.insight": "{{platformBreakdown[0].platform}} leverde het grootste deel van het bereik en verdient extra focus in de volgende campagne.",
     "creator.insight": "Voor de volgende campagne raden we aan creators opnieuw te activeren die hoge views combineren met consistente kwaliteit en duidelijke merkfit.",
-    "audience.insight": "Audience-data is gebaseerd op beschikbare platformdata. De beschikbaarheid kan per platform verschillen.",
+    "audience.insight": "Publieksdata is gebaseerd op beschikbare platformdata. De beschikbaarheid kan per platform verschillen.",
     "budget.insight": "Betaalde views zijn gemaximeerd op het afgesproken doel. Extra views boven dit doel worden gerapporteerd als extra bereik zonder extra kosten.",
-    "quality.insight": "Alle clips en views zijn gecontroleerd op campagnevoorwaarden, duplicate activity en traffic quality. Alleen prestaties die voldeden aan de voorwaarden zijn meegenomen in de goedgekeurde resultaten.",
+    "quality.insight": "Alle clips en views zijn gecontroleerd op campagnevoorwaarden, dubbele activiteit en verkeerskwaliteit. Alleen prestaties die voldeden aan de voorwaarden zijn meegenomen in de goedgekeurde resultaten.",
     "next.plan": "Voor de volgende campagne adviseren we om de best presterende creators opnieuw te activeren, de winnende hooks expliciet in de briefing te zetten en budget te sturen naar de kanalen met de laagste effectieve CPM.",
   };
 
@@ -608,7 +612,7 @@ function generateDefaultEditorial(data: Omit<CampaignReportLiveData, "defaults">
       templateBlocks: defaultTemplateBlocks,
       contentPatternTags: [
         "snelle hook",
-        "creator-native edit",
+        "platform-native editstijl",
         "merk zichtbaar in eerste 3 seconden",
         "probleem/oplossing",
         "duidelijke productintegratie",
@@ -618,6 +622,7 @@ function generateDefaultEditorial(data: Omit<CampaignReportLiveData, "defaults">
       creatorRecommendations: nextCampaignRecommendations.slice(0, 3),
       qualityNote: defaultTemplateBlocks["quality.insight"],
       nextCampaignPlan: defaultTemplateBlocks["next.plan"],
+      coverImageUrl: null,
     }),
   };
 }

@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Lexend } from "next/font/google";
+import { Geist, Lexend } from "next/font/google";
 import { NextIntlClientProvider } from "next-intl";
 import { getLocale, getMessages, getTranslations } from "next-intl/server";
 import { SpeedInsights } from "@vercel/speed-insights/next";
@@ -16,6 +16,12 @@ const lexend = Lexend({
   variable: "--font-sans",
   subsets: ["latin"],
   weight: ["300", "400", "500", "600", "700", "800"],
+});
+
+const geist = Geist({
+  variable: "--font-report",
+  subsets: ["latin"],
+  weight: ["400", "500", "600", "700", "800", "900"],
 });
 
 export const preferredRegion = "fra1";
@@ -58,7 +64,7 @@ export default async function RootLayout({
 
   return (
     <html lang={locale}>
-      <body className={`${lexend.variable} antialiased`}>
+      <body className={`${lexend.variable} ${geist.variable} antialiased`}>
         <NextIntlClientProvider locale={locale} messages={messages}>
           <AuthErrorHandler />
           <PostHogProvider>
