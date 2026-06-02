@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import {
   buildAppUrl,
+  getAppUrlForSharedLinks,
   getAppUrlFromHeaders,
   getAppUrlFromHost,
   getAppUrlFromRequest,
@@ -12,6 +13,9 @@ const savedEnv = {
   NEXT_PUBLIC_APP_URL: process.env.NEXT_PUBLIC_APP_URL,
   NEXT_PUBLIC_APP_URL_NL: process.env.NEXT_PUBLIC_APP_URL_NL,
   NEXT_PUBLIC_APP_URL_EN: process.env.NEXT_PUBLIC_APP_URL_EN,
+  VERCEL_ENV: process.env.VERCEL_ENV,
+  VERCEL_URL: process.env.VERCEL_URL,
+  VERCEL_BRANCH_URL: process.env.VERCEL_BRANCH_URL,
 };
 
 describe("app URL and locale routing", () => {
@@ -19,6 +23,9 @@ describe("app URL and locale routing", () => {
     delete process.env.NEXT_PUBLIC_APP_URL;
     delete process.env.NEXT_PUBLIC_APP_URL_NL;
     delete process.env.NEXT_PUBLIC_APP_URL_EN;
+    delete process.env.VERCEL_ENV;
+    delete process.env.VERCEL_URL;
+    delete process.env.VERCEL_BRANCH_URL;
   });
 
   afterEach(() => {
@@ -36,6 +43,21 @@ describe("app URL and locale routing", () => {
       delete process.env.NEXT_PUBLIC_APP_URL_EN;
     } else {
       process.env.NEXT_PUBLIC_APP_URL_EN = savedEnv.NEXT_PUBLIC_APP_URL_EN;
+    }
+    if (savedEnv.VERCEL_ENV === undefined) {
+      delete process.env.VERCEL_ENV;
+    } else {
+      process.env.VERCEL_ENV = savedEnv.VERCEL_ENV;
+    }
+    if (savedEnv.VERCEL_URL === undefined) {
+      delete process.env.VERCEL_URL;
+    } else {
+      process.env.VERCEL_URL = savedEnv.VERCEL_URL;
+    }
+    if (savedEnv.VERCEL_BRANCH_URL === undefined) {
+      delete process.env.VERCEL_BRANCH_URL;
+    } else {
+      process.env.VERCEL_BRANCH_URL = savedEnv.VERCEL_BRANCH_URL;
     }
   });
 
@@ -65,6 +87,26 @@ describe("app URL and locale routing", () => {
     });
 
     expect(getAppUrlFromRequest(req)).toBe("https://preview-123.vercel.app");
+  });
+
+  it("uses the Vercel branch URL for shared links in preview", () => {
+    process.env.VERCEL_ENV = "preview";
+    process.env.VERCEL_BRANCH_URL = "clipprofit-branch.vercel.app";
+    process.env.NEXT_PUBLIC_APP_URL = "https://app.clipprofit.com";
+    const req = new Request("https://old-preview.vercel.app/api/admin/brands/brand-1/contacts", {
+      headers: { host: "old-preview.vercel.app" },
+    });
+
+    expect(getAppUrlForSharedLinks(req)).toBe("https://clipprofit-branch.vercel.app");
+  });
+
+  it("keeps local request origins for shared links during development", () => {
+    process.env.NEXT_PUBLIC_APP_URL = "https://app.clipprofit.com";
+    const req = new Request("http://localhost:3000/api/admin/brands/brand-1/contacts", {
+      headers: { host: "localhost:3000" },
+    });
+
+    expect(getAppUrlForSharedLinks(req)).toBe("http://localhost:3000");
   });
 
   it("builds dashboard links from forwarded preview headers", () => {

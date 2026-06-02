@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { POST } from "./route";
 
 const routeMocks = vi.hoisted(() => ({
@@ -65,14 +65,41 @@ const invitedContact = {
   user: null,
 };
 
+const savedEnv = {
+  VERCEL_ENV: process.env.VERCEL_ENV,
+  VERCEL_URL: process.env.VERCEL_URL,
+  VERCEL_BRANCH_URL: process.env.VERCEL_BRANCH_URL,
+};
+
 describe("POST /api/admin/brands/[id]/contacts", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    delete process.env.VERCEL_ENV;
+    delete process.env.VERCEL_URL;
+    delete process.env.VERCEL_BRANCH_URL;
     routeMocks.requireAuth.mockResolvedValue({ userId: "admin-supabase-1" });
     routeMocks.brandFindUnique.mockResolvedValue(brand);
     routeMocks.userFindUnique.mockResolvedValue({ id: "admin-user-1", role: "admin" });
     routeMocks.brandContactUpsert.mockResolvedValue(activeContact);
     routeMocks.auditLogCreate.mockResolvedValue({});
+  });
+
+  afterEach(() => {
+    if (savedEnv.VERCEL_ENV === undefined) {
+      delete process.env.VERCEL_ENV;
+    } else {
+      process.env.VERCEL_ENV = savedEnv.VERCEL_ENV;
+    }
+    if (savedEnv.VERCEL_URL === undefined) {
+      delete process.env.VERCEL_URL;
+    } else {
+      process.env.VERCEL_URL = savedEnv.VERCEL_URL;
+    }
+    if (savedEnv.VERCEL_BRANCH_URL === undefined) {
+      delete process.env.VERCEL_BRANCH_URL;
+    } else {
+      process.env.VERCEL_BRANCH_URL = savedEnv.VERCEL_BRANCH_URL;
+    }
   });
 
   it("activates an existing admin as a /brand test contact without generating an invite", async () => {
@@ -166,5 +193,25 @@ describe("POST /api/admin/brands/[id]/contacts", () => {
     const body = await response.json();
     expect(body.emailSent).toBe(false);
     expect(body.inviteUrl).toContain("/brand-invite/");
+  });
+
+  it("uses the current Vercel preview URL for invite links instead of stale request hosts", async () => {
+    process.env.VERCEL_ENV = "preview";
+    process.env.VERCEL_URL = "clipprofit-current.vercel.app";
+    routeMocks.userFindUnique.mockResolvedValueOnce(null);
+    routeMocks.brandContactUpsert.mockResolvedValueOnce(invitedContact);
+
+    const response = await POST(
+      new Request("https://clipprofit-old.vercel.app/api/admin/brands/brand-1/contacts", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: "client@example.com", name: "Client" }),
+      }),
+      { params: Promise.resolve({ id: "brand-1" }) },
+    );
+
+    const body = await response.json();
+    expect(body.inviteUrl).toMatch(/^https:\/\/clipprofit-current\.vercel\.app\/brand-invite\//);
+    expect(body.emailSent).toBe(false);
   });
 });
