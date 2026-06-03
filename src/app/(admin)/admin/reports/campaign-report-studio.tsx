@@ -122,7 +122,13 @@ interface TokenPreviewContextValue {
   showValues: boolean;
 }
 
+interface ReportCopyContextValue {
+  blocks: Record<string, string>;
+  editors?: ReportInlineEditors;
+}
+
 const TokenPreviewContext = createContext<TokenPreviewContextValue | null>(null);
+const ReportCopyContext = createContext<ReportCopyContextValue | null>(null);
 
 const SECTION_LABELS: Record<CampaignReportSectionKey, string> = {
   cover: "Omslag",
@@ -807,14 +813,15 @@ function ReportPreview({
 
   return (
     <TokenPreviewContext.Provider value={{ liveData, status, periodStart, periodEnd, showValues: showTokenValues }}>
-      <div className="report-print-root rounded-xl bg-[#efede8] px-3 py-5 sm:px-6" style={{ fontFamily: "var(--font-report), var(--font-sans)" }}>
-        <div className="report-print-scroll mx-auto w-full max-w-[1480px] space-y-5">
+      <ReportCopyContext.Provider value={{ blocks, editors }}>
+        <div className="report-print-root rounded-xl bg-[#efede8] px-3 py-5 sm:px-6" style={{ fontFamily: "var(--font-report), var(--font-sans)" }}>
+          <div className="report-print-scroll mx-auto w-full max-w-[1480px] space-y-5">
           {enabled("cover") ? (
             <ReportSection className="flex min-h-[500px] items-center bg-white p-8 text-neutral-950 sm:p-12 lg:p-16">
               <div className="max-w-5xl">
-                <CopyBlock
-                  value={blocks["cover.kicker"] ?? "Campagne prestatierapport"}
-                  onChange={(value) => editors?.updateTemplateBlock("cover.kicker", value)}
+                <ReportText
+                  keyName="cover.kicker"
+                  fallback="Campagne prestatierapport"
                   className="mb-8 text-xs font-semibold uppercase tracking-[0.22em] text-neutral-400"
                 />
                 <EditablePlainText
@@ -829,13 +836,19 @@ function ReportPreview({
 
           {enabled("executiveSummary") ? (
             <ReportSection>
-              <SectionHeader kicker="Samenvatting" title="Resultaat in een oogopslag" icon={<FileText className="h-5 w-5" />} />
+              <SectionHeader copyKey="summary" kicker="Samenvatting" title="Resultaat in een oogopslag" icon={<FileText className="h-5 w-5" />} />
               <div className="grid gap-8 lg:grid-cols-[minmax(0,1.15fr)_minmax(320px,0.85fr)]">
                 <div>
-                  <p className="text-5xl font-semibold leading-none tracking-normal text-neutral-950 md:text-7xl">
-                    {progressPercent == null ? "Campagneprestatie" : `${progressPercent}% van doel`}
-                  </p>
-                  <p className="mt-4 max-w-3xl text-xl leading-8 text-neutral-700">{summaryLine}</p>
+                  <ReportText
+                    keyName={progressPercent == null ? "summary.heroHeadline.noGoal" : "summary.heroHeadline"}
+                    fallback={progressPercent == null ? "Campagneprestatie" : "{{performance.deliveryProgress}} van doel"}
+                    className="text-5xl font-semibold leading-none tracking-normal text-neutral-950 md:text-7xl"
+                  />
+                  <ReportText
+                    keyName={liveData.performance.overdeliveryViews > 0 ? "summary.subline.overdelivery" : "summary.subline.default"}
+                    fallback={summaryLine}
+                    className="mt-4 max-w-3xl text-xl leading-8 text-neutral-700"
+                  />
                   <CopyBlock
                     value={blocks["summary.body"] ?? liveData.defaults.executiveSummary}
                     onChange={(value) => editors?.updateTemplateBlock("summary.body", value)}
@@ -843,17 +856,17 @@ function ReportPreview({
                   />
                 </div>
                 <div className="grid gap-3">
-                  <HeroMetric label="Totale views" value={formatNumber(liveData.performance.currentViews, "nl")} />
-                  <HeroMetric label="Doelviews" value={liveData.performance.targetViews ? formatNumber(liveData.performance.targetViews, "nl") : "-"} />
-                  <HeroMetric label="Extra bereik" value={formatNumber(liveData.performance.overdeliveryViews, "nl")} accent={liveData.performance.overdeliveryViews > 0} />
-                  <HeroMetric label="Effectieve CPM" value={formatCurrency(liveData.performance.costPerThousandViews ?? 0, "EUR", "nl")} />
-                  <HeroMetric label="Goedgekeurde clips" value={formatNumber(liveData.performance.approvedClips, "nl")} />
+                  <HeroMetric keyName="summary.metric.totalViews" label="Totale views" value={formatNumber(liveData.performance.currentViews, "nl")} />
+                  <HeroMetric keyName="summary.metric.targetViews" label="Doelviews" value={liveData.performance.targetViews ? formatNumber(liveData.performance.targetViews, "nl") : "-"} />
+                  <HeroMetric keyName="summary.metric.extraReach" label="Extra bereik" value={formatNumber(liveData.performance.overdeliveryViews, "nl")} accent={liveData.performance.overdeliveryViews > 0} />
+                  <HeroMetric keyName="summary.metric.effectiveCpm" label="Effectieve CPM" value={formatCurrency(liveData.performance.costPerThousandViews ?? 0, "EUR", "nl")} />
+                  <HeroMetric keyName="summary.metric.approvedClips" label="Goedgekeurde clips" value={formatNumber(liveData.performance.approvedClips, "nl")} />
                 </div>
               </div>
               <InsightLine>
-                <CopyBlock
-                  value={blocks["summary.conclusion"] ?? "Dit vertaalt de campagneprestatie naar concreet extra bereik, budgetwaarde en richting voor de volgende campagne."}
-                  onChange={(value) => editors?.updateTemplateBlock("summary.conclusion", value)}
+                <ReportText
+                  keyName="summary.conclusion"
+                  fallback="Dit vertaalt de campagneprestatie naar concreet extra bereik, budgetwaarde en richting voor de volgende campagne."
                 />
               </InsightLine>
             </ReportSection>
@@ -861,18 +874,18 @@ function ReportPreview({
 
           {enabled("campaignAtAGlance") ? (
             <ReportSection>
-              <SectionHeader kicker="Campagne in het kort" title="Doel, bereik en overdelivery" icon={<Target className="h-5 w-5" />} />
+              <SectionHeader copyKey="glance" kicker="Campagne in het kort" title="Doel, bereik en overdelivery" icon={<Target className="h-5 w-5" />} />
               <DeliveryProgress data={liveData} />
               <div className="mt-8 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-                <StatTile label="Betaalde views" value={formatNumber(paidViews, "nl")} helper="Gemaximeerd op het afgesproken doel" />
-                <StatTile label="Extra bereik" value={formatNumber(liveData.performance.overdeliveryViews, "nl")} helper="Views boven doel zonder extra budget" />
-                <StatTile label="Budget gebruikt" value={formatCurrency(liveData.performance.budgetUsed, "EUR", "nl")} helper={formatPercent(liveData.performance.budgetUsedPercent)} />
-                <StatTile label="Afgesproken CPM" value={formatCurrency(liveData.performance.cpmPerThousand ?? 0, "EUR", "nl")} helper="Per 1.000 views" />
+                <StatTile keyName="glance.metric.paidViews" label="Betaalde views" value={formatNumber(paidViews, "nl")} helper="Gemaximeerd op het afgesproken doel" />
+                <StatTile keyName="glance.metric.extraReach" label="Extra bereik" value={formatNumber(liveData.performance.overdeliveryViews, "nl")} helper="Views boven doel zonder extra budget" />
+                <StatTile keyName="glance.metric.budgetUsed" label="Budget gebruikt" value={formatCurrency(liveData.performance.budgetUsed, "EUR", "nl")} helper="{{performance.budgetUsedPercent}}" />
+                <StatTile keyName="glance.metric.agreedCpm" label="Afgesproken CPM" value={formatCurrency(liveData.performance.cpmPerThousand ?? 0, "EUR", "nl")} helper="Per 1.000 views" />
               </div>
               <InsightLine>
-                <CopyBlock
-                  value={blocks["glance.statement"] ?? "Extra bereik boven het afgesproken doel wordt zichtbaar als gratis bonus voor de klant."}
-                  onChange={(value) => editors?.updateTemplateBlock("glance.statement", value)}
+                <ReportText
+                  keyName="glance.statement"
+                  fallback="Extra bereik boven het afgesproken doel wordt zichtbaar als gratis bonus voor de klant."
                 />
               </InsightLine>
             </ReportSection>
@@ -880,17 +893,17 @@ function ReportPreview({
 
           {enabled("campaignPerformance") ? (
             <ReportSection>
-              <SectionHeader kicker="Campagneprestatie" title="Groei van de campagne" icon={<TrendingUp className="h-5 w-5" />} />
+              <SectionHeader copyKey="performance" kicker="Campagneprestatie" title="Groei van de campagne" icon={<TrendingUp className="h-5 w-5" />} />
               <CumulativeViewsChart rows={liveData.timeline} targetViews={liveData.performance.targetViews} currentViews={liveData.performance.currentViews} />
               <div className="mt-8 grid gap-4 md:grid-cols-3">
-                <StatTile label="Inzendingen" value={formatNumber(liveData.performance.totalSubmissions, "nl")} helper="Alle statussen" />
-                <StatTile label="Goedkeuringspercentage" value={formatPercent(liveData.performance.approvalRate)} helper="Goedgekeurd na review" />
-                <StatTile label="Actieve creators" value={formatNumber(liveData.performance.activeCreators, "nl")} helper="Creators met inzendingen" />
+                <StatTile keyName="performance.metric.submissions" label="Inzendingen" value={formatNumber(liveData.performance.totalSubmissions, "nl")} helper="Alle statussen" />
+                <StatTile keyName="performance.metric.approvalRate" label="Goedkeuringspercentage" value={formatPercent(liveData.performance.approvalRate)} helper="Goedgekeurd na review" />
+                <StatTile keyName="performance.metric.activeCreators" label="Actieve creators" value={formatNumber(liveData.performance.activeCreators, "nl")} helper="Creators met inzendingen" />
               </div>
               <InsightLine>
-                <CopyBlock
-                  value={blocks["performance.insight"] ?? "De cumulatieve viewlijn laat zien wanneer de campagne tractie kreeg en welke momenten performance versnelden."}
-                  onChange={(value) => editors?.updateTemplateBlock("performance.insight", value)}
+                <ReportText
+                  keyName="performance.insight"
+                  fallback="De cumulatieve viewlijn laat zien wanneer de campagne tractie kreeg en welke momenten performance versnelden."
                 />
               </InsightLine>
             </ReportSection>
@@ -898,19 +911,23 @@ function ReportPreview({
 
           {enabled("contentPerformance") && topContent.length > 0 ? (
             <ReportSection>
-              <SectionHeader kicker="Contentprestaties" title="Topclips en winnende patronen" icon={<Sparkles className="h-5 w-5" />} />
+              <SectionHeader copyKey="content" kicker="Contentprestaties" title="Topclips en winnende patronen" icon={<Sparkles className="h-5 w-5" />} />
               <TopContentWall rows={topContent} blocks={blocks} editors={editors} />
               <div className="mt-8 rounded-xl bg-neutral-950 p-6 text-white">
-                <p className="text-sm font-semibold text-neutral-300">Analyse van contentpatronen</p>
+                <ReportText
+                  keyName="content.patterns.title"
+                  fallback="Analyse van contentpatronen"
+                  className="text-sm font-semibold text-neutral-300"
+                />
                 <EditableTags
                   tags={editorialContent.contentPatternTags}
                   onChange={editors?.updateContentPatternTags}
                 />
               </div>
               <InsightLine>
-                  <CopyBlock
-                  value={blocks["content.insight"] ?? "De best presterende clips combineren een snelle hook, duidelijke merkplaatsing en een editstijl die natuurlijk voelt voor het platform."}
-                  onChange={(value) => editors?.updateTemplateBlock("content.insight", value)}
+                <ReportText
+                  keyName="content.insight"
+                  fallback="De best presterende clips combineren een snelle hook, duidelijke merkplaatsing en een editstijl die natuurlijk voelt voor het platform."
                 />
               </InsightLine>
             </ReportSection>
@@ -918,12 +935,12 @@ function ReportPreview({
 
           {enabled("platformPerformance") && liveData.platformBreakdown.length > 0 ? (
             <ReportSection>
-              <SectionHeader kicker="Platformprestaties" title="Kanaalvergelijking" icon={<BarChart3 className="h-5 w-5" />} />
+              <SectionHeader copyKey="platform" kicker="Platformprestaties" title="Kanaalvergelijking" icon={<BarChart3 className="h-5 w-5" />} />
               <PlatformPerformanceRows rows={liveData.platformBreakdown} />
               <InsightLine>
-                <CopyBlock
-                  value={blocks["platform.insight"] ?? "{{platformBreakdown[0].platform}} leverde het grootste deel van het bereik en verdient extra focus in de volgende campagne."}
-                  onChange={(value) => editors?.updateTemplateBlock("platform.insight", value)}
+                <ReportText
+                  keyName="platform.insight"
+                  fallback="{{platformBreakdown[0].platform}} leverde het grootste deel van het bereik en verdient extra focus in de volgende campagne."
                 />
               </InsightLine>
             </ReportSection>
@@ -931,12 +948,12 @@ function ReportPreview({
 
           {enabled("creatorContribution") && topCreators.length > 0 ? (
             <ReportSection>
-              <SectionHeader kicker="Creatorbijdrage" title="Bijdrage van creators" icon={<Users className="h-5 w-5" />} />
+              <SectionHeader copyKey="creator" kicker="Creatorbijdrage" title="Bijdrage van creators" icon={<Users className="h-5 w-5" />} />
               <CreatorContribution rows={topCreators} />
               <InsightLine>
-                <CopyBlock
-                  value={blocks["creator.insight"] ?? "Heractiveer creators die hoge views combineren met consistente kwaliteit en duidelijke merkfit."}
-                  onChange={(value) => editors?.updateTemplateBlock("creator.insight", value)}
+                <ReportText
+                  keyName="creator.insight"
+                  fallback="Heractiveer creators die hoge views combineren met consistente kwaliteit en duidelijke merkfit."
                 />
               </InsightLine>
             </ReportSection>
@@ -944,12 +961,12 @@ function ReportPreview({
 
           {enabled("audienceReach") && showAudience ? (
             <ReportSection>
-              <SectionHeader kicker="Publiek en bereik" title="Bereikt publiek" icon={<Users className="h-5 w-5" />} />
+              <SectionHeader copyKey="audience" kicker="Publiek en bereik" title="Bereikt publiek" icon={<Users className="h-5 w-5" />} />
               <AudienceSnapshot data={liveData.audience} />
               <InsightLine>
-                <CopyBlock
-                  value={blocks["audience.insight"] ?? DEFAULT_AUDIENCE_INSIGHT_TEMPLATE}
-                  onChange={(value) => editors?.updateTemplateBlock("audience.insight", value)}
+                <ReportText
+                  keyName="audience.insight"
+                  fallback={DEFAULT_AUDIENCE_INSIGHT_TEMPLATE}
                 />
               </InsightLine>
             </ReportSection>
@@ -957,12 +974,12 @@ function ReportPreview({
 
           {enabled("budgetValue") ? (
             <ReportSection>
-              <SectionHeader kicker="Budget en waarde" title="Betaald bereik versus extra bereik" icon={<Wallet className="h-5 w-5" />} />
+              <SectionHeader copyKey="budget" kicker="Budget en waarde" title="Betaald bereik versus extra bereik" icon={<Wallet className="h-5 w-5" />} />
               <BudgetValueVisual data={liveData} />
               <InsightLine>
-                <CopyBlock
-                  value={blocks["budget.insight"] ?? "Betaalde views zijn gemaximeerd op het afgesproken doel. Extra views boven dit doel worden gerapporteerd als extra bereik zonder extra kosten."}
-                  onChange={(value) => editors?.updateTemplateBlock("budget.insight", value)}
+                <ReportText
+                  keyName="budget.insight"
+                  fallback="Betaalde views zijn gemaximeerd op het afgesproken doel. Extra views boven dit doel worden gerapporteerd als extra bereik zonder extra kosten."
                 />
               </InsightLine>
             </ReportSection>
@@ -970,12 +987,12 @@ function ReportPreview({
 
           {enabled("qualityAssurance") ? (
             <ReportSection>
-              <SectionHeader kicker="Kwaliteitscontrole" title="Validatie van prestaties" icon={<ShieldCheck className="h-5 w-5" />} />
+              <SectionHeader copyKey="quality" kicker="Kwaliteitscontrole" title="Validatie van prestaties" icon={<ShieldCheck className="h-5 w-5" />} />
               <QualityAssurance status={qualityStatus} data={liveData} />
               <InsightLine>
-                <CopyBlock
-                  value={blocks["quality.insight"] ?? "Alle clips en views zijn gecontroleerd op campagnevoorwaarden, dubbele activiteit en verkeerskwaliteit. Alleen geldige prestaties zijn meegenomen in de goedgekeurde resultaten."}
-                  onChange={(value) => editors?.updateTemplateBlock("quality.insight", value)}
+                <ReportText
+                  keyName="quality.insight"
+                  fallback="Alle clips en views zijn gecontroleerd op campagnevoorwaarden, dubbele activiteit en verkeerskwaliteit. Alleen geldige prestaties zijn meegenomen in de goedgekeurde resultaten."
                 />
               </InsightLine>
             </ReportSection>
@@ -983,16 +1000,16 @@ function ReportPreview({
 
           {enabled("nextCampaign") ? (
             <ReportSection>
-              <SectionHeader kicker="Aanbevelingen voor volgende campagne" title="Concreet plan voor de volgende ronde" icon={<RefreshCw className="h-5 w-5" />} />
-              <CopyBlock
-                value={blocks["next.plan"] ?? "Voor de volgende campagne adviseren we om de best presterende creators opnieuw te activeren, de winnende hooks expliciet in de briefing te zetten en budget te sturen naar de kanalen met de laagste effectieve CPM."}
-                onChange={(value) => editors?.updateTemplateBlock("next.plan", value)}
+              <SectionHeader copyKey="next" kicker="Aanbevelingen voor volgende campagne" title="Concreet plan voor de volgende ronde" icon={<RefreshCw className="h-5 w-5" />} />
+              <ReportText
+                keyName="next.plan"
+                fallback="Voor de volgende campagne adviseren we om de best presterende creators opnieuw te activeren, de winnende hooks expliciet in de briefing te zetten en budget te sturen naar de kanalen met de laagste effectieve CPM."
                 className="max-w-5xl text-xl leading-9 text-neutral-800"
               />
               <div className="mt-8 grid gap-3 md:grid-cols-2">
                 {[...new Set([...recommendations, ...learnings])].slice(0, 6).map((item, index) => (
                   <div key={`${item}-${index}`} className="rounded-xl border border-neutral-200 bg-white p-5 text-sm leading-6 text-neutral-700">
-                    {item}
+                    <ReportText keyName={`next.card.${index}`} fallback={item} />
                   </div>
                 ))}
               </div>
@@ -1001,12 +1018,13 @@ function ReportPreview({
 
           {enabled("appendix") ? (
             <ReportSection>
-              <SectionHeader kicker="Appendix" title="Definities en ruwe samenvatting" icon={<FileText className="h-5 w-5" />} />
+              <SectionHeader copyKey="appendix" kicker="Appendix" title="Definities en ruwe samenvatting" icon={<FileText className="h-5 w-5" />} />
               <Appendix data={liveData} keyTakeaways={keyTakeaways} />
             </ReportSection>
           ) : null}
+          </div>
         </div>
-      </div>
+      </ReportCopyContext.Provider>
     </TokenPreviewContext.Provider>
   );
 }
@@ -1051,6 +1069,28 @@ function CopyBlock({
     <div key="live-preview" className={cn("whitespace-pre-wrap", className)}>
       {renderTemplateText(value || placeholder)}
     </div>
+  );
+}
+
+function ReportText({
+  keyName,
+  fallback,
+  className,
+  placeholder,
+}: {
+  keyName: string;
+  fallback: string;
+  className?: string;
+  placeholder?: string;
+}) {
+  const copyContext = useContext(ReportCopyContext);
+  return (
+    <CopyBlock
+      value={copyContext?.blocks[keyName] ?? fallback}
+      onChange={copyContext?.editors ? (value) => copyContext.editors?.updateTemplateBlock(keyName, value) : undefined}
+      className={className}
+      placeholder={placeholder ?? fallback}
+    />
   );
 }
 
@@ -1205,33 +1245,51 @@ function ReportSection({ children, className }: { children: React.ReactNode; cla
   );
 }
 
-function SectionHeader({ kicker, title, icon }: { kicker: string; title: string; icon: React.ReactNode }) {
+function SectionHeader({ copyKey, kicker, title, icon }: { copyKey: string; kicker: string; title: string; icon: React.ReactNode }) {
   return (
     <div className="mb-8 flex items-start justify-between gap-6 border-b border-neutral-200 pb-5">
       <div>
-        <p className="text-xs font-semibold text-neutral-400">{kicker}</p>
-        <h2 className="mt-2 text-3xl font-semibold leading-tight tracking-normal text-neutral-950 md:text-4xl">{title}</h2>
+        <ReportText
+          keyName={`section.${copyKey}.kicker`}
+          fallback={kicker}
+          className="text-xs font-semibold text-neutral-400"
+        />
+        <ReportText
+          keyName={`section.${copyKey}.title`}
+          fallback={title}
+          className="mt-2 text-3xl font-semibold leading-tight tracking-normal text-neutral-950 md:text-4xl"
+        />
       </div>
       <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-neutral-100 text-neutral-700">{icon}</div>
     </div>
   );
 }
 
-function HeroMetric({ label, value, accent = false }: { label: string; value: string; accent?: boolean }) {
+function HeroMetric({ keyName, label, value, accent = false }: { keyName: string; label: string; value: string; accent?: boolean }) {
   return (
     <div className={cn("rounded-xl border p-5", accent ? "border-neutral-950 bg-neutral-950 text-white" : "border-neutral-200 bg-white")}>
-      <p className={cn("text-sm font-medium", accent ? "text-neutral-300" : "text-neutral-500")}>{label}</p>
+      <ReportText
+        keyName={`${keyName}.label`}
+        fallback={label}
+        className={cn("text-sm font-medium", accent ? "text-neutral-300" : "text-neutral-500")}
+      />
       <p className="mt-2 text-3xl font-semibold tabular-nums tracking-normal">{value}</p>
     </div>
   );
 }
 
-function StatTile({ label, value, helper }: { label: string; value: string; helper?: string }) {
+function StatTile({ keyName, label, value, helper }: { keyName: string; label: string; value: string; helper?: string }) {
   return (
     <div className="rounded-xl border border-neutral-200 bg-white p-5">
-      <p className="text-sm font-medium text-neutral-500">{label}</p>
+      <ReportText keyName={`${keyName}.label`} fallback={label} className="text-sm font-medium text-neutral-500" />
       <p className="mt-2 text-3xl font-semibold tabular-nums tracking-normal text-neutral-950">{value}</p>
-      {helper ? <p className="mt-2 text-sm leading-5 text-neutral-500">{helper}</p> : null}
+      {helper ? (
+        <ReportText
+          keyName={`${keyName}.helper`}
+          fallback={helper}
+          className="mt-2 text-sm leading-5 text-neutral-500"
+        />
+      ) : null}
     </div>
   );
 }
@@ -1253,11 +1311,19 @@ function DeliveryProgress({ data }: { data: CampaignReportLiveData }) {
     <div className="rounded-2xl bg-neutral-950 p-6 text-white">
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
-          <p className="text-sm font-medium text-neutral-400">Voortgang naar doel</p>
+          <ReportText
+            keyName="glance.progress.currentLabel"
+            fallback="Voortgang naar doel"
+            className="text-sm font-medium text-neutral-400"
+          />
           <p className="mt-2 text-4xl font-semibold tabular-nums tracking-normal">{formatNumber(current, "nl")}</p>
         </div>
         <div className="text-right">
-          <p className="text-sm text-neutral-400">Doelviews</p>
+          <ReportText
+            keyName="glance.progress.targetLabel"
+            fallback="Doelviews"
+            className="text-sm text-neutral-400"
+          />
           <p className="mt-1 text-xl font-semibold tabular-nums">{target ? formatNumber(target, "nl") : "-"}</p>
         </div>
       </div>
@@ -1265,10 +1331,15 @@ function DeliveryProgress({ data }: { data: CampaignReportLiveData }) {
         <div className="h-full rounded-full bg-white" style={{ width: `${Math.max(2, progress)}%` }} />
       </div>
       <div className="mt-4 flex flex-wrap items-center justify-between gap-3 text-sm">
-        <span className="text-neutral-300">Betaald doel tot {target ? formatNumber(target, "nl") : "-"}</span>
+        <ReportText
+          keyName="glance.progress.paidGoalLabel"
+          fallback="Betaald doel tot {{performance.targetViews}}"
+          className="text-neutral-300"
+        />
         {data.performance.overdeliveryViews > 0 ? (
           <span className="rounded-full bg-white px-3 py-1 font-semibold text-neutral-950">
-            +{formatNumber(data.performance.overdeliveryViews, "nl")} extra bereik
+            +{formatNumber(data.performance.overdeliveryViews, "nl")}{" "}
+            <ReportText keyName="glance.progress.extraReachLabel" fallback="extra bereik" className="inline" />
             {overdelivery > 0 ? ` / +${Math.round(overdelivery)}%` : ""}
           </span>
         ) : null}
@@ -1307,9 +1378,26 @@ function CumulativeViewsChart({
         ))}
       </div>
       <div className="mt-4 flex flex-wrap justify-between gap-3 text-sm text-neutral-500">
-        <span>{visible.length} meetpunten</span>
-        <span>Huidige views: {formatNumber(currentViews, "nl")}</span>
-        {targetViews ? <span>Doelviews: {formatNumber(targetViews, "nl")}</span> : null}
+        <div>
+          <ReportText
+            keyName="chart.cumulativeViews.pointsLabel"
+            fallback="{{timeline.length}} meetpunten"
+          />
+        </div>
+        <div>
+          <ReportText
+            keyName="chart.cumulativeViews.currentViewsLabel"
+            fallback="Huidige views: {{performance.currentViews}}"
+          />
+        </div>
+        {targetViews ? (
+          <div>
+            <ReportText
+              keyName="chart.cumulativeViews.targetViewsLabel"
+              fallback="Doelviews: {{performance.targetViews}}"
+            />
+          </div>
+        ) : null}
       </div>
     </div>
   );
@@ -1334,7 +1422,9 @@ function TopContentWall({
               {row.thumbnailUrl ? (
                 <img src={row.thumbnailUrl} alt="" className="h-full w-full object-cover" />
               ) : (
-                <div className="flex h-full items-center justify-center text-sm text-neutral-400">Geen thumbnail</div>
+                <div className="flex h-full items-center justify-center text-sm text-neutral-400">
+                  <ReportText keyName="content.card.noThumbnail" fallback="Geen thumbnail" />
+                </div>
               )}
             </div>
             <div className="p-5">
@@ -1349,11 +1439,11 @@ function TopContentWall({
               </div>
               <div className="mt-5 grid grid-cols-2 gap-3 text-sm">
                 <div>
-                  <p className="text-neutral-500">Views</p>
+                  <ReportText keyName="content.card.viewsLabel" fallback="Views" className="text-neutral-500" />
                   <p className="mt-1 font-semibold tabular-nums text-neutral-950">{formatNumber(row.views, "nl")}</p>
                 </div>
                 <div>
-                  <p className="text-neutral-500">Engagement</p>
+                  <ReportText keyName="content.card.engagementLabel" fallback="Engagement" className="text-neutral-500" />
                   <p className="mt-1 font-semibold tabular-nums text-neutral-950">{formatNumber(row.engagement, "nl")}</p>
                 </div>
               </div>
@@ -1391,20 +1481,35 @@ function PlatformPerformanceRows({ rows }: { rows: CampaignReportLiveData["platf
           <div className="flex flex-wrap items-center justify-between gap-4">
             <div>
               <h3 className="text-xl font-semibold text-neutral-950">{row.platform}</h3>
-              <p className="mt-1 text-sm text-neutral-500">{row.clips} goedgekeurde clips / {formatPercent(row.engagementRate)} engagementpercentage</p>
+              <div className="mt-1 flex flex-wrap items-center gap-1 text-sm text-neutral-500">
+                <span>{row.clips}</span>
+                <ReportText keyName="platform.row.approvedClipsLabel" fallback="goedgekeurde clips" className="inline" />
+                <span>/</span>
+                <span>{formatPercent(row.engagementRate)}</span>
+                <ReportText keyName="platform.row.engagementRateLabel" fallback="engagementpercentage" className="inline" />
+              </div>
             </div>
             <div className="text-right">
               <p className="text-2xl font-semibold tabular-nums text-neutral-950">{formatNumber(row.views, "nl")}</p>
-              <p className="text-sm text-neutral-500">views</p>
+              <ReportText keyName="platform.row.viewsLabel" fallback="views" className="text-sm text-neutral-500" />
             </div>
           </div>
           <div className="mt-5 h-3 rounded-full bg-neutral-100">
             <div className="h-3 rounded-full bg-neutral-950" style={{ width: `${Math.max(3, (row.views / max) * 100)}%` }} />
           </div>
           <div className="mt-4 grid gap-3 text-sm md:grid-cols-3">
-            <span>Gem. views per clip: <strong>{formatNumber(row.averageViewsPerClip, "nl")}</strong></span>
-            <span>Effectieve CPM: <strong>{formatCurrency(row.effectiveCpm ?? 0, "EUR", "nl")}</strong></span>
-            <span>Engagement: <strong>{formatNumber(row.engagement, "nl")}</strong></span>
+            <span>
+              <ReportText keyName="platform.row.avgViewsPerClipLabel" fallback="Gem. views per clip:" className="inline" />{" "}
+              <strong>{formatNumber(row.averageViewsPerClip, "nl")}</strong>
+            </span>
+            <span>
+              <ReportText keyName="platform.row.effectiveCpmLabel" fallback="Effectieve CPM:" className="inline" />{" "}
+              <strong>{formatCurrency(row.effectiveCpm ?? 0, "EUR", "nl")}</strong>
+            </span>
+            <span>
+              <ReportText keyName="platform.row.engagementLabel" fallback="Engagement:" className="inline" />{" "}
+              <strong>{formatNumber(row.engagement, "nl")}</strong>
+            </span>
           </div>
         </div>
       ))}
@@ -1420,14 +1525,20 @@ function CreatorContribution({ rows }: { rows: CampaignReportLiveData["creators"
         <div key={row.creatorId} className="grid gap-3 rounded-xl border border-neutral-200 bg-white p-4 md:grid-cols-[220px_minmax(0,1fr)_160px] md:items-center">
           <div>
             <p className="font-semibold text-neutral-950">{row.creator}</p>
-            <p className="text-sm text-neutral-500">{row.approvedSubmissions}/{row.submissions} clips goedgekeurd</p>
+            <div className="flex flex-wrap items-center gap-1 text-sm text-neutral-500">
+              <span>{row.approvedSubmissions}/{row.submissions}</span>
+              <ReportText keyName="creator.row.clipsApprovedLabel" fallback="clips goedgekeurd" className="inline" />
+            </div>
           </div>
           <div className="h-3 rounded-full bg-neutral-100">
             <div className="h-3 rounded-full bg-neutral-950" style={{ width: `${Math.max(3, (row.views / max) * 100)}%` }} />
           </div>
           <div className="text-right">
             <p className="font-semibold tabular-nums text-neutral-950">{formatNumber(row.views, "nl")}</p>
-            <p className="text-sm text-neutral-500">{formatPercent(row.approvalRate)} goedgekeurd</p>
+            <div className="flex justify-end gap-1 text-sm text-neutral-500">
+              <span>{formatPercent(row.approvalRate)}</span>
+              <ReportText keyName="creator.row.approvalRateLabel" fallback="goedgekeurd" className="inline" />
+            </div>
           </div>
         </div>
       ))}
@@ -1439,13 +1550,14 @@ function AudienceSnapshot({ data }: { data: CampaignReportLiveData["audience"] }
   return (
     <div className="grid gap-6 lg:grid-cols-3">
       <Distribution
+        titleKey="audience.distribution.countries.title"
         title="Top landen"
         rows={data.topCountries.map((row) => ({ label: row.code, value: row.share }))}
         formatLabel={formatAudienceCountryLabel}
         formatValue={formatAudienceShare}
       />
-      <Distribution title="Leeftijd" rows={objectRows(data.ageBuckets)} formatValue={formatAudienceShare} />
-      <Distribution title="Gender" rows={objectRows(data.genderSplit)} formatValue={formatAudienceShare} />
+      <Distribution titleKey="audience.distribution.age.title" title="Leeftijd" rows={objectRows(data.ageBuckets)} formatValue={formatAudienceShare} />
+      <Distribution titleKey="audience.distribution.gender.title" title="Gender" rows={objectRows(data.genderSplit)} formatValue={formatAudienceShare} />
     </div>
   );
 }
@@ -1456,12 +1568,12 @@ function BudgetValueVisual({ data }: { data: CampaignReportLiveData }) {
     : data.performance.paidEligibleViews;
   return (
     <div className="grid gap-4 lg:grid-cols-3">
-      <StatTile label="Betaald doel" value={data.performance.targetViews ? formatNumber(data.performance.targetViews, "nl") : "-"} helper="Afgesproken op basis van budget en CPM" />
-      <StatTile label="Betaalde views" value={formatNumber(paidViews, "nl")} helper="Maximaal afgerekend tot doelbasis" />
-      <StatTile label="Extra bereik" value={formatNumber(data.performance.overdeliveryViews, "nl")} helper="Niet extra doorbelast" />
-      <StatTile label="Budget" value={formatCurrency(data.campaign.totalBudget, "EUR", "nl")} helper="Netto campagnebudget" />
-      <StatTile label="Budget gebruikt" value={formatCurrency(data.performance.budgetUsed, "EUR", "nl")} helper={formatPercent(data.performance.budgetUsedPercent)} />
-      <StatTile label="Effectieve CPM totaal" value={formatCurrency(data.performance.costPerThousandViews ?? 0, "EUR", "nl")} helper="Gebaseerd op totale huidige views" />
+      <StatTile keyName="budget.metric.paidGoal" label="Betaald doel" value={data.performance.targetViews ? formatNumber(data.performance.targetViews, "nl") : "-"} helper="Afgesproken op basis van budget en CPM" />
+      <StatTile keyName="budget.metric.paidViews" label="Betaalde views" value={formatNumber(paidViews, "nl")} helper="Maximaal afgerekend tot doelbasis" />
+      <StatTile keyName="budget.metric.extraReach" label="Extra bereik" value={formatNumber(data.performance.overdeliveryViews, "nl")} helper="Niet extra doorbelast" />
+      <StatTile keyName="budget.metric.budget" label="Budget" value={formatCurrency(data.campaign.totalBudget, "EUR", "nl")} helper="Netto campagnebudget" />
+      <StatTile keyName="budget.metric.budgetUsed" label="Budget gebruikt" value={formatCurrency(data.performance.budgetUsed, "EUR", "nl")} helper="{{performance.budgetUsedPercent}}" />
+      <StatTile keyName="budget.metric.effectiveCpmTotal" label="Effectieve CPM totaal" value={formatCurrency(data.performance.costPerThousandViews ?? 0, "EUR", "nl")} helper="Gebaseerd op totale huidige views" />
     </div>
   );
 }
@@ -1472,15 +1584,15 @@ function QualityAssurance({ status, data }: { status: ReportQualityStatus; data:
     <div className={cn("rounded-2xl border p-6", variant)}>
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
-          <p className="text-sm font-medium text-neutral-600">Kwaliteitsstatus</p>
+          <ReportText keyName="quality.status.label" fallback="Kwaliteitsstatus" className="text-sm font-medium text-neutral-600" />
           <p className="mt-2 text-4xl font-semibold text-neutral-950">{reportQualityStatusLabel(status)}</p>
         </div>
         <ShieldCheck className="h-12 w-12 text-neutral-800" />
       </div>
       <div className="mt-6 grid gap-3 md:grid-cols-3">
-        <StatTile label="Goedgekeurde prestaties" value={formatNumber(data.performance.currentViews, "nl")} helper="Goedgekeurde views" />
-        <StatTile label="Uitgesloten activiteit" value={formatNumber(data.quality.resolvedSignals, "nl")} helper="Niet meegenomen in goedgekeurde prestaties" />
-        <StatTile label="Open aandachtspunten" value={formatNumber(data.quality.criticalSignals, "nl")} helper="Kritieke reviewstatus" />
+        <StatTile keyName="quality.metric.approvedPerformance" label="Goedgekeurde prestaties" value={formatNumber(data.performance.currentViews, "nl")} helper="Goedgekeurde views" />
+        <StatTile keyName="quality.metric.excludedActivity" label="Uitgesloten activiteit" value={formatNumber(data.quality.resolvedSignals, "nl")} helper="Niet meegenomen in goedgekeurde prestaties" />
+        <StatTile keyName="quality.metric.openIssues" label="Open aandachtspunten" value={formatNumber(data.quality.criticalSignals, "nl")} helper="Kritieke reviewstatus" />
       </div>
     </div>
   );
@@ -1488,19 +1600,23 @@ function QualityAssurance({ status, data }: { status: ReportQualityStatus; data:
 
 function Appendix({ data, keyTakeaways }: { data: CampaignReportLiveData; keyTakeaways: string[] }) {
   const rows = [
-    ["Definitie totale views", "Alle live gemeten views op goedgekeurde clips."],
-    ["Definitie betaalde views", "Views die afgerekend worden binnen het afgesproken doel en de campagnevoorwaarden."],
-    ["Definitie extra bereik", "Views boven het afgesproken doel zonder extra budget."],
-    ["Doelbron", data.performance.targetViewsSource],
-    ["Statusoverzicht", objectRows(data.performance.statusCounts).map((row) => `${adminEnumLabel(row.label)}: ${row.value}`).join(", ")],
-    ["Belangrijkste inzichten", keyTakeaways.join(" ")],
-  ].filter(([, value]) => Boolean(value));
+    { labelKey: "appendix.totalViewsDefinition.label", label: "Definitie totale views", bodyKey: "appendix.totalViewsDefinition.body", value: "Alle live gemeten views op goedgekeurde clips." },
+    { labelKey: "appendix.paidViewsDefinition.label", label: "Definitie betaalde views", bodyKey: "appendix.paidViewsDefinition.body", value: "Views die afgerekend worden binnen het afgesproken doel en de campagnevoorwaarden." },
+    { labelKey: "appendix.extraReachDefinition.label", label: "Definitie extra bereik", bodyKey: "appendix.extraReachDefinition.body", value: "Views boven het afgesproken doel zonder extra budget." },
+    { labelKey: "appendix.targetSource.label", label: "Doelbron", value: data.performance.targetViewsSource },
+    { labelKey: "appendix.statusOverview.label", label: "Statusoverzicht", value: objectRows(data.performance.statusCounts).map((row) => `${adminEnumLabel(row.label)}: ${row.value}`).join(", ") },
+    { labelKey: "appendix.keyInsights.label", label: "Belangrijkste inzichten", value: keyTakeaways.join(" ") },
+  ].filter((row) => Boolean(row.value));
   return (
     <div className="overflow-hidden rounded-xl border border-neutral-200">
-      {rows.map(([label, value]) => (
-        <div key={label} className="grid gap-3 border-b border-neutral-100 p-4 last:border-b-0 md:grid-cols-[220px_minmax(0,1fr)]">
-          <p className="text-sm font-semibold text-neutral-500">{label}</p>
-          <p className="text-sm leading-6 text-neutral-800">{value}</p>
+      {rows.map((row) => (
+        <div key={row.labelKey} className="grid gap-3 border-b border-neutral-100 p-4 last:border-b-0 md:grid-cols-[220px_minmax(0,1fr)]">
+          <ReportText keyName={row.labelKey} fallback={row.label} className="text-sm font-semibold text-neutral-500" />
+          {row.bodyKey ? (
+            <ReportText keyName={row.bodyKey} fallback={row.value} className="text-sm leading-6 text-neutral-800" />
+          ) : (
+            <p className="text-sm leading-6 text-neutral-800">{row.value}</p>
+          )}
         </div>
       ))}
     </div>
@@ -2029,11 +2145,13 @@ function ReferralSummary({ data }: { data: CampaignReportLiveData }) {
 }
 
 function Distribution({
+  titleKey,
   title,
   rows,
   formatLabel = adminEnumLabel,
   formatValue = (value) => formatNumber(value, "nl"),
 }: {
+  titleKey: string;
   title: string;
   rows: Array<{ label: string; value: number }>;
   formatLabel?: (value: string) => string;
@@ -2042,9 +2160,11 @@ function Distribution({
   const max = Math.max(1, ...rows.map((row) => row.value));
   return (
     <div className="rounded-lg border border-neutral-200 p-4">
-      <h3 className="text-sm font-semibold text-neutral-950">{title}</h3>
+      <ReportText keyName={titleKey} fallback={title} className="text-sm font-semibold text-neutral-950" />
       <div className="mt-4 space-y-3">
-        {rows.length === 0 ? <p className="text-sm text-neutral-500">Geen data</p> : null}
+        {rows.length === 0 ? (
+          <ReportText keyName={`${titleKey}.empty`} fallback="Geen data" className="text-sm text-neutral-500" />
+        ) : null}
         {rows.map((row) => (
           <div key={row.label}>
             <div className="mb-1 flex items-center justify-between gap-3 text-xs">
@@ -2142,17 +2262,115 @@ function createEmptyEditorial(campaignName: string): CampaignReportEditorial {
 function defaultTemplateBlocks(editorial: CampaignReportEditorial): Record<string, string> {
   return {
     "cover.kicker": "Campagne prestatierapport",
+    "section.summary.kicker": "Samenvatting",
+    "section.summary.title": "Resultaat in een oogopslag",
+    "summary.heroHeadline": "{{performance.deliveryProgress}} van doel",
+    "summary.heroHeadline.noGoal": "Campagneprestatie",
+    "summary.subline.overdelivery": "De campagne heeft het afgesproken viewdoel ruim overtroffen, met extra bereik zonder extra mediabudget.",
+    "summary.subline.default": "De campagneprestaties worden afgezet tegen het afgesproken viewdoel en de beschikbare live performance.",
     "summary.body": editorial.executiveSummary || "De campagne heeft {{performance.currentViews}} totale views gegenereerd met {{performance.approvedClips}} goedgekeurde clips. Het afgesproken doel was {{performance.targetViews}} views. Extra bereik boven het doel wordt gerapporteerd als bonus zonder extra budget.",
+    "summary.metric.totalViews.label": "Totale views",
+    "summary.metric.targetViews.label": "Doelviews",
+    "summary.metric.extraReach.label": "Extra bereik",
+    "summary.metric.effectiveCpm.label": "Effectieve CPM",
+    "summary.metric.approvedClips.label": "Goedgekeurde clips",
     "summary.conclusion": "Dit betekent dat de campagneperformance direct te koppelen is aan bereik, budgetwaarde en concrete learnings voor de volgende ronde.",
+    "section.glance.kicker": "Campagne in het kort",
+    "section.glance.title": "Doel, bereik en overdelivery",
+    "glance.progress.currentLabel": "Voortgang naar doel",
+    "glance.progress.targetLabel": "Doelviews",
+    "glance.progress.paidGoalLabel": "Betaald doel tot {{performance.targetViews}}",
+    "glance.progress.extraReachLabel": "extra bereik",
+    "glance.metric.paidViews.label": "Betaalde views",
+    "glance.metric.paidViews.helper": "Gemaximeerd op het afgesproken doel",
+    "glance.metric.extraReach.label": "Extra bereik",
+    "glance.metric.extraReach.helper": "Views boven doel zonder extra budget",
+    "glance.metric.budgetUsed.label": "Budget gebruikt",
+    "glance.metric.budgetUsed.helper": "{{performance.budgetUsedPercent}}",
+    "glance.metric.agreedCpm.label": "Afgesproken CPM",
+    "glance.metric.agreedCpm.helper": "Per 1.000 views",
     "glance.statement": "Extra bereik boven het afgesproken doel wordt zichtbaar als gratis bonus voor de klant.",
+    "section.performance.kicker": "Campagneprestatie",
+    "section.performance.title": "Groei van de campagne",
+    "chart.cumulativeViews.pointsLabel": "{{timeline.length}} meetpunten",
+    "chart.cumulativeViews.currentViewsLabel": "Huidige views: {{performance.currentViews}}",
+    "chart.cumulativeViews.targetViewsLabel": "Doelviews: {{performance.targetViews}}",
+    "performance.metric.submissions.label": "Inzendingen",
+    "performance.metric.submissions.helper": "Alle statussen",
+    "performance.metric.approvalRate.label": "Goedkeuringspercentage",
+    "performance.metric.approvalRate.helper": "Goedgekeurd na review",
+    "performance.metric.activeCreators.label": "Actieve creators",
+    "performance.metric.activeCreators.helper": "Creators met inzendingen",
     "performance.insight": "De cumulatieve viewlijn laat zien wanneer de campagne tractie kreeg en welke momenten performance versnelden.",
+    "section.content.kicker": "Contentprestaties",
+    "section.content.title": "Topclips en winnende patronen",
+    "content.patterns.title": "Analyse van contentpatronen",
+    "content.card.noThumbnail": "Geen thumbnail",
+    "content.card.viewsLabel": "Views",
+    "content.card.engagementLabel": "Engagement",
     "content.insight": "De best presterende clips combineren een snelle hook, duidelijke merkplaatsing en een editstijl die natuurlijk voelt voor het platform.",
+    "section.platform.kicker": "Platformprestaties",
+    "section.platform.title": "Kanaalvergelijking",
+    "platform.row.approvedClipsLabel": "goedgekeurde clips",
+    "platform.row.engagementRateLabel": "engagementpercentage",
+    "platform.row.viewsLabel": "views",
+    "platform.row.avgViewsPerClipLabel": "Gem. views per clip:",
+    "platform.row.effectiveCpmLabel": "Effectieve CPM:",
+    "platform.row.engagementLabel": "Engagement:",
     "platform.insight": "{{platformBreakdown[0].platform}} leverde het grootste deel van het bereik en verdient extra focus in de volgende campagne.",
+    "section.creator.kicker": "Creatorbijdrage",
+    "section.creator.title": "Bijdrage van creators",
+    "creator.row.clipsApprovedLabel": "clips goedgekeurd",
+    "creator.row.approvalRateLabel": "goedgekeurd",
     "creator.insight": "Heractiveer creators die hoge views combineren met consistente kwaliteit en duidelijke merkfit.",
+    "section.audience.kicker": "Publiek en bereik",
+    "section.audience.title": "Bereikt publiek",
+    "audience.distribution.countries.title": "Top landen",
+    "audience.distribution.countries.title.empty": "Geen data",
+    "audience.distribution.age.title": "Leeftijd",
+    "audience.distribution.age.title.empty": "Geen data",
+    "audience.distribution.gender.title": "Gender",
+    "audience.distribution.gender.title.empty": "Geen data",
     "audience.insight": DEFAULT_AUDIENCE_INSIGHT_TEMPLATE,
+    "section.budget.kicker": "Budget en waarde",
+    "section.budget.title": "Betaald bereik versus extra bereik",
+    "budget.metric.paidGoal.label": "Betaald doel",
+    "budget.metric.paidGoal.helper": "Afgesproken op basis van budget en CPM",
+    "budget.metric.paidViews.label": "Betaalde views",
+    "budget.metric.paidViews.helper": "Maximaal afgerekend tot doelbasis",
+    "budget.metric.extraReach.label": "Extra bereik",
+    "budget.metric.extraReach.helper": "Niet extra doorbelast",
+    "budget.metric.budget.label": "Budget",
+    "budget.metric.budget.helper": "Netto campagnebudget",
+    "budget.metric.budgetUsed.label": "Budget gebruikt",
+    "budget.metric.budgetUsed.helper": "{{performance.budgetUsedPercent}}",
+    "budget.metric.effectiveCpmTotal.label": "Effectieve CPM totaal",
+    "budget.metric.effectiveCpmTotal.helper": "Gebaseerd op totale huidige views",
     "budget.insight": "Betaalde views zijn gemaximeerd op het afgesproken doel. Extra views boven dit doel worden gerapporteerd als extra bereik zonder extra kosten.",
+    "section.quality.kicker": "Kwaliteitscontrole",
+    "section.quality.title": "Validatie van prestaties",
+    "quality.status.label": "Kwaliteitsstatus",
+    "quality.metric.approvedPerformance.label": "Goedgekeurde prestaties",
+    "quality.metric.approvedPerformance.helper": "Goedgekeurde views",
+    "quality.metric.excludedActivity.label": "Uitgesloten activiteit",
+    "quality.metric.excludedActivity.helper": "Niet meegenomen in goedgekeurde prestaties",
+    "quality.metric.openIssues.label": "Open aandachtspunten",
+    "quality.metric.openIssues.helper": "Kritieke reviewstatus",
     "quality.insight": "Alle clips en views zijn gecontroleerd op campagnevoorwaarden, dubbele activiteit en verkeerskwaliteit. Alleen geldige prestaties zijn meegenomen in de goedgekeurde resultaten.",
+    "section.next.kicker": "Aanbevelingen voor volgende campagne",
+    "section.next.title": "Concreet plan voor de volgende ronde",
     "next.plan": editorial.nextCampaignRecommendations[0] || "Voor de volgende campagne adviseren we om de best presterende creators opnieuw te activeren, winnende hooks expliciet in de briefing te zetten en budget te sturen naar kanalen met de laagste effectieve CPM.",
+    "section.appendix.kicker": "Appendix",
+    "section.appendix.title": "Definities en ruwe samenvatting",
+    "appendix.totalViewsDefinition.label": "Definitie totale views",
+    "appendix.totalViewsDefinition.body": "Alle live gemeten views op goedgekeurde clips.",
+    "appendix.paidViewsDefinition.label": "Definitie betaalde views",
+    "appendix.paidViewsDefinition.body": "Views die afgerekend worden binnen het afgesproken doel en de campagnevoorwaarden.",
+    "appendix.extraReachDefinition.label": "Definitie extra bereik",
+    "appendix.extraReachDefinition.body": "Views boven het afgesproken doel zonder extra budget.",
+    "appendix.targetSource.label": "Doelbron",
+    "appendix.statusOverview.label": "Statusoverzicht",
+    "appendix.keyInsights.label": "Belangrijkste inzichten",
   };
 }
 
