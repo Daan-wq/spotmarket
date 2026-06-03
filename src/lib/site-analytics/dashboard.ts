@@ -15,6 +15,7 @@ import {
   type SiteAnalyticsTimePoint,
   type SiteAnalyticsTopPage,
 } from "@/lib/site-analytics/model";
+import { getPostHogConfigurationStatus, type PostHogConfigurationStatus } from "@/lib/site-analytics/posthog";
 
 interface SnapshotRow {
   periodStart: Date;
@@ -31,6 +32,7 @@ export interface SiteAnalyticsDashboard {
   hasData: boolean;
   rangeDays: number;
   lastSyncedAt: Date | null;
+  configuration: PostHogConfigurationStatus;
   metrics: SiteAnalyticsMetrics;
   timeSeries: SiteAnalyticsTimePoint[];
   topPages: SiteAnalyticsTopPage[];
@@ -97,6 +99,7 @@ function latestRecordings(snapshots: SnapshotRow[]) {
 export function buildSiteAnalyticsDashboardFromSnapshots(
   snapshots: SnapshotRow[],
   rangeDays: number,
+  configuration: PostHogConfigurationStatus = getPostHogConfigurationStatus(),
 ): SiteAnalyticsDashboard {
   const ordered = [...snapshots].sort((a, b) => a.periodStart.getTime() - b.periodStart.getTime());
   const metricsBySnapshot = ordered.map((snapshot) => metricsFromJson(snapshot.metrics));
@@ -109,6 +112,7 @@ export function buildSiteAnalyticsDashboardFromSnapshots(
       if (!latest || snapshot.syncedAt > latest) return snapshot.syncedAt;
       return latest;
     }, null),
+    configuration,
     metrics,
     timeSeries: ordered.map((snapshot, index) => ({
       date: toDateKey(snapshot.periodStart),

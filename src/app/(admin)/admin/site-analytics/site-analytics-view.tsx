@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ExternalLink } from "lucide-react";
+import { AlertTriangle, ExternalLink } from "lucide-react";
 import { PageHeader, SectionHeader, StatCard } from "@/components/ui/page";
 import type { SiteAnalyticsDashboard } from "@/lib/site-analytics/dashboard";
 import { SiteAnalyticsTrendChart } from "./site-analytics-trend-chart";
@@ -42,6 +42,7 @@ export function SiteAnalyticsView({
   showChart?: boolean;
 }) {
   const { metrics } = dashboard;
+  const isPostHogConfigured = dashboard.configuration.isConfigured;
 
   return (
     <div className="space-y-9">
@@ -62,7 +63,27 @@ export function SiteAnalyticsView({
         </div>
       </div>
 
-      {!dashboard.hasData ? (
+      {!isPostHogConfigured ? (
+        <section className="rounded-2xl border border-amber-200 bg-amber-50 p-6">
+          <div className="flex flex-col gap-4 md:flex-row md:items-start">
+            <AlertTriangle className="h-5 w-5 shrink-0 text-amber-600" aria-hidden="true" />
+            <div className="min-w-0">
+              <h2 className="text-lg font-semibold text-neutral-950">PostHog is nog niet volledig geconfigureerd</h2>
+              <p className="mt-2 max-w-3xl text-sm leading-6 text-neutral-700">
+                De browser kan events pas naar PostHog sturen en de cron kan snapshots pas ophalen als deze variabelen
+                gevuld zijn: <span className="font-semibold">{dashboard.configuration.missing.join(", ")}</span>.
+              </p>
+              {dashboard.configuration.host ? (
+                <p className="mt-2 text-sm text-neutral-600">
+                  Queryhost: <span className="font-medium text-neutral-900">{dashboard.configuration.host}</span>
+                </p>
+              ) : null}
+            </div>
+          </div>
+        </section>
+      ) : null}
+
+      {!dashboard.hasData && isPostHogConfigured ? (
         <section className="rounded-2xl border border-dashed border-neutral-300 bg-neutral-50 p-8">
           <h2 className="text-lg font-semibold text-neutral-950">Nog geen site analytics</h2>
           <p className="mt-2 max-w-2xl text-sm leading-6 text-neutral-500">
