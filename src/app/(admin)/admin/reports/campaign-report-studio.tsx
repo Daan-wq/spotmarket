@@ -2,6 +2,7 @@
 
 import {
   BarChart3,
+  ChevronDown,
   CheckCircle2,
   ExternalLink,
   FileText,
@@ -547,15 +548,22 @@ function HistoryPanel({
   buildHref: (overrides: Partial<ReportFilters> & { reportId?: string | null; campaignId?: string | null }) => string;
 }) {
   return (
-    <div className="rounded-lg border border-neutral-200 bg-white p-4">
-      <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
+    <details className="group rounded-lg border border-neutral-200 bg-white">
+      <summary className="flex cursor-pointer list-none items-center justify-between gap-4 px-4 py-4 transition hover:bg-neutral-50 [&::-webkit-details-marker]:hidden">
         <div>
           <h2 className="text-sm font-semibold text-neutral-950">Rapporthistorie</h2>
           <p className="mt-1 text-xs text-neutral-500">
             Totaal: {historyCounts.all} / Concept: {historyCounts.draft} / Definitief: {historyCounts.final}
           </p>
         </div>
+        <div className="flex items-center gap-2 text-xs font-semibold text-neutral-500">
+          <span className="hidden sm:inline">Openen</span>
+          <ChevronDown className="h-4 w-4 transition group-open:rotate-180" />
+        </div>
+      </summary>
 
+      <div className="border-t border-neutral-100 px-4 pb-4 pt-4">
+        <div className="flex justify-end">
         <div className="grid w-full grid-cols-3 gap-1 rounded-lg bg-neutral-100 p-1 sm:w-auto sm:min-w-[260px]">
           {STATUS_TABS.map((tab) => (
             <Link
@@ -644,7 +652,8 @@ function HistoryPanel({
           </div>
         )}
       </div>
-    </div>
+      </div>
+    </details>
   );
 }
 
@@ -668,11 +677,20 @@ function ReportMetaControls({
   setShowTokenValues: (value: boolean) => void;
 }) {
   return (
-    <section className="report-studio-chrome rounded-lg border border-neutral-200 bg-white p-4">
-      <div className="grid gap-4 xl:grid-cols-[18rem_minmax(0,1fr)]">
+    <details className="report-studio-chrome group rounded-lg border border-neutral-200 bg-white">
+      <summary className="flex cursor-pointer list-none items-center justify-between gap-4 px-4 py-4 transition hover:bg-neutral-50 [&::-webkit-details-marker]:hidden">
         <div>
           <h2 className="text-sm font-semibold text-neutral-950">Rapportinstellingen</h2>
-          <p className="mt-1 text-xs leading-5 text-neutral-500">Pas periode en zichtbare secties aan; tekst wijzig je direct in het rapport.</p>
+          <p className="mt-1 text-xs leading-5 text-neutral-500">Periode, variabelenweergave en zichtbare secties.</p>
+        </div>
+        <div className="flex items-center gap-2 text-xs font-semibold text-neutral-500">
+          <span className="hidden sm:inline">Openen</span>
+          <ChevronDown className="h-4 w-4 transition group-open:rotate-180" />
+        </div>
+      </summary>
+
+      <div className="grid gap-4 border-t border-neutral-100 px-4 pb-4 pt-4 xl:grid-cols-[18rem_minmax(0,1fr)]">
+        <div>
           <div className="mt-3 grid grid-cols-2 gap-2">
             <label>
               <span className="mb-1 block text-[11px] font-semibold uppercase tracking-[0.14em] text-neutral-400">Start</span>
@@ -727,7 +745,7 @@ function ReportMetaControls({
           </div>
         </div>
       </div>
-    </section>
+    </details>
   );
 }
 
