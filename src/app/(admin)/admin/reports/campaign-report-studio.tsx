@@ -557,7 +557,8 @@ function HistoryPanel({
           </p>
         </div>
         <div className="flex items-center gap-2 text-xs font-semibold text-neutral-500">
-          <span className="hidden sm:inline">Openen</span>
+          <span className="hidden sm:inline group-open:hidden">Openen</span>
+          <span className="hidden sm:group-open:inline">Sluiten</span>
           <ChevronDown className="h-4 w-4 transition group-open:rotate-180" />
         </div>
       </summary>
@@ -684,7 +685,8 @@ function ReportMetaControls({
           <p className="mt-1 text-xs leading-5 text-neutral-500">Periode, variabelenweergave en zichtbare secties.</p>
         </div>
         <div className="flex items-center gap-2 text-xs font-semibold text-neutral-500">
-          <span className="hidden sm:inline">Openen</span>
+          <span className="hidden sm:inline group-open:hidden">Openen</span>
+          <span className="hidden sm:group-open:inline">Sluiten</span>
           <ChevronDown className="h-4 w-4 transition group-open:rotate-180" />
         </div>
       </summary>
