@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   chooseAutoViewGrowthBucketSize,
   computeBucketedViewGrowth,
+  computeBucketedViewGrowthTimeline,
   normalizeViewGrowthSnapshots,
   viewsPerHourFromLatestValidPair,
 } from "./view-growth-buckets";
@@ -35,6 +36,39 @@ function totalViews(buckets: Array<{ views: number }>) {
 }
 
 describe("computeBucketedViewGrowth", () => {
+  it("keeps the first measured total separate so buckets reconcile to the latest total", () => {
+    const timeline = computeBucketedViewGrowthTimeline(
+      [
+        snap(localDate(2026, 5, 25, 0, 0), 9, "OAUTH_TT", 0),
+        snap(localDate(2026, 5, 26, 0, 0), 7_158, "OAUTH_TT", 142),
+        snap(localDate(2026, 6, 3, 0, 0), 112_344, "OAUTH_TT", 2_085),
+      ],
+      "1d",
+    );
+
+    expect(timeline.initial?.views).toBe(9);
+    expect(timeline.initial?.engagements).toBe(0);
+    expect(timeline.measuredGrowthViews).toBe(112_335);
+    expect(timeline.totalViews).toBe(112_344);
+    expect((timeline.initial?.views ?? 0) + totalViews(timeline.buckets)).toBe(112_344);
+  });
+
+  it("does not turn a large first measurement into artificial bucket growth", () => {
+    const timeline = computeBucketedViewGrowthTimeline(
+      [
+        snap(localDate(2026, 5, 25, 0, 0), 80_000),
+        snap(localDate(2026, 5, 25, 6, 0), 90_000),
+        snap(localDate(2026, 5, 25, 12, 0), 112_344),
+      ],
+      "1d",
+    );
+
+    expect(timeline.initial?.views).toBe(80_000);
+    expect(timeline.buckets).toHaveLength(1);
+    expect(timeline.buckets[0].views).toBe(32_344);
+    expect(timeline.totalViews).toBe(112_344);
+  });
+
   it("groups multiple polls on the same calendar day into one daily bucket", () => {
     const buckets = computeBucketedViewGrowth(
       [

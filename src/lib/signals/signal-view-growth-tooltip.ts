@@ -46,6 +46,22 @@ export type SignalViewGrowthBucket = {
   source: string | null;
 };
 
+export type SignalViewGrowthInitialValue = {
+  capturedAt: Date;
+  views: number;
+  engagementTotal: number | null;
+  source: string | null;
+};
+
+export type SignalViewGrowthTimeline = {
+  initial: SignalViewGrowthInitialValue | null;
+  buckets: SignalViewGrowthBucket[];
+  measuredGrowthViews: number;
+  measuredGrowthEngagements: number | null;
+  totalViews: number | null;
+  totalEngagements: number | null;
+};
+
 type NormalizedSignalSnapshot = {
   capturedAt: Date;
   source: string | null;
@@ -98,14 +114,48 @@ export function computeSignalViewGrowthBuckets(
   snapshots: SignalMetricSnapshotInput[],
   bucketSize: ViewGrowthBucketSize,
 ): SignalViewGrowthBucket[] {
+  return computeSignalViewGrowthTimeline(snapshots, bucketSize).buckets;
+}
+
+export function computeSignalViewGrowthTimeline(
+  snapshots: SignalMetricSnapshotInput[],
+  bucketSize: ViewGrowthBucketSize,
+): SignalViewGrowthTimeline {
   const validSnapshots = normalizeSignalSnapshots(snapshots);
-  if (validSnapshots.length < 2) return [];
+  if (validSnapshots.length === 0) return emptyTimeline();
 
   const first = validSnapshots[0];
+  const initial: SignalViewGrowthInitialValue = {
+    capturedAt: first.capturedAt,
+    views: first.viewCount,
+    engagementTotal: snapshotEngagementTotal(first),
+    source: first.source,
+  };
+
+  if (validSnapshots.length < 2) {
+    return {
+      initial,
+      buckets: [],
+      measuredGrowthViews: 0,
+      measuredGrowthEngagements: null,
+      totalViews: initial.views,
+      totalEngagements: initial.engagementTotal,
+    };
+  }
+
   const last = validSnapshots[validSnapshots.length - 1];
   const rangeStart = floorBucket(first.capturedAt, bucketSize);
   const rangeEnd = ceilBucket(last.capturedAt, bucketSize);
-  if (rangeEnd.getTime() <= rangeStart.getTime()) return [];
+  if (rangeEnd.getTime() <= rangeStart.getTime()) {
+    return {
+      initial,
+      buckets: [],
+      measuredGrowthViews: 0,
+      measuredGrowthEngagements: null,
+      totalViews: initial.views,
+      totalEngagements: initial.engagementTotal,
+    };
+  }
 
   const buckets = buildBuckets(rangeStart, rangeEnd, bucketSize);
   const bucketByStart = new Map(buckets.map((bucket) => [bucket.start.getTime(), bucket]));
@@ -149,7 +199,25 @@ export function computeSignalViewGrowthBuckets(
     bucket.unavailable = [...new Set(bucket.unavailable)];
   }
 
-  return buckets;
+  const measuredGrowthViews = buckets.reduce((sum, bucket) => sum + bucket.views, 0);
+  const engagementBuckets = buckets
+    .map((bucket) => bucket.engagementTotal)
+    .filter((value): value is number => value != null);
+  const measuredGrowthEngagements = engagementBuckets.length > 0
+    ? engagementBuckets.reduce((sum, value) => sum + value, 0)
+    : null;
+
+  return {
+    initial,
+    buckets,
+    measuredGrowthViews,
+    measuredGrowthEngagements,
+    totalViews: initial.views + measuredGrowthViews,
+    totalEngagements:
+      initial.engagementTotal != null && measuredGrowthEngagements != null
+        ? initial.engagementTotal + measuredGrowthEngagements
+        : initial.engagementTotal,
+  };
 }
 
 export function normalizeSignalSnapshots(
@@ -395,6 +463,31 @@ function metricValue(
   return map[key];
 }
 
+function snapshotEngagementTotal(snapshot: NormalizedSignalSnapshot) {
+  const values = (["likes", "comments", "shares", "saves"] as const)
+    .map((key) => snapshotMetricCount(snapshot, key))
+    .filter((value): value is number => value != null);
+
+  return values.length > 0
+    ? values.reduce((sum, value) => sum + value, 0)
+    : null;
+}
+
+function snapshotMetricCount(
+  snapshot: NormalizedSignalSnapshot,
+  key: "likes" | "comments" | "shares" | "saves",
+) {
+  const availabilityKey = metricAvailabilityKeyForDelta(key);
+  if (!availabilityKey) return null;
+
+  const explicit = metricAvailabilityValue(snapshot.metricAvailability, availabilityKey);
+  if (explicit === false) return null;
+
+  const value = metricValue(snapshot, key);
+  if (value != null) return value;
+  return explicit === true ? 0 : null;
+}
+
 function floorBucket(value: Date, bucketSize: ViewGrowthBucketSize) {
   if (bucketSize === "1d") {
     return new Date(value.getFullYear(), value.getMonth(), value.getDate());
@@ -488,4 +581,15 @@ function asRecord(value: unknown): Record<string, unknown> | null {
   return value && typeof value === "object" && !Array.isArray(value)
     ? value as Record<string, unknown>
     : null;
+}
+
+function emptyTimeline(): SignalViewGrowthTimeline {
+  return {
+    initial: null,
+    buckets: [],
+    measuredGrowthViews: 0,
+    measuredGrowthEngagements: null,
+    totalViews: null,
+    totalEngagements: null,
+  };
 }

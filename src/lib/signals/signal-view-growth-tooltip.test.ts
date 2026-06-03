@@ -1,6 +1,9 @@
 import { describe, expect, it } from "vitest";
 import { metricAvailability } from "@/lib/contracts/metrics";
-import { computeSignalViewGrowthBuckets } from "./signal-view-growth-tooltip";
+import {
+  computeSignalViewGrowthBuckets,
+  computeSignalViewGrowthTimeline,
+} from "./signal-view-growth-tooltip";
 
 function snap(
   minute: number,
@@ -26,6 +29,95 @@ function snap(
 }
 
 describe("computeSignalViewGrowthBuckets", () => {
+  it("reconciles the first measured total plus bucket growth to the latest totals", () => {
+    const timeline = computeSignalViewGrowthTimeline(
+      [
+        snap(0, {
+          viewCount: 9,
+          likeCount: 0,
+          commentCount: 0,
+          shareCount: 0,
+          saveCount: 0,
+        }),
+        snap(15, {
+          viewCount: 7_158,
+          likeCount: 120,
+          commentCount: 12,
+          shareCount: 8,
+          saveCount: 2,
+        }),
+        snap(30, {
+          viewCount: 112_344,
+          likeCount: 1_800,
+          commentCount: 150,
+          shareCount: 100,
+          saveCount: 35,
+        }),
+      ],
+      "15m",
+    );
+
+    expect(timeline.initial?.views).toBe(9);
+    expect(timeline.initial?.engagementTotal).toBe(0);
+    expect(timeline.measuredGrowthViews).toBe(112_335);
+    expect(timeline.measuredGrowthEngagements).toBe(2_085);
+    expect(timeline.totalViews).toBe(112_344);
+    expect(timeline.totalEngagements).toBe(2_085);
+  });
+
+  it("keeps a large first measurement out of the visible growth buckets", () => {
+    const timeline = computeSignalViewGrowthTimeline(
+      [
+        snap(0, { viewCount: 80_000, likeCount: 400 }),
+        snap(15, { viewCount: 90_000, likeCount: 460 }),
+        snap(30, { viewCount: 112_344, likeCount: 542 }),
+      ],
+      "1d",
+    );
+
+    expect(timeline.initial?.views).toBe(80_000);
+    expect(timeline.buckets).toHaveLength(1);
+    expect(timeline.buckets[0].views).toBe(32_344);
+    expect(timeline.totalViews).toBe(112_344);
+  });
+
+  it("ignores failed snapshots and reset-like lower view counts", () => {
+    const timeline = computeSignalViewGrowthTimeline(
+      [
+        snap(0, { viewCount: 1_000 }),
+        snap(15, { viewCount: 0, source: "OAUTH_FAILED" }),
+        snap(30, { viewCount: 900 }),
+        snap(45, { viewCount: 1_100 }),
+      ],
+      "15m",
+    );
+
+    expect(timeline.initial?.views).toBe(1_000);
+    expect(timeline.measuredGrowthViews).toBe(100);
+    expect(Math.max(...timeline.buckets.map((bucket) => bucket.views))).toBe(100);
+  });
+
+  it("does not show negative engagement deltas as growth", () => {
+    const buckets = computeSignalViewGrowthBuckets(
+      [
+        snap(0, { likeCount: 20, commentCount: 5, shareCount: 3, saveCount: 2 }),
+        snap(15, {
+          viewCount: 1_100,
+          likeCount: 18,
+          commentCount: 4,
+          shareCount: 3,
+          saveCount: 1,
+        }),
+      ],
+      "15m",
+    );
+
+    expect(buckets[0].engagementTotal).toBe(0);
+    expect(buckets[0].deltas.likes).toBe(0);
+    expect(buckets[0].deltas.comments).toBe(0);
+    expect(buckets[0].deltas.saves).toBe(0);
+  });
+
   it("computes view, engagement breakdown, and engagement quality deltas", () => {
     const buckets = computeSignalViewGrowthBuckets(
       [

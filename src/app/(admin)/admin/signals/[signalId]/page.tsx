@@ -71,7 +71,6 @@ export default async function SignalDetailPage({ params }: PageProps) {
           },
           metricSnapshots: {
             orderBy: { capturedAt: "desc" },
-            take: 96,
             select: {
               capturedAt: true,
               source: true,
@@ -184,9 +183,9 @@ export default async function SignalDetailPage({ params }: PageProps) {
         <div className="rounded-2xl border border-neutral-200 bg-white p-5">
           <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
             <div>
-              <h2 className="text-base font-semibold text-neutral-950">Viewgroei per poll</h2>
+              <h2 className="text-base font-semibold text-neutral-950">Viewgroei per tijdvak</h2>
               <p className="mt-1 text-sm text-neutral-500">
-                Elke balk toont de viewgroei tussen twee opeenvolgende metingen.
+                Balken tonen gemeten groei binnen vaste tijdvakken; de eerste gemeten stand staat apart.
               </p>
             </div>
             <Badge variant={signal.severity === "CRITICAL" ? "failed" : "pending"}>{severityLabel(signal.severity)}</Badge>

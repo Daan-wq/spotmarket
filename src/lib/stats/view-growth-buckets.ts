@@ -25,6 +25,22 @@ export type ViewGrowthBucket = {
   engagements: number | null;
 };
 
+export type ViewGrowthInitialValue = {
+  capturedAt: Date;
+  views: number;
+  engagements: number | null;
+  source?: string | null;
+};
+
+export type ViewGrowthTimeline = {
+  initial: ViewGrowthInitialValue | null;
+  buckets: ViewGrowthBucket[];
+  measuredGrowthViews: number;
+  measuredGrowthEngagements: number | null;
+  totalViews: number | null;
+  totalEngagements: number | null;
+};
+
 const MINUTE_MS = 60 * 1000;
 const HOUR_MS = 60 * MINUTE_MS;
 const AUTO_15M_MAX_MS = 12 * HOUR_MS;
@@ -75,14 +91,48 @@ export function computeBucketedViewGrowth(
   snapshots: ViewGrowthSnapshotInput[],
   bucketSize: ViewGrowthBucketSize,
 ): ViewGrowthBucket[] {
+  return computeBucketedViewGrowthTimeline(snapshots, bucketSize).buckets;
+}
+
+export function computeBucketedViewGrowthTimeline(
+  snapshots: ViewGrowthSnapshotInput[],
+  bucketSize: ViewGrowthBucketSize,
+): ViewGrowthTimeline {
   const validSnapshots = normalizeViewGrowthSnapshots(snapshots);
-  if (validSnapshots.length < 2) return [];
+  if (validSnapshots.length === 0) return emptyTimeline();
 
   const first = validSnapshots[0];
+  const initial: ViewGrowthInitialValue = {
+    capturedAt: first.capturedAt,
+    views: first.viewCount,
+    engagements: first.engagementCount,
+    source: first.source,
+  };
+
+  if (validSnapshots.length < 2) {
+    return {
+      initial,
+      buckets: [],
+      measuredGrowthViews: 0,
+      measuredGrowthEngagements: null,
+      totalViews: initial.views,
+      totalEngagements: initial.engagements,
+    };
+  }
+
   const last = validSnapshots[validSnapshots.length - 1];
   const rangeStart = floorBucket(first.capturedAt, bucketSize);
   const rangeEnd = ceilBucket(last.capturedAt, bucketSize);
-  if (rangeEnd.getTime() <= rangeStart.getTime()) return [];
+  if (rangeEnd.getTime() <= rangeStart.getTime()) {
+    return {
+      initial,
+      buckets: [],
+      measuredGrowthViews: 0,
+      measuredGrowthEngagements: null,
+      totalViews: initial.views,
+      totalEngagements: initial.engagements,
+    };
+  }
 
   const buckets = buildBuckets(rangeStart, rangeEnd, bucketSize);
   const bucketByStart = new Map(buckets.map((bucket) => [bucket.start.getTime(), bucket]));
@@ -108,7 +158,24 @@ export function computeBucketedViewGrowth(
     }
   }
 
-  return buckets;
+  const measuredGrowthViews = buckets.reduce((sum, bucket) => sum + bucket.views, 0);
+  const engagementBuckets = buckets
+    .map((bucket) => bucket.engagements)
+    .filter((value): value is number => value != null);
+  const measuredGrowthEngagements = engagementBuckets.length > 0
+    ? engagementBuckets.reduce((sum, value) => sum + value, 0)
+    : null;
+
+  return {
+    initial,
+    buckets,
+    measuredGrowthViews,
+    measuredGrowthEngagements,
+    totalViews: initial.views + measuredGrowthViews,
+    totalEngagements: initial.engagements != null && measuredGrowthEngagements != null
+      ? initial.engagements + measuredGrowthEngagements
+      : initial.engagements,
+  };
 }
 
 export function chooseAutoViewGrowthBucketSize(
@@ -249,4 +316,15 @@ function toValidOptionalCount(value: number | string | null | undefined) {
   const numberValue = Number(value);
   if (!Number.isFinite(numberValue) || numberValue < 0) return null;
   return numberValue;
+}
+
+function emptyTimeline(): ViewGrowthTimeline {
+  return {
+    initial: null,
+    buckets: [],
+    measuredGrowthViews: 0,
+    measuredGrowthEngagements: null,
+    totalViews: null,
+    totalEngagements: null,
+  };
 }

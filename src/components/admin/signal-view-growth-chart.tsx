@@ -9,8 +9,9 @@ import {
   type ViewGrowthZoom,
 } from "@/lib/stats/view-growth-buckets";
 import {
-  computeSignalViewGrowthBuckets,
+  computeSignalViewGrowthTimeline,
   type SignalViewGrowthBucket,
+  type SignalViewGrowthTimeline,
 } from "@/lib/signals/signal-view-growth-tooltip";
 
 type SignalViewGrowthSnapshot = {
@@ -80,11 +81,13 @@ export function SignalViewGrowthChart({
     () => resolveViewGrowthBucketSize(zoom, helperSnapshots),
     [helperSnapshots, zoom],
   );
-  const buckets = useMemo(
-    () => computeSignalViewGrowthBuckets(snapshots, bucketSize),
+  const timeline = useMemo(
+    () => computeSignalViewGrowthTimeline(snapshots, bucketSize),
     [bucketSize, snapshots],
   );
-  const maxViews = Math.max(1, ...buckets.map((bucket) => bucket.views));
+  const buckets = timeline.buckets;
+  const largestBucketViews = Math.max(0, ...buckets.map((bucket) => bucket.views));
+  const maxViews = Math.max(1, largestBucketViews);
   const chartMinWidth = Math.max(640, buckets.length * 10);
   const showTooltip = (
     bucket: (typeof buckets)[number],
@@ -113,12 +116,27 @@ export function SignalViewGrowthChart({
   };
   const hideTooltip = () => setActiveTooltip(null);
 
-  if (buckets.length === 0) {
+  if (!timeline.initial) {
     return (
       <div>
         <ZoomTabs value={zoom} onChange={setZoom} />
         <div className="mt-3 flex h-56 items-center justify-center rounded-xl bg-neutral-50 text-sm text-neutral-500">
-          Er zijn minstens twee geldige metingen nodig om groei te tonen.
+          Er zijn nog geen geldige metingen om deze timeline te tonen.
+        </div>
+      </div>
+    );
+  }
+
+  if (buckets.length === 0) {
+    return (
+      <div>
+        <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+          <ZoomTabs value={zoom} onChange={setZoom} />
+          <p className="text-xs text-neutral-500">Tijdvak: {BUCKET_LABELS[bucketSize]}</p>
+        </div>
+        <TimelineSummary timeline={timeline} />
+        <div className="mt-3 flex h-56 items-center justify-center rounded-xl bg-neutral-50 text-sm text-neutral-500">
+          Nog geen latere geldige meting om groei per tijdvak te tonen.
         </div>
       </div>
     );
@@ -130,6 +148,7 @@ export function SignalViewGrowthChart({
         <ZoomTabs value={zoom} onChange={setZoom} />
         <p className="text-xs text-neutral-500">Tijdvak: {BUCKET_LABELS[bucketSize]}</p>
       </div>
+      <TimelineSummary timeline={timeline} />
       <div ref={chartFrameRef} className="relative">
         <div className="overflow-x-auto rounded-xl bg-neutral-50">
           <div
@@ -147,7 +166,7 @@ export function SignalViewGrowthChart({
                   className="min-w-1 flex-1 rounded-t border-0 bg-neutral-950 p-0 outline-none transition-opacity focus-visible:ring-2 focus-visible:ring-neutral-950 focus-visible:ring-offset-2 focus-visible:ring-offset-neutral-50"
                   style={{
                     height: `${height}%`,
-                    opacity: bucket.views === maxViews ? 1 : 0.45,
+                    opacity: bucket.views === largestBucketViews ? 1 : 0.45,
                   }}
                   aria-label={label}
                   aria-describedby={activeTooltip?.key === bucket.key ? "signal-view-growth-tooltip" : undefined}
@@ -182,8 +201,41 @@ export function SignalViewGrowthChart({
       </div>
       <div className="mt-3 flex justify-between gap-3 text-xs text-neutral-500">
         <span>{formatDateTime(buckets[0].start)}</span>
-        <span>Grootste tijdvak: +{formatNumber(Math.round(maxViews))}</span>
+        <span>Grootste tijdvak: +{formatNumber(Math.round(largestBucketViews))}</span>
         <span>{formatDateTime(buckets[buckets.length - 1].end)}</span>
+      </div>
+    </div>
+  );
+}
+
+function TimelineSummary({ timeline }: { timeline: SignalViewGrowthTimeline }) {
+  if (!timeline.initial) return null;
+
+  return (
+    <div className="mb-3 grid gap-2 rounded-lg bg-neutral-50 px-3 py-2 text-xs text-neutral-600 sm:grid-cols-2">
+      <div>
+        <p className="font-semibold text-neutral-950">Al aanwezig bij eerste meting</p>
+        <p className="mt-1 tabular-nums">
+          {formatNumber(timeline.initial.views)} views
+          {timeline.initial.engagementTotal == null
+            ? ""
+            : ` - ${formatNumber(timeline.initial.engagementTotal)} engagement`}
+        </p>
+        <p className="mt-1 text-neutral-500">{formatDateTime(timeline.initial.capturedAt)}</p>
+      </div>
+      <div className="sm:text-right">
+        <p className="font-semibold text-neutral-950">Controle totaal</p>
+        <p className="mt-1 tabular-nums">
+          {formatNumber(timeline.initial.views)} + {formatNumber(Math.round(timeline.measuredGrowthViews))} ={" "}
+          {timeline.totalViews == null ? "-" : formatNumber(Math.round(timeline.totalViews))} views
+        </p>
+        {timeline.initial.engagementTotal != null || timeline.measuredGrowthEngagements != null ? (
+          <p className="mt-1 tabular-nums text-neutral-500">
+            {formatNumber(timeline.initial.engagementTotal ?? 0)} +{" "}
+            {formatNumber(Math.round(timeline.measuredGrowthEngagements ?? 0))} ={" "}
+            {timeline.totalEngagements == null ? "-" : formatNumber(Math.round(timeline.totalEngagements))} engagement
+          </p>
+        ) : null}
       </div>
     </div>
   );
