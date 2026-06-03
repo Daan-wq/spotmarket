@@ -1,5 +1,4 @@
 import type { CampaignReportLiveData } from "@/lib/admin/campaign-reporting";
-import type { ReportQualityStatus } from "@/lib/admin/campaign-report-display";
 import type { Prisma } from "@prisma/client";
 
 export function buildBrandVisibleReportWhere(brandIds: string[]): Prisma.CampaignReportWhereInput {
@@ -25,7 +24,7 @@ export function sanitizeBrandReportLiveData(data: CampaignReportLiveData) {
       brandId: data.campaign.brandId,
       brandName: data.campaign.brandName,
       description: data.campaign.description,
-      bannerUrl: data.campaign.bannerUrl,
+      bannerUrl: null,
       platforms: data.campaign.platforms,
       totalBudget: data.campaign.totalBudget,
       businessCpv: data.campaign.businessCpv,
@@ -40,18 +39,18 @@ export function sanitizeBrandReportLiveData(data: CampaignReportLiveData) {
     },
     performance: {
       approvedViews: data.performance.approvedViews,
-      currentViews: data.performance.currentViews,
-      targetViews: data.performance.targetViews,
-      targetViewsSource: data.performance.targetViewsSource,
-      paidEligibleViews: data.performance.paidEligibleViews,
-      overdeliveryViews: data.performance.overdeliveryViews,
-      overdeliveryPercent: data.performance.overdeliveryPercent,
-      deliveryProgress: data.performance.deliveryProgress,
-      cpmPerThousand: data.performance.cpmPerThousand,
+      currentViews: data.performance.approvedViews,
+      targetViews: data.campaign.goalViews,
+      targetViewsSource: data.campaign.goalViewsSource,
+      paidEligibleViews: data.financial.approvedPayableViews,
+      overdeliveryViews: data.financial.overdeliveryViews,
+      overdeliveryPercent: data.financial.overdeliveryRate,
+      deliveryProgress: data.performance.goalCompletion,
+      cpmPerThousand: data.financial.effectiveCpm,
       goalCompletion: data.performance.goalCompletion,
       budgetUsed: data.performance.budgetUsed,
       budgetUsedPercent: data.performance.budgetUsedPercent,
-      costPerThousandViews: data.performance.costPerThousandViews,
+      costPerThousandViews: data.financial.effectiveCpm ?? data.performance.costPerThousandViews,
       totalSubmissions: data.performance.totalSubmissions,
       approvedClips: data.performance.approvedClips,
       activeCreators: data.performance.activeCreators,
@@ -71,12 +70,12 @@ export function sanitizeBrandReportLiveData(data: CampaignReportLiveData) {
     creators: data.creators.map((row) => ({
       creator: aliasForCreator(creatorAliases, row.creatorId, row.creator),
       submissions: row.submissions,
-      approvedSubmissions: row.approvedSubmissions,
+      approvedSubmissions: estimateApprovedSubmissions(row.submissions, row.approvalRate),
       views: row.views,
       approvalRate: row.approvalRate,
     })),
     quality: {
-      status: trafficQualityStatus(data),
+      status: data.quality.trafficQualityStatus,
       reviewedClips: data.quality.approvedQcReviews,
     },
     audience: data.audience,
@@ -104,10 +103,7 @@ function aliasForCreator(aliases: Map<string, string>, primary: string, fallback
   return aliases.get(primary) ?? (fallback ? aliases.get(fallback) : undefined) ?? "Creator";
 }
 
-function trafficQualityStatus(data: CampaignReportLiveData): ReportQualityStatus {
-  if (data.quality.criticalSignals > 0) return "needs_attention";
-  if (data.quality.openSignals > 0 || data.quality.resolvedSignals > 0) {
-    return "passed_with_exclusions";
-  }
-  return "passed";
+function estimateApprovedSubmissions(submissions: number, approvalRate: number | null) {
+  if (approvalRate == null) return submissions;
+  return Math.round(submissions * approvalRate);
 }

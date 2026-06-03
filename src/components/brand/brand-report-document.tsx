@@ -4,7 +4,6 @@ import { ArrowLeft, BarChart3, ExternalLink, FileText, ShieldCheck, Sparkles, Ta
 import { Badge } from "@/components/ui/badge";
 import { formatCurrency, formatDate, formatNumber } from "@/lib/admin/agency-format";
 import { normalizeTextList, type CampaignReportEditorial } from "@/lib/admin/campaign-report-shared";
-import { formatAudienceCountryLabel, formatAudienceShare, reportQualityStatusLabel } from "@/lib/admin/campaign-report-display";
 import type { BrandReportLiveData } from "@/lib/brand-report-portal";
 import { BrandReportActions } from "./brand-report-actions";
 
@@ -23,13 +22,13 @@ interface BrandReportDocumentProps {
 }
 
 export function BrandReportDocument({ report, data, editorial }: BrandReportDocumentProps) {
-  const blocks = editorial.editorialContent.templateBlocks;
   const recommendations = normalizeTextList(report.nextCampaignRecommendations);
   const learnings = normalizeTextList(report.learnings);
   const keyTakeaways = normalizeTextList(report.keyTakeaways);
   const paidViews = data.performance.targetViews
     ? Math.min(data.performance.currentViews, data.performance.targetViews)
     : data.performance.paidEligibleViews;
+  const coverImageUrl = data.campaign.bannerUrl ?? data.topContent[0]?.thumbnailUrl ?? null;
 
   return (
     <div className="space-y-5">
@@ -44,9 +43,9 @@ export function BrandReportDocument({ report, data, editorial }: BrandReportDocu
       <article className="report-print-root rounded-xl bg-[#efede8] px-3 py-5 sm:px-6" style={{ fontFamily: "var(--font-report), var(--font-sans)" }}>
         <div className="mx-auto w-full max-w-[1480px] space-y-5">
           <ReportSection className="relative min-h-[460px] overflow-hidden bg-neutral-950 p-8 text-white sm:p-12 lg:p-16">
-            {editorial.editorialContent.coverImageUrl ?? data.campaign.bannerUrl ? (
+            {coverImageUrl ? (
               <>
-                <img src={editorial.editorialContent.coverImageUrl ?? data.campaign.bannerUrl ?? ""} alt="" className="absolute inset-0 h-full w-full object-cover" />
+                <img src={coverImageUrl} alt="" className="absolute inset-0 h-full w-full object-cover" />
                 <div className="absolute inset-0 bg-neutral-950/72" />
               </>
             ) : null}
@@ -72,7 +71,7 @@ export function BrandReportDocument({ report, data, editorial }: BrandReportDocu
                   {data.performance.deliveryProgress == null ? "Campagneprestatie" : `${Math.round(data.performance.deliveryProgress * 100)}% van doel`}
                 </p>
                 <p className="mt-6 max-w-4xl text-lg leading-8 text-neutral-800">
-                  {renderTemplate(blocks["summary.body"] || report.executiveSummary, data)}
+                  {renderTemplate(report.executiveSummary, data)}
                 </p>
                 {keyTakeaways.length > 0 ? (
                   <div className="mt-6 grid gap-2">
@@ -184,7 +183,7 @@ export function BrandReportDocument({ report, data, editorial }: BrandReportDocu
             <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
               <StatTile label="Budget" value={formatCurrency(data.campaign.totalBudget, "EUR", "nl")} helper="Campagnebudget" />
               <StatTile label="Betaalde views" value={formatNumber(paidViews, "nl")} helper="Maximaal tot doelbasis" />
-              <StatTile label="Kwaliteitsstatus" value={reportQualityStatusLabel(data.quality.status)} helper="High-level validatie" />
+              <StatTile label="Kwaliteitsstatus" value={data.quality.status} helper="High-level validatie" />
               <StatTile label="Gecontroleerde clips" value={formatNumber(data.quality.reviewedClips, "nl")} helper="Goedgekeurde reviews" />
             </div>
           </ReportSection>
@@ -284,6 +283,14 @@ function Distribution({ title, rows }: { title: string; rows: Array<{ label: str
       </div>
     </div>
   );
+}
+
+function formatAudienceCountryLabel(code: string) {
+  return code.toUpperCase();
+}
+
+function formatAudienceShare(value: number) {
+  return `${Math.round(value)}%`;
 }
 
 function renderTemplate(template: string, data: BrandReportLiveData) {

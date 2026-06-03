@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import type { Prisma } from "@prisma/client";
 import { requireAuth } from "@/lib/auth";
 import { jsonError, serialize } from "@/lib/admin/agency-api";
 import { campaignReportUpdateSchema } from "@/lib/admin/campaign-report-validation";
