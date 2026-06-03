@@ -9,6 +9,12 @@ function baseDashboard(overrides: Partial<SiteAnalyticsDashboard> = {}): SiteAna
     hasData: false,
     rangeDays: 30,
     lastSyncedAt: null,
+    configuration: {
+      isConfigured: true,
+      host: "https://eu.posthog.com",
+      projectId: "123",
+      missing: [],
+    },
     metrics: EMPTY_SITE_ANALYTICS_METRICS,
     timeSeries: [],
     topPages: [],
@@ -24,6 +30,28 @@ describe("SiteAnalyticsView", () => {
     const html = renderToStaticMarkup(<SiteAnalyticsView dashboard={baseDashboard()} showChart={false} />);
     expect(html).toContain("Nog geen site analytics");
     expect(html).toContain("sync-site-analytics");
+  });
+
+  it("renders missing PostHog configuration before the empty data state", () => {
+    const html = renderToStaticMarkup(
+      <SiteAnalyticsView
+        dashboard={baseDashboard({
+          configuration: {
+            isConfigured: false,
+            host: "https://eu.posthog.com",
+            projectId: null,
+            missing: ["POSTHOG_PERSONAL_API_KEY", "POSTHOG_PROJECT_ID"],
+          },
+        })}
+        showChart={false}
+      />,
+    );
+
+    expect(html).toContain("PostHog is nog niet volledig geconfigureerd");
+    expect(html).toContain("POSTHOG_PERSONAL_API_KEY");
+    expect(html).toContain("POSTHOG_PROJECT_ID");
+    expect(html).toContain("https://eu.posthog.com");
+    expect(html).not.toContain("Deze pagina wordt gevuld na de eerste");
   });
 
   it("renders populated usage sections", () => {
