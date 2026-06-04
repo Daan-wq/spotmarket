@@ -1,8 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
-import { prisma } from "@/lib/prisma";
 import { REQUIRED_DISCORD_SCOPES } from "@/lib/discord";
 import { joinDiscordGuildWithOAuthToken } from "@/lib/discord-campaign-roles";
+import {
+  claimUserForAuthIdentity,
+  isAuthIdentityConflict,
+  type DiscordIdentity,
+} from "@/lib/auth-identity";
 
 export async function GET(req: NextRequest) {
   const code = req.nextUrl.searchParams.get("code");
@@ -12,14 +16,12 @@ export async function GET(req: NextRequest) {
     return NextResponse.redirect(new URL("/creator/campaigns?error=discord_failed", req.url));
   }
 
-  // Verify user is logged in
   const supabase = await createSupabaseServerClient();
   const { data: { user: authUser } } = await supabase.auth.getUser();
   if (!authUser) {
     return NextResponse.redirect(new URL("/sign-in", req.url));
   }
 
-  // Decode state
   let returnTo = "/creator/campaigns";
   try {
     const state = JSON.parse(Buffer.from(stateRaw, "base64url").toString());
@@ -28,7 +30,7 @@ export async function GET(req: NextRequest) {
     }
     returnTo = state.returnTo ?? returnTo;
   } catch {
-    // Invalid state — continue with default redirect
+    // Invalid state: continue with the default creator campaigns redirect.
   }
 
   const clientId = process.env.DISCORD_CLIENT_ID!;
@@ -36,7 +38,6 @@ export async function GET(req: NextRequest) {
   const redirectUri = process.env.DISCORD_OAUTH_REDIRECT_URI!;
 
   try {
-    // Exchange code for token
     const tokenRes = await fetch("https://discord.com/api/v10/oauth2/token", {
       method: "POST",
       headers: { "Content-Type": "application/x-www-form-urlencoded" },
@@ -62,13 +63,11 @@ export async function GET(req: NextRequest) {
     const grantedScopes: string[] =
       typeof tokenJson.scope === "string" ? tokenJson.scope.split(/\s+/).filter(Boolean) : [];
 
-    // Validate required Discord scopes
-    const missing = REQUIRED_DISCORD_SCOPES.filter((s) => !grantedScopes.includes(s));
+    const missing = REQUIRED_DISCORD_SCOPES.filter((scope) => !grantedScopes.includes(scope));
     if (missing.length > 0) {
       return NextResponse.redirect(new URL(`${returnTo}?error=discord_missing_scopes`, req.url));
     }
 
-    // Get Discord user info
     const userRes = await fetch("https://discord.com/api/v10/users/@me", {
       headers: { Authorization: `Bearer ${access_token}` },
     });
@@ -85,14 +84,22 @@ export async function GET(req: NextRequest) {
       return NextResponse.redirect(new URL(`${returnTo}?error=discord_guild_join_failed`, req.url));
     }
 
-    // Save Discord ID to user record
-    await prisma.user.update({
-      where: { supabaseId: authUser.id },
-      data: {
-        discordId: discordUser.id,
-        discordUsername: discordUser.username,
-      },
-    });
+    const discordIdentity: DiscordIdentity = {
+      id: discordUser.id,
+      username: typeof discordUser.username === "string" ? discordUser.username : null,
+    };
+
+    try {
+      const user = await claimUserForAuthIdentity(authUser, { discordIdentity });
+      if (!user) {
+        return NextResponse.redirect(new URL("/onboarding", req.url));
+      }
+    } catch (err) {
+      if (isAuthIdentityConflict(err)) {
+        return NextResponse.redirect(new URL(`${returnTo}?error=discord_already_linked`, req.url));
+      }
+      throw err;
+    }
 
     return NextResponse.redirect(new URL(`${returnTo}?discord=linked`, req.url));
   } catch (err) {
