@@ -289,6 +289,21 @@
       "deleteDescription": "Verwijder je account en alle gekoppelde data permanent."
     }
   },
+  "adminSettings": {
+    "metaTitle": "Admin-instellingen",
+    "header": {
+      "eyebrow": "Voorkeuren",
+      "title": "Admin-instellingen",
+      "description": "Beheer dashboardvoorkeuren voor deze browser."
+    },
+    "language": {
+      "title": "Taal",
+      "description": "Kies de admindashboardtaal voor deze browser. De instelling wordt direct opgeslagen.",
+      "ariaLabel": "Admindashboardtaal",
+      "saved": "Taal bijgewerkt.",
+      "error": "Taal kon niet worden bijgewerkt."
+    }
+  },
   "navigation": {
     "creatorNav": {
       "campaigns": "Campagnes",
@@ -329,8 +344,12 @@
       "siteAnalytics": "Site-analytics",
       "guides": "Handleidingen",
       "signals": "Signalen",
+      "profile": "Profiel",
+      "profileComingSoon": "Binnenkort",
+      "settings": "Instellingen",
       "search": "Zoeken",
-      "signOut": "Uitloggen"
+      "signOut": "Uitloggen",
+      "dashboard": "Admindashboard"
     }
   },
   "dashboard": {
@@ -670,6 +689,9 @@
         "pipelineTitle": "Pijplijn",
         "usefulAreasTitle": "Nuttige gebieden",
         "deliveryRiskTitle": "Leveringsrisico",
+        "open": "Openen",
+        "live": "Live",
+        "manual": "Handmatig",
         "noRisk": "Geen campagnerisico's voor tempo in de komende 7 dagen.",
         "capturedViews": "{captured} / {goal} views vastgelegd.",
         "weeklyClose": {

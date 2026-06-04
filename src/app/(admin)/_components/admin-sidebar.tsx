@@ -22,6 +22,7 @@ import { Sparkles } from "@/components/animate-ui/icons/sparkles";
 import { Users } from "@/components/animate-ui/icons/users";
 import { Logo } from "@/components/shared/logo";
 import { cn } from "@/lib/cn";
+import { AdminIdentityMenu } from "./admin-identity-menu";
 
 type NavIcon = ComponentType<{ className?: string; strokeWidth?: number }>;
 
@@ -143,18 +144,7 @@ export function AdminSidebar({ initials, email }: AdminSidebarProps) {
       </nav>
 
       <div className="mt-6 space-y-3">
-        <div className="flex items-center gap-3 rounded-xl border border-neutral-200 bg-neutral-100/70 p-3">
-          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-neutral-950 text-sm font-semibold text-white">
-            {initials}
-          </div>
-          <div className="min-w-0">
-            <p className="truncate text-sm font-semibold text-neutral-950">Admin</p>
-            <p className="truncate text-xs text-neutral-500">{email}</p>
-          </div>
-        </div>
-        <a href="/api/auth/signout" className="block px-2 text-sm font-medium text-neutral-500 hover:text-neutral-950">
-          {t("signOut")}
-        </a>
+        <AdminIdentityMenu initials={initials} email={email} />
       </div>
     </aside>
   );

@@ -7,6 +7,7 @@ import {
 } from "@/lib/admin/campaign-report-shared";
 import { prisma } from "@/lib/prisma";
 import { computeDayDeltas } from "@/lib/stats/trends";
+import { DEFAULT_LOCALE } from "@/i18n/routing";
 
 export {
   CAMPAIGN_REPORT_SECTION_KEYS,
@@ -1254,7 +1255,7 @@ function toNumber(value: unknown) {
 }
 
 function formatNumber(value: number) {
-  return new Intl.NumberFormat("nl-NL").format(Math.round(value));
+  return new Intl.NumberFormat(DEFAULT_LOCALE).format(Math.round(value));
 }
 
 function formatPercent(value: number) {
@@ -1262,7 +1263,7 @@ function formatPercent(value: number) {
 }
 
 function formatCurrencyValue(value: number) {
-  return new Intl.NumberFormat("nl-NL", {
+  return new Intl.NumberFormat(DEFAULT_LOCALE, {
     style: "currency",
     currency: "EUR",
     minimumFractionDigits: 2,

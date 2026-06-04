@@ -13,60 +13,15 @@ const SOURCE_TARGETS = [
 const ADMIN_MESSAGE_TARGETS = [
   ["navigation", "adminNav"],
   ["dashboard", "admin"],
-] as const;
-
-const BLOCKED_COPY_PATTERNS = [
-  /\bAgency OS\b/,
-  /\bCommand Center\b/,
-  /\bDaily Action Queue\b/,
-  /\bReport history\b/,
-  /\bExecutive Summary\b/,
-  /\bCampaign Setup\b/,
-  /\bPerformance Overview\b/,
-  /\bPlatform Breakdown\b/,
-  /\bTop Content\b/,
-  /\bQuality & Compliance\b/,
-  /\bNext Campaign Recommendation\b/,
-  /\bPayment requests\b/,
-  /\bPayout Runs\b/,
-  /\bTotal Referrers\b/,
-  /\bTotal Referrals\b/,
-  /\bTotal Revenue Shared\b/,
-  /\bBack to Networks\b/,
-  /\bPending Payouts\b/,
-  /\bPayout History\b/,
-  /\bJoined Date\b/,
-  /\bNo (?:data|entries|source|summary|channel|image|submissions|campaigns|contact details|angle)\b/i,
-  /\b(?:Failed to|Could not|Network error|Choose a|Message content|Add message|accepts up to|characters or fewer|needs both)\b/,
-  /\b(?:Ready to preview|Send test|Preview and send|Save draft|Save template|Copy wallet|Copy bank|Mark paid)\b/,
-  /\b(?:Last proof|Last reviewed|Next review|Trial sent|Trial due)\b/,
-  /\b(?:Open campaign|Edit campaign|Unassigned|Unlinked)\b/,
-  /\b(?:Draft saved|Template saved|Template deleted|Test message|Message sent)\b/,
-  /\b(?:characters sent|buttons ready|Loading Discord|External image|Re-upload required|Current timestamp|Add embed|Add field|Add URL button)\b/,
-  /\bAudience requirements\b/,
-  /\bSite analytics\b/,
-  /\bWeekly Numbers\b/,
-  /\bContent Production\b/,
-  /\bSubmission\b/,
-  /\bCPV\b/,
-  /\bOauth Failed\b/,
-  /\bInsufficient data\b/,
-  /\breach-tests\b/,
-] as const;
-
-const BLOCKED_VISIBLE_FIELD_PATTERNS = [
-  /\b(header|title|description|label|placeholder|triggerLabel|detail):\s*["'`](Name|Source|Assignment|Assignments|Timeline|Overview|Audience|Submitted|Reviewed|Destination)["'`]/,
-  /\b(title|description|label|placeholder|aria-label)=["'`](Name|Source|Assignment|Assignments|Timeline|Overview|Audience|Submitted|Reviewed|Destination)["'`]/,
+  ["adminSettings"],
 ] as const;
 
 const RAW_LOCALE_PATTERN = /\.toLocale(?:String|DateString|TimeString)\(\s*\)/;
-const EN_FORMAT_PATTERN = /new Intl\.(?:NumberFormat|DateTimeFormat)\(["']en(?:-[A-Z]{2})?["']/;
-
-const ALLOWED_LINE_PATTERNS = [
-  /"High view growth with near-zero comments and shares": "Hoge viewgroei/,
-  /"High view growth with near-zero available engagement": "Hoge viewgroei/,
-  /content: "## Medium"/,
-  /expect\(result\.content\)\.toBe\("# Medium"\)/,
+const FIXED_NL_FORMAT_PATTERN = /new Intl\.(?:NumberFormat|DateTimeFormat)\(["']nl(?:-[A-Z]{2})?["']/;
+const DUTCH_COPY_PATTERNS = [
+  /\b(?:Dagelijkse|Kerncijfers|Rapportages|Uitbetalingen|Inzendingen|Opdrachten)\b/,
+  /\b(?:Campagnes|Merken|Handleidingen|Signalen|Zoeken|Uitloggen)\b/,
+  /\b(?:Geen|Nieuwe|Actieve|Verwachte|Geschatte|Verschuldigde)\b/,
 ] as const;
 
 function collectFiles(target: string): string[] {
@@ -91,25 +46,14 @@ function isScannableFile(file: string) {
   );
 }
 
-function hasBlockedCopy(line: string) {
-  return (
-    BLOCKED_COPY_PATTERNS.some((pattern) => pattern.test(line)) ||
-    BLOCKED_VISIBLE_FIELD_PATTERNS.some((pattern) => pattern.test(line))
-  );
-}
-
-function isAllowedLine(line: string) {
-  return ALLOWED_LINE_PATTERNS.some((pattern) => pattern.test(line));
-}
-
-function collectAdminMessageValues(value: unknown): string[] {
+function collectMessageValues(value: unknown): string[] {
   if (typeof value === "string") return [value];
   if (!value || typeof value !== "object") return [];
-  return Object.values(value).flatMap(collectAdminMessageValues);
+  return Object.values(value).flatMap(collectMessageValues);
 }
 
 describe("admin localization guard", () => {
-  it("keeps visible admin copy Dutch and admin formatting locale-safe", () => {
+  it("keeps admin formatting locale-aware", () => {
     const offenders: string[] = [];
 
     for (const file of SOURCE_TARGETS.flatMap(collectFiles)) {
@@ -117,26 +61,25 @@ describe("admin localization guard", () => {
       const lines = readFileSync(file, "utf8").split(/\r?\n/);
 
       lines.forEach((line, index) => {
-        const trimmed = line.trim();
-        if (trimmed.startsWith("//") || isAllowedLine(line)) return;
-
-        if (hasBlockedCopy(line)) {
-          offenders.push(`${relativeFile}:${index + 1} contains English admin copy`);
-        }
-
-        if (RAW_LOCALE_PATTERN.test(line) || EN_FORMAT_PATTERN.test(line)) {
-          offenders.push(`${relativeFile}:${index + 1} uses non-admin locale formatting`);
+        if (RAW_LOCALE_PATTERN.test(line) || FIXED_NL_FORMAT_PATTERN.test(line)) {
+          offenders.push(`${relativeFile}:${index + 1} uses fixed or raw locale formatting`);
         }
       });
     }
 
-    for (const localeFile of ["messages/en.json", "messages/nl.json"]) {
-      const messages = JSON.parse(readFileSync(path.join(ROOT, localeFile), "utf8"));
-      for (const [namespace, key] of ADMIN_MESSAGE_TARGETS) {
-        for (const value of collectAdminMessageValues(messages[namespace]?.[key])) {
-          if (hasBlockedCopy(value)) {
-            offenders.push(`${localeFile}:${namespace}.${key} contains English admin copy "${value}"`);
-          }
+    expect(offenders).toEqual([]);
+  });
+
+  it("keeps English admin message namespaces translated", () => {
+    const offenders: string[] = [];
+    const messages = JSON.parse(readFileSync(path.join(ROOT, "messages/en.json"), "utf8"));
+
+    for (const target of ADMIN_MESSAGE_TARGETS) {
+      const value = target.length === 1 ? messages[target[0]] : messages[target[0]]?.[target[1]];
+
+      for (const copy of collectMessageValues(value)) {
+        if (DUTCH_COPY_PATTERNS.some((pattern) => pattern.test(copy))) {
+          offenders.push(`${target.join(".")} contains Dutch copy "${copy}"`);
         }
       }
     }

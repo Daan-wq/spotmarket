@@ -31,7 +31,7 @@ function flattenStringValues(value: MessageValue): string[] {
 }
 
 describe("localized messages", () => {
-  it.each(["creator", "creatorSettings", "dashboard", "navigation"] as const)(
+  it.each(["adminSettings", "creator", "creatorSettings", "dashboard", "navigation"] as const)(
     "keeps Dutch %s keys in parity with English",
     (namespace) => {
       const enKeys = flattenKeys(enMessages[namespace]).sort();

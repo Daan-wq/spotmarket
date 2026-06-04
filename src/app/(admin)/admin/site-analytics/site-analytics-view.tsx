@@ -1,20 +1,21 @@
 import Link from "next/link";
 import { AlertTriangle, ExternalLink } from "lucide-react";
 import { PageHeader, SectionHeader, StatCard } from "@/components/ui/page";
+import type { Locale } from "@/i18n/routing";
 import type { SiteAnalyticsDashboard } from "@/lib/site-analytics/dashboard";
 import { SiteAnalyticsTrendChart } from "./site-analytics-trend-chart";
 
-function formatCompact(value: number) {
-  return new Intl.NumberFormat("nl-NL", { notation: "compact", maximumFractionDigits: 1 }).format(value);
+function formatCompact(value: number, locale: string) {
+  return new Intl.NumberFormat(locale, { notation: "compact", maximumFractionDigits: 1 }).format(value);
 }
 
 function formatPercent(value: number) {
   return `${value.toFixed(1)}%`;
 }
 
-function formatDate(value: Date | null) {
+function formatDate(value: Date | null, locale: string) {
   if (!value) return "Nooit gesynchroniseerd";
-  return new Intl.DateTimeFormat("nl-NL", {
+  return new Intl.DateTimeFormat(locale, {
     dateStyle: "medium",
     timeStyle: "short",
     timeZone: "UTC",
@@ -37,9 +38,11 @@ function RangeLink({ days, active }: { days: 14 | 30; active: boolean }) {
 export function SiteAnalyticsView({
   dashboard,
   showChart = true,
+  locale = "nl",
 }: {
   dashboard: SiteAnalyticsDashboard;
   showChart?: boolean;
+  locale?: Locale;
 }) {
   const { metrics } = dashboard;
   const isPostHogConfigured = dashboard.configuration.isConfigured;
@@ -55,7 +58,7 @@ export function SiteAnalyticsView({
 
       <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-neutral-200 bg-white px-4 py-3">
         <p className="text-sm text-neutral-500">
-          Laatste sync: <span className="font-medium text-neutral-800">{formatDate(dashboard.lastSyncedAt)}</span>
+          Laatste sync: <span className="font-medium text-neutral-800">{formatDate(dashboard.lastSyncedAt, locale)}</span>
         </p>
         <div className="flex items-center gap-2">
           <RangeLink days={14} active={dashboard.rangeDays === 14} />
@@ -96,9 +99,9 @@ export function SiteAnalyticsView({
       <section>
         <SectionHeader title="Gebruiksbasis" description={`Primair sitegebruik over de laatste ${dashboard.rangeDays} dagen.`} />
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-5">
-          <StatCard label="Bezoekers" value={formatCompact(metrics.visitors)} detail="Unieke niet-admingebruikers" />
-          <StatCard label="Sessies" value={formatCompact(metrics.sessions)} detail="PostHog-sessie-ID's" />
-          <StatCard label="Pageviews" value={formatCompact(metrics.pageviews)} detail="Gemeten routeviews" />
+          <StatCard label="Bezoekers" value={formatCompact(metrics.visitors, locale)} detail="Unieke niet-admingebruikers" />
+          <StatCard label="Sessies" value={formatCompact(metrics.sessions, locale)} detail="PostHog-sessie-ID's" />
+          <StatCard label="Pageviews" value={formatCompact(metrics.pageviews, locale)} detail="Gemeten routeviews" />
           <StatCard label="Signupconversie" value={formatPercent(metrics.signupConversionRate)} detail={`${metrics.signups} signup-events`} />
           <StatCard label="Onboarding" value={formatPercent(metrics.onboardingCompletionRate)} detail={`${metrics.onboardingCompletions} voltooiingen`} />
         </div>
@@ -120,7 +123,7 @@ export function SiteAnalyticsView({
                 {dashboard.topPages.map((page) => (
                   <div key={page.path} className="flex items-center justify-between gap-4 px-5 py-3">
                     <span className="truncate text-sm font-medium text-neutral-800">{page.path}</span>
-                    <span className="text-sm font-semibold text-neutral-950">{formatCompact(page.pageviews)}</span>
+                    <span className="text-sm font-semibold text-neutral-950">{formatCompact(page.pageviews, locale)}</span>
                   </div>
                 ))}
               </div>
@@ -138,7 +141,7 @@ export function SiteAnalyticsView({
                 {dashboard.referrers.map((referrer) => (
                   <div key={referrer.source} className="flex items-center justify-between gap-4 px-5 py-3">
                     <span className="truncate text-sm font-medium text-neutral-800">{referrer.source}</span>
-                    <span className="text-sm font-semibold text-neutral-950">{formatCompact(referrer.visits)}</span>
+                    <span className="text-sm font-semibold text-neutral-950">{formatCompact(referrer.visits, locale)}</span>
                   </div>
                 ))}
               </div>
@@ -157,7 +160,7 @@ export function SiteAnalyticsView({
                   <div className="mb-1 flex items-center justify-between text-sm">
                     <span className="font-medium text-neutral-800">{step.label}</span>
                     <span className="font-semibold text-neutral-950">
-                      {formatCompact(step.count)} · {formatPercent(step.rate)}
+                      {formatCompact(step.count, locale)} · {formatPercent(step.rate)}
                     </span>
                   </div>
                   <div className="h-2 rounded-full bg-neutral-100">

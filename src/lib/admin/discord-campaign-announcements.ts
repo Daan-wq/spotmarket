@@ -1,5 +1,6 @@
 import type { Prisma } from "@prisma/client";
 import { discordMessageUrl, sendDiscordMessage } from "@/lib/admin/discord";
+import { DEFAULT_LOCALE } from "@/i18n/routing";
 import { prisma } from "@/lib/prisma";
 
 type CampaignAnnouncementCampaign = {
@@ -164,14 +165,14 @@ function toNumber(value: unknown): number {
 }
 
 function formatEuro(value: number): string {
-  return `€${new Intl.NumberFormat("nl-NL", {
+  return `€${new Intl.NumberFormat(DEFAULT_LOCALE, {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   }).format(Number.isFinite(value) ? value : 0)}`;
 }
 
 function formatInteger(value: number): string {
-  return new Intl.NumberFormat("nl-NL", { maximumFractionDigits: 0 }).format(value);
+  return new Intl.NumberFormat(DEFAULT_LOCALE, { maximumFractionDigits: 0 }).format(value);
 }
 
 function joinWithAmpersand(values: string[]): string {

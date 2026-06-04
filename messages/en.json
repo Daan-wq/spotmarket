@@ -289,6 +289,21 @@
       "deleteDescription": "Permanently delete your account and all associated data."
     }
   },
+  "adminSettings": {
+    "metaTitle": "Admin Settings",
+    "header": {
+      "eyebrow": "Preferences",
+      "title": "Admin Settings",
+      "description": "Manage dashboard preferences for this browser."
+    },
+    "language": {
+      "title": "Language",
+      "description": "Choose the admin dashboard language for this browser. The setting is saved immediately.",
+      "ariaLabel": "Admin dashboard language",
+      "saved": "Language updated.",
+      "error": "Could not update language."
+    }
+  },
   "navigation": {
     "creatorNav": {
       "campaigns": "Campaigns",
@@ -307,30 +322,34 @@
       "menu": "Creator menu"
     },
     "adminNav": {
-      "operate": "Operatie",
-      "delivery": "Levering",
-      "control": "Controle",
-      "commandCenter": "Commandcenter",
-      "campaigns": "Campagnes",
-      "referrals": "Referralnetwerk",
+      "operate": "Operate",
+      "delivery": "Delivery",
+      "control": "Control",
+      "commandCenter": "Command Center",
+      "campaigns": "Campaigns",
+      "referrals": "Referral Network",
       "clippers": "Clippers",
-      "production": "Productie",
-      "clipReview": "Clipreview",
+      "production": "Production",
+      "clipReview": "Clip Review",
       "leads": "Leads",
       "discord": "Discord",
       "recruitment": "Recruitment",
-      "brands": "Merken",
-      "brandPortals": "/brand toegang",
+      "brands": "Brands",
+      "brandPortals": "Brand Access",
       "onboarding": "Onboarding",
-      "payouts": "Uitbetalingen",
-      "pricing": "Prijzen",
-      "documents": "Documenten",
-      "reports": "Rapportages",
-      "siteAnalytics": "Site-analytics",
-      "guides": "Handleidingen",
-      "signals": "Signalen",
-      "search": "Zoeken",
-      "signOut": "Uitloggen"
+      "payouts": "Payouts",
+      "pricing": "Pricing",
+      "documents": "Documents",
+      "reports": "Reports",
+      "siteAnalytics": "Site Analytics",
+      "guides": "Guides",
+      "signals": "Signals",
+      "profile": "Profile",
+      "profileComingSoon": "Coming soon",
+      "settings": "Settings",
+      "search": "Search",
+      "signOut": "Sign out",
+      "dashboard": "Admin dashboard"
     }
   },
   "dashboard": {
@@ -558,174 +577,177 @@
     },
     "admin": {
       "header": {
-        "eyebrow": "Bureau OS",
-        "title": "Commandcenter",
-        "description": "Begin hier voor de volgende operationele stap en open details alleen wanneer je ze nodig hebt.",
-        "newLead": "Nieuwe lead"
+        "eyebrow": "Agency OS",
+        "title": "Command Center",
+        "description": "Start here for the next operational step and open details only when you need them.",
+        "newLead": "New lead"
       },
       "sections": {
         "actionQueue": {
-          "title": "Dagelijkse actielijst",
-          "description": "Gesorteerd op operationele urgentie, niet op menuvolgorde."
+          "title": "Daily Action Queue",
+          "description": "Sorted by operational urgency, not menu order."
         },
         "coreNumbers": {
-          "title": "Kerncijfers",
-          "description": "De eerste rij blijft compact; diepere rapportage open je via Rapportages.",
-          "action": "Weekcijfers bekijken"
+          "title": "Core Numbers",
+          "description": "The first row stays compact; deeper reporting opens through Reports.",
+          "action": "View weekly numbers"
         },
         "drillIns": {
           "title": "Details",
-          "description": "Open het specifieke gebied wanneer de actielijst daarheen wijst."
+          "description": "Open the specific area when the action queue points there."
         }
       },
       "queue": {
         "labels": {
           "leads": "Leads",
           "onboarding": "Onboarding",
-          "production": "Productie",
-          "review": "Beoordeling",
-          "money": "Geld",
-          "guide": "Handleiding",
-          "risk": "Risico",
-          "clear": "Schoon"
+          "production": "Production",
+          "review": "Review",
+          "money": "Money",
+          "guide": "Guide",
+          "risk": "Risk",
+          "clear": "Clear"
         },
         "followUps": {
-          "title": "{count, plural, one {Volg # merklead op} other {Volg # merkleads op}}",
-          "detail": "Lead-follow-ups zijn nu nodig. Verplaats de lead, plan de call of houd hem warm."
+          "title": "{count, plural, one {Follow up # brand lead} other {Follow up # brand leads}}",
+          "detail": "Lead follow-ups are due now. Move the lead, book the call, or keep it warm."
         },
         "onboarding": {
-          "title": "{count, plural, one {# onboardingchecklist geblokkeerd} other {# onboardingchecklists geblokkeerd}}",
-          "detail": "Contract, betaling, brief, assets, doelgroep en toegewezen clippers moeten compleet zijn voor productie."
+          "title": "{count, plural, one {# onboarding checklist blocked} other {# onboarding checklists blocked}}",
+          "detail": "Contract, payment, brief, assets, audience, and assigned clippers must be complete before production."
         },
         "overdue": {
-          "title": "{count, plural, one {# productieopdracht te laat} other {# productieopdrachten te laat}}",
-          "detail": "Productie start bij de toegewezen clip, niet pas nadat de creator inzendt. Werk te late taken eerst weg."
+          "title": "{count, plural, one {# production assignment overdue} other {# production assignments overdue}}",
+          "detail": "Production starts with the assigned clip, not only after the creator submits. Clear overdue tasks first."
         },
         "review": {
-          "title": "{count, plural, one {Beoordeel # clip} other {Beoordeel # clips}}",
-          "detail": "{missingLogo, plural, one {# item zonder logo} other {# items zonder logo}}, {revisionAssignments, plural, one {# revisieopdracht} other {# revisieopdrachten}}."
+          "title": "{count, plural, one {Review # clip} other {Review # clips}}",
+          "detail": "{missingLogo, plural, one {# item without logo} other {# items without logos}}, {revisionAssignments, plural, one {# revision assignment} other {# revision assignments}}."
         },
         "payout": {
-          "title": "Sluit de uitbetalingslus",
-          "detail": "{payoutRuns, plural, one {# uitbetalingsrun} other {# uitbetalingsruns}} actief, {amount} verschuldigd uit legacy uitbetalingen."
+          "title": "Close the payout loop",
+          "detail": "{payoutRuns, plural, one {# payout run} other {# payout runs}} active, {amount} owed from legacy payouts."
         },
         "guide": {
-          "title": "{count, plural, one {# handleiding moet gereviewd worden} other {# handleidingen moeten gereviewd worden}}",
-          "detail": "Houd sales, onboarding, recruitment, productie, clipreview, uitbetalingen en rapportagehandleidingen actueel."
+          "title": "{count, plural, one {# guide needs review} other {# guides need review}}",
+          "detail": "Keep sales, onboarding, recruitment, production, clip review, payout, and reporting guides current."
         },
         "risk": {
-          "title": "{count, plural, one {Los # open risicosignaal op} other {Los # open risicosignalen op}}",
-          "detail": "{critical} kritiek, {tokenBroken} token-gerelateerd. Deze voeden leveringsrisico."
+          "title": "{count, plural, one {Resolve # open risk signal} other {Resolve # open risk signals}}",
+          "detail": "{critical} critical, {tokenBroken} token-related. These feed delivery risk."
         },
         "empty": {
-          "title": "Geen urgente blokkades",
-          "detail": "Gebruik de pipeline en weekcijfers om de volgende sales-, productie- of uitbetalingsstap te kiezen."
+          "title": "No urgent blockers",
+          "detail": "Use the pipeline and weekly numbers to choose the next sales, production, or payout step."
         }
       },
       "metrics": {
         "revenue": {
-          "label": "Omzet",
-          "detail": "Deze maand geboekt"
+          "label": "Revenue",
+          "detail": "Booked this month"
         },
         "expectedRevenue": {
-          "label": "Verwachte omzet",
-          "detail": "Campagnedeadlines volgende maand"
+          "label": "Expected revenue",
+          "detail": "Campaign deadlines next month"
         },
         "activeBrands": {
-          "label": "Actieve merken",
+          "label": "Active brands",
           "detail": "{amount} open pijplijn"
         },
         "activeClippers": {
-          "label": "Actieve clippers",
-          "detail": "{count, plural, one {# clip klaar of in uitvoering} other {# clips klaar of in uitvoering}}"
+          "label": "Active clippers",
+          "detail": "{count, plural, one {# clip ready or in progress} other {# clips ready or in progress}}"
         },
         "clipApprovals": {
-          "label": "Clipgoedkeuringen",
-          "detail": "Goedgekeurd / aangepast deze week"
+          "label": "Clip approvals",
+          "detail": "Approved / revised this week"
         },
         "payoutsOwed": {
-          "label": "Verschuldigde uitbetalingen",
-          "detail": "Legacy uitbetalingsverplichtingen"
+          "label": "Payouts owed",
+          "detail": "Legacy payout obligations"
         },
         "estimatedProfit": {
-          "label": "Geschatte winst",
-          "detail": "Geboekt min creatorkosten en open uitbetalingen"
+          "label": "Estimated profit",
+          "detail": "Booked revenue minus creator costs and open payouts"
         },
         "risk": {
-          "label": "Risico",
+          "label": "Risk",
           "value": "{count} open",
-          "detail": "{count, plural, one {# kapot tokensignaal} other {# kapotte tokensignalen}}"
+          "detail": "{count, plural, one {# broken token signal} other {# broken token signals}}"
         }
       },
       "pipeline": {
         "lead": "Lead",
         "onboarding": "Onboarding",
-        "campaign": "Campagne",
-        "production": "Productie",
-        "review": "Clipreview",
-        "payouts": "Uitbetalingen",
-        "reports": "Rapportages"
+        "campaign": "Campaign",
+        "production": "Production",
+        "review": "Clip Review",
+        "payouts": "Payouts",
+        "reports": "Reports"
       },
       "drillIns": {
-        "pipelineTitle": "Pijplijn",
-        "usefulAreasTitle": "Nuttige gebieden",
-        "deliveryRiskTitle": "Leveringsrisico",
-        "noRisk": "Geen campagnerisico's voor tempo in de komende 7 dagen.",
-        "capturedViews": "{captured} / {goal} views vastgelegd.",
+        "pipelineTitle": "Pipeline",
+        "usefulAreasTitle": "Useful areas",
+        "deliveryRiskTitle": "Delivery risk",
+        "open": "Open",
+        "live": "Live",
+        "manual": "Manual",
+        "noRisk": "No campaign pace risks in the next 7 days.",
+        "capturedViews": "{captured} / {goal} views captured.",
         "weeklyClose": {
-          "title": "Weekafsluiting",
-          "detail": "Bevestig goedgekeurde clips, rond uitbetalingsruns af en log handleidingupdates voor de volgende rapportagecyclus."
+          "title": "Weekly close",
+          "detail": "Confirm approved clips, finish payout runs, and log guide updates for the next reporting cycle."
         },
-        "openClipReview": "Clipreview openen"
+        "openClipReview": "Open Clip Review"
       },
       "operatingAreas": {
         "commandCenter": {
-          "name": "Commandcenter",
-          "detail": "Eerste dagbeeld van werk, geld en risico"
+          "name": "Command Center",
+          "detail": "First daily view of work, money, and risk"
         },
         "leads": {
           "name": "Leads",
-          "detail": "Leadpipeline, follow-ups, eigenaar en waarde"
+          "detail": "Lead pipeline, follow-ups, owner, and value"
         },
         "brandOnboarding": {
-          "name": "Merkonboarding",
-          "detail": "Contract, betaling, brief, assets en toegewezen clippers"
+          "name": "Brand onboarding",
+          "detail": "Contract, payment, brief, assets, and assigned clippers"
         },
         "clipperDatabase": {
-          "name": "Clipperdatabase",
-          "detail": "Creatorprofielen, operatie, capaciteit en toegewezen merken"
+          "name": "Clipper database",
+          "detail": "Creator profiles, operations, capacity, and assigned brands"
         },
         "recruitmentPipeline": {
-          "name": "Recruitmentpipeline",
-          "detail": "Kandidaten, trials, scores en goedkeuringen"
+          "name": "Recruitment pipeline",
+          "detail": "Candidates, trials, scores, and approvals"
         },
         "contentProduction": {
-          "name": "Contentproductie",
-          "detail": "Opdrachten, deadlines, revisies en inzendingen"
+          "name": "Content production",
+          "detail": "Assignments, deadlines, revisions, and submissions"
         },
         "clipReview": {
-          "name": "Clipreview",
-          "detail": "Scorecards, logoreview, goedkeuringen en signalen"
+          "name": "Clip Review",
+          "detail": "Scorecards, logo review, approvals, and signals"
         },
         "payouts": {
-          "name": "Uitbetalingen",
-          "detail": "Creatoruitbetalingen en historie"
+          "name": "Payouts",
+          "detail": "Creator payouts and history"
         },
         "pricing": {
-          "name": "Prijzen",
-          "detail": "Herbruikbare pakketten voor merk- en campagneplanning"
+          "name": "Pricing",
+          "detail": "Reusable packages for brand and campaign planning"
         },
         "documents": {
-          "name": "Documenten",
-          "detail": "Contracten, briefs, eigenaren, links en verlengdata"
+          "name": "Documents",
+          "detail": "Contracts, briefs, owners, links, and renewal dates"
         },
         "guides": {
-          "name": "Handleidingen",
-          "detail": "Doorzoekbare operationele handleidingen met review-eigenaren"
+          "name": "Guides",
+          "detail": "Searchable operating guides with review owners"
         },
         "weeklyNumbers": {
-          "name": "Weekcijfers",
-          "detail": "Opgeslagen wekelijkse reviewsnapshots uit live data"
+          "name": "Weekly numbers",
+          "detail": "Saved weekly review snapshots from live data"
         }
       }
     }

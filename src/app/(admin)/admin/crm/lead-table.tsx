@@ -1,6 +1,7 @@
 "use client";
 
 import { Archive, Building2, Pencil, RotateCcw, Save, X } from "lucide-react";
+import { useLocale } from "next-intl";
 import { useRouter } from "next/navigation";
 import type { ReactNode } from "react";
 import { useMemo, useState } from "react";
@@ -53,6 +54,7 @@ type ConfirmAction = { type: "archive" | "convert"; lead: LeadTableLead } | null
 
 export function LeadDatabase({ leads }: { leads: LeadTableLead[] }) {
   const router = useRouter();
+  const locale = useLocale();
   const [filters, setFilters] = useState<LeadFilters>(DEFAULT_LEAD_FILTERS);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [draft, setDraft] = useState<LeadDraft | null>(null);
@@ -217,6 +219,7 @@ export function LeadDatabase({ leads }: { leads: LeadTableLead[] }) {
               </summary>
               <LeadTable
                 leads={group.leads}
+                locale={locale}
                 editingId={editingId}
                 draft={draft}
                 busyKey={busyKey}
@@ -362,6 +365,7 @@ function ToolbarSelect({
 
 function LeadTable({
   leads,
+  locale,
   editingId,
   draft,
   busyKey,
@@ -375,6 +379,7 @@ function LeadTable({
   onStatusChange,
 }: {
   leads: LeadTableLead[];
+  locale: string;
   editingId: string | null;
   draft: LeadDraft | null;
   busyKey: string | null;
@@ -429,6 +434,7 @@ function LeadTable({
               <ReadRow
                 key={lead.id}
                 lead={lead}
+                locale={locale}
                 busyKey={busyKey}
                 onArchive={() => onArchive(lead)}
                 onConvert={() => onConvert(lead)}
@@ -446,6 +452,7 @@ function LeadTable({
 
 function ReadRow({
   lead,
+  locale,
   busyKey,
   onArchive,
   onConvert,
@@ -454,6 +461,7 @@ function ReadRow({
   onStatusChange,
 }: {
   lead: LeadTableLead;
+  locale: string;
   busyKey: string | null;
   onArchive: () => void;
   onConvert: () => void;
@@ -488,7 +496,7 @@ function ReadRow({
       <td className="min-w-0 break-words px-3 py-3 align-top text-neutral-700">{lead.conversionBlocker || "-"}</td>
       <td className="min-w-0 px-3 py-3 align-top text-neutral-700">
         <p className="line-clamp-2">{lead.nextAction || "-"}</p>
-        {lead.nextFollowUpAt ? <p className="mt-1 text-xs text-neutral-400">{formatDateDisplay(lead.nextFollowUpAt)}</p> : null}
+        {lead.nextFollowUpAt ? <p className="mt-1 text-xs text-neutral-400">{formatDateDisplay(lead.nextFollowUpAt, locale)}</p> : null}
       </td>
       <td className="min-w-0 px-3 py-3 align-top">
         <p className="text-neutral-700">{lead.contactName || "-"}</p>
@@ -667,8 +675,8 @@ function externalHref(value: string) {
   return `https://${value}`;
 }
 
-function formatDateDisplay(value: string) {
-  return new Intl.DateTimeFormat("nl-NL", { day: "2-digit", month: "short", year: "numeric" }).format(new Date(value));
+function formatDateDisplay(value: string, locale: string) {
+  return new Intl.DateTimeFormat(locale, { day: "2-digit", month: "short", year: "numeric" }).format(new Date(value));
 }
 
 function formatDateForInput(value: string | null) {

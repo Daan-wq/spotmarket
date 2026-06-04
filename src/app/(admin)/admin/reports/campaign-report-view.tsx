@@ -11,6 +11,7 @@ import {
   Users,
   Zap,
 } from "lucide-react";
+import { useLocale } from "next-intl";
 import { Badge } from "@/components/ui/badge";
 import { formatCurrency, formatDate, formatNumber, titleCaseEnum } from "@/lib/admin/agency-format";
 import type { CampaignReportLiveData } from "@/lib/admin/campaign-reporting";
@@ -51,6 +52,8 @@ export function CampaignReportView({
   periodEnd,
   widthMode = "page",
 }: CampaignReportViewProps) {
+  const locale = useLocale();
+
   if (!liveData) {
     return (
       <div className="rounded-lg border border-dashed border-neutral-200 bg-white px-6 py-16 text-center">
@@ -62,7 +65,7 @@ export function CampaignReportView({
   }
 
   const enabled = (sectionKey: CampaignReportSectionKey) => sectionSettings[sectionKey];
-  const reportPeriod = formatPeriod(periodStart || liveData.period.start, periodEnd || liveData.period.end);
+  const reportPeriod = formatPeriod(periodStart || liveData.period.start, periodEnd || liveData.period.end, locale);
   const topPlatform = liveData.platformBreakdown[0];
   const topClip = liveData.topContent[0];
   const keyLearningItems = editorialContent.keyLearnings.length > 0 ? editorialContent.keyLearnings : learnings;
@@ -70,15 +73,15 @@ export function CampaignReportView({
     ? editorialContent.nextCampaignPlan
     : recommendations;
   const summaryCards = [
-    { label: "Goedgekeurde views", value: formatNumber(liveData.performance.approvedViews, "nl"), detail: percentOrDash(liveData.performance.goalCompletion, "van doel") },
+    { label: "Goedgekeurde views", value: formatNumber(liveData.performance.approvedViews, locale), detail: percentOrDash(liveData.performance.goalCompletion, "van doel") },
     { label: "Doelvoortgang", value: percentOrDash(liveData.performance.goalCompletion), detail: liveData.performance.pacingStatus },
-    { label: "Budget gebruikt", value: formatCurrency(liveData.performance.budgetUsed, "EUR", "nl"), detail: percentOrDash(liveData.performance.budgetUsedPercent, "verbruikt") },
-    { label: "Effectieve CPM", value: formatCpm(liveData.financial.effectiveCpm), detail: "per 1.000 goedgekeurde views" },
-    { label: "Overdelivery", value: formatNumber(liveData.financial.overdeliveryViews, "nl"), detail: overdeliveryDetail(liveData.financial.overdeliveryRate) },
-    { label: "Goedgekeurde clips", value: formatNumber(liveData.performance.approvedClips, "nl"), detail: `${formatNumber(liveData.performance.totalSubmissions, "nl")} inzendingen` },
-    { label: "Unieke creators", value: formatNumber(liveData.performance.uniqueCreators, "nl"), detail: "creators met inzendingen" },
-    { label: "Unieke pages", value: formatNumber(liveData.performance.uniquePages, "nl"), detail: "pages met inzendingen" },
-    { label: "Topplatform", value: topPlatform?.platform ?? "-", detail: topPlatform ? `${formatNumber(topPlatform.views, "nl")} views` : "onvoldoende data" },
+    { label: "Budget gebruikt", value: formatCurrency(liveData.performance.budgetUsed, "EUR", locale), detail: percentOrDash(liveData.performance.budgetUsedPercent, "verbruikt") },
+    { label: "Effectieve CPM", value: formatCpm(liveData.financial.effectiveCpm, locale), detail: "per 1.000 goedgekeurde views" },
+    { label: "Overdelivery", value: formatNumber(liveData.financial.overdeliveryViews, locale), detail: overdeliveryDetail(liveData.financial.overdeliveryRate) },
+    { label: "Goedgekeurde clips", value: formatNumber(liveData.performance.approvedClips, locale), detail: `${formatNumber(liveData.performance.totalSubmissions, locale)} inzendingen` },
+    { label: "Unieke creators", value: formatNumber(liveData.performance.uniqueCreators, locale), detail: "creators met inzendingen" },
+    { label: "Unieke pages", value: formatNumber(liveData.performance.uniquePages, locale), detail: "pages met inzendingen" },
+    { label: "Topplatform", value: topPlatform?.platform ?? "-", detail: topPlatform ? `${formatNumber(topPlatform.views, locale)} views` : "onvoldoende data" },
   ];
 
   return (
@@ -113,7 +116,7 @@ export function CampaignReportView({
               <div className="mt-6 rounded-lg border border-neutral-200 p-4">
                 <p className="text-xs font-semibold uppercase tracking-[0.12em] text-neutral-400">Best presterende clip</p>
                 <p className="mt-2 text-sm leading-6 text-neutral-700">
-                  {topClip.platform}-clip van {topClip.creator} leverde {formatNumber(topClip.views, "nl")} goedgekeurde views. {editorialContent.topContentNotes[topClip.id] ?? "Gebruik de hook, pacing en productintegratie als referentie voor de volgende ronde."}
+                  {topClip.platform}-clip van {topClip.creator} leverde {formatNumber(topClip.views, locale)} goedgekeurde views. {editorialContent.topContentNotes[topClip.id] ?? "Gebruik de hook, pacing en productintegratie als referentie voor de volgende ronde."}
                 </p>
               </div>
             ) : null}
@@ -127,12 +130,12 @@ export function CampaignReportView({
             <div className={cn("mt-7 grid gap-4", widthMode === "full" ? "md:grid-cols-4" : "md:grid-cols-2")}>
               <SetupRow label="Campagnetype" value={editorialContent.campaignType || liveData.campaign.contentType || "Awareness"} />
               <SetupRow label="Platforms" value={liveData.campaign.platforms.join(", ") || "-"} />
-              <SetupRow label="Doelviews" value={formatGoalViews(liveData.campaign.goalViews, liveData.campaign.goalViewsSource)} />
-              <SetupRow label="Budget" value={formatCurrency(liveData.campaign.totalBudget, "EUR", "nl")} />
-              <SetupRow label="Business CPM" value={formatCpm(liveData.campaign.businessCpm)} />
+              <SetupRow label="Doelviews" value={formatGoalViews(liveData.campaign.goalViews, liveData.campaign.goalViewsSource, locale)} />
+              <SetupRow label="Budget" value={formatCurrency(liveData.campaign.totalBudget, "EUR", locale)} />
+              <SetupRow label="Business CPM" value={formatCpm(liveData.campaign.businessCpm, locale)} />
               <SetupRow label="Doelland" value={liveData.campaign.target.country ?? "-"} />
-              <SetupRow label="Creatorcriteria" value={`${formatNumber(liveData.campaign.target.minFollowers, "nl")} min. volgers`} />
-              <SetupRow label="Uitbetalingsregels" value={`${formatNumber(liveData.campaign.minimumPaidViews, "nl")} - ${liveData.campaign.maximumPaidViews ? formatNumber(liveData.campaign.maximumPaidViews, "nl") : "zonder limiet"} betaalde views`} />
+              <SetupRow label="Creatorcriteria" value={`${formatNumber(liveData.campaign.target.minFollowers, locale)} min. volgers`} />
+              <SetupRow label="Uitbetalingsregels" value={`${formatNumber(liveData.campaign.minimumPaidViews, locale)} - ${liveData.campaign.maximumPaidViews ? formatNumber(liveData.campaign.maximumPaidViews, locale) : "zonder limiet"} betaalde views`} />
               <SetupRow label="Goedkeuringsregels" value="Alleen goedgekeurde prestaties" />
             </div>
             <div className="mt-6 grid gap-4 md:grid-cols-2">
@@ -152,13 +155,13 @@ export function CampaignReportView({
           <ReportPage widthMode={widthMode}>
             <ReportHeading icon={<BarChart3 className="h-5 w-5" />} kicker="Businessresultaat" title="Prestatieoverzicht" />
             <div className={cn("mt-7 grid gap-3", widthMode === "full" ? "md:grid-cols-4" : "md:grid-cols-2")}>
-              <MetricCard label="Goedgekeurde views" value={formatNumber(liveData.performance.approvedViews, "nl")} detail={percentOrDash(liveData.performance.goalCompletion, "van doel")} />
+              <MetricCard label="Goedgekeurde views" value={formatNumber(liveData.performance.approvedViews, locale)} detail={percentOrDash(liveData.performance.goalCompletion, "van doel")} />
               <MetricCard label="Pacingstatus" value={liveData.performance.pacingStatus} detail={pacingDetail(liveData.performance.pacingStatus)} />
-              <MetricCard label="Goedgekeurde clips" value={formatNumber(liveData.performance.approvedClips, "nl")} detail={percentOrDash(liveData.performance.approvalRate, "goedkeuringspercentage")} />
-              <MetricCard label="Engagement" value={formatNumber(liveData.platformBreakdown.reduce((sum, row) => sum + row.engagement, 0), "nl")} detail="likes, comments en shares" />
+              <MetricCard label="Goedgekeurde clips" value={formatNumber(liveData.performance.approvedClips, locale)} detail={percentOrDash(liveData.performance.approvalRate, "goedkeuringspercentage")} />
+              <MetricCard label="Engagement" value={formatNumber(liveData.platformBreakdown.reduce((sum, row) => sum + row.engagement, 0), locale)} detail="likes, comments en shares" />
             </div>
-            <TimelineChart rows={liveData.timeline} />
-            <StatusGrid statusCounts={liveData.performance.statusCounts} />
+            <TimelineChart rows={liveData.timeline} locale={locale} />
+            <StatusGrid statusCounts={liveData.performance.statusCounts} locale={locale} />
             <InsightNote text={topPlatform ? `${topPlatform.platform} leverde de grootste schaal. Gebruik het prestatieoverzicht voor het totale resultaat en platformprestaties voor budgetkeuzes.` : "Er is meer goedgekeurde delivery nodig voordat er een sterke kanaalconclusie mogelijk is."} />
           </ReportPage>
         ) : null}
@@ -167,17 +170,17 @@ export function CampaignReportView({
           <ReportPage widthMode={widthMode}>
             <ReportHeading icon={<DollarSign className="h-5 w-5" />} kicker="Budgetefficientie" title="Financieel overzicht" />
             <div className={cn("mt-7 grid gap-3", widthMode === "full" ? "md:grid-cols-4" : "md:grid-cols-2")}>
-              <MetricCard label="Totaalbudget" value={formatCurrency(liveData.financial.totalBudget, "EUR", "nl")} detail="campagneallocatie" />
-              <MetricCard label="Budget gebruikt" value={formatCurrency(liveData.financial.budgetUsed, "EUR", "nl")} detail={percentOrDash(liveData.performance.budgetUsedPercent, "gebruikt")} />
-              <MetricCard label="Resterend budget" value={formatCurrency(liveData.financial.budgetRemaining, "EUR", "nl")} detail="beschikbaar na goedgekeurde delivery" />
-              <MetricCard label="Effectieve CPM" value={formatCpm(liveData.financial.effectiveCpm)} detail="per 1.000 goedgekeurde views" />
-              <MetricCard label="Kosten per clip" value={formatNullableCurrency(liveData.financial.costPerApprovedClip)} detail="goedgekeurde clips" />
-              <MetricCard label="Kosten per unieke creator" value={formatNullableCurrency(liveData.financial.costPerActiveCreator)} detail="creators met inzendingen" />
-              <MetricCard label="Betaalde viewbasis" value={formatNumber(liveData.financial.approvedPayableViews, "nl")} detail="views volgens CPM-spend" />
-              <MetricCard label="Overdelivery" value={formatNumber(liveData.financial.overdeliveryViews, "nl")} detail={overdeliveryDetail(liveData.financial.overdeliveryRate)} />
-              <MetricCard label="Forecast views" value={liveData.financial.forecastApprovedViews == null ? "-" : formatNumber(liveData.financial.forecastApprovedViews, "nl")} detail="lineaire voortzetting" />
+              <MetricCard label="Totaalbudget" value={formatCurrency(liveData.financial.totalBudget, "EUR", locale)} detail="campagneallocatie" />
+              <MetricCard label="Budget gebruikt" value={formatCurrency(liveData.financial.budgetUsed, "EUR", locale)} detail={percentOrDash(liveData.performance.budgetUsedPercent, "gebruikt")} />
+              <MetricCard label="Resterend budget" value={formatCurrency(liveData.financial.budgetRemaining, "EUR", locale)} detail="beschikbaar na goedgekeurde delivery" />
+              <MetricCard label="Effectieve CPM" value={formatCpm(liveData.financial.effectiveCpm, locale)} detail="per 1.000 goedgekeurde views" />
+              <MetricCard label="Kosten per clip" value={formatNullableCurrency(liveData.financial.costPerApprovedClip, locale)} detail="goedgekeurde clips" />
+              <MetricCard label="Kosten per unieke creator" value={formatNullableCurrency(liveData.financial.costPerActiveCreator, locale)} detail="creators met inzendingen" />
+              <MetricCard label="Betaalde viewbasis" value={formatNumber(liveData.financial.approvedPayableViews, locale)} detail="views volgens CPM-spend" />
+              <MetricCard label="Overdelivery" value={formatNumber(liveData.financial.overdeliveryViews, locale)} detail={overdeliveryDetail(liveData.financial.overdeliveryRate)} />
+              <MetricCard label="Forecast views" value={liveData.financial.forecastApprovedViews == null ? "-" : formatNumber(liveData.financial.forecastApprovedViews, locale)} detail="lineaire voortzetting" />
             </div>
-            <OverdeliveryBlock financial={liveData.financial} />
+            <OverdeliveryBlock financial={liveData.financial} locale={locale} />
             <InsightNote text={editorialContent.financialNote || liveData.financial.unusedBudgetExplanation} />
           </ReportPage>
         ) : null}
@@ -185,7 +188,7 @@ export function CampaignReportView({
         {enabled("platformBreakdown") ? (
           <ReportPage widthMode={widthMode}>
             <ReportHeading icon={<Target className="h-5 w-5" />} kicker="Kanaaldelivery" title="Platformprestaties" />
-            <PlatformPerformance rows={liveData.platformBreakdown} recommendations={editorialContent.platformRecommendations} />
+            <PlatformPerformance rows={liveData.platformBreakdown} recommendations={editorialContent.platformRecommendations} locale={locale} />
             <InsightNote text={topPlatform ? `${topPlatform.platform} is momenteel het sterkste schaalkanaal. Vergelijk CPM en engagementpercentage voordat je de volgende budgetsplit verschuift.` : "Er is nog niet genoeg goedgekeurde platformdata om een budgetverschuiving aan te bevelen."} />
           </ReportPage>
         ) : null}
@@ -193,7 +196,7 @@ export function CampaignReportView({
         {enabled("topContent") ? (
           <ReportPage widthMode={widthMode}>
             <ReportHeading icon={<Sparkles className="h-5 w-5" />} kicker="Beste clips" title="Topcontent" />
-            <TopContentTable rows={liveData.topContent.slice(0, 8)} notes={editorialContent.topContentNotes} />
+            <TopContentTable rows={liveData.topContent.slice(0, 8)} notes={editorialContent.topContentNotes} locale={locale} />
             <InsightNote text={topClip ? "De sterkste clip moet de creatieve referentie worden voor hook, onderwerp, CTA en editingstijl in de volgende campagnebrief." : "Topcontent-learnings worden concreet zodra er goedgekeurde clips beschikbaar zijn."} />
           </ReportPage>
         ) : null}
@@ -209,7 +212,7 @@ export function CampaignReportView({
         {enabled("creatorPerformance") ? (
           <ReportPage widthMode={widthMode}>
             <ReportHeading icon={<Users className="h-5 w-5" />} kicker={`${liveData.performance.uniqueCreators} unieke creators`} title="Creatorprestaties" />
-            <CreatorTable rows={liveData.creators.slice(0, 10)} />
+            <CreatorTable rows={liveData.creators.slice(0, 10)} locale={locale} />
             <div className="mt-6">
               <h3 className="text-sm font-semibold text-neutral-950">Aanbevolen creatorpool</h3>
               <BulletList items={editorialContent.creatorRecommendations} />
@@ -222,9 +225,9 @@ export function CampaignReportView({
           <ReportPage widthMode={widthMode}>
             <ReportHeading icon={<Users className="h-5 w-5" />} kicker={`${liveData.audience.sampleCount} publieksmetingen`} title="Publiek en bereikskwaliteit" />
             <div className="mt-7 grid gap-6 md:grid-cols-3">
-              <Distribution title="Toplanden" rows={liveData.audience.topCountries.map((row) => ({ label: row.code, value: row.share }))} suffix="%" />
-              <Distribution title="Leeftijdsgroepen" rows={objectRows(liveData.audience.ageBuckets)} suffix="%" />
-              <Distribution title="Genderverdeling" rows={objectRows(liveData.audience.genderSplit)} suffix="%" />
+              <Distribution title="Toplanden" rows={liveData.audience.topCountries.map((row) => ({ label: row.code, value: row.share }))} suffix="%" locale={locale} />
+              <Distribution title="Leeftijdsgroepen" rows={objectRows(liveData.audience.ageBuckets)} suffix="%" locale={locale} />
+              <Distribution title="Genderverdeling" rows={objectRows(liveData.audience.genderSplit)} suffix="%" locale={locale} />
             </div>
             <InsightNote text={`Publieksfit: ${liveData.audience.fitStatus}. Beschikbare data verschilt per platform, dus lees deze sectie als richtinggevende bereikskwaliteit.`} />
           </ReportPage>
@@ -233,7 +236,7 @@ export function CampaignReportView({
         {enabled("communityActivation") ? (
           <ReportPage widthMode={widthMode}>
             <ReportHeading icon={<Users className="h-5 w-5" />} kicker="Communitygroei" title="Communityactivatie" />
-            <CommunityActivation data={liveData} />
+            <CommunityActivation data={liveData} locale={locale} />
             <InsightNote text="Communityactivatie is het meest nuttig wanneer creatorwerving of referraldistributie een expliciet campagnedoel is." />
           </ReportPage>
         ) : null}
@@ -258,10 +261,10 @@ export function CampaignReportView({
           <ReportPage widthMode={widthMode}>
             <ReportHeading icon={<FileText className="h-5 w-5" />} kicker="Onderbouwing" title="Appendix / ruwe data" />
             <div className="mt-7 grid gap-6 md:grid-cols-2">
-              <Distribution title="Inzendstatussen" rows={objectRows(liveData.performance.statusCounts)} />
-              <Distribution title="Kwaliteitsbeslissingen" rows={objectRows(liveData.quality.qcDecisionCounts)} />
+              <Distribution title="Inzendstatussen" rows={objectRows(liveData.performance.statusCounts)} locale={locale} />
+              <Distribution title="Kwaliteitsbeslissingen" rows={objectRows(liveData.quality.qcDecisionCounts)} locale={locale} />
             </div>
-            <InsightNote text={editorialContent.appendixNote || `Gegenereerd op ${formatDate(liveData.generatedAt, "nl")}. Appendixdata onderbouwt de hoofdconclusies en is optioneel voor klantlevering.`} />
+            <InsightNote text={editorialContent.appendixNote || `Gegenereerd op ${formatDate(liveData.generatedAt, locale)}. Appendixdata onderbouwt de hoofdconclusies en is optioneel voor klantlevering.`} />
           </ReportPage>
         ) : null}
       </div>
@@ -363,7 +366,7 @@ function InsightNote({ text }: { text: string }) {
   );
 }
 
-function TimelineChart({ rows }: { rows: CampaignReportLiveData["timeline"] }) {
+function TimelineChart({ rows, locale }: { rows: CampaignReportLiveData["timeline"]; locale: string }) {
   const visible = rows.slice(-14);
   const max = Math.max(1, ...visible.map((row) => row.views));
   return (
@@ -378,8 +381,8 @@ function TimelineChart({ rows }: { rows: CampaignReportLiveData["timeline"] }) {
         <div className="flex h-44 items-end gap-1">
           {visible.map((row) => (
             <div key={row.date} className="flex min-w-0 flex-1 flex-col items-center justify-end gap-1">
-              <span className="w-full truncate text-center text-[10px] font-semibold tabular-nums text-neutral-700">{formatNumber(row.views, "nl")}</span>
-              <div className="w-full rounded-t bg-neutral-900" style={{ height: `${Math.max(6, (row.views / max) * 112)}px` }} title={`${row.date}: ${formatNumber(row.views, "nl")} views`} />
+              <span className="w-full truncate text-center text-[10px] font-semibold tabular-nums text-neutral-700">{formatNumber(row.views, locale)}</span>
+              <div className="w-full rounded-t bg-neutral-900" style={{ height: `${Math.max(6, (row.views / max) * 112)}px` }} title={`${row.date}: ${formatNumber(row.views, locale)} views`} />
               <span className="w-full truncate text-center text-[10px] text-neutral-400">{new Date(row.date).getDate()}</span>
             </div>
           ))}
@@ -389,7 +392,7 @@ function TimelineChart({ rows }: { rows: CampaignReportLiveData["timeline"] }) {
   );
 }
 
-function StatusGrid({ statusCounts }: { statusCounts: Record<string, number> }) {
+function StatusGrid({ statusCounts, locale }: { statusCounts: Record<string, number>; locale: string }) {
   const rows = objectRows(statusCounts);
   if (rows.length === 0) return null;
   return (
@@ -397,7 +400,7 @@ function StatusGrid({ statusCounts }: { statusCounts: Record<string, number> }) 
       {rows.map((row) => (
         <div key={row.label} className="rounded-lg bg-neutral-50 px-4 py-3">
           <p className="text-xs font-semibold uppercase tracking-[0.12em] text-neutral-400">{titleCaseEnum(row.label)}</p>
-          <p className="mt-1 text-xl font-semibold text-neutral-950">{formatNumber(row.value, "nl")}</p>
+          <p className="mt-1 text-xl font-semibold text-neutral-950">{formatNumber(row.value, locale)}</p>
         </div>
       ))}
     </div>
@@ -407,9 +410,11 @@ function StatusGrid({ statusCounts }: { statusCounts: Record<string, number> }) 
 function PlatformPerformance({
   rows,
   recommendations,
+  locale,
 }: {
   rows: CampaignReportLiveData["platformBreakdown"];
   recommendations: Record<string, string>;
+  locale: string;
 }) {
   if (rows.length === 0) return <EmptyPreviewLine text="Nog geen goedgekeurde platformdata." />;
   return (
@@ -421,10 +426,10 @@ function PlatformPerformance({
               <h3 className="text-sm font-semibold text-neutral-950">{row.platform}</h3>
               <p className="mt-1 text-xs text-neutral-500">{recommendations[row.platform] || "Aanbeveling kan in de rapportstudio worden bewerkt."}</p>
             </div>
-            <MiniStat label="Views" value={formatNumber(row.views, "nl")} />
-            <MiniStat label="Clips" value={formatNumber(row.clips, "nl")} />
-            <MiniStat label="Gem. views" value={formatNumber(row.averageViewsPerClip, "nl")} />
-            <MiniStat label="CPM" value={formatCpm(row.effectiveCpm)} />
+            <MiniStat label="Views" value={formatNumber(row.views, locale)} />
+            <MiniStat label="Clips" value={formatNumber(row.clips, locale)} />
+            <MiniStat label="Gem. views" value={formatNumber(row.averageViewsPerClip, locale)} />
+            <MiniStat label="CPM" value={formatCpm(row.effectiveCpm, locale)} />
             <MiniStat label="Eng. %" value={formatPercent(row.engagementRate)} />
           </div>
         </div>
@@ -445,9 +450,11 @@ function MiniStat({ label, value }: { label: string; value: string }) {
 function TopContentTable({
   rows,
   notes,
+  locale,
 }: {
   rows: CampaignReportLiveData["topContent"];
   notes: Record<string, string>;
+  locale: string;
 }) {
   if (rows.length === 0) return <EmptyPreviewLine text="Nog geen ingezonden content." />;
   return (
@@ -472,8 +479,8 @@ function TopContentTable({
                 </div>
               </td>
               <td className="px-4 py-3 text-neutral-600">{row.creator}</td>
-              <td className="px-4 py-3 text-right font-semibold text-neutral-950">{formatNumber(row.views, "nl")}</td>
-              <td className="px-4 py-3 text-right text-neutral-600">{formatNumber(row.engagement, "nl")}</td>
+              <td className="px-4 py-3 text-right font-semibold text-neutral-950">{formatNumber(row.views, locale)}</td>
+              <td className="px-4 py-3 text-right text-neutral-600">{formatNumber(row.engagement, locale)}</td>
               <td className="max-w-[22rem] px-4 py-3 text-neutral-600">{notes[row.id] || "Voeg een hook-, format-, CTA- of editingstijl-learning toe."}</td>
             </tr>
           ))}
@@ -483,7 +490,7 @@ function TopContentTable({
   );
 }
 
-function CreatorTable({ rows }: { rows: CampaignReportLiveData["creators"] }) {
+function CreatorTable({ rows, locale }: { rows: CampaignReportLiveData["creators"]; locale: string }) {
   if (rows.length === 0) return <EmptyPreviewLine text="Nog geen creatorprestaties beschikbaar." />;
   return (
     <div className="mt-7 overflow-hidden rounded-lg border border-neutral-200">
@@ -502,9 +509,9 @@ function CreatorTable({ rows }: { rows: CampaignReportLiveData["creators"] }) {
           {rows.map((row) => (
             <tr key={row.creatorId}>
               <td className="px-4 py-3 font-medium text-neutral-950">{row.creator}</td>
-              <td className="px-4 py-3 text-right text-neutral-600">{formatNumber(row.submissions, "nl")}</td>
-              <td className="px-4 py-3 text-right font-semibold text-neutral-950">{formatNumber(row.views, "nl")}</td>
-              <td className="px-4 py-3 text-right text-neutral-600">{row.averageViewsPerApprovedClip == null ? "-" : formatNumber(row.averageViewsPerApprovedClip, "nl")}</td>
+              <td className="px-4 py-3 text-right text-neutral-600">{formatNumber(row.submissions, locale)}</td>
+              <td className="px-4 py-3 text-right font-semibold text-neutral-950">{formatNumber(row.views, locale)}</td>
+              <td className="px-4 py-3 text-right text-neutral-600">{row.averageViewsPerApprovedClip == null ? "-" : formatNumber(row.averageViewsPerApprovedClip, locale)}</td>
               <td className="px-4 py-3 text-right text-neutral-600">{formatPercent(row.approvalRate)}</td>
               <td className="px-4 py-3 text-neutral-600">{row.reliabilityStatus}</td>
             </tr>
@@ -515,18 +522,28 @@ function CreatorTable({ rows }: { rows: CampaignReportLiveData["creators"] }) {
   );
 }
 
-function CommunityActivation({ data }: { data: CampaignReportLiveData }) {
+function CommunityActivation({ data, locale }: { data: CampaignReportLiveData; locale: string }) {
   return (
     <div className="mt-7 grid gap-3 md:grid-cols-4">
-      <MetricCard label="Clicks" value={formatNumber(data.referral.totalClicks, "nl")} detail="campagne-referralbezoeken" />
-      <MetricCard label="Invites" value={formatNumber(data.referral.inviteCount, "nl")} detail="getrackte aanmeldingen" />
-      <MetricCard label="Actieve clippers" value={formatNumber(data.referral.activeClipperCount, "nl")} detail="dienden campagnecontent in" />
+      <MetricCard label="Clicks" value={formatNumber(data.referral.totalClicks, locale)} detail="campagne-referralbezoeken" />
+      <MetricCard label="Invites" value={formatNumber(data.referral.inviteCount, locale)} detail="getrackte aanmeldingen" />
+      <MetricCard label="Actieve clippers" value={formatNumber(data.referral.activeClipperCount, locale)} detail="dienden campagnecontent in" />
       <MetricCard label="Activatiepercentage" value={formatPercent(data.referral.activationRate)} detail="actief vanuit invites" />
     </div>
   );
 }
 
-function Distribution({ title, rows, suffix = "" }: { title: string; rows: Array<{ label: string; value: number }>; suffix?: string }) {
+function Distribution({
+  title,
+  rows,
+  suffix = "",
+  locale,
+}: {
+  title: string;
+  rows: Array<{ label: string; value: number }>;
+  suffix?: string;
+  locale: string;
+}) {
   const max = Math.max(1, ...rows.map((row) => row.value));
   return (
     <div className="rounded-lg border border-neutral-200 p-4">
@@ -537,7 +554,7 @@ function Distribution({ title, rows, suffix = "" }: { title: string; rows: Array
           <div key={row.label}>
             <div className="mb-1 flex items-center justify-between gap-3 text-xs">
               <span className="font-medium text-neutral-700">{titleCaseEnum(row.label)}</span>
-              <span className="text-neutral-500">{formatNumber(row.value, "nl")}{suffix}</span>
+              <span className="text-neutral-500">{formatNumber(row.value, locale)}{suffix}</span>
             </div>
             <div className="h-2 rounded-full bg-neutral-100">
               <div className="h-2 rounded-full bg-neutral-950" style={{ width: `${Math.max(3, (row.value / max) * 100)}%` }} />
@@ -566,11 +583,11 @@ function EmptyPreviewLine({ text }: { text: string }) {
   return <p className="rounded-lg border border-dashed border-neutral-200 p-4 text-sm text-neutral-500">{text}</p>;
 }
 
-function formatPeriod(start: string | null | undefined, end: string | null | undefined) {
+function formatPeriod(start: string | null | undefined, end: string | null | undefined, locale: string) {
   if (!start && !end) return "-";
-  if (!start) return `Tot ${formatDate(end, "nl")}`;
-  if (!end) return `Vanaf ${formatDate(start, "nl")}`;
-  return `${formatDate(start, "nl")} - ${formatDate(end, "nl")}`;
+  if (!start) return `Tot ${formatDate(end, locale)}`;
+  if (!end) return `Vanaf ${formatDate(start, locale)}`;
+  return `${formatDate(start, locale)} - ${formatDate(end, locale)}`;
 }
 
 function formatPercent(value: number | null | undefined) {
@@ -593,9 +610,9 @@ function overdeliveryDetail(value: number | null | undefined) {
   return `${formatPercent(value)} boven betaalde viewbasis`;
 }
 
-function formatCpm(value: number | null | undefined) {
+function formatCpm(value: number | null | undefined, locale: string) {
   if (value == null) return "-";
-  return new Intl.NumberFormat("nl-NL", {
+  return new Intl.NumberFormat(locale, {
     style: "currency",
     currency: "EUR",
     minimumFractionDigits: 2,
@@ -603,29 +620,29 @@ function formatCpm(value: number | null | undefined) {
   }).format(value);
 }
 
-function OverdeliveryBlock({ financial }: { financial: CampaignReportLiveData["financial"] }) {
+function OverdeliveryBlock({ financial, locale }: { financial: CampaignReportLiveData["financial"]; locale: string }) {
   return (
     <div className="mt-6 rounded-lg border border-neutral-200 p-4">
       <p className="text-xs font-semibold uppercase tracking-[0.12em] text-neutral-400">Overdelivery</p>
       <p className="mt-2 text-sm leading-6 text-neutral-700">
         {financial.overdeliveryExplanation}
         {financial.overdeliveryValue && financial.overdeliveryValue > 0
-          ? ` De extra mediawaarde op basis van de campagne-CPM is ${formatCurrency(financial.overdeliveryValue, "EUR", "nl")}.`
+          ? ` De extra mediawaarde op basis van de campagne-CPM is ${formatCurrency(financial.overdeliveryValue, "EUR", locale)}.`
           : ""}
       </p>
     </div>
   );
 }
 
-function formatGoalViews(value: number | null | undefined, source: CampaignReportLiveData["campaign"]["goalViewsSource"]) {
+function formatGoalViews(value: number | null | undefined, source: CampaignReportLiveData["campaign"]["goalViewsSource"], locale: string) {
   if (!value) return "-";
   const suffix = source === "budget_cpm" ? " (berekend)" : "";
-  return `${formatNumber(value, "nl")}${suffix}`;
+  return `${formatNumber(value, locale)}${suffix}`;
 }
 
-function formatNullableCurrency(value: number | null | undefined) {
+function formatNullableCurrency(value: number | null | undefined, locale: string) {
   if (value == null) return "-";
-  return formatCurrency(value, "EUR", "nl");
+  return formatCurrency(value, "EUR", locale);
 }
 
 function objectRows(record: Record<string, number>) {

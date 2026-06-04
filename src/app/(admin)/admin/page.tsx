@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { getTranslations } from "next-intl/server";
+import { getLocale, getTranslations } from "next-intl/server";
 import { AlertTriangle, BadgeEuro } from "lucide-react";
 import { ArrowRight } from "@/components/animate-ui/icons/arrow-right";
 import { ClipboardCheck } from "@/components/animate-ui/icons/clipboard-check";
@@ -12,8 +12,6 @@ import { getAgencyOsDashboardSnapshot } from "@/lib/admin/agency-os";
 import { formatCurrency, formatNumber, toNumber } from "@/lib/admin/agency-format";
 
 export const dynamic = "force-dynamic";
-
-const ADMIN_LOCALE: Locale = "nl";
 
 const PIPELINE = [
   { key: "lead", href: "/admin/crm" },
@@ -42,11 +40,12 @@ const OPERATING_AREA_KEYS: Record<string, string> = {
 
 export default async function AdminCommandCenter() {
   const t = await getTranslations("dashboard.admin");
+  const locale = (await getLocale()) as Locale;
   const money = (
     value: number | string | { toString(): string } | null | undefined,
     currency = "EUR",
-  ) => formatCurrency(value, currency, ADMIN_LOCALE);
-  const number = (value: number | bigint | null | undefined) => formatNumber(value, ADMIN_LOCALE);
+  ) => formatCurrency(value, currency, locale);
+  const number = (value: number | bigint | null | undefined) => formatNumber(value, locale);
   const now = new Date();
   const snapshot = await getAgencyOsDashboardSnapshot(now);
   const { metrics } = snapshot;
@@ -299,7 +298,7 @@ export default async function AdminCommandCenter() {
                   className="flex items-center justify-between rounded-xl bg-neutral-50 px-3 py-2 text-sm font-medium text-neutral-700 transition hover:bg-neutral-100 hover:text-neutral-950"
                 >
                   <span>{number(index + 1)}. {t(`pipeline.${step.key}`)}</span>
-                  <span className="text-neutral-400">Openen</span>
+                  <span className="text-neutral-400">{t("drillIns.open")}</span>
                 </Link>
               ))}
             </div>
@@ -326,7 +325,7 @@ export default async function AdminCommandCenter() {
                       <span className="block text-xs text-neutral-500">{areaDetail}</span>
                     </span>
                     <Badge variant={area.status === "live" ? "verified" : "neutral"}>
-                      {area.status === "live" ? "Live" : "Handmatig"}
+                      {area.status === "live" ? t("drillIns.live") : t("drillIns.manual")}
                     </Badge>
                   </Link>
                 );

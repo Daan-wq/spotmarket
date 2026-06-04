@@ -2,9 +2,9 @@
 
 import { DashboardLanguageSettings } from "@/components/settings/dashboard-language-settings";
 import type { Locale } from "@/i18n/routing";
-import { updateCreatorLocale } from "../actions";
+import { updateAdminLocale } from "../actions";
 
-interface LanguageSettingsProps {
+interface AdminLanguageSettingsProps {
   currentLocale: Locale;
   title: string;
   description: string;
@@ -13,6 +13,6 @@ interface LanguageSettingsProps {
   errorLabel: string;
 }
 
-export function LanguageSettings(props: LanguageSettingsProps) {
-  return <DashboardLanguageSettings {...props} updateLocale={updateCreatorLocale} />;
+export function AdminLanguageSettings(props: AdminLanguageSettingsProps) {
+  return <DashboardLanguageSettings {...props} updateLocale={updateAdminLocale} />;
 }
