@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { CreatorTikTokConnection } from "@prisma/client";
 
 const fetchTikTokVideosByIdsMock = vi.fn();
-const getFreshTokenMock = vi.fn();
+const withFreshTokenMock = vi.fn();
 const recordRawMock = vi.fn();
 
 const hoisted = vi.hoisted(() => ({
@@ -10,14 +10,18 @@ const hoisted = vi.hoisted(() => ({
 }));
 
 vi.mock("@/lib/tiktok", () => ({
-  fetchTikTokVideosByIds: (...a: unknown[]) => fetchTikTokVideosByIdsMock(...a),
+  fetchTikTokVideosByIds: (...args: unknown[]) => fetchTikTokVideosByIdsMock(...args),
   TikTokRateLimitError: hoisted.TikTokRateLimitError,
 }));
 vi.mock("@/lib/token-refresh", () => ({
-  getFreshTikTokAccessToken: (...a: unknown[]) => getFreshTokenMock(...a),
+  isTikTokInvalidTokenError: (err: unknown) =>
+    /access_token_invalid|access_token_expired/i.test(
+      err instanceof Error ? err.message : String(err),
+    ),
+  withFreshTikTokAccessToken: (...args: unknown[]) => withFreshTokenMock(...args),
 }));
 vi.mock("./raw-storage", () => ({
-  recordRawApiResponse: (...a: unknown[]) => recordRawMock(...a),
+  recordRawApiResponse: (...args: unknown[]) => recordRawMock(...args),
 }));
 vi.mock("./router", () => ({
   failure: (reason: string, message: string, connection: unknown) => ({
@@ -39,11 +43,32 @@ function conn(): CreatorTikTokConnection {
   } as unknown as CreatorTikTokConnection;
 }
 
+function video(id: string) {
+  return {
+    id,
+    title: "test clip",
+    videoDescription: "full description",
+    coverImageUrl: "https://cdn.tiktok.com/cover.jpg",
+    shareUrl: `https://www.tiktok.com/@user/video/${id}`,
+    embedLink: `https://www.tiktok.com/embed/${id}`,
+    viewCount: 100000,
+    likeCount: 5000,
+    commentCount: 200,
+    shareCount: 80,
+    createTime: 1714660000,
+    duration: 28,
+    height: 1920,
+    width: 1080,
+  };
+}
+
 beforeEach(() => {
   fetchTikTokVideosByIdsMock.mockReset();
-  getFreshTokenMock.mockReset();
+  withFreshTokenMock.mockReset();
   recordRawMock.mockReset();
-  getFreshTokenMock.mockResolvedValue("decoded-token");
+  withFreshTokenMock.mockImplementation(
+    (_conn: unknown, operation: (token: string) => unknown) => operation("decoded-token"),
+  );
   recordRawMock.mockResolvedValue(undefined);
 });
 
@@ -53,28 +78,9 @@ afterEach(() => {
 
 describe("fetchTikTokMetric", () => {
   it("queries the known TikTok video ID directly and preserves metadata in raw", async () => {
-    fetchTikTokVideosByIdsMock.mockResolvedValue({
-      videos: [
-        {
-          id: "vid_42",
-          title: "test clip",
-          videoDescription: "full description",
-          coverImageUrl: "https://cdn.tiktok.com/cover.jpg",
-          shareUrl: "https://www.tiktok.com/@user/video/vid_42",
-          embedLink: "https://www.tiktok.com/embed/vid_42",
-          viewCount: 100000,
-          likeCount: 5000,
-          commentCount: 200,
-          shareCount: 80,
-          createTime: 1714660000,
-          duration: 28,
-          height: 1920,
-          width: 1080,
-        },
-      ],
-    });
+    fetchTikTokVideosByIdsMock.mockResolvedValue({ videos: [video("vid_42")] });
 
-    const r = await fetchTikTokMetric(
+    const result = await fetchTikTokMetric(
       conn(),
       {
         platform: "TIKTOK",
@@ -87,20 +93,20 @@ describe("fetchTikTokMetric", () => {
     );
 
     expect(fetchTikTokVideosByIdsMock).toHaveBeenCalledWith("decoded-token", ["vid_42"]);
-    expect(r.ok).toBe(true);
-    if (!r.ok) return;
-    expect(r.viewCount).toBe(BigInt(100000));
-    expect(r.likeCount).toBe(5000);
-    expect(r.commentCount).toBe(200);
-    expect(r.shareCount).toBe(80);
-    expect(r.metricAvailability).toMatchObject({
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.viewCount).toBe(BigInt(100000));
+    expect(result.likeCount).toBe(5000);
+    expect(result.commentCount).toBe(200);
+    expect(result.shareCount).toBe(80);
+    expect(result.metricAvailability).toMatchObject({
       views: true,
       likes: true,
       comments: true,
       shares: true,
       saves: false,
     });
-    expect(r.raw).toEqual({
+    expect(result.raw).toEqual({
       videoId: "vid_42",
       title: "test clip",
       videoDescription: "full description",
@@ -124,7 +130,8 @@ describe("fetchTikTokMetric", () => {
 
   it("returns POST_NOT_FOUND when video.query does not return the requested ID", async () => {
     fetchTikTokVideosByIdsMock.mockResolvedValue({ videos: [] });
-    const r = await fetchTikTokMetric(
+
+    const result = await fetchTikTokMetric(
       conn(),
       {
         platform: "TIKTOK",
@@ -134,21 +141,87 @@ describe("fetchTikTokMetric", () => {
         normalizedUrl: "https://www.tiktok.com/@u/video/missing",
       },
     );
-    expect(r.ok).toBe(false);
-    if (r.ok) return;
-    expect(r.reason).toBe("POST_NOT_FOUND");
+
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.reason).toBe("POST_NOT_FOUND");
+  });
+
+  it("retries video.query with a refreshed token after an invalid-token response", async () => {
+    withFreshTokenMock.mockImplementation(
+      async (_conn: unknown, operation: (token: string) => Promise<unknown>) => {
+        try {
+          return await operation("expired-token");
+        } catch (err) {
+          if (/access_token_invalid/i.test((err as Error).message)) {
+            return operation("fresh-token");
+          }
+          throw err;
+        }
+      },
+    );
+    fetchTikTokVideosByIdsMock
+      .mockRejectedValueOnce(new Error("TikTok video query failed: access_token_invalid"))
+      .mockResolvedValueOnce({ videos: [video("vid_retry")] });
+
+    const result = await fetchTikTokMetric(
+      conn(),
+      {
+        platform: "TIKTOK",
+        postId: "vid_retry",
+        platformVideoId: "vid_retry",
+        authorHandle: "user",
+        normalizedUrl: "https://www.tiktok.com/@user/video/vid_retry",
+      },
+    );
+
+    expect(result.ok).toBe(true);
+    expect(fetchTikTokVideosByIdsMock).toHaveBeenNthCalledWith(
+      1,
+      "expired-token",
+      ["vid_retry"],
+    );
+    expect(fetchTikTokVideosByIdsMock).toHaveBeenNthCalledWith(
+      2,
+      "fresh-token",
+      ["vid_retry"],
+    );
+  });
+
+  it("returns TOKEN_BROKEN after an invalid-token retry still fails", async () => {
+    withFreshTokenMock.mockRejectedValue(
+      new Error("TikTok video query failed: access_token_invalid"),
+    );
+
+    const result = await fetchTikTokMetric(
+      conn(),
+      {
+        platform: "TIKTOK",
+        postId: "vid_retry",
+        platformVideoId: "vid_retry",
+        authorHandle: "user",
+        normalizedUrl: "https://www.tiktok.com/@user/video/vid_retry",
+      },
+    );
+
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.reason).toBe("TOKEN_BROKEN");
   });
 
   it("classifies TikTok 429s as RATE_LIMITED", async () => {
-    fetchTikTokVideosByIdsMock.mockRejectedValue(new hoisted.TikTokRateLimitError("too many"));
+    fetchTikTokVideosByIdsMock.mockRejectedValue(
+      new hoisted.TikTokRateLimitError("too many"),
+    );
+
     const results = await fetchTikTokMetricsByVideoIds(conn(), [
       { submissionId: "sub_1", videoId: "vid_1" },
     ]);
+    const result = results.get("sub_1");
 
-    const r = results.get("sub_1");
-    expect(r?.ok).toBe(false);
-    if (!r || r.ok) return;
-    expect(r.reason).toBe("RATE_LIMITED");
+    expect(result?.ok).toBe(false);
+    if (!result || result.ok) return;
+    expect(result.reason).toBe("RATE_LIMITED");
   });
 });
 
@@ -158,9 +231,9 @@ describe("fetchTikTokMetricsByVideoIds", () => {
       .mockResolvedValueOnce({ videos: [] })
       .mockResolvedValueOnce({ videos: [] });
 
-    const targets = Array.from({ length: 21 }, (_, i) => ({
-      submissionId: `sub_${i}`,
-      videoId: `vid_${i}`,
+    const targets = Array.from({ length: 21 }, (_, index) => ({
+      submissionId: `sub_${index}`,
+      videoId: `vid_${index}`,
     }));
     await fetchTikTokMetricsByVideoIds(conn(), targets);
 

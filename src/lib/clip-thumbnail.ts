@@ -4,7 +4,7 @@ import { decrypt } from "./crypto";
 import { fetchRecentMedia, type IgMediaItem } from "./instagram";
 import { normalizeIgMediaType, type ClipMediaType } from "./instagram-media-type";
 import { fetchTikTokVideos } from "./tiktok";
-import { getFreshTikTokAccessToken } from "./token-refresh";
+import { withFreshTikTokAccessToken } from "./token-refresh";
 import {
   cacheCreatorMediaThumbnail,
   cacheInstagramMedia,
@@ -312,31 +312,32 @@ async function resolveTikTokThumbnail(
 
     for (const conn of orderedConnections) {
       if (!conn.accessToken || !conn.accessTokenIv) continue;
-      const token = await getFreshTikTokAccessToken(conn);
-      if (!token) continue;
-
-      let cursor: number | undefined = undefined;
-      for (let page = 0; page < TIKTOK_THUMBNAIL_SEARCH_PAGES; page++) {
-        const chunk = await fetchTikTokVideos(token, 20, cursor);
-        const match = chunk.videos.find((video) => {
-          if (targetId && video.id === targetId) return true;
-          if (targetId && (video.shareUrl ?? "").includes(targetId)) return true;
-          return Boolean(video.shareUrl && normalizePermalink(video.shareUrl) === normalizedTarget);
-        });
-
-        if (match) {
-          const thumbnailUrl = await cacheCreatorMediaThumbnail({
-            platform: "tt",
-            connectionId: conn.id,
-            mediaId: match.id,
-            sourceUrl: match.coverImageUrl,
+      const resolved = await withFreshTikTokAccessToken(conn, async (token) => {
+        let cursor: number | undefined = undefined;
+        for (let page = 0; page < TIKTOK_THUMBNAIL_SEARCH_PAGES; page++) {
+          const chunk = await fetchTikTokVideos(token, 20, cursor);
+          const match = chunk.videos.find((video) => {
+            if (targetId && video.id === targetId) return true;
+            if (targetId && (video.shareUrl ?? "").includes(targetId)) return true;
+            return Boolean(video.shareUrl && normalizePermalink(video.shareUrl) === normalizedTarget);
           });
-          return { thumbnailUrl, mediaType: "video" };
-        }
 
-        if (!chunk.hasMore || chunk.nextCursor == null) break;
-        cursor = chunk.nextCursor;
-      }
+          if (match) {
+            const thumbnailUrl = await cacheCreatorMediaThumbnail({
+              platform: "tt",
+              connectionId: conn.id,
+              mediaId: match.id,
+              sourceUrl: match.coverImageUrl,
+            });
+            return { thumbnailUrl, mediaType: "video" as const };
+          }
+
+          if (!chunk.hasMore || chunk.nextCursor == null) break;
+          cursor = chunk.nextCursor;
+        }
+        return null;
+      });
+      if (resolved) return resolved;
     }
   } catch (err) {
     console.warn("[clip-thumbnail] TT resolve failed", err);

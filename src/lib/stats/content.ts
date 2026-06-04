@@ -9,7 +9,7 @@ import { decrypt } from "@/lib/crypto";
 import { fetchRecentMedia } from "@/lib/instagram";
 import { fetchTikTokVideos } from "@/lib/tiktok";
 import { fetchFacebookPagePostsPaginated } from "@/lib/facebook";
-import { getFreshTikTokAccessToken } from "@/lib/token-refresh";
+import { withFreshTikTokAccessToken } from "@/lib/token-refresh";
 import {
   cacheCreatorMediaThumbnail,
   cacheInstagramMedia,
@@ -329,9 +329,11 @@ async function fetchTtOauthRows(connectionId: string, limit: number): Promise<Co
     },
   });
   if (!conn) return [];
-  const token = await getFreshTikTokAccessToken(conn);
-  if (!token) return [];
-  const { videos } = await fetchTikTokVideos(token, limit);
+  const result = await withFreshTikTokAccessToken(conn, (token) =>
+    fetchTikTokVideos(token, limit),
+  );
+  if (!result) return [];
+  const { videos } = result;
   const now = new Date();
   return Promise.all(videos.map(async (v) => {
     const postUrl = v.shareUrl ?? "";

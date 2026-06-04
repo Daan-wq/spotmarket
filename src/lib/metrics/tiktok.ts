@@ -12,7 +12,10 @@ import {
   TikTokRateLimitError,
   type TikTokVideo,
 } from "@/lib/tiktok";
-import { getFreshTikTokAccessToken } from "@/lib/token-refresh";
+import {
+  isTikTokInvalidTokenError,
+  withFreshTikTokAccessToken,
+} from "@/lib/token-refresh";
 import type { ParsedClipUrl } from "@/lib/parse-clip-url";
 import { metricAvailability } from "@/lib/contracts/metrics";
 import { failure, type MetricFetcherResult } from "./router";
@@ -37,11 +40,12 @@ export async function fetchTikTokMetric(
     });
   }
 
+  const resultId = submissionId ?? "single";
   const results = await fetchTikTokMetricsByVideoIds(conn, [
-    { submissionId: submissionId ?? "single", videoId },
+    { submissionId: resultId, videoId },
   ]);
 
-  return results.get(submissionId ?? "single") ??
+  return results.get(resultId) ??
     failure("POST_NOT_FOUND", `TT video ${videoId} not returned by video.query`, {
       type: "TT",
       id: conn.id,
@@ -52,35 +56,52 @@ export async function fetchTikTokMetricsByVideoIds(
   conn: CreatorTikTokConnection,
   targets: TikTokMetricTarget[],
 ): Promise<Map<string, MetricFetcherResult>> {
-  const results = new Map<string, MetricFetcherResult>();
   const validTargets = targets.filter((target) => target.videoId);
-  if (validTargets.length === 0) return results;
+  if (validTargets.length === 0) return new Map();
 
   if (!conn.accessToken || !conn.accessTokenIv) {
     return failAll(validTargets, "NO_TOKEN", "TT connection missing access token", conn.id);
   }
 
-  let token: string | null;
   try {
-    token = await getFreshTikTokAccessToken(conn);
+    const results = await withFreshTikTokAccessToken(conn, (token) =>
+      fetchTikTokMetricsWithToken(conn, validTargets, token),
+    );
+    if (!results) {
+      return failAll(
+        validTargets,
+        "TOKEN_EXPIRED",
+        "TT token expired and refresh failed",
+        conn.id,
+      );
+    }
+    return results;
   } catch (err) {
+    const reason = classifyTikTokError(err);
     return failAll(
       validTargets,
-      "TOKEN_BROKEN",
-      `TT token refresh failed: ${(err as Error).message}`,
+      reason,
+      `TT video query failed: ${(err as Error).message}`,
       conn.id,
     );
   }
-  if (!token) {
-    return failAll(validTargets, "TOKEN_EXPIRED", "TT token expired and refresh failed", conn.id);
-  }
+}
 
-  for (const chunk of chunks(validTargets, 20)) {
+async function fetchTikTokMetricsWithToken(
+  conn: CreatorTikTokConnection,
+  targets: TikTokMetricTarget[],
+  token: string,
+): Promise<Map<string, MetricFetcherResult>> {
+  const results = new Map<string, MetricFetcherResult>();
+
+  for (const chunk of chunks(targets, 20)) {
     const videoIds = chunk.map((target) => target.videoId);
     let response: Awaited<ReturnType<typeof fetchTikTokVideosByIds>>;
     try {
       response = await fetchTikTokVideosByIds(token, videoIds);
     } catch (err) {
+      if (isTikTokInvalidTokenError(err)) throw err;
+
       const reason = classifyTikTokError(err);
       for (const target of chunk) {
         results.set(
@@ -120,19 +141,21 @@ export async function fetchTikTokMetricsByVideoIds(
   return results;
 }
 
-function classifyTikTokError(err: unknown): "TOKEN_BROKEN" | "PLATFORM_ERROR" | "RATE_LIMITED" {
+function classifyTikTokError(
+  err: unknown,
+): "TOKEN_BROKEN" | "PLATFORM_ERROR" | "RATE_LIMITED" {
   if (err instanceof TikTokRateLimitError) return "RATE_LIMITED";
-  const msg = (err as Error).message?.toLowerCase() ?? "";
-  if (msg.includes("token") || msg.includes("oauth") || msg.includes("invalid_token")) {
-    return "TOKEN_BROKEN";
-  }
-  if (msg.includes("rate_limit") || msg.includes("rate limited")) return "RATE_LIMITED";
+  if (isTikTokInvalidTokenError(err)) return "TOKEN_BROKEN";
+
+  const message = err instanceof Error ? err.message.toLowerCase() : String(err).toLowerCase();
+  if (message.includes("token") || message.includes("oauth")) return "TOKEN_BROKEN";
+  if (message.includes("rate_limit") || message.includes("rate limited")) return "RATE_LIMITED";
   return "PLATFORM_ERROR";
 }
 
 function failAll(
   targets: TikTokMetricTarget[],
-  reason: "NO_TOKEN" | "TOKEN_BROKEN" | "TOKEN_EXPIRED",
+  reason: "NO_TOKEN" | "TOKEN_BROKEN" | "TOKEN_EXPIRED" | "PLATFORM_ERROR" | "RATE_LIMITED",
   message: string,
   connectionId: string,
 ): Map<string, MetricFetcherResult> {
@@ -145,9 +168,11 @@ function failAll(
 }
 
 function chunks<T>(items: T[], size: number): T[][] {
-  const out: T[][] = [];
-  for (let i = 0; i < items.length; i += size) out.push(items.slice(i, i + size));
-  return out;
+  const result: T[][] = [];
+  for (let index = 0; index < items.length; index += size) {
+    result.push(items.slice(index, index + size));
+  }
+  return result;
 }
 
 function buildSuccess(match: TikTokVideo, connectionId: string): MetricFetcherResult {

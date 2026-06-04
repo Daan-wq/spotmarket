@@ -9,8 +9,7 @@ const routeMocks = vi.hoisted(() => ({
   ttFindFirst: vi.fn(),
   ytFindFirst: vi.fn(),
   fbFindFirst: vi.fn(),
-  getFreshTikTokAccessToken: vi.fn(),
-  forceRefreshTikTokAccessToken: vi.fn(),
+  withFreshTikTokAccessToken: vi.fn(),
   getFreshYoutubeAccessToken: vi.fn(),
   fetchRecentMedia: vi.fn(),
   fetchTikTokVideos: vi.fn(),
@@ -40,8 +39,9 @@ vi.mock("@/lib/crypto", () => ({
 }));
 
 vi.mock("@/lib/token-refresh", () => ({
-  getFreshTikTokAccessToken: routeMocks.getFreshTikTokAccessToken,
-  forceRefreshTikTokAccessToken: routeMocks.forceRefreshTikTokAccessToken,
+  isTikTokInvalidTokenError: (err: unknown) =>
+    /access_token_invalid|access_token_expired/i.test(err instanceof Error ? err.message : String(err)),
+  withFreshTikTokAccessToken: routeMocks.withFreshTikTokAccessToken,
   getFreshYoutubeAccessToken: routeMocks.getFreshYoutubeAccessToken,
 }));
 
@@ -79,6 +79,12 @@ describe("GET /api/creator/media", () => {
       creatorProfile: { id: "creator-profile-1" },
     });
     routeMocks.readCachedCreatorMedia.mockResolvedValue(null);
+    routeMocks.withFreshTikTokAccessToken.mockImplementation((
+      _conn: unknown,
+      operation: (token: string) => unknown,
+    ) =>
+      operation("fresh-tiktok-token")
+    );
     routeMocks.cacheInstagramMedia.mockImplementation(({ media }: { media: Array<{
       id: string;
       permalink: string;
@@ -311,7 +317,6 @@ describe("GET /api/creator/media", () => {
       refreshTokenIv: "refresh-iv",
       tokenExpiresAt: new Date("2026-05-16T10:00:00.000Z"),
     });
-    routeMocks.getFreshTikTokAccessToken.mockResolvedValue("fresh-tiktok-token");
     routeMocks.fetchTikTokVideos.mockResolvedValue({
       videos: [
         {

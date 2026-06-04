@@ -8,6 +8,7 @@ import { getRequiredOAuthEnv, getRequiredOAuthRedirectUri } from "@/lib/oauth-en
 const TIKTOK_OAUTH_BASE = "https://open.tiktokapis.com/v2/oauth";
 const TIKTOK_API_BASE = "https://open.tiktokapis.com/v2";
 const TIKTOK_AUTH_URL = "https://www.tiktok.com/v2/auth/authorize/";
+const TIKTOK_INVALID_TOKEN_PATTERN = /access_token_invalid|access_token_expired/i;
 
 // ─── OAuth ──────────────────────────────────────────────────────────
 
@@ -34,6 +35,7 @@ export async function exchangeCodeForTokens(code: string): Promise<{
   accessToken: string;
   refreshToken: string;
   expiresIn: number;
+  refreshExpiresIn?: number;
   openId: string;
   grantedScopes: string[];
 }> {
@@ -63,14 +65,19 @@ export async function exchangeCodeForTokens(code: string): Promise<{
     accessToken: data.access_token,
     refreshToken: data.refresh_token,
     expiresIn: data.expires_in ?? 86400,
+    refreshExpiresIn: data.refresh_expires_in,
     openId: data.open_id,
-    grantedScopes: typeof data.scope === "string" ? data.scope.split(",").map((s: string) => s.trim()).filter(Boolean) : [],
+    grantedScopes: parseScope(data.scope),
   };
 }
 
 export async function refreshTikTokToken(refreshToken: string): Promise<{
   accessToken: string;
   expiresIn: number;
+  refreshToken?: string;
+  refreshExpiresIn?: number;
+  scope?: string[];
+  openId?: string;
 }> {
   const res = await fetch(`${TIKTOK_OAUTH_BASE}/token/`, {
     method: "POST",
@@ -89,10 +96,27 @@ export async function refreshTikTokToken(refreshToken: string): Promise<{
   }
 
   const data = await res.json();
+  if (data.error) {
+    throw new Error(`TikTok token refresh error: ${data.error_description ?? data.error}`);
+  }
+  if (!data.access_token) {
+    throw new Error("TikTok token refresh failed: missing access token");
+  }
+
   return {
     accessToken: data.access_token,
     expiresIn: data.expires_in ?? 86400,
+    refreshToken: data.refresh_token,
+    refreshExpiresIn: data.refresh_expires_in,
+    scope: parseScope(data.scope),
+    openId: data.open_id,
   };
+}
+
+function parseScope(scope: unknown): string[] {
+  return typeof scope === "string"
+    ? scope.split(",").map((s) => s.trim()).filter(Boolean)
+    : [];
 }
 
 // ─── User profile ────────────────────────────────────────────────────
@@ -168,7 +192,7 @@ export async function fetchTikTokProfile(
 
   const data = await res.json();
   if (data.error?.code && data.error.code !== "ok") {
-    throw new Error(`TikTok user info error: ${data.error.message}`);
+    throw new Error(`TikTok user info error (${data.error.code}): ${data.error.message}`);
   }
 
   const user = data.data?.user;
@@ -248,10 +272,23 @@ export async function fetchTikTokDemographics(
       const res = await fetch(url, {
         headers: { Authorization: `Bearer ${accessToken}` },
       });
-      if (!res.ok) return [];
+      if (!res.ok) {
+        const err = await res.text();
+        if (TIKTOK_INVALID_TOKEN_PATTERN.test(err)) {
+          throw new Error(`TikTok demographics fetch failed: ${err}`);
+        }
+        return [];
+      }
       const data = await res.json();
+      if (data.error?.code && data.error.code !== "ok") {
+        const message = `TikTok demographics error (${data.error.code}): ${data.error.message}`;
+        if (TIKTOK_INVALID_TOKEN_PATTERN.test(message)) throw new Error(message);
+        return [];
+      }
       return (data.data?.rows ?? []) as TikTokBusinessAudienceRow[];
-    } catch {
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      if (TIKTOK_INVALID_TOKEN_PATTERN.test(message)) throw err;
       return [];
     }
   };
@@ -342,7 +379,7 @@ export async function fetchTikTokVideos(
 
   const data = await res.json();
   if (data.error?.code && data.error.code !== "ok") {
-    throw new Error(`TikTok video list error: ${data.error.message}`);
+    throw new Error(`TikTok video list error (${data.error.code}): ${data.error.message}`);
   }
 
   const videos = parseTikTokVideos(data.data?.videos ?? []);
