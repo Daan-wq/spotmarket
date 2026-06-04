@@ -91,6 +91,7 @@ model CreatorProfile {
   ttConnections            CreatorTikTokConnection[]
   applications             CampaignApplication[]
   payouts                  Payout[]
+  balanceAdjustments       CreatorBalanceAdjustment[]
   operationalProfile       ClipperOperationalProfile?
   approvedCandidateRecords ClipperCandidate[]         @relation("ApprovedCandidateProfile")
   productionAssignments    ProductionAssignment[]
@@ -942,6 +943,19 @@ model Payout {
   @@index([status])
   @@index([creatorProfileId])
   @@index([payoutRunId])
+}
+
+model CreatorBalanceAdjustment {
+  id               String         @id @default(cuid())
+  creatorProfileId String
+  creatorProfile   CreatorProfile @relation(fields: [creatorProfileId], references: [id], onDelete: Cascade)
+  amount           Decimal        @db.Decimal(12, 2)
+  reason           String         @db.Text
+  reference        String?        @unique
+  createdByUserId  String?
+  createdAt        DateTime       @default(now())
+
+  @@index([creatorProfileId, createdAt])
 }
 
 enum PayoutType {
