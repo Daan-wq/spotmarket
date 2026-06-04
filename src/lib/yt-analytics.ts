@@ -13,7 +13,7 @@
 
 import { Prisma, type CreatorYtConnection } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
-import { getFreshYoutubeAccessToken } from "@/lib/token-refresh";
+import { withFreshYoutubeAccessToken } from "@/lib/token-refresh";
 import { recordRawApiResponse } from "@/lib/metrics/raw-storage";
 
 const YT_ANALYTICS_BASE = "https://youtubeanalytics.googleapis.com/v2";
@@ -72,24 +72,34 @@ export async function pollYtAnalyticsForConnection(
     rowsUpserted: 0,
   };
 
-  const token = await getFreshYoutubeAccessToken(conn).catch(() => null);
-  if (!token) {
-    result.reason = "no token";
-    return result;
-  }
-
   const endDate = new Date();
   const startDate = new Date(endDate.getTime() - windowDays * 24 * 60 * 60 * 1000);
   const startStr = toIsoDate(startDate);
   const endStr = toIsoDate(endDate);
 
-  const dailyRows = await fetchDailyRows(token, conn.channelId, startStr, endStr);
+  const fetched = await withFreshYoutubeAccessToken(conn, async (token) => {
+    const dailyRows = await fetchDailyRows(token, conn.channelId, startStr, endStr);
+    if (dailyRows.length === 0) return { dailyRows, breakdowns: null };
+    return {
+      dailyRows,
+      breakdowns: await fetchBreakdowns(token, conn.channelId, startStr, endStr),
+    };
+  }).catch((err) => {
+    result.reason = (err as Error).message;
+    return null;
+  });
+  if (!fetched) {
+    result.reason = result.reason ?? "no token";
+    return result;
+  }
+
+  const { dailyRows } = fetched;
   if (dailyRows.length === 0) {
     result.reason = "no analytics rows";
     return result;
   }
 
-  const breakdowns = await fetchBreakdowns(token, conn.channelId, startStr, endStr);
+  const breakdowns = fetched.breakdowns ?? emptyBreakdowns();
 
   await recordRawApiResponse({
     connectionType: "YT",
@@ -133,6 +143,16 @@ export async function pollYtAnalyticsForConnection(
   return result;
 }
 
+function emptyBreakdowns(): BreakdownMap {
+  return {
+    trafficSource: {},
+    playbackLocation: {},
+    deviceType: {},
+    contentType: {},
+    subscribedStatus: {},
+  };
+}
+
 async function fetchDailyRows(
   accessToken: string,
   channelId: string,
@@ -152,7 +172,11 @@ async function fetchDailyRows(
     headers: { Authorization: `Bearer ${accessToken}` },
   });
   if (!res.ok) {
-    console.warn(`[yt-analytics] reports failed ${res.status}: ${(await res.text()).slice(0, 120)}`);
+    const errText = await res.text();
+    if (res.status === 401 || res.status === 403) {
+      throw new Error(`YouTube Analytics reports failed ${res.status}: ${errText}`);
+    }
+    console.warn(`[yt-analytics] reports failed ${res.status}: ${errText.slice(0, 120)}`);
     return [];
   }
   const json = await res.json();

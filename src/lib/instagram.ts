@@ -11,11 +11,26 @@ export type { IgDemographics, IgMediaItem, ComputedCreatorStats };
 
 const GRAPH_BASE = "https://graph.instagram.com/v25.0";
 const META_BASE = "https://api.instagram.com";
+const INSTAGRAM_INVALID_TOKEN_PATTERN =
+  /OAuthException|Error validating access token|Session has expired|access token|invalid token|token expired|expired/i;
 
 export const REQUIRED_IG_SCOPES = [
   "instagram_business_basic",
   "instagram_business_manage_insights",
 ] as const;
+
+export function isInstagramInvalidTokenError(error: unknown): boolean {
+  const message = error instanceof Error ? error.message : String(error ?? "");
+  return INSTAGRAM_INVALID_TOKEN_PATTERN.test(message);
+}
+
+function instagramApiError(label: string, status: number, body: string): Error {
+  return new Error(`${label} ${status}: ${body}`);
+}
+
+function shouldThrowInstagramError(status: number, body: string): boolean {
+  return status === 401 || status === 403 || INSTAGRAM_INVALID_TOKEN_PATTERN.test(body);
+}
 
 export async function getInstagramAuthUrl(state: string): Promise<string> {
   const redirectUri = getRequiredOAuthRedirectUri("INSTAGRAM_REDIRECT_URI");
@@ -102,6 +117,9 @@ export async function refreshInstagramToken(
   }
 
   const data = await res.json();
+  if (!data.access_token) {
+    throw new Error(`Instagram token refresh failed: missing access_token`);
+  }
   return { accessToken: data.access_token, expiresIn: data.expires_in };
 }
 
@@ -316,6 +334,9 @@ export async function fetchRecentMedia(
   const res = await fetch(`${GRAPH_BASE}/${igUserId}/media?${params}`);
   if (!res.ok) {
     const errText = await res.text();
+    if (shouldThrowInstagramError(res.status, errText)) {
+      throw instagramApiError("fetchRecentMedia failed", res.status, errText);
+    }
     console.warn(`fetchRecentMedia ${res.status}: ${errText.slice(0, 120)}`);
     return { media: [], nextCursor: null };
   }
@@ -370,6 +391,9 @@ export async function fetchActiveStories(
   const res = await fetch(`${GRAPH_BASE}/${igUserId}/stories?${params}`);
   if (!res.ok) {
     const errText = await res.text();
+    if (shouldThrowInstagramError(res.status, errText)) {
+      throw instagramApiError("fetchActiveStories failed", res.status, errText);
+    }
     console.warn(`fetchActiveStories ${res.status}: ${errText.slice(0, 120)}`);
     return [];
   }
@@ -739,7 +763,13 @@ export async function fetchMediaInsights(
     params.metric = metricList;
     const url = `${GRAPH_BASE}/${igMediaId}/insights?${new URLSearchParams(params)}`;
     const res = await fetch(url);
-    if (!res.ok) return empty;
+    if (!res.ok) {
+      const errText = await res.text();
+      if (shouldThrowInstagramError(res.status, errText)) {
+        throw instagramApiError("fetchMediaInsights failed", res.status, errText);
+      }
+      return empty;
+    }
     const data = (await res.json()).data ?? [];
 
     const result: MediaInsightResult = {
@@ -782,6 +812,11 @@ export async function fetchMediaInsights(
         result.profileActivityDirection = getBreakdown(actData, "profile_activity", "DIRECTION");
         result.profileActivityEmail = getBreakdown(actData, "profile_activity", "EMAIL");
         result.profileActivityText = getBreakdown(actData, "profile_activity", "TEXT");
+      } else {
+        const errText = await actRes.text();
+        if (shouldThrowInstagramError(actRes.status, errText)) {
+          throw instagramApiError("fetchMediaInsights profile_activity failed", actRes.status, errText);
+        }
       }
     }
 
@@ -800,11 +835,17 @@ export async function fetchMediaInsights(
         result.navigationBack = getBreakdown(navData, "navigation", "TAP_BACK");
         result.navigationExit = getBreakdown(navData, "navigation", "TAP_EXIT");
         result.navigationNextStory = getBreakdown(navData, "navigation", "SWIPE_FORWARD");
+      } else {
+        const errText = await navRes.text();
+        if (shouldThrowInstagramError(navRes.status, errText)) {
+          throw instagramApiError("fetchMediaInsights navigation failed", navRes.status, errText);
+        }
       }
     }
 
     return result;
-  } catch {
+  } catch (err) {
+    if (isInstagramInvalidTokenError(err)) throw err;
     return empty;
   }
 }
@@ -851,7 +892,13 @@ export async function fetchDemographicSnapshots(
           access_token: accessToken,
         });
         const res = await fetch(`${base}?${params}`);
-        if (!res.ok) continue;
+        if (!res.ok) {
+          const errText = await res.text();
+          if (shouldThrowInstagramError(res.status, errText)) {
+            throw instagramApiError("fetchDemographicSnapshots failed", res.status, errText);
+          }
+          continue;
+        }
         const data = await res.json();
         for (const item of (data?.data?.[0]?.total_value?.breakdowns?.[0]?.results ?? []) as { dimension_values: string[]; value: number }[]) {
           const breakdownValue = item.dimension_values?.[0];
@@ -859,7 +906,8 @@ export async function fetchDemographicSnapshots(
             rows.push({ demographicType: type, breakdownKey: breakdown, breakdownValue, value: item.value ?? 0 });
           }
         }
-      } catch {
+      } catch (err) {
+        if (isInstagramInvalidTokenError(err)) throw err;
         // Non-fatal per breakdown
       }
     }

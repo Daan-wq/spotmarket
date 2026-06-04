@@ -8,7 +8,10 @@
  */
 
 import type { CreatorYtConnection } from "@prisma/client";
-import { getFreshYoutubeAccessToken } from "@/lib/token-refresh";
+import {
+  isYoutubeInvalidTokenError,
+  withFreshYoutubeAccessToken,
+} from "@/lib/token-refresh";
 import type { ParsedClipUrl } from "@/lib/parse-clip-url";
 import { metricAvailability } from "@/lib/contracts/metrics";
 import { failure, type MetricFetcherResult } from "./router";
@@ -37,23 +40,6 @@ export async function fetchYoutubeMetric(
     return failure("NO_TOKEN", "YT connection missing access token", { type: "YT", id: conn.id });
   }
 
-  let token: string | null;
-  try {
-    token = await getFreshYoutubeAccessToken(conn);
-  } catch (err) {
-    return failure(
-      "TOKEN_BROKEN",
-      `YT token refresh failed: ${(err as Error).message}`,
-      { type: "YT", id: conn.id },
-    );
-  }
-  if (!token) {
-    return failure("TOKEN_EXPIRED", "YT token expired and refresh failed", {
-      type: "YT",
-      id: conn.id,
-    });
-  }
-
   const videoId = parsed.postId ?? "";
   if (!videoId) {
     return failure("POST_NOT_FOUND", "YT URL missing video id", { type: "YT", id: conn.id });
@@ -64,39 +50,27 @@ export async function fetchYoutubeMetric(
     id: videoId,
   });
 
-  const res = await fetch(`${YT_DATA_BASE}/videos?${params}`, {
-    headers: { Authorization: `Bearer ${token}` },
-  });
+  let fetched: { token: string; data: Awaited<ReturnType<typeof readYoutubeVideosList>> } | null;
+  try {
+    fetched = await withFreshYoutubeAccessToken(conn, async (token) => ({
+      token,
+      data: await readYoutubeVideosList(token, params),
+    }));
+  } catch (err) {
+    if (isYoutubeInvalidTokenError(err)) {
+      return failure("TOKEN_BROKEN", (err as Error).message, { type: "YT", id: conn.id });
+    }
+    return failure("PLATFORM_ERROR", (err as Error).message, { type: "YT", id: conn.id });
+  }
 
-  if (res.status === 401 || res.status === 403) {
-    return failure("TOKEN_BROKEN", `YT videos.list returned ${res.status}`, {
+  if (!fetched) {
+    return failure("TOKEN_EXPIRED", "YT token expired and refresh failed", {
       type: "YT",
       id: conn.id,
     });
   }
 
-  if (!res.ok) {
-    const text = await res.text().catch(() => "");
-    return failure(
-      "PLATFORM_ERROR",
-      `YT videos.list ${res.status}: ${text.slice(0, 200)}`,
-      { type: "YT", id: conn.id },
-    );
-  }
-
-  const data = (await res.json()) as {
-    items?: {
-      id: string;
-      snippet?: { channelId?: string; title?: string; publishedAt?: string };
-      contentDetails?: { duration?: string };
-      statistics?: {
-        viewCount?: string;
-        likeCount?: string;
-        commentCount?: string;
-        favoriteCount?: string;
-      };
-    }[];
-  };
+  const { token, data } = fetched;
 
   const item = data.items?.[0];
   if (!item) {
@@ -182,6 +156,44 @@ export async function fetchYoutubeMetric(
       analyticsAvailable: analytics.ok,
       analyticsError: analytics.error ?? null,
     },
+  };
+}
+
+async function readYoutubeVideosList(accessToken: string, params: URLSearchParams): Promise<{
+  items?: {
+    id: string;
+    snippet?: { channelId?: string; title?: string; publishedAt?: string };
+    contentDetails?: { duration?: string };
+    statistics?: {
+      viewCount?: string;
+      likeCount?: string;
+      commentCount?: string;
+      favoriteCount?: string;
+    };
+  }[];
+}> {
+  const res = await fetch(`${YT_DATA_BASE}/videos?${params}`, {
+    headers: { Authorization: `Bearer ${accessToken}` },
+  });
+  if (res.status === 401 || res.status === 403) {
+    throw new Error(`YT videos.list returned ${res.status}: ${await res.text().catch(() => "")}`);
+  }
+  if (!res.ok) {
+    const text = await res.text().catch(() => "");
+    throw new Error(`YT videos.list ${res.status}: ${text.slice(0, 200)}`);
+  }
+  return (await res.json()) as {
+    items?: {
+      id: string;
+      snippet?: { channelId?: string; title?: string; publishedAt?: string };
+      contentDetails?: { duration?: string };
+      statistics?: {
+        viewCount?: string;
+        likeCount?: string;
+        commentCount?: string;
+        favoriteCount?: string;
+      };
+    }[];
   };
 }
 

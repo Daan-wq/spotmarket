@@ -26,8 +26,9 @@ import { fetchFacebookPageProfile } from "@/lib/facebook";
 import { fetchTikTokProfile } from "@/lib/tiktok";
 import { fetchChannelProfile } from "@/lib/youtube";
 import {
-  getFreshYoutubeAccessToken,
+  withFreshInstagramAccessToken,
   withFreshTikTokAccessToken,
+  withFreshYoutubeAccessToken,
 } from "@/lib/token-refresh";
 
 export const dynamic = "force-dynamic";
@@ -86,8 +87,20 @@ async function runIg(): Promise<PlatformResult> {
         f++;
         continue;
       }
-      const token = decrypt(c.accessToken, c.accessTokenIv);
-      const profile = await fetchInstagramProfile(token, c.igUserId);
+      const igUserId = c.igUserId;
+      const profile = await withFreshInstagramAccessToken(c, (token) =>
+        fetchInstagramProfile(token, igUserId),
+      );
+      if (!profile) {
+        await recordAccountRefreshFailure({
+          connectionType: "IG",
+          connectionId: c.id,
+          error: new Error("Could not refresh Instagram access token"),
+          code: "TOKEN_REFRESH_FAILED",
+        }).catch(() => undefined);
+        f++;
+        continue;
+      }
       await persist({
         connectionType: "IG",
         connectionId: c.id,
@@ -197,8 +210,10 @@ async function runYt(): Promise<PlatformResult> {
   let f = 0;
   for (const c of conns) {
     try {
-      const token = await getFreshYoutubeAccessToken(c).catch(() => null);
-      if (!token) {
+      const profile = await withFreshYoutubeAccessToken(c, (token) =>
+        fetchChannelProfile(token),
+      ).catch(() => null);
+      if (!profile) {
         await recordAccountRefreshFailure({
           connectionType: "YT",
           connectionId: c.id,
@@ -208,7 +223,6 @@ async function runYt(): Promise<PlatformResult> {
         f++;
         continue;
       }
-      const profile = await fetchChannelProfile(token);
       await persist({
         connectionType: "YT",
         connectionId: c.id,

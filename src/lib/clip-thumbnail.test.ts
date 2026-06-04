@@ -6,6 +6,7 @@ const thumbnailMocks = vi.hoisted(() => ({
   submissionUpdate: vi.fn(),
   fetchRecentMedia: vi.fn(),
   fetchTikTokVideos: vi.fn(),
+  withFreshInstagramAccessToken: vi.fn(),
   withFreshTikTokAccessToken: vi.fn(),
   cacheCreatorMediaThumbnail: vi.fn(),
   cacheInstagramMedia: vi.fn(),
@@ -32,6 +33,7 @@ vi.mock("@/lib/tiktok", () => ({
 }));
 
 vi.mock("@/lib/token-refresh", () => ({
+  withFreshInstagramAccessToken: thumbnailMocks.withFreshInstagramAccessToken,
   withFreshTikTokAccessToken: thumbnailMocks.withFreshTikTokAccessToken,
 }));
 
@@ -47,6 +49,10 @@ describe("resolveThumbnail", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     thumbnailMocks.findCachedInstagramMediaForUrl.mockResolvedValue(null);
+    thumbnailMocks.withFreshInstagramAccessToken.mockImplementation((
+      _conn: unknown,
+      operation: (token: string) => unknown,
+    ) => operation("fresh-instagram-token"));
     thumbnailMocks.withFreshTikTokAccessToken.mockImplementation((
       _conn: unknown,
       operation: (token: string) => unknown,

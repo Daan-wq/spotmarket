@@ -11,13 +11,13 @@
 import { Prisma } from "@prisma/client";
 import type { CreatorIgConnection } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
-import { decrypt } from "@/lib/crypto";
 import {
   fetchActiveStories,
   fetchMediaInsights,
   type IgStoryItem,
   type MediaInsightResult,
 } from "@/lib/instagram";
+import { withFreshInstagramAccessToken } from "@/lib/token-refresh";
 import { recordRawApiResponse } from "@/lib/metrics/raw-storage";
 
 const STORY_LIFETIME_MS = 24 * 60 * 60 * 1000;
@@ -44,16 +44,17 @@ export async function pollStoriesForConnection(
 
   if (!conn.accessToken || !conn.accessTokenIv || !conn.igUserId) return result;
 
-  let token: string;
-  try {
-    token = decrypt(conn.accessToken, conn.accessTokenIv);
-  } catch {
-    return result;
-  }
-
+  let token = "";
+  const igUserId = conn.igUserId;
   let stories: IgStoryItem[];
   try {
-    stories = await fetchActiveStories(token, conn.igUserId);
+    const fetched = await withFreshInstagramAccessToken(conn, async (freshToken) => {
+      const activeStories = await fetchActiveStories(freshToken, igUserId);
+      return { token: freshToken, stories: activeStories };
+    });
+    if (!fetched) return result;
+    token = fetched.token;
+    stories = fetched.stories;
   } catch (err) {
     console.warn(`[stories] fetch failed for ${conn.id}: ${(err as Error).message}`);
     return result;

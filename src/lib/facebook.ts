@@ -14,6 +14,8 @@ import { getRequiredOAuthEnv, getRequiredOAuthRedirectUri } from "@/lib/oauth-en
 export type { FbPageProfile, FbPagePost, FbDailyPageInsight, FbPageInsightsResult };
 
 const GRAPH_BASE = "https://graph.facebook.com/v25.0";
+const FACEBOOK_INVALID_TOKEN_PATTERN =
+  /OAuthException|Error validating access token|Session has expired|access token|invalid token|token expired|expired/i;
 
 export type FacebookOAuthErrorDetail =
   | "fb_app_invalid"
@@ -26,6 +28,19 @@ export interface FacebookProviderError {
   code: number | null;
   errorSubcode: number | null;
   fbtraceId: string | null;
+}
+
+export function isFacebookInvalidTokenError(error: unknown): boolean {
+  const message = error instanceof Error ? error.message : String(error ?? "");
+  return FACEBOOK_INVALID_TOKEN_PATTERN.test(message);
+}
+
+function facebookApiError(label: string, status: number, body: string): Error {
+  return new Error(`${label} ${status}: ${body}`);
+}
+
+function shouldThrowFacebookError(status: number, body: string): boolean {
+  return status === 401 || status === 403 || FACEBOOK_INVALID_TOKEN_PATTERN.test(body);
 }
 
 export class FacebookOAuthError extends Error {
@@ -616,7 +631,11 @@ export async function fetchFacebookPagePostsPaginated(
   if (cursor) params.set("after", cursor);
   const res = await fetch(`${GRAPH_BASE}/${pageId}/published_posts?${params}`);
   if (!res.ok) {
-    console.warn(`fetchFacebookPagePostsPaginated ${res.status}: ${(await res.text()).slice(0, 120)}`);
+    const errText = await res.text();
+    if (shouldThrowFacebookError(res.status, errText)) {
+      throw facebookApiError("fetchFacebookPagePostsPaginated failed", res.status, errText);
+    }
+    console.warn(`fetchFacebookPagePostsPaginated ${res.status}: ${errText.slice(0, 120)}`);
     return { posts: [], nextCursor: null };
   }
   const data = await res.json();

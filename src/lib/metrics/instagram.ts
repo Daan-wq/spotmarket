@@ -13,12 +13,13 @@
  */
 
 import type { CreatorIgConnection } from "@prisma/client";
-import { decrypt } from "@/lib/crypto";
 import {
   fetchRecentMedia,
   fetchMediaInsights,
+  isInstagramInvalidTokenError,
   type MediaInsightType,
 } from "@/lib/instagram";
+import { withFreshInstagramAccessToken } from "@/lib/token-refresh";
 import type { ParsedClipUrl } from "@/lib/parse-clip-url";
 import { metricAvailability } from "@/lib/contracts/metrics";
 import { failure, type MetricFetcherResult } from "./router";
@@ -60,15 +61,37 @@ export async function fetchInstagramMetric(
     return failure("NO_TOKEN", "IG connection missing ig_user_id", { type: "IG", id: conn.id });
   }
 
-  let token: string;
   try {
-    token = decrypt(conn.accessToken, conn.accessTokenIv);
+    const result = await withFreshInstagramAccessToken(conn, (token) =>
+      fetchInstagramMetricWithToken(conn, parsed, token, submissionId),
+    );
+    if (!result) {
+      return failure("TOKEN_EXPIRED", "IG token expired and refresh failed", {
+        type: "IG",
+        id: conn.id,
+      });
+    }
+    return result;
   } catch (err) {
+    if (isInstagramInvalidTokenError(err)) {
+      return failure("TOKEN_BROKEN", (err as Error).message, { type: "IG", id: conn.id });
+    }
     return failure(
-      "TOKEN_BROKEN",
-      `IG token decrypt failed: ${(err as Error).message}`,
+      "PLATFORM_ERROR",
+      (err as Error).message,
       { type: "IG", id: conn.id },
     );
+  }
+}
+
+async function fetchInstagramMetricWithToken(
+  conn: CreatorIgConnection,
+  parsed: ParsedClipUrl,
+  token: string,
+  submissionId?: string,
+): Promise<MetricFetcherResult> {
+  if (!conn.igUserId) {
+    return failure("NO_TOKEN", "IG connection missing ig_user_id", { type: "IG", id: conn.id });
   }
 
   // Walk recent media looking for a permalink that contains the post id from
@@ -82,6 +105,7 @@ export async function fetchInstagramMetric(
     try {
       result = await fetchRecentMedia(token, conn.igUserId, 50, cursor);
     } catch (err) {
+      if (isInstagramInvalidTokenError(err)) throw err;
       const msg = (err as Error).message?.toLowerCase() ?? "";
       if (msg.includes("oauth") || msg.includes("token") || msg.includes("expired")) {
         return failure("TOKEN_BROKEN", (err as Error).message, { type: "IG", id: conn.id });
