@@ -1,12 +1,17 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { CreatorTikTokConnection } from "@prisma/client";
 
-const fetchTikTokVideosMock = vi.fn();
+const fetchTikTokVideosByIdsMock = vi.fn();
 const getFreshTokenMock = vi.fn();
 const recordRawMock = vi.fn();
 
+const hoisted = vi.hoisted(() => ({
+  TikTokRateLimitError: class MockTikTokRateLimitError extends Error {},
+}));
+
 vi.mock("@/lib/tiktok", () => ({
-  fetchTikTokVideos: (...a: unknown[]) => fetchTikTokVideosMock(...a),
+  fetchTikTokVideosByIds: (...a: unknown[]) => fetchTikTokVideosByIdsMock(...a),
+  TikTokRateLimitError: hoisted.TikTokRateLimitError,
 }));
 vi.mock("@/lib/token-refresh", () => ({
   getFreshTikTokAccessToken: (...a: unknown[]) => getFreshTokenMock(...a),
@@ -24,7 +29,7 @@ vi.mock("./router", () => ({
   }),
 }));
 
-import { fetchTikTokMetric } from "./tiktok";
+import { fetchTikTokMetric, fetchTikTokMetricsByVideoIds } from "./tiktok";
 
 function conn(): CreatorTikTokConnection {
   return {
@@ -35,7 +40,7 @@ function conn(): CreatorTikTokConnection {
 }
 
 beforeEach(() => {
-  fetchTikTokVideosMock.mockReset();
+  fetchTikTokVideosByIdsMock.mockReset();
   getFreshTokenMock.mockReset();
   recordRawMock.mockReset();
   getFreshTokenMock.mockResolvedValue("decoded-token");
@@ -47,8 +52,8 @@ afterEach(() => {
 });
 
 describe("fetchTikTokMetric", () => {
-  it("preserves video metadata in raw and archives the page payload", async () => {
-    fetchTikTokVideosMock.mockResolvedValue({
+  it("queries the known TikTok video ID directly and preserves metadata in raw", async () => {
+    fetchTikTokVideosByIdsMock.mockResolvedValue({
       videos: [
         {
           id: "vid_42",
@@ -67,16 +72,21 @@ describe("fetchTikTokMetric", () => {
           width: 1080,
         },
       ],
-      nextCursor: null,
-      hasMore: false,
     });
 
     const r = await fetchTikTokMetric(
       conn(),
-      { platform: "TIKTOK", postId: "vid_42", authorHandle: "user", normalizedUrl: "https://www.tiktok.com/@user/video/vid_42" },
+      {
+        platform: "TIKTOK",
+        postId: "vid_42",
+        platformVideoId: "vid_42",
+        authorHandle: "user",
+        normalizedUrl: "https://www.tiktok.com/@user/video/vid_42",
+      },
       "sub_tt",
     );
 
+    expect(fetchTikTokVideosByIdsMock).toHaveBeenCalledWith("decoded-token", ["vid_42"]);
     expect(r.ok).toBe(true);
     if (!r.ok) return;
     expect(r.viewCount).toBe(BigInt(100000));
@@ -106,42 +116,64 @@ describe("fetchTikTokMetric", () => {
       expect.objectContaining({
         connectionType: "TT",
         connectionId: "conn_tt",
-        endpoint: "tiktok.video.list",
-        submissionId: "sub_tt",
+        endpoint: "tiktok.video.query",
+        submissionId: null,
       }),
     );
   });
 
-  it("archives every page even when paging through to find the video", async () => {
-    fetchTikTokVideosMock
-      .mockResolvedValueOnce({
-        videos: [{ id: "other", title: "x", coverImageUrl: null, shareUrl: "https://tt/other", viewCount: 1, likeCount: 0, commentCount: 0, shareCount: 0, createTime: 0, duration: 0 }],
-        nextCursor: 12345,
-        hasMore: true,
-      })
-      .mockResolvedValueOnce({
-        videos: [{ id: "vid_99", title: "x", coverImageUrl: null, shareUrl: "https://tt/vid_99", viewCount: 5, likeCount: 1, commentCount: 0, shareCount: 0, createTime: 0, duration: 0 }],
-        nextCursor: null,
-        hasMore: false,
-      });
-
+  it("returns POST_NOT_FOUND when video.query does not return the requested ID", async () => {
+    fetchTikTokVideosByIdsMock.mockResolvedValue({ videos: [] });
     const r = await fetchTikTokMetric(
       conn(),
-      { platform: "TIKTOK", postId: "vid_99", authorHandle: null, normalizedUrl: "https://www.tiktok.com/@u/video/vid_99" },
-      "sub_pp",
-    );
-    expect(r.ok).toBe(true);
-    expect(recordRawMock).toHaveBeenCalledTimes(2);
-  });
-
-  it("returns POST_NOT_FOUND after exhausting pages", async () => {
-    fetchTikTokVideosMock.mockResolvedValue({ videos: [], nextCursor: null, hasMore: false });
-    const r = await fetchTikTokMetric(
-      conn(),
-      { platform: "TIKTOK", postId: "missing", authorHandle: null, normalizedUrl: "https://www.tiktok.com/@u/video/missing" },
+      {
+        platform: "TIKTOK",
+        postId: "missing",
+        platformVideoId: "missing",
+        authorHandle: null,
+        normalizedUrl: "https://www.tiktok.com/@u/video/missing",
+      },
     );
     expect(r.ok).toBe(false);
     if (r.ok) return;
     expect(r.reason).toBe("POST_NOT_FOUND");
+  });
+
+  it("classifies TikTok 429s as RATE_LIMITED", async () => {
+    fetchTikTokVideosByIdsMock.mockRejectedValue(new hoisted.TikTokRateLimitError("too many"));
+    const results = await fetchTikTokMetricsByVideoIds(conn(), [
+      { submissionId: "sub_1", videoId: "vid_1" },
+    ]);
+
+    const r = results.get("sub_1");
+    expect(r?.ok).toBe(false);
+    if (!r || r.ok) return;
+    expect(r.reason).toBe("RATE_LIMITED");
+  });
+});
+
+describe("fetchTikTokMetricsByVideoIds", () => {
+  it("batches video.query calls by 20 IDs", async () => {
+    fetchTikTokVideosByIdsMock
+      .mockResolvedValueOnce({ videos: [] })
+      .mockResolvedValueOnce({ videos: [] });
+
+    const targets = Array.from({ length: 21 }, (_, i) => ({
+      submissionId: `sub_${i}`,
+      videoId: `vid_${i}`,
+    }));
+    await fetchTikTokMetricsByVideoIds(conn(), targets);
+
+    expect(fetchTikTokVideosByIdsMock).toHaveBeenCalledTimes(2);
+    expect(fetchTikTokVideosByIdsMock).toHaveBeenNthCalledWith(
+      1,
+      "decoded-token",
+      targets.slice(0, 20).map((target) => target.videoId),
+    );
+    expect(fetchTikTokVideosByIdsMock).toHaveBeenNthCalledWith(
+      2,
+      "decoded-token",
+      ["vid_20"],
+    );
   });
 });

@@ -4,18 +4,17 @@
  * Owner: A. Encapsulates: pick batch by tier → route to OAuth fetcher →
  * persist MetricSnapshot → compute velocity + flags → emit events.
  *
- * Polling tiers (driven by `submission.createdAt` age):
- *   - hot     <  24h    every 15 min   (handled by /api/cron/poll-metrics-hot)
- *   - warm    1–7 days  hourly         (handled by /api/cron/poll-metrics-warm)
- *   - cold    >7 days   daily          (folded into warm; warm cron runs once/hour
- *                                       but cold rows have lastMetricsRefreshAt > 23h)
- *   - frozen  >30 days  off            (excluded by the runner)
+ * Polling is driven by `CampaignSubmission.nextMetricsPollAt`:
+ *   - hot     active campaigns, every 15 min
+ *   - warm    ended campaigns up to 90 days after deadline, daily
+ *   - cold    ended campaigns older than 90 days, weekly
  */
 
 import { prisma } from "@/lib/prisma";
 import { Prisma, type $Enums } from "@prisma/client";
 import { publishEvent } from "@/lib/event-bus";
-import { routeMetric } from "./router";
+import { failure, routeMetric, type MetricFetcherResult } from "./router";
+import { fetchTikTokMetricsByVideoIds } from "./tiktok";
 import { scoreVelocity, type FlagDraft } from "@/lib/velocity-scorer";
 import { reconcileCampaignBudgetCap } from "@/lib/campaign-budget-cap";
 import { calculatePaidViews } from "@/lib/paid-views";
@@ -25,17 +24,16 @@ import { reconcileReferralPayoutForSubmission } from "@/lib/referral-reconciliat
 
 export type Tier = "hot" | "warm" | "cold";
 
-const HOT_MAX_AGE_MS = 24 * 60 * 60 * 1000;
-const WARM_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000;
-const COLD_MAX_AGE_MS = 30 * 24 * 60 * 60 * 1000;
+const ACTIVE_POLL_MS = 15 * 60 * 1000;
+const ACTIVE_FAILURE_POLL_MS = 60 * 60 * 1000;
+const ENDED_POLL_MS = 24 * 60 * 60 * 1000;
+const OLD_ENDED_POLL_MS = 7 * 24 * 60 * 60 * 1000;
+const OLD_ENDED_AFTER_MS = 90 * 24 * 60 * 60 * 1000;
+const POLL_LOCK_TTL_MS = 10 * 60 * 1000;
 
-const HOT_STALE_MS = 14 * 60 * 1000;     // < 15 min freshness
-const WARM_STALE_MS = 55 * 60 * 1000;    // < 1 hour freshness
-const COLD_STALE_MS = 23 * 60 * 60 * 1000; // < 24 hour freshness
-
-const HOT_BATCH = 100;
-const WARM_BATCH = 200;
-const COLD_BATCH = 50;
+const HOT_BATCH = 1000;
+const WARM_BATCH = 300;
+const COLD_BATCH = 100;
 
 const ACTIVE_STATUSES: $Enums.SubmissionStatus[] = ["PENDING", "APPROVED", "FLAGGED"];
 
@@ -50,54 +48,46 @@ export interface PollResult {
   processed: number;
   succeeded: number;
   failed: number;
+  rateLimited: number;
   flagged: number;
 }
 
-export async function pollSubmissions(opts: RunOptions): Promise<PollResult> {
-  const now = Date.now();
-  const minCreatedAt = ageWindow(opts.tier).minCreatedAt;
-  const maxCreatedAt = ageWindow(opts.tier).maxCreatedAt;
-  const staleBefore = new Date(now - ageWindow(opts.tier).staleMs);
+interface PollSubmission {
+  id: string;
+  postUrl: string;
+  normalizedPlatform: string | null;
+  platformVideoId: string | null;
+  creatorId: string;
+  campaignId: string;
+  status: $Enums.SubmissionStatus;
+  sourceConnectionType: $Enums.ConnectionType | null;
+  sourceConnectionId: string | null;
+  baselineViews: number | null;
+  settledAt: Date | null;
+  metricsRefreshFailures: number;
+  payoutRunItems: Array<{ id: string }>;
+  campaign: {
+    status: $Enums.CampaignStatus;
+    deadline: Date;
+    creatorCpv: number | string | { toString(): string } | null;
+    minimumPaidViews: number | null;
+    maximumPaidViews: number | null;
+  };
+}
 
-  const submissions = await prisma.campaignSubmission.findMany({
-    where: {
-      status: { in: ACTIVE_STATUSES },
-      createdAt: { gt: minCreatedAt, lte: maxCreatedAt },
-      OR: [
-        { lastMetricsRefreshAt: null },
-        { lastMetricsRefreshAt: { lt: staleBefore } },
-      ],
-    },
-    orderBy: [{ lastMetricsRefreshAt: { sort: "asc", nulls: "first" } }],
-    take: opts.limit ?? batchSize(opts.tier),
-    select: {
-      id: true,
-      postUrl: true,
-      creatorId: true,
-      campaignId: true,
-      status: true,
-      sourceConnectionType: true,
-      sourceConnectionId: true,
-      baselineViews: true,
-      settledAt: true,
-      payoutRunItems: { select: { id: true }, take: 1 },
-      campaign: {
-        select: {
-          creatorCpv: true,
-          minimumPaidViews: true,
-          maximumPaidViews: true,
-        },
-      },
-    },
-  });
+export async function pollSubmissions(opts: RunOptions): Promise<PollResult> {
+  const runStartedAt = new Date();
+  const submissions = await claimDueSubmissions(opts, runStartedAt);
+  const prefetchedMetrics = await prefetchTikTokMetrics(submissions);
 
   let succeeded = 0;
   let failed = 0;
+  let rateLimited = 0;
   let flagged = 0;
 
   for (const sub of submissions) {
     try {
-      const fetched = await routeMetric(sub);
+      const fetched = prefetchedMetrics.get(sub.id) ?? await routeMetric(sub);
 
       if (fetched.ok) {
         const snap = await prisma.metricSnapshot.create({
@@ -191,6 +181,9 @@ export async function pollSubmissions(opts: RunOptions): Promise<PollResult> {
             where: { id: sub.id },
             data: {
               lastMetricsRefreshAt: snap.capturedAt,
+              lastMetricsPollAttemptAt: snap.capturedAt,
+              nextMetricsPollAt: computeNextMetricsPollAt(sub, fetched, snap.capturedAt),
+              metricsPollLockedAt: null,
               metricsRefreshFailures: 0,
               viewCount: Math.min(cumulativeViews, 2_147_483_647),
               likeCount: fetched.metricAvailability.likes ? fetched.likeCount : null,
@@ -198,6 +191,12 @@ export async function pollSubmissions(opts: RunOptions): Promise<PollResult> {
               shareCount: fetched.metricAvailability.shares ? fetched.shareCount : null,
               velocityScore: scored.velocityScore ?? undefined,
               sourceMethod: "OAUTH",
+              ...(fetched.connection
+                ? {
+                    sourceConnectionType: fetched.connection.type,
+                    sourceConnectionId: fetched.connection.id,
+                  }
+                : {}),
               ...(paidViews
                 ? {
                     eligibleViews: paidViews.payableViews,
@@ -242,6 +241,7 @@ export async function pollSubmissions(opts: RunOptions): Promise<PollResult> {
         }
         succeeded++;
       } else {
+        const failedAt = new Date();
         await prisma.metricSnapshot.create({
           data: {
             submissionId: sub.id,
@@ -258,11 +258,17 @@ export async function pollSubmissions(opts: RunOptions): Promise<PollResult> {
         await prisma.campaignSubmission.update({
           where: { id: sub.id },
           data: {
-            lastMetricsRefreshAt: new Date(),
-            metricsRefreshFailures: { increment: 1 },
+            lastMetricsRefreshAt: failedAt,
+            lastMetricsPollAttemptAt: failedAt,
+            nextMetricsPollAt: computeNextMetricsPollAt(sub, fetched, failedAt),
+            metricsPollLockedAt: null,
+            ...(fetched.reason === "RATE_LIMITED"
+              ? {}
+              : { metricsRefreshFailures: { increment: 1 } }),
           },
         });
 
+        if (fetched.reason === "RATE_LIMITED") rateLimited++;
         if (fetched.reason === "TOKEN_BROKEN" || fetched.reason === "TOKEN_EXPIRED") {
           await emitFlag(sub.id, {
             type: "TOKEN_BROKEN",
@@ -279,11 +285,18 @@ export async function pollSubmissions(opts: RunOptions): Promise<PollResult> {
       }
     } catch (err) {
       console.error(`[poll-runner] ${sub.id}`, err);
+      const erroredAt = new Date();
       failed++;
       await prisma.campaignSubmission
         .update({
           where: { id: sub.id },
-          data: { lastMetricsRefreshAt: new Date(), metricsRefreshFailures: { increment: 1 } },
+          data: {
+            lastMetricsRefreshAt: erroredAt,
+            lastMetricsPollAttemptAt: erroredAt,
+            nextMetricsPollAt: computeNextMetricsPollAt(sub, null, erroredAt),
+            metricsPollLockedAt: null,
+            metricsRefreshFailures: { increment: 1 },
+          },
         })
         .catch(() => undefined);
     }
@@ -294,8 +307,194 @@ export async function pollSubmissions(opts: RunOptions): Promise<PollResult> {
     processed: submissions.length,
     succeeded,
     failed,
+    rateLimited,
     flagged,
   };
+}
+
+async function claimDueSubmissions(opts: RunOptions, runStartedAt: Date): Promise<PollSubmission[]> {
+  const lockExpiresBefore = new Date(runStartedAt.getTime() - POLL_LOCK_TTL_MS);
+  const candidates = await prisma.campaignSubmission.findMany({
+    where: dueWhere(opts.tier, runStartedAt, lockExpiresBefore),
+    orderBy: [
+      { nextMetricsPollAt: { sort: "asc", nulls: "first" } },
+      { lastMetricsRefreshAt: { sort: "asc", nulls: "first" } },
+    ],
+    take: opts.limit ?? batchSize(opts.tier),
+    select: {
+      id: true,
+      postUrl: true,
+      normalizedPlatform: true,
+      platformVideoId: true,
+      creatorId: true,
+      campaignId: true,
+      status: true,
+      sourceConnectionType: true,
+      sourceConnectionId: true,
+      baselineViews: true,
+      settledAt: true,
+      metricsRefreshFailures: true,
+      payoutRunItems: { select: { id: true }, take: 1 },
+      campaign: {
+        select: {
+          status: true,
+          deadline: true,
+          creatorCpv: true,
+          minimumPaidViews: true,
+          maximumPaidViews: true,
+        },
+      },
+    },
+  });
+
+  const claimed: PollSubmission[] = [];
+  for (const candidate of candidates) {
+    const claim = await prisma.campaignSubmission.updateMany({
+      where: {
+        id: candidate.id,
+        OR: [
+          { metricsPollLockedAt: null },
+          { metricsPollLockedAt: { lt: lockExpiresBefore } },
+        ],
+      },
+      data: {
+        metricsPollLockedAt: runStartedAt,
+        lastMetricsPollAttemptAt: runStartedAt,
+      },
+    });
+    if (claim.count === 1) claimed.push(candidate as PollSubmission);
+  }
+  return claimed;
+}
+
+function dueWhere(
+  tier: Tier,
+  now: Date,
+  lockExpiresBefore: Date,
+): Prisma.CampaignSubmissionWhereInput {
+  return {
+    AND: [
+      { status: { in: ACTIVE_STATUSES } },
+      tierScope(tier, now),
+      {
+        OR: [
+          { nextMetricsPollAt: null },
+          { nextMetricsPollAt: { lte: now } },
+        ],
+      },
+      {
+        OR: [
+          { metricsPollLockedAt: null },
+          { metricsPollLockedAt: { lt: lockExpiresBefore } },
+        ],
+      },
+    ],
+  };
+}
+
+function tierScope(tier: Tier, now: Date): Prisma.CampaignSubmissionWhereInput {
+  const today = startOfLocalDay(now);
+  const oldEndedCutoff = new Date(today.getTime() - OLD_ENDED_AFTER_MS);
+  switch (tier) {
+    case "hot":
+      return { campaign: { status: "active", deadline: { gte: today } } };
+    case "warm":
+      return {
+        campaign: {
+          deadline: { gte: oldEndedCutoff },
+          OR: [
+            { status: { not: "active" } },
+            { status: "active", deadline: { lt: today } },
+          ],
+        },
+      };
+    case "cold":
+      return { campaign: { deadline: { lt: oldEndedCutoff } } };
+  }
+}
+
+async function prefetchTikTokMetrics(
+  submissions: PollSubmission[],
+): Promise<Map<string, MetricFetcherResult>> {
+  const results = new Map<string, MetricFetcherResult>();
+  const byConnection = new Map<string, Array<{ submissionId: string; videoId: string }>>();
+
+  for (const sub of submissions) {
+    if (
+      sub.normalizedPlatform !== "TIKTOK" ||
+      sub.sourceConnectionType !== "TT" ||
+      !sub.sourceConnectionId ||
+      !sub.platformVideoId
+    ) {
+      continue;
+    }
+    const bucket = byConnection.get(sub.sourceConnectionId) ?? [];
+    bucket.push({ submissionId: sub.id, videoId: sub.platformVideoId });
+    byConnection.set(sub.sourceConnectionId, bucket);
+  }
+
+  for (const [connectionId, targets] of byConnection) {
+    const conn = await prisma.creatorTikTokConnection.findFirst({
+      where: {
+        id: connectionId,
+        isVerified: true,
+        accessToken: { not: null },
+      },
+    });
+    if (!conn) {
+      for (const target of targets) {
+        results.set(
+          target.submissionId,
+          failure("NO_CONNECTION", "Stored TT account connection is no longer available", {
+            type: "TT",
+            id: connectionId,
+          }),
+        );
+      }
+      continue;
+    }
+
+    const fetched = await fetchTikTokMetricsByVideoIds(conn, targets);
+    for (const [submissionId, result] of fetched) results.set(submissionId, result);
+  }
+
+  return results;
+}
+
+function computeNextMetricsPollAt(
+  sub: PollSubmission,
+  fetched: MetricFetcherResult | null,
+  now: Date,
+): Date {
+  const active = isActiveCampaign(sub.campaign, now);
+  const failed = fetched == null || !fetched.ok;
+  if (fetched && !fetched.ok && fetched.reason === "RATE_LIMITED") {
+    return new Date(now.getTime() + ACTIVE_POLL_MS);
+  }
+  if (active) {
+    if (failed) {
+      return new Date(now.getTime() + ACTIVE_FAILURE_POLL_MS);
+    }
+    return new Date(now.getTime() + ACTIVE_POLL_MS);
+  }
+
+  if (failed) return new Date(now.getTime() + OLD_ENDED_POLL_MS);
+  const deadline = sub.campaign.deadline instanceof Date ? sub.campaign.deadline : now;
+  const endedAgeMs = now.getTime() - deadline.getTime();
+  return new Date(now.getTime() + (endedAgeMs > OLD_ENDED_AFTER_MS ? OLD_ENDED_POLL_MS : ENDED_POLL_MS));
+}
+
+function isActiveCampaign(
+  campaign: { status: $Enums.CampaignStatus; deadline: Date },
+  now: Date,
+): boolean {
+  return campaign.status === "active" &&
+    campaign.deadline instanceof Date &&
+    campaign.deadline >= startOfLocalDay(now);
+}
+
+function startOfLocalDay(date: Date): Date {
+  return new Date(date.getFullYear(), date.getMonth(), date.getDate());
 }
 
 export async function emitFlag(submissionId: string, flag: FlagDraft): Promise<void> {
@@ -365,30 +564,6 @@ function payloadRisk(payload: unknown): number | null {
   if (!payload || typeof payload !== "object") return null;
   const risk = (payload as { riskScore?: unknown }).riskScore;
   return typeof risk === "number" && Number.isFinite(risk) ? risk : null;
-}
-
-function ageWindow(tier: Tier): { minCreatedAt: Date; maxCreatedAt: Date; staleMs: number } {
-  const now = Date.now();
-  switch (tier) {
-    case "hot":
-      return {
-        minCreatedAt: new Date(now - HOT_MAX_AGE_MS),
-        maxCreatedAt: new Date(now + 1),
-        staleMs: HOT_STALE_MS,
-      };
-    case "warm":
-      return {
-        minCreatedAt: new Date(now - WARM_MAX_AGE_MS),
-        maxCreatedAt: new Date(now - HOT_MAX_AGE_MS),
-        staleMs: WARM_STALE_MS,
-      };
-    case "cold":
-      return {
-        minCreatedAt: new Date(now - COLD_MAX_AGE_MS),
-        maxCreatedAt: new Date(now - WARM_MAX_AGE_MS),
-        staleMs: COLD_STALE_MS,
-      };
-  }
 }
 
 function batchSize(tier: Tier): number {
