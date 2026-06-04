@@ -25,6 +25,15 @@ function payout(
   };
 }
 
+function adjustment(
+  overrides: Partial<NonNullable<Parameters<typeof buildCreatorPaymentSummary>[0]["adjustments"]>[number]>,
+) {
+  return {
+    amount: 0,
+    ...overrides,
+  };
+}
+
 describe("buildCreatorPaymentSummary", () => {
   it("uses approved stored earnings as creator-facing financial truth", () => {
     const summary = buildCreatorPaymentSummary({
@@ -100,6 +109,20 @@ describe("buildCreatorPaymentSummary", () => {
     expect(summary.profit).toBe(0);
     expect(summary.pendingPayout).toBe(0);
     expect(summary.availableBalance).toBe(100);
+  });
+
+  it("applies internal balance adjustments without changing campaign earnings", () => {
+    const summary = buildCreatorPaymentSummary({
+      submissions: [submission({ earnedAmount: 150.13 })],
+      payouts: [payout({ amount: 160.81, status: "confirmed" })],
+      adjustments: [adjustment({ amount: 10.68 })],
+    });
+
+    expect(summary.totalEarned).toBe(150.13);
+    expect(summary.totalAdjustments).toBe(10.68);
+    expect(summary.totalPaid).toBe(160.81);
+    expect(summary.availableBalance).toBe(0);
+    expect(summary.earningsByCampaign[0]?.totalEarned).toBe(150.13);
   });
 
   it("prefers eligible views, then verified views, then claimed views for campaign rows", () => {

@@ -35,6 +35,10 @@ export interface CreatorPaymentPayout {
   status: string;
 }
 
+export interface CreatorPaymentAdjustment {
+  amount: NumericLike;
+}
+
 export interface CreatorCampaignEarningsRow {
   campaignId: string;
   campaignName: string;
@@ -45,6 +49,7 @@ export interface CreatorCampaignEarningsRow {
 
 export interface CreatorPaymentSummary {
   totalEarned: number;
+  totalAdjustments: number;
   totalPaid: number;
   profit: number;
   pendingPayout: number;
@@ -81,12 +86,17 @@ function campaignViews(submission: CreatorPaymentSubmission): number {
 export function buildCreatorPaymentSummary({
   submissions,
   payouts,
+  adjustments = [],
 }: {
   submissions: ReadonlyArray<CreatorPaymentSubmission>;
   payouts: ReadonlyArray<CreatorPaymentPayout>;
+  adjustments?: ReadonlyArray<CreatorPaymentAdjustment>;
 }): CreatorPaymentSummary {
   const totalEarned = roundMoney(
     submissions.reduce((sum, submission) => sum + toNumber(submission.earnedAmount), 0),
+  );
+  const totalAdjustments = roundMoney(
+    adjustments.reduce((sum, adjustment) => sum + toNumber(adjustment.amount), 0),
   );
   const totalPaid = roundMoney(
     payouts
@@ -121,6 +131,7 @@ export function buildCreatorPaymentSummary({
 
   return {
     totalEarned,
+    totalAdjustments,
     totalPaid,
     profit: roundMoney(totalPaid + settledSubmissionBalance),
     pendingPayout,
@@ -129,7 +140,8 @@ export function buildCreatorPaymentSummary({
     lockedPayoutBalance,
     availableBalance: roundMoney(
       Math.max(
-        totalEarned -
+        totalEarned +
+          totalAdjustments -
           totalPaid -
           requestedPayout -
           pendingReviewBalance -
@@ -162,7 +174,7 @@ export async function getCreatorPaymentSummary(
   creatorProfileId: string,
 ): Promise<CreatorPaymentSummary> {
   const { prisma } = await import("@/lib/prisma");
-  const [submissions, payouts] = await Promise.all([
+  const [submissions, payouts, adjustments] = await Promise.all([
     prisma.campaignSubmission.findMany({
       where: { creatorId: userId, status: "APPROVED" },
       select: {
@@ -201,6 +213,10 @@ export async function getCreatorPaymentSummary(
       where: { creatorProfileId },
       select: { amount: true, status: true },
     }),
+    prisma.creatorBalanceAdjustment.findMany({
+      where: { creatorProfileId },
+      select: { amount: true },
+    }),
   ]);
 
   return buildCreatorPaymentSummary({
@@ -220,5 +236,6 @@ export async function getCreatorPaymentSummary(
       maximumPaidViews: submission.campaign.maximumPaidViews,
     })),
     payouts,
+    adjustments,
   });
 }
