@@ -3,6 +3,11 @@ import { prisma } from "@/lib/prisma";
 import { NextResponse } from "next/server";
 import { safeRedirectPath } from "@/lib/safe-redirect";
 import { joinDiscordGuildWithOAuthToken } from "@/lib/discord-campaign-roles";
+import {
+  claimUserForAuthIdentity,
+  extractDiscordIdentity,
+  isAuthIdentityConflict,
+} from "@/lib/auth-identity";
 
 export async function GET(request: Request) {
   const { searchParams, origin } = new URL(request.url);
@@ -24,6 +29,7 @@ export async function GET(request: Request) {
   const { session } = data;
   const user = session.user;
   const provider = user.app_metadata?.provider;
+  const discordIdentity = extractDiscordIdentity(user);
   const nextUrl = new URL(next, origin);
   const clickId = nextUrl.searchParams.get("click");
 
@@ -34,50 +40,35 @@ export async function GET(request: Request) {
     });
   }
 
-  // Discord account connection: auto-join guild while provider_token is available.
-  if (provider === "discord" && session.provider_token) {
-    const discordId = user.user_metadata?.provider_id ?? user.user_metadata?.sub;
-    if (discordId) {
-      try {
-        const joined = await joinDiscordGuildWithOAuthToken(discordId, session.provider_token);
-        if (!joined.ok) {
-          console.error("[auth/callback] Guild join failed:", joined.status, joined.body);
-        }
-      } catch (err) {
-        console.error("[auth/callback] Guild join error:", err);
+  if (provider === "discord" && session.provider_token && discordIdentity) {
+    try {
+      const joined = await joinDiscordGuildWithOAuthToken(discordIdentity.id, session.provider_token);
+      if (!joined.ok) {
+        console.error("[auth/callback] Guild join failed:", joined.status, joined.body);
       }
+    } catch (err) {
+      console.error("[auth/callback] Guild join error:", err);
+    }
 
-      if (clickId) {
-        await prisma.campaignReferralAttribution.updateMany({
-          where: { clickId, discordLinkedAt: null },
-          data: { discordLinkedAt: new Date() },
-        });
-      }
+    if (clickId) {
+      await prisma.campaignReferralAttribution.updateMany({
+        where: { clickId, discordLinkedAt: null },
+        data: { discordLinkedAt: new Date() },
+      });
     }
   }
 
-  // Check if Prisma user record exists
-  const existingUser = await prisma.user.findUnique({
-    where: { supabaseId: user.id },
-  });
-
-  if (existingUser) {
-    // Update Discord info if signing in via Discord and not yet stored
-    if (provider === "discord" && !existingUser.discordId) {
-      const discordId = user.user_metadata?.provider_id ?? user.user_metadata?.sub;
-      const discordUsername = user.user_metadata?.full_name ?? user.user_metadata?.name;
-      if (discordId) {
-        await prisma.user.update({
-          where: { id: existingUser.id },
-          data: { discordId, discordUsername: discordUsername ?? null },
-        });
-      }
+  try {
+    const existingUser = await claimUserForAuthIdentity(user, { discordIdentity });
+    if (existingUser) {
+      return NextResponse.redirect(`${origin}${next}`);
     }
-
-    // Existing user → go to requested page or role-based dashboard
-    return NextResponse.redirect(`${origin}${next}`);
+  } catch (err) {
+    if (isAuthIdentityConflict(err)) {
+      return NextResponse.redirect(`${origin}/sign-in?auth_error=discord_already_linked`);
+    }
+    throw err;
   }
 
-  // New OAuth user → redirect to onboarding
   return NextResponse.redirect(`${origin}${next}`);
 }

@@ -11,6 +11,12 @@ import {
 import { buildFirstClipOnboardingStatus } from "@/lib/first-clip-onboarding";
 import { normalizeReferralCode } from "@/lib/referral";
 import { createUniqueUsername } from "@/lib/username";
+import {
+  AUTH_IDENTITY_CONFLICT_MESSAGE,
+  claimUserForAuthIdentity,
+  extractDiscordIdentity,
+  isAuthIdentityConflict,
+} from "@/lib/auth-identity";
 
 const VALID_ROLES = ["creator"] as const;
 
@@ -101,38 +107,27 @@ export async function POST(req: Request) {
     }
   }
 
-  const referralCode = await uniqueReferralCode();
-
-  // Handle re-signup: if a User record exists for this email with a stale supabaseId, update it
-  const existingByEmail = await prisma.user.findUnique({ where: { email: authUser.email ?? "" } });
-  if (existingByEmail && existingByEmail.supabaseId !== authUser.id) {
-    await prisma.user.update({ where: { id: existingByEmail.id }, data: { supabaseId: authUser.id } });
-  }
+  const discordIdentity = extractDiscordIdentity(authUser);
+  const claimedUser = await claimUserForAuthIdentity(authUser, {
+    role: selectedRole,
+    discordIdentity,
+  });
 
   const admin = createSupabaseAdminClient();
   await admin.auth.admin.updateUserById(authUser.id, {
     user_metadata: { role: selectedRole },
   });
 
-  // Extract Discord info from OAuth metadata if available
-  const provider = authUser.app_metadata?.provider;
-  const discordId = provider === "discord"
-    ? (authUser.user_metadata?.provider_id ?? authUser.user_metadata?.sub ?? null)
-    : null;
-  const discordUsername = provider === "discord"
-    ? (authUser.user_metadata?.full_name ?? authUser.user_metadata?.name ?? null)
-    : null;
-
-  const user = await prisma.user.upsert({
-    where: { supabaseId: authUser.id },
-    update: { role: selectedRole },
-    create: {
+  const user = claimedUser ?? await prisma.user.create({
+    data: {
       supabaseId: authUser.id,
-      email: authUser.email ?? "",
+      email: authUser.email?.toLowerCase() ?? "",
       role: selectedRole,
-      referralCode,
+      referralCode: await uniqueReferralCode(),
       referredBy: referredById,
-      ...(discordId ? { discordId, discordUsername } : {}),
+      ...(discordIdentity
+        ? { discordId: discordIdentity.id, discordUsername: discordIdentity.username }
+        : {}),
     },
     include: { creatorProfile: true },
   });
@@ -167,7 +162,7 @@ export async function POST(req: Request) {
       where: { id: attributionId, onboardedAt: null },
       data: { onboardedAt: now },
     });
-    if (discordId) {
+    if (discordIdentity) {
       await prisma.campaignReferralAttribution.updateMany({
         where: { id: attributionId, discordLinkedAt: null },
         data: { discordLinkedAt: now },
@@ -209,7 +204,7 @@ export async function POST(req: Request) {
   }
 
   const firstClipStatus = buildFirstClipOnboardingStatus({
-    discordConnected: Boolean(user.discordId ?? discordId),
+    discordConnected: Boolean(user.discordId ?? discordIdentity?.id),
     accountConnected: false,
     joinedApplicationId: null,
     firstClipSubmitted: false,
@@ -222,6 +217,10 @@ export async function POST(req: Request) {
     firstClipNextStep: firstClipStatus.nextStep,
   });
   } catch (err) {
+    if (isAuthIdentityConflict(err)) {
+      return NextResponse.json({ error: AUTH_IDENTITY_CONFLICT_MESSAGE }, { status: 409 });
+    }
+
     const message = err instanceof Error ? err.message : String(err);
     console.error("[onboarding/complete]", message);
     return NextResponse.json({ error: message }, { status: 500 });

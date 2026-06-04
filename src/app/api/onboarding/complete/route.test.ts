@@ -5,7 +5,8 @@ const routeMocks = vi.hoisted(() => ({
   getUser: vi.fn(),
   updateSupabaseUser: vi.fn(),
   userFindUnique: vi.fn(),
-  userUpsert: vi.fn(),
+  userCreate: vi.fn(),
+  userUpdate: vi.fn(),
   profileFindUnique: vi.fn(),
   profileCreate: vi.fn(),
   profileUpdate: vi.fn(),
@@ -35,7 +36,8 @@ vi.mock("@/lib/prisma", () => ({
   prisma: {
     user: {
       findUnique: routeMocks.userFindUnique,
-      upsert: routeMocks.userUpsert,
+      create: routeMocks.userCreate,
+      update: routeMocks.userUpdate,
     },
     creatorProfile: {
       findUnique: routeMocks.profileFindUnique,
@@ -59,30 +61,53 @@ function request(body: unknown) {
   });
 }
 
+function authUser(overrides: Record<string, unknown> = {}) {
+  return {
+    id: "supabase-user-1",
+    email: "new@example.com",
+    app_metadata: { provider: "discord" },
+    user_metadata: {
+      provider_id: "discord-1",
+      full_name: "New Clipper",
+    },
+    ...overrides,
+  };
+}
+
+function dbUser(overrides: Record<string, unknown> = {}) {
+  return {
+    id: "user-1",
+    supabaseId: "supabase-user-1",
+    email: "new@example.com",
+    role: "creator",
+    discordId: "discord-1",
+    discordUsername: "New Clipper",
+    creatorProfile: null,
+    ...overrides,
+  };
+}
+
+function mockNoExistingUsers() {
+  routeMocks.userFindUnique.mockImplementation(async ({ where }: { where: Record<string, string> }) => {
+    if (where.referralCode) return null;
+    return null;
+  });
+}
+
 describe("POST /api/onboarding/complete", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    routeMocks.getUser.mockResolvedValue({
-      data: {
-        user: {
-          id: "supabase-user-1",
-          email: "new@example.com",
-          app_metadata: { provider: "discord" },
-          user_metadata: {
-            provider_id: "discord-1",
-            full_name: "New Clipper",
-          },
-        },
-      },
-    });
-    routeMocks.userFindUnique.mockResolvedValue(null);
-    routeMocks.userUpsert.mockResolvedValue({
-      id: "user-1",
-      creatorProfile: null,
-    });
+    routeMocks.getUser.mockResolvedValue({ data: { user: authUser() } });
+    mockNoExistingUsers();
+    routeMocks.userCreate.mockResolvedValue(dbUser());
+    routeMocks.userUpdate.mockImplementation(async ({ data }: { data: Record<string, unknown> }) => ({
+      ...dbUser(),
+      ...data,
+    }));
     routeMocks.profileFindUnique.mockResolvedValue(null);
     routeMocks.profileCreate.mockResolvedValue({});
     routeMocks.profileUpdate.mockResolvedValue({});
+    routeMocks.attributionFindUnique.mockResolvedValue(null);
     routeMocks.attributionFindFirst.mockResolvedValue(null);
     routeMocks.attributionUpdate.mockResolvedValue({});
     routeMocks.attributionUpdateMany.mockResolvedValue({ count: 1 });
@@ -119,9 +144,9 @@ describe("POST /api/onboarding/complete", () => {
       firstClipNextHref: "/creator/connections?firstClip=1",
       firstClipNextStep: "connect_account",
     });
-    expect(routeMocks.userUpsert).toHaveBeenCalledWith(
+    expect(routeMocks.userCreate).toHaveBeenCalledWith(
       expect.objectContaining({
-        create: expect.not.objectContaining({
+        data: expect.not.objectContaining({
           referredBy: expect.any(String),
         }),
       }),
@@ -135,5 +160,92 @@ describe("POST /api/onboarding/complete", () => {
         where: { id: "attribution-1", onboardedAt: null },
       }),
     );
+  });
+
+  it("claims a stale Discord user instead of creating a duplicate", async () => {
+    const staleUser = dbUser({
+      id: "user-stale",
+      supabaseId: "old-supabase-user",
+      discordUsername: "Old Name",
+      creatorProfile: {
+        userId: "user-stale",
+        username: "existing",
+        displayName: "Existing Clipper",
+      },
+    });
+    routeMocks.userFindUnique.mockImplementation(async ({ where }: { where: Record<string, string> }) => {
+      if (where.referralCode) return null;
+      if (where.discordId === "discord-1") return staleUser;
+      return null;
+    });
+    routeMocks.userUpdate.mockResolvedValue({
+      ...staleUser,
+      supabaseId: "supabase-user-1",
+      discordUsername: "New Clipper",
+    });
+
+    const response = await POST(request({ displayName: "New Clipper", role: "creator" }));
+
+    expect(response.status).toBe(200);
+    expect(routeMocks.userCreate).not.toHaveBeenCalled();
+    expect(routeMocks.userUpdate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { id: "user-stale" },
+        data: expect.objectContaining({
+          supabaseId: "supabase-user-1",
+          discordUsername: "New Clipper",
+        }),
+      }),
+    );
+    expect(routeMocks.profileCreate).not.toHaveBeenCalled();
+    expect(routeMocks.profileUpdate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { userId: "user-stale" },
+      }),
+    );
+  });
+
+  it("creates a new user when no identity match exists", async () => {
+    const response = await POST(request({ displayName: "New Clipper", role: "creator" }));
+
+    expect(response.status).toBe(200);
+    expect(routeMocks.userCreate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          supabaseId: "supabase-user-1",
+          email: "new@example.com",
+          discordId: "discord-1",
+        }),
+      }),
+    );
+    expect(routeMocks.profileCreate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          userId: "user-1",
+          displayName: "New Clipper",
+        }),
+      }),
+    );
+  });
+
+  it("returns a friendly conflict instead of a raw Prisma unique error", async () => {
+    routeMocks.userFindUnique.mockImplementation(async ({ where }: { where: Record<string, string> }) => {
+      if (where.referralCode) return null;
+      if (where.discordId === "discord-1") {
+        return dbUser({ id: "discord-user", email: "other@example.com", supabaseId: "old-supabase" });
+      }
+      if (where.email === "new@example.com") {
+        return dbUser({ id: "email-user", discordId: null, supabaseId: "email-supabase" });
+      }
+      return null;
+    });
+
+    const response = await POST(request({ displayName: "New Clipper", role: "creator" }));
+
+    expect(response.status).toBe(409);
+    await expect(response.json()).resolves.toEqual({
+      error: "Dit Discord-account is al gekoppeld aan een ander ClipProfit-account.",
+    });
+    expect(routeMocks.userCreate).not.toHaveBeenCalled();
   });
 });
