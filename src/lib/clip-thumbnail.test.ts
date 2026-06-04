@@ -6,7 +6,7 @@ const thumbnailMocks = vi.hoisted(() => ({
   submissionUpdate: vi.fn(),
   fetchRecentMedia: vi.fn(),
   fetchTikTokVideos: vi.fn(),
-  getFreshTikTokAccessToken: vi.fn(),
+  withFreshTikTokAccessToken: vi.fn(),
   cacheCreatorMediaThumbnail: vi.fn(),
   cacheInstagramMedia: vi.fn(),
   findCachedInstagramMediaForUrl: vi.fn(),
@@ -32,7 +32,7 @@ vi.mock("@/lib/tiktok", () => ({
 }));
 
 vi.mock("@/lib/token-refresh", () => ({
-  getFreshTikTokAccessToken: thumbnailMocks.getFreshTikTokAccessToken,
+  withFreshTikTokAccessToken: thumbnailMocks.withFreshTikTokAccessToken,
 }));
 
 vi.mock("@/lib/creator-media-cache", () => ({
@@ -47,6 +47,12 @@ describe("resolveThumbnail", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     thumbnailMocks.findCachedInstagramMediaForUrl.mockResolvedValue(null);
+    thumbnailMocks.withFreshTikTokAccessToken.mockImplementation((
+      _conn: unknown,
+      operation: (token: string) => unknown,
+    ) =>
+      operation("fresh-tiktok-token")
+    );
   });
 
   it("replaces a stale TikTok CDN thumbnail with a stable cached thumbnail", async () => {
@@ -64,7 +70,6 @@ describe("resolveThumbnail", () => {
         ],
       },
     });
-    thumbnailMocks.getFreshTikTokAccessToken.mockResolvedValue("fresh-tiktok-token");
     thumbnailMocks.fetchTikTokVideos.mockResolvedValue({
       videos: [
         {

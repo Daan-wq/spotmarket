@@ -39,7 +39,8 @@ export async function GET(req: NextRequest) {
 
   try {
     // Exchange code for tokens
-    const { accessToken, refreshToken, expiresIn, openId, grantedScopes } = await exchangeCodeForTokens(code);
+    const { accessToken, refreshToken, expiresIn, refreshExpiresIn, openId, grantedScopes } =
+      await exchangeCodeForTokens(code);
 
     // Validate all required scopes were granted
     const missing = REQUIRED_TT_SCOPES.filter((s) => !grantedScopes.includes(s));
@@ -54,6 +55,9 @@ export async function GET(req: NextRequest) {
     const encAccess = encrypt(accessToken);
     const encRefresh = encrypt(refreshToken);
     const tokenExpiresAt = new Date(Date.now() + expiresIn * 1000);
+    const refreshTokenExpiresAt = refreshExpiresIn
+      ? new Date(Date.now() + refreshExpiresIn * 1000)
+      : null;
 
     // Find the user's creator profile
     const user = await prisma.user.findUnique({
@@ -87,6 +91,7 @@ export async function GET(req: NextRequest) {
           accessTokenIv: encAccess.iv,
           refreshToken: encRefresh.ciphertext,
           refreshTokenIv: encRefresh.iv,
+          refreshTokenExpiresAt,
           tokenExpiresAt,
           isVerified: true,
           verifiedAt: refreshedAt,
@@ -105,6 +110,7 @@ export async function GET(req: NextRequest) {
           accessTokenIv: encAccess.iv,
           refreshToken: encRefresh.ciphertext,
           refreshTokenIv: encRefresh.iv,
+          refreshTokenExpiresAt,
           tokenExpiresAt,
           isVerified: true,
           verifiedAt: refreshedAt,

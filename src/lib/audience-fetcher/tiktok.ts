@@ -8,7 +8,7 @@
 
 import type { CreatorTikTokConnection } from "@prisma/client";
 import { fetchTikTokDemographics } from "@/lib/tiktok";
-import { getFreshTikTokAccessToken } from "@/lib/token-refresh";
+import { withFreshTikTokAccessToken } from "@/lib/token-refresh";
 import type { AudienceFetchResult } from "./index";
 
 export async function fetchTtAudience(
@@ -20,18 +20,19 @@ export async function fetchTtAudience(
   if (!conn.tikTokOpenId) {
     return { ok: false, audience: null, tokenBroken: false, reason: "no business id" };
   }
+  const businessId = conn.tikTokOpenId;
 
-  let token: string | null;
+  let demographics: Awaited<ReturnType<typeof fetchTikTokDemographics>> | null;
   try {
-    token = await getFreshTikTokAccessToken(conn);
+    demographics = await withFreshTikTokAccessToken(conn, (token) =>
+      fetchTikTokDemographics(token, businessId),
+    );
   } catch {
     return { ok: false, audience: null, tokenBroken: true, reason: "token refresh failed" };
   }
-  if (!token) return { ok: false, audience: null, tokenBroken: true, reason: "no token" };
+  if (!demographics) return { ok: false, audience: null, tokenBroken: true, reason: "no token" };
 
   try {
-    const demographics = await fetchTikTokDemographics(token, conn.tikTokOpenId);
-
     const ageTotal = Object.values(demographics.ages ?? {}).reduce((s, v) => s + v, 0);
     const ageBuckets: Record<string, number> = {};
     if (ageTotal > 0) {

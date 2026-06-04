@@ -26,8 +26,8 @@ import { fetchFacebookPageProfile } from "@/lib/facebook";
 import { fetchTikTokProfile } from "@/lib/tiktok";
 import { fetchChannelProfile } from "@/lib/youtube";
 import {
-  getFreshTikTokAccessToken,
   getFreshYoutubeAccessToken,
+  withFreshTikTokAccessToken,
 } from "@/lib/token-refresh";
 
 export const dynamic = "force-dynamic";
@@ -154,8 +154,10 @@ async function runTt(): Promise<PlatformResult> {
   let f = 0;
   for (const c of conns) {
     try {
-      const token = await getFreshTikTokAccessToken(c).catch(() => null);
-      if (!token) {
+      const profile = await withFreshTikTokAccessToken(c, (token) =>
+        fetchTikTokProfile(token),
+      ).catch(() => null);
+      if (!profile) {
         await recordAccountRefreshFailure({
           connectionType: "TT",
           connectionId: c.id,
@@ -165,7 +167,6 @@ async function runTt(): Promise<PlatformResult> {
         f++;
         continue;
       }
-      const profile = await fetchTikTokProfile(token);
       await persist({
         connectionType: "TT",
         connectionId: c.id,

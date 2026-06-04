@@ -13,7 +13,7 @@ The handler code is identical either way — the route handlers (`/api/cron/*`) 
 | `poll-metrics-hot` | `5 0 * * *` (daily, fallback only) | every 15 min | Supabase pg_cron |
 | `poll-metrics-warm` | `10 0 * * *` (daily, fallback only) | hourly | Supabase pg_cron |
 | `poll-demographics` | `0 2 * * *` | daily | Vercel |
-| `refresh-tokens` | `0 9 * * 1` | weekly | Vercel |
+| `refresh-tokens` | `0 9 * * *` (daily, fallback only) | hourly | Supabase pg_cron |
 | `recompute-benchmarks` | `15 0 * * *` (daily, fallback only) | every 6 h | Supabase pg_cron |
 | `recompute-scores` | `0 3 * * *` | daily | Vercel |
 | `notification-dispatch` | `20 0 * * *` (daily, fallback only) | every 15 min | Supabase pg_cron |
@@ -28,6 +28,7 @@ Two-step flip:
    |---|---|
    | `poll-metrics-hot` | `*/15 * * * *` |
    | `poll-metrics-warm` | `0 * * * *` |
+   | `refresh-tokens` | `0 * * * *` |
    | `recompute-benchmarks` | `0 */6 * * *` |
    | `notification-dispatch` | `*/15 * * * *` |
 
@@ -36,6 +37,7 @@ Two-step flip:
    ```sql
    select cron.unschedule('clipprofit-poll-metrics-hot');
    select cron.unschedule('clipprofit-poll-metrics-warm');
+   select cron.unschedule('clipprofit-refresh-tokens');
    select cron.unschedule('clipprofit-recompute-benchmarks');
    select cron.unschedule('clipprofit-notification-dispatch');
    ```
@@ -46,4 +48,4 @@ Two-step flip:
 
 `pg_cron` schedules a `SELECT net.http_post(...)` that hits the Vercel route with `Authorization: Bearer ${CRON_SECRET}`. The route's `verifyCron` (`src/lib/cron-auth.ts`) accepts the Bearer fallback when no `x-vercel-cron` header is present, so Supabase-triggered calls authenticate identically to Vercel-triggered calls.
 
-The migration that creates the pg_cron + pg_net jobs lives at `supabase/migrations/20260502_pgcron_high_cadence.sql`.
+The migrations that create the pg_cron + pg_net jobs live at `supabase/migrations/20260502_pgcron_high_cadence.sql` and `supabase/migrations/20260604_pgcron_refresh_tokens_hourly.sql`.

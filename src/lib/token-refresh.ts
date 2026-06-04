@@ -3,7 +3,9 @@ import { decrypt, encrypt } from "@/lib/crypto";
 import { refreshTikTokToken } from "@/lib/tiktok";
 import { refreshYoutubeToken } from "@/lib/youtube";
 
-const REFRESH_SKEW_MS = 5 * 60 * 1000;
+const TIKTOK_REFRESH_SKEW_MS = 30 * 60 * 1000;
+const YOUTUBE_REFRESH_SKEW_MS = 5 * 60 * 1000;
+const TIKTOK_INVALID_TOKEN_PATTERN = /access_token_invalid|access_token_expired/i;
 
 interface TokenRecord {
   id: string;
@@ -14,9 +16,18 @@ interface TokenRecord {
   tokenExpiresAt: Date | null;
 }
 
-function shouldRefresh(expiresAt: Date | null): boolean {
+function shouldRefresh(expiresAt: Date | null, skewMs: number): boolean {
   if (!expiresAt) return false;
-  return expiresAt.getTime() - Date.now() < REFRESH_SKEW_MS;
+  return expiresAt.getTime() - Date.now() < skewMs;
+}
+
+function isExpired(expiresAt: Date | null): boolean {
+  return Boolean(expiresAt && expiresAt.getTime() <= Date.now());
+}
+
+export function isTikTokInvalidTokenError(error: unknown): boolean {
+  const message = error instanceof Error ? error.message : String(error ?? "");
+  return TIKTOK_INVALID_TOKEN_PATTERN.test(message);
 }
 
 /**
@@ -29,11 +40,34 @@ export async function getFreshTikTokAccessToken(
 ): Promise<string | null> {
   if (!conn.accessToken || !conn.accessTokenIv) return null;
   const current = decrypt(conn.accessToken, conn.accessTokenIv);
-  if (!shouldRefresh(conn.tokenExpiresAt) || !conn.refreshToken || !conn.refreshTokenIv) {
+  if (!shouldRefresh(conn.tokenExpiresAt, TIKTOK_REFRESH_SKEW_MS)) {
     return current;
   }
-  const refreshed = await forceRefreshTikTokAccessToken(conn).catch(() => null);
-  return refreshed ?? current;
+  if (!conn.refreshToken || !conn.refreshTokenIv) {
+    return isExpired(conn.tokenExpiresAt) ? null : current;
+  }
+  try {
+    return await forceRefreshTikTokAccessToken(conn);
+  } catch {
+    return isExpired(conn.tokenExpiresAt) ? null : current;
+  }
+}
+
+export async function withFreshTikTokAccessToken<T>(
+  conn: TokenRecord,
+  operation: (accessToken: string) => Promise<T>,
+): Promise<T | null> {
+  const token = await getFreshTikTokAccessToken(conn);
+  if (!token) return null;
+
+  try {
+    return await operation(token);
+  } catch (err) {
+    if (!isTikTokInvalidTokenError(err)) throw err;
+    const refreshed = await forceRefreshTikTokAccessToken(conn);
+    if (!refreshed) return null;
+    return await operation(refreshed);
+  }
 }
 
 /**
@@ -52,12 +86,28 @@ export async function forceRefreshTikTokAccessToken(
   const refresh = decrypt(conn.refreshToken, conn.refreshTokenIv);
   const fresh = await refreshTikTokToken(refresh);
   const enc = encrypt(fresh.accessToken);
+  const refreshData: {
+    refreshToken?: string;
+    refreshTokenIv?: string;
+    refreshTokenExpiresAt?: Date;
+  } = {};
+
+  if (fresh.refreshToken) {
+    const encRefresh = encrypt(fresh.refreshToken);
+    refreshData.refreshToken = encRefresh.ciphertext;
+    refreshData.refreshTokenIv = encRefresh.iv;
+  }
+  if (fresh.refreshExpiresIn) {
+    refreshData.refreshTokenExpiresAt = new Date(Date.now() + fresh.refreshExpiresIn * 1000);
+  }
+
   await prisma.creatorTikTokConnection.update({
     where: { id: conn.id },
     data: {
       accessToken: enc.ciphertext,
       accessTokenIv: enc.iv,
       tokenExpiresAt: new Date(Date.now() + fresh.expiresIn * 1000),
+      ...refreshData,
     },
   });
   return fresh.accessToken;
@@ -68,7 +118,7 @@ export async function getFreshYoutubeAccessToken(
 ): Promise<string | null> {
   if (!conn.accessToken || !conn.accessTokenIv) return null;
   const current = decrypt(conn.accessToken, conn.accessTokenIv);
-  if (!shouldRefresh(conn.tokenExpiresAt) || !conn.refreshToken || !conn.refreshTokenIv) {
+  if (!shouldRefresh(conn.tokenExpiresAt, YOUTUBE_REFRESH_SKEW_MS) || !conn.refreshToken || !conn.refreshTokenIv) {
     return current;
   }
   try {

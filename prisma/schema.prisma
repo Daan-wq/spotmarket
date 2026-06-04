@@ -246,6 +246,7 @@ model CreatorTikTokConnection {
   accessTokenIv           String?
   refreshToken            String?
   refreshTokenIv          String?
+  refreshTokenExpiresAt   DateTime?
   tokenExpiresAt          DateTime?
   isVerified              Boolean              @default(false)
   verifiedAt              DateTime?
@@ -265,6 +266,7 @@ model CreatorTikTokConnection {
   @@unique([creatorProfileId, username])
   @@index([creatorProfileId])
   @@index([tokenExpiresAt])
+  @@index([refreshTokenExpiresAt])
 }
 
 model TikTokDemographicSubmission {

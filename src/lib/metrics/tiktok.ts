@@ -11,7 +11,10 @@
 
 import type { CreatorTikTokConnection } from "@prisma/client";
 import { fetchTikTokVideos, type TikTokVideo } from "@/lib/tiktok";
-import { getFreshTikTokAccessToken } from "@/lib/token-refresh";
+import {
+  isTikTokInvalidTokenError,
+  withFreshTikTokAccessToken,
+} from "@/lib/token-refresh";
 import type { ParsedClipUrl } from "@/lib/parse-clip-url";
 import { metricAvailability } from "@/lib/contracts/metrics";
 import { failure, type MetricFetcherResult } from "./router";
@@ -28,23 +31,38 @@ export async function fetchTikTokMetric(
     return failure("NO_TOKEN", "TT connection missing access token", { type: "TT", id: conn.id });
   }
 
-  let token: string | null;
   try {
-    token = await getFreshTikTokAccessToken(conn);
+    const result = await withFreshTikTokAccessToken(conn, async (token) =>
+      fetchTikTokMetricWithToken(conn, parsed, token, submissionId),
+    );
+    if (!result) {
+      return failure("TOKEN_EXPIRED", "TT token expired and refresh failed", {
+        type: "TT",
+        id: conn.id,
+      });
+    }
+    return result;
   } catch (err) {
+    if (isTikTokInvalidTokenError(err)) {
+      return failure("TOKEN_BROKEN", `TT video list failed: ${(err as Error).message}`, {
+        type: "TT",
+        id: conn.id,
+      });
+    }
     return failure(
       "TOKEN_BROKEN",
       `TT token refresh failed: ${(err as Error).message}`,
       { type: "TT", id: conn.id },
     );
   }
-  if (!token) {
-    return failure("TOKEN_EXPIRED", "TT token expired and refresh failed", {
-      type: "TT",
-      id: conn.id,
-    });
-  }
+}
 
+async function fetchTikTokMetricWithToken(
+  conn: CreatorTikTokConnection,
+  parsed: ParsedClipUrl,
+  token: string,
+  submissionId?: string,
+): Promise<MetricFetcherResult> {
   const targetId = parsed.postId ?? "";
   let cursor: number | undefined = undefined;
 
@@ -53,13 +71,7 @@ export async function fetchTikTokMetric(
     try {
       chunk = await fetchTikTokVideos(token, 20, cursor);
     } catch (err) {
-      const msg = (err as Error).message?.toLowerCase() ?? "";
-      if (msg.includes("token") || msg.includes("oauth") || msg.includes("invalid_token")) {
-        return failure("TOKEN_BROKEN", `TT video list failed: ${(err as Error).message}`, {
-          type: "TT",
-          id: conn.id,
-        });
-      }
+      if (isTikTokInvalidTokenError(err)) throw err;
       return failure("PLATFORM_ERROR", (err as Error).message, { type: "TT", id: conn.id });
     }
 
