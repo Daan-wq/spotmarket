@@ -57,7 +57,8 @@ export interface MetricFetcherFailure {
     | "TOKEN_BROKEN"
     | "PLATFORM_ERROR"
     | "UNSUPPORTED_PLATFORM"
-    | "POST_NOT_FOUND";
+    | "POST_NOT_FOUND"
+    | "RATE_LIMITED";
   message: string;
   /**
    * If a specific connection was identified but its token failed,

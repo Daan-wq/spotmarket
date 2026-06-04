@@ -825,13 +825,16 @@ model CampaignSubmission {
   status             SubmissionStatus @default(PENDING)
 
   // Source tracking for bio-verify fallback flow
-  sourcePlatform         BioPlatform?
-  sourceMethod           SubmissionMethod @default(UNKNOWN)
-  authorHandle           String?
-  sourceConnectionType   ConnectionType?
-  sourceConnectionId     String?
-  lastMetricsRefreshAt   DateTime?
-  metricsRefreshFailures Int              @default(0)
+  sourcePlatform           BioPlatform?
+  sourceMethod             SubmissionMethod @default(UNKNOWN)
+  authorHandle             String?
+  sourceConnectionType     ConnectionType?
+  sourceConnectionId       String?
+  lastMetricsRefreshAt     DateTime?
+  lastMetricsPollAttemptAt DateTime?
+  nextMetricsPollAt        DateTime?
+  metricsPollLockedAt      DateTime?
+  metricsRefreshFailures   Int              @default(0)
 
   reviewedAt    DateTime?
   reviewedBy    String?
@@ -862,6 +865,8 @@ model CampaignSubmission {
   @@index([campaignId])
   @@index([status])
   @@index([settledAt])
+  @@index([nextMetricsPollAt])
+  @@index([metricsPollLockedAt])
   @@index([sourceConnectionType, sourceConnectionId])
   @@index([logoStatus])
   @@index([productionAssignmentId])

@@ -5,7 +5,9 @@ const createSignalMock = vi.fn();
 const updateSignalMock = vi.fn();
 const findManySubmissionMock = vi.fn();
 const updateSubmissionMock = vi.fn();
+const updateManySubmissionMock = vi.fn();
 const findUniqueCampaignMock = vi.fn();
+const findFirstTikTokConnectionMock = vi.fn();
 const transactionMock = vi.fn();
 const createMetricSnapshotMock = vi.fn();
 const findManyMetricSnapshotMock = vi.fn();
@@ -13,6 +15,7 @@ const findFirstCampaignBenchmarkMock = vi.fn();
 const findFirstPlatformAccountSnapshotMock = vi.fn();
 const publishEventMock = vi.fn();
 const routeMetricMock = vi.fn();
+const fetchTikTokMetricsByVideoIdsMock = vi.fn();
 const scoreVelocityMock = vi.fn();
 const syncAntiBotSignalMock = vi.fn();
 const reconcileReferralPayoutForSubmissionMock = vi.fn();
@@ -39,6 +42,10 @@ vi.mock("@/lib/prisma", () => ({
     campaignSubmission: {
       findMany: (...args: unknown[]) => findManySubmissionMock(...args),
       update: (...args: unknown[]) => updateSubmissionMock(...args),
+      updateMany: (...args: unknown[]) => updateManySubmissionMock(...args),
+    },
+    creatorTikTokConnection: {
+      findFirst: (...args: unknown[]) => findFirstTikTokConnectionMock(...args),
     },
     metricSnapshot: {
       create: (...args: unknown[]) => createMetricSnapshotMock(...args),
@@ -66,6 +73,10 @@ vi.mock("./router", () => ({
   routeMetric: (...args: unknown[]) => routeMetricMock(...args),
 }));
 
+vi.mock("./tiktok", () => ({
+  fetchTikTokMetricsByVideoIds: (...args: unknown[]) => fetchTikTokMetricsByVideoIdsMock(...args),
+}));
+
 vi.mock("@/lib/velocity-scorer", () => ({
   scoreVelocity: (...args: unknown[]) => scoreVelocityMock(...args),
 }));
@@ -87,7 +98,9 @@ beforeEach(() => {
   updateSignalMock.mockReset();
   findManySubmissionMock.mockReset();
   updateSubmissionMock.mockReset();
+  updateManySubmissionMock.mockReset();
   findUniqueCampaignMock.mockReset();
+  findFirstTikTokConnectionMock.mockReset();
   transactionMock.mockReset();
   createMetricSnapshotMock.mockReset();
   findManyMetricSnapshotMock.mockReset();
@@ -95,6 +108,7 @@ beforeEach(() => {
   findFirstPlatformAccountSnapshotMock.mockReset();
   publishEventMock.mockReset();
   routeMetricMock.mockReset();
+  fetchTikTokMetricsByVideoIdsMock.mockReset();
   scoreVelocityMock.mockReset();
   syncAntiBotSignalMock.mockReset();
   reconcileReferralPayoutForSubmissionMock.mockReset();
@@ -109,7 +123,10 @@ beforeEach(() => {
   findFirstPlatformAccountSnapshotMock.mockResolvedValue(null);
   findManySubmissionMock.mockResolvedValue([]);
   updateSubmissionMock.mockResolvedValue({});
+  updateManySubmissionMock.mockResolvedValue({ count: 1 });
   findUniqueCampaignMock.mockResolvedValue(null);
+  findFirstTikTokConnectionMock.mockResolvedValue(null);
+  fetchTikTokMetricsByVideoIdsMock.mockResolvedValue(new Map());
   transactionMock.mockImplementation(async (callback) =>
     callback({
       campaign: { findUnique: (...args: unknown[]) => findUniqueCampaignMock(...args) },
@@ -663,5 +680,171 @@ describe("pollSubmissions earnings refresh", () => {
         where: expect.objectContaining({ type: "BOT_SUSPECTED" }),
       }),
     );
+  });
+});
+
+describe("pollSubmissions scheduling", () => {
+  function dueSubmission(overrides: Record<string, unknown> = {}) {
+    return {
+      id: "sub_due",
+      postUrl: "https://www.instagram.com/reel/test",
+      normalizedPlatform: "INSTAGRAM",
+      platformVideoId: "test",
+      creatorId: "creator_1",
+      campaignId: "campaign_1",
+      status: "APPROVED",
+      sourceConnectionType: "IG",
+      sourceConnectionId: "ig-conn-1",
+      baselineViews: 0,
+      settledAt: null,
+      metricsRefreshFailures: 0,
+      payoutRunItems: [],
+      campaign: {
+        status: "active",
+        deadline: new Date("2026-05-20T00:00:00.000Z"),
+        creatorCpv: 0.01,
+        minimumPaidViews: 0,
+        maximumPaidViews: null,
+      },
+      ...overrides,
+    };
+  }
+
+  function successfulMetric(source = "OAUTH_IG") {
+    return {
+      ok: true,
+      source,
+      viewCount: BigInt(5000),
+      likeCount: 100,
+      commentCount: 10,
+      shareCount: 5,
+      saveCount: null,
+      watchTimeSec: null,
+      reachCount: null,
+      metricAvailability: availableCoreMetrics,
+      raw: null,
+      connection: { type: source === "OAUTH_TT" ? "TT" : "IG", id: source === "OAUTH_TT" ? "tt-conn-1" : "ig-conn-1" },
+    };
+  }
+
+  it("selects hot rows from active campaigns by nextMetricsPollAt instead of submission age", async () => {
+    await pollSubmissions({ tier: "hot", limit: 5 });
+
+    expect(findManySubmissionMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          AND: expect.arrayContaining([
+            { status: { in: ["PENDING", "APPROVED", "FLAGGED"] } },
+            expect.objectContaining({
+              campaign: expect.objectContaining({ status: "active" }),
+            }),
+            expect.objectContaining({
+              OR: [
+                { nextMetricsPollAt: null },
+                { nextMetricsPollAt: expect.any(Object) },
+              ],
+            }),
+          ]),
+        }),
+      }),
+    );
+  });
+
+  it("schedules active campaign successes 15 minutes after capture", async () => {
+    const capturedAt = new Date("2026-05-12T10:00:00.000Z");
+    findManySubmissionMock.mockResolvedValueOnce([dueSubmission()]);
+    routeMetricMock.mockResolvedValueOnce(successfulMetric());
+    createMetricSnapshotMock.mockResolvedValueOnce({
+      id: "snap_active",
+      viewCount: BigInt(5000),
+      capturedAt,
+    });
+
+    await pollSubmissions({ tier: "hot", limit: 1 });
+
+    expect(updateSubmissionMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { id: "sub_due" },
+        data: expect.objectContaining({
+          nextMetricsPollAt: new Date("2026-05-12T10:15:00.000Z"),
+          metricsPollLockedAt: null,
+        }),
+      }),
+    );
+  });
+
+  it("keeps old ended campaigns on a weekly cadence instead of turning them off", async () => {
+    const capturedAt = new Date("2026-05-12T10:00:00.000Z");
+    findManySubmissionMock.mockResolvedValueOnce([
+      dueSubmission({
+        campaign: {
+          status: "completed",
+          deadline: new Date("2026-01-01T00:00:00.000Z"),
+          creatorCpv: 0.01,
+          minimumPaidViews: 0,
+          maximumPaidViews: null,
+        },
+      }),
+    ]);
+    routeMetricMock.mockResolvedValueOnce(successfulMetric());
+    createMetricSnapshotMock.mockResolvedValueOnce({
+      id: "snap_old",
+      viewCount: BigInt(5000),
+      capturedAt,
+    });
+
+    await pollSubmissions({ tier: "cold", limit: 1 });
+
+    expect(updateSubmissionMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { id: "sub_due" },
+        data: expect.objectContaining({
+          nextMetricsPollAt: new Date("2026-05-19T10:00:00.000Z"),
+          metricsPollLockedAt: null,
+        }),
+      }),
+    );
+  });
+
+  it("prefetches TikTok metrics in batches by stored source connection", async () => {
+    const capturedAt = new Date("2026-05-12T10:00:00.000Z");
+    const subA = dueSubmission({
+      id: "sub_tt_a",
+      postUrl: "https://www.tiktok.com/@u/video/vid_a",
+      normalizedPlatform: "TIKTOK",
+      platformVideoId: "vid_a",
+      sourceConnectionType: "TT",
+      sourceConnectionId: "tt-conn-1",
+    });
+    const subB = dueSubmission({
+      id: "sub_tt_b",
+      postUrl: "https://www.tiktok.com/@u/video/vid_b",
+      normalizedPlatform: "TIKTOK",
+      platformVideoId: "vid_b",
+      sourceConnectionType: "TT",
+      sourceConnectionId: "tt-conn-1",
+    });
+    findManySubmissionMock.mockResolvedValueOnce([subA, subB]);
+    findFirstTikTokConnectionMock.mockResolvedValueOnce({ id: "tt-conn-1" });
+    fetchTikTokMetricsByVideoIdsMock.mockResolvedValueOnce(
+      new Map([
+        ["sub_tt_a", successfulMetric("OAUTH_TT")],
+        ["sub_tt_b", successfulMetric("OAUTH_TT")],
+      ]),
+    );
+    createMetricSnapshotMock
+      .mockResolvedValueOnce({ id: "snap_a", viewCount: BigInt(5000), capturedAt })
+      .mockResolvedValueOnce({ id: "snap_b", viewCount: BigInt(5000), capturedAt });
+
+    await pollSubmissions({ tier: "hot", limit: 2 });
+
+    expect(fetchTikTokMetricsByVideoIdsMock).toHaveBeenCalledWith(
+      { id: "tt-conn-1" },
+      [
+        { submissionId: "sub_tt_a", videoId: "vid_a" },
+        { submissionId: "sub_tt_b", videoId: "vid_b" },
+      ],
+    );
+    expect(routeMetricMock).not.toHaveBeenCalled();
   });
 });
