@@ -3,13 +3,15 @@ import { requireAuth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { decrypt } from "@/lib/crypto";
 import {
+  isYoutubeInvalidTokenError,
   isTikTokInvalidTokenError,
   withFreshTikTokAccessToken,
-  getFreshYoutubeAccessToken,
+  withFreshYoutubeAccessToken,
+  withFreshInstagramAccessToken,
 } from "@/lib/token-refresh";
-import { fetchRecentMedia } from "@/lib/instagram";
+import { fetchRecentMedia, isInstagramInvalidTokenError } from "@/lib/instagram";
 import { fetchTikTokVideos } from "@/lib/tiktok";
-import { fetchFacebookPagePostsPaginated } from "@/lib/facebook";
+import { fetchFacebookPagePostsPaginated, isFacebookInvalidTokenError } from "@/lib/facebook";
 import { fetchRecentYoutubeVideos } from "@/lib/youtube";
 import {
   cacheCreatorMediaThumbnail,
@@ -97,11 +99,12 @@ async function handleIg(
 ): Promise<NextResponse> {
   const conn = await prisma.creatorIgConnection.findFirst({
     where: { id: connectionId, creatorProfileId, isVerified: true },
-    select: { igUserId: true, accessToken: true, accessTokenIv: true },
+    select: { id: true, igUserId: true, accessToken: true, accessTokenIv: true, tokenExpiresAt: true },
   });
   if (!conn?.accessToken || !conn.accessTokenIv || !conn.igUserId) {
     return connectionRequiredResponse("ig", 404);
   }
+  const igUserId = conn.igUserId;
 
   if (!refresh) {
     const cached = await readCachedCreatorMedia({
@@ -113,9 +116,28 @@ async function handleIg(
     if (cached) return NextResponse.json<MediaResponse>(cached);
   }
 
-  const token = decrypt(conn.accessToken, conn.accessTokenIv);
   const liveCursor = cursor?.startsWith("cache:") ? undefined : cursor;
-  const { media, nextCursor } = await fetchRecentMedia(token, conn.igUserId, limit, liveCursor);
+  let result: Awaited<ReturnType<typeof fetchRecentMedia>> | null;
+  try {
+    result = await withFreshInstagramAccessToken(conn, (token) =>
+      fetchRecentMedia(token, igUserId, limit, liveCursor),
+    );
+  } catch (err) {
+    if (!isInstagramInvalidTokenError(err)) throw err;
+    return NextResponse.json(
+      { error: "Instagram session expired. Please reconnect your Instagram account in Connections." },
+      { status: 401 },
+    );
+  }
+
+  if (!result) {
+    return NextResponse.json(
+      { error: "Instagram session expired. Please reconnect your Instagram account in Connections." },
+      { status: 401 },
+    );
+  }
+
+  const { media, nextCursor } = result;
 
   // Detect Meta rate-limit response (empty + returned with error in a prior logged warn)
   // The lib logs and returns [] on non-2xx; surface as rate_limited if we suspect throttle
@@ -229,12 +251,24 @@ async function handleYt(
     return connectionRequiredResponse("yt", 404);
   }
 
-  const token = await getFreshYoutubeAccessToken(conn);
-  if (!token) {
-    return connectionRequiredResponse("yt", 404);
+  let videos: Awaited<ReturnType<typeof fetchRecentYoutubeVideos>> | null;
+  try {
+    videos = await withFreshYoutubeAccessToken(conn, (token) =>
+      fetchRecentYoutubeVideos(token, conn.channelId, limit),
+    );
+  } catch (err) {
+    if (!isYoutubeInvalidTokenError(err)) throw err;
+    return NextResponse.json(
+      { error: "YouTube session expired. Please reconnect your YouTube account in Connections." },
+      { status: 401 },
+    );
   }
-
-  const videos = await fetchRecentYoutubeVideos(token, conn.channelId, limit);
+  if (!videos) {
+    return NextResponse.json(
+      { error: "YouTube session expired. Please reconnect your YouTube account in Connections." },
+      { status: 401 },
+    );
+  }
   const posts: NormalizedPost[] = videos.map((v) => ({
     id: v.id,
     platform: "yt",
@@ -268,12 +302,22 @@ async function handleFb(
     return connectionRequiredResponse("fb", 404);
   }
   const token = decrypt(conn.accessToken, conn.accessTokenIv);
-  const { posts: fbPosts, nextCursor } = await fetchFacebookPagePostsPaginated(
-    conn.fbPageId,
-    token,
-    limit,
-    cursor
-  );
+  let fbResult: Awaited<ReturnType<typeof fetchFacebookPagePostsPaginated>>;
+  try {
+    fbResult = await fetchFacebookPagePostsPaginated(
+      conn.fbPageId,
+      token,
+      limit,
+      cursor
+    );
+  } catch (err) {
+    if (!isFacebookInvalidTokenError(err)) throw err;
+    return NextResponse.json(
+      { error: "Facebook session expired. Please reconnect your Facebook account in Connections." },
+      { status: 401 },
+    );
+  }
+  const { posts: fbPosts, nextCursor } = fbResult;
 
   const posts: NormalizedPost[] = await Promise.all(
     fbPosts.map(async (p) => ({

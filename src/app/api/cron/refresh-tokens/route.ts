@@ -1,15 +1,16 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { verifyCron } from "@/lib/cron-auth";
-import { refreshInstagramToken } from "@/lib/instagram";
-import { refreshYoutubeToken } from "@/lib/youtube";
-import { encrypt, decrypt } from "@/lib/crypto";
-import { forceRefreshTikTokAccessToken } from "@/lib/token-refresh";
+import {
+  forceRefreshInstagramAccessToken,
+  forceRefreshTikTokAccessToken,
+  forceRefreshYoutubeAccessToken,
+} from "@/lib/token-refresh";
 import { recordAccountRefreshFailure } from "@/lib/social-account-refresh";
 
 /**
  * Cron job: refresh social access tokens before they expire.
- * Schedule: hourly, defined in vercel.json.
+ * Schedule: hourly via Supabase pg_cron.
  */
 export async function POST(req: Request) {
   if (!verifyCron(req)) {
@@ -30,6 +31,7 @@ export async function POST(req: Request) {
       igUsername: true,
       accessToken: true,
       accessTokenIv: true,
+      tokenExpiresAt: true,
     },
     take: 50,
   });
@@ -40,19 +42,17 @@ export async function POST(req: Request) {
     try {
       if (!conn.accessToken || !conn.accessTokenIv) continue;
 
-      const currentToken = decrypt(conn.accessToken, conn.accessTokenIv);
-      const { accessToken: newToken, expiresIn } = await refreshInstagramToken(currentToken);
-      const { ciphertext, iv } = encrypt(newToken);
-      const tokenExpiresAt = new Date(Date.now() + expiresIn * 1000);
-
-      await prisma.creatorIgConnection.update({
-        where: { id: conn.id },
-        data: { accessToken: ciphertext, accessTokenIv: iv, tokenExpiresAt },
-      });
+      await forceRefreshInstagramAccessToken(conn);
 
       igResults.refreshed++;
     } catch (err) {
       console.error(`[refresh-tokens] IG failed for @${conn.igUsername}:`, err);
+      await recordAccountRefreshFailure({
+        connectionType: "IG",
+        connectionId: conn.id,
+        error: err,
+        code: "TOKEN_REFRESH_FAILED",
+      }).catch(() => undefined);
       igResults.failed++;
     }
   }
@@ -65,8 +65,11 @@ export async function POST(req: Request) {
     select: {
       id: true,
       channelName: true,
+      accessToken: true,
+      accessTokenIv: true,
       refreshToken: true,
       refreshTokenIv: true,
+      tokenExpiresAt: true,
     },
     take: 50,
   });
@@ -77,19 +80,17 @@ export async function POST(req: Request) {
     try {
       if (!conn.refreshToken || !conn.refreshTokenIv) continue;
 
-      const currentRefresh = decrypt(conn.refreshToken, conn.refreshTokenIv);
-      const { accessToken: newToken, expiresIn } = await refreshYoutubeToken(currentRefresh);
-      const { ciphertext, iv } = encrypt(newToken);
-      const tokenExpiresAt = new Date(Date.now() + expiresIn * 1000);
-
-      await prisma.creatorYtConnection.update({
-        where: { id: conn.id },
-        data: { accessToken: ciphertext, accessTokenIv: iv, tokenExpiresAt },
-      });
+      await forceRefreshYoutubeAccessToken(conn);
 
       ytResults.refreshed++;
     } catch (err) {
       console.error(`[refresh-tokens] YT failed for ${conn.channelName}:`, err);
+      await recordAccountRefreshFailure({
+        connectionType: "YT",
+        connectionId: conn.id,
+        error: err,
+        code: "TOKEN_REFRESH_FAILED",
+      }).catch(() => undefined);
       ytResults.failed++;
     }
   }

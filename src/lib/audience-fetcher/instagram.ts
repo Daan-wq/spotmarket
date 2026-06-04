@@ -5,8 +5,8 @@
  */
 
 import type { CreatorIgConnection } from "@prisma/client";
-import { decrypt } from "@/lib/crypto";
 import { fetchDemographicSnapshots, type DemographicRow } from "@/lib/instagram";
+import { withFreshInstagramAccessToken } from "@/lib/token-refresh";
 import type {
   AudienceFetchResult,
   AudienceVariant,
@@ -21,16 +21,16 @@ export async function fetchIgAudience(
   if (!conn.accessToken || !conn.accessTokenIv || !conn.igUserId) {
     return { ok: false, audience: null, tokenBroken: true, reason: "missing token/userId" };
   }
-  let token: string;
-  try {
-    token = decrypt(conn.accessToken, conn.accessTokenIv);
-  } catch {
-    return { ok: false, audience: null, tokenBroken: true, reason: "decrypt failed" };
-  }
-
+  const igUserId = conn.igUserId;
   let result: Awaited<ReturnType<typeof fetchDemographicSnapshots>>;
   try {
-    result = await fetchDemographicSnapshots(conn.igUserId, token);
+    const fetched = await withFreshInstagramAccessToken(conn, (token) =>
+      fetchDemographicSnapshots(igUserId, token),
+    );
+    if (!fetched) {
+      return { ok: false, audience: null, tokenBroken: true, reason: "no token" };
+    }
+    result = fetched;
   } catch (err) {
     const msg = (err as Error).message?.toLowerCase() ?? "";
     return {

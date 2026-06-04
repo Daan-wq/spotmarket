@@ -9,7 +9,10 @@ import { decrypt } from "@/lib/crypto";
 import { fetchRecentMedia } from "@/lib/instagram";
 import { fetchTikTokVideos } from "@/lib/tiktok";
 import { fetchFacebookPagePostsPaginated } from "@/lib/facebook";
-import { withFreshTikTokAccessToken } from "@/lib/token-refresh";
+import {
+  withFreshInstagramAccessToken,
+  withFreshTikTokAccessToken,
+} from "@/lib/token-refresh";
 import {
   cacheCreatorMediaThumbnail,
   cacheInstagramMedia,
@@ -272,11 +275,15 @@ async function fetchOauthRowsForConnection(
 async function fetchIgOauthRows(connectionId: string, limit: number): Promise<ContentRow[]> {
   const conn = await prisma.creatorIgConnection.findFirst({
     where: { id: connectionId, isVerified: true },
-    select: { igUserId: true, accessToken: true, accessTokenIv: true },
+    select: { id: true, igUserId: true, accessToken: true, accessTokenIv: true, tokenExpiresAt: true },
   });
   if (!conn?.accessToken || !conn.accessTokenIv || !conn.igUserId) return [];
-  const token = decrypt(conn.accessToken, conn.accessTokenIv);
-  const { media } = await fetchRecentMedia(token, conn.igUserId, limit);
+  const igUserId = conn.igUserId;
+  const result = await withFreshInstagramAccessToken(conn, (token) =>
+    fetchRecentMedia(token, igUserId, limit),
+  );
+  if (!result) return [];
+  const { media } = result;
   const posts = await cacheInstagramMedia({
     connectionId,
     media,

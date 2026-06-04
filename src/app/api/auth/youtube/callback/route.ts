@@ -52,7 +52,7 @@ export async function GET(req: NextRequest) {
 
     // Encrypt tokens before storing
     const encAccess = encrypt(accessToken);
-    const encRefresh = encrypt(refreshToken);
+    const encRefresh = refreshToken ? encrypt(refreshToken) : null;
     const tokenExpiresAt = new Date(Date.now() + expiresIn * 1000);
 
     // Find the user's creator profile
@@ -72,6 +72,16 @@ export async function GET(req: NextRequest) {
       where: { channelId: channel.channelId },
       select: { id: true },
     });
+    if (!existing && !encRefresh) {
+      return NextResponse.redirect(new URL(`${returnTo}?error=yt_missing_refresh_token`, req.url));
+    }
+
+    const refreshTokenData = encRefresh
+      ? {
+          refreshToken: encRefresh.ciphertext,
+          refreshTokenIv: encRefresh.iv,
+        }
+      : {};
 
     const refreshedAt = new Date();
     const connection = existing
@@ -85,10 +95,9 @@ export async function GET(req: NextRequest) {
           videoCount: channel.videoCount,
           accessToken: encAccess.ciphertext,
           accessTokenIv: encAccess.iv,
-          refreshToken: encRefresh.ciphertext,
-          refreshTokenIv: encRefresh.iv,
           tokenExpiresAt,
           isVerified: true,
+          ...refreshTokenData,
         },
         select: { id: true },
       })
@@ -102,8 +111,8 @@ export async function GET(req: NextRequest) {
           videoCount: channel.videoCount,
           accessToken: encAccess.ciphertext,
           accessTokenIv: encAccess.iv,
-          refreshToken: encRefresh.ciphertext,
-          refreshTokenIv: encRefresh.iv,
+          refreshToken: encRefresh!.ciphertext,
+          refreshTokenIv: encRefresh!.iv,
           tokenExpiresAt,
           isVerified: true,
         },

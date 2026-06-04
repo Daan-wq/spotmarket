@@ -5,20 +5,12 @@
 
 import type { CreatorYtConnection } from "@prisma/client";
 import { fetchVideoDemographics } from "@/lib/youtube";
-import { getFreshYoutubeAccessToken } from "@/lib/token-refresh";
+import { withFreshYoutubeAccessToken } from "@/lib/token-refresh";
 import type { AudienceFetchResult } from "./index";
 
 export async function fetchYtAudience(
   conn: CreatorYtConnection,
 ): Promise<AudienceFetchResult> {
-  let token: string | null;
-  try {
-    token = await getFreshYoutubeAccessToken(conn);
-  } catch {
-    return { ok: false, audience: null, tokenBroken: true, reason: "token refresh failed" };
-  }
-  if (!token) return { ok: false, audience: null, tokenBroken: true, reason: "no token" };
-
   const end = new Date();
   const start = new Date(end.getTime() - 90 * 24 * 60 * 60 * 1000);
   const startDate = start.toISOString().slice(0, 10);
@@ -26,7 +18,12 @@ export async function fetchYtAudience(
 
   let demographics;
   try {
-    demographics = await fetchVideoDemographics(token, conn.channelId, startDate, endDate);
+    demographics = await withFreshYoutubeAccessToken(conn, (token) =>
+      fetchVideoDemographics(token, conn.channelId, startDate, endDate),
+    );
+    if (!demographics) {
+      return { ok: false, audience: null, tokenBroken: true, reason: "no token" };
+    }
   } catch (err) {
     const msg = (err as Error).message?.toLowerCase() ?? "";
     return {

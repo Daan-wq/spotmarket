@@ -17,6 +17,7 @@ export type { YtChannelProfile, YtVideoItem, YtDemographics, YtAnalyticsWindow, 
 const YT_DATA_BASE = "https://www.googleapis.com/youtube/v3";
 const YT_ANALYTICS_BASE = "https://youtubeanalytics.googleapis.com/v2";
 const OAUTH_BASE = "https://oauth2.googleapis.com";
+const YOUTUBE_AUTH_STATUS = new Set([401, 403]);
 
 // ─── OAuth ──────────────────────────────────────────────────────────
 
@@ -41,7 +42,7 @@ export function getYoutubeAuthUrl(state: string): string {
 
 export async function exchangeCodeForTokens(
   code: string
-): Promise<{ accessToken: string; refreshToken: string; expiresIn: number; grantedScopes: string[] }> {
+): Promise<{ accessToken: string; refreshToken?: string; expiresIn: number; grantedScopes: string[] }> {
   const res = await fetch(`${OAUTH_BASE}/token`, {
     method: "POST",
     headers: { "Content-Type": "application/x-www-form-urlencoded" },
@@ -60,6 +61,9 @@ export async function exchangeCodeForTokens(
   }
 
   const data = await res.json();
+  if (!data.access_token) {
+    throw new Error("Google token exchange failed: missing access_token");
+  }
   return {
     accessToken: data.access_token,
     refreshToken: data.refresh_token,
@@ -88,6 +92,9 @@ export async function refreshYoutubeToken(
   }
 
   const data = await res.json();
+  if (!data.access_token) {
+    throw new Error("YouTube token refresh failed: missing access_token");
+  }
   return {
     accessToken: data.access_token,
     expiresIn: data.expires_in ?? 3600,
@@ -193,7 +200,9 @@ async function fetchRecentUploads(
     { headers: { Authorization: `Bearer ${accessToken}` } }
   );
 
-  if (!channelRes.ok) throw new Error("Failed to fetch channel details");
+  if (!channelRes.ok) {
+    throw await youtubeApiError(channelRes, "YouTube channels.list");
+  }
   const channelData = await channelRes.json();
   const uploadsPlaylistId =
     channelData.items?.[0]?.contentDetails?.relatedPlaylists?.uploads;
@@ -215,7 +224,12 @@ async function fetchRecentUploads(
     const plRes = await fetch(`${YT_DATA_BASE}/playlistItems?${plParams}`, {
       headers: { Authorization: `Bearer ${accessToken}` },
     });
-    if (!plRes.ok) break;
+    if (!plRes.ok) {
+      if (YOUTUBE_AUTH_STATUS.has(plRes.status)) {
+        throw await youtubeApiError(plRes, "YouTube playlistItems.list");
+      }
+      break;
+    }
 
     const plData = await plRes.json();
     const ids = (plData.items ?? []).map(
@@ -240,7 +254,12 @@ async function fetchRecentUploads(
       })}`,
       { headers: { Authorization: `Bearer ${accessToken}` } }
     );
-    if (!vidRes.ok) continue;
+    if (!vidRes.ok) {
+      if (YOUTUBE_AUTH_STATUS.has(vidRes.status)) {
+        throw await youtubeApiError(vidRes, "YouTube videos.list");
+      }
+      continue;
+    }
 
     const vidData = await vidRes.json();
     for (const video of (vidData.items ?? []) as YoutubeVideoApiItem[]) {
@@ -383,9 +402,12 @@ export async function fetchVideoDemographics(
           demographics.countries[country] = Math.round((views / totalViews) * 100);
         }
       }
+    } else if (YOUTUBE_AUTH_STATUS.has(countryRes.status)) {
+      throw await youtubeApiError(countryRes, "YouTube Analytics country demographics");
     }
-  } catch {
-    // Non-fatal
+  } catch (err) {
+    if (isYoutubeAuthErrorMessage(err)) throw err;
+    // Non-fatal: a demographic dimension may be unavailable for a channel.
   }
 
   // Age + gender breakdown
@@ -429,12 +451,24 @@ export async function fetchVideoDemographics(
           demographics.ages[key] = Math.round(pct);
         }
       }
+    } else if (YOUTUBE_AUTH_STATUS.has(ageGenderRes.status)) {
+      throw await youtubeApiError(ageGenderRes, "YouTube Analytics age/gender demographics");
     }
-  } catch {
-    // Non-fatal
+  } catch (err) {
+    if (isYoutubeAuthErrorMessage(err)) throw err;
   }
 
   return demographics;
+}
+
+async function youtubeApiError(res: Response, label: string): Promise<Error> {
+  const body = await res.text().catch(() => "");
+  return new Error(`${label} failed ${res.status}: ${body}`);
+}
+
+function isYoutubeAuthErrorMessage(error: unknown): boolean {
+  const message = error instanceof Error ? error.message : String(error ?? "");
+  return /\b(401|403)\b/.test(message);
 }
 
 // ─── Helpers ────────────────────────────────────────────────────────

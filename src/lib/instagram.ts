@@ -12,11 +12,18 @@ export type { IgDemographics, IgMediaItem, ComputedCreatorStats };
 
 const GRAPH_BASE = "https://graph.instagram.com/v25.0";
 const META_BASE = "https://api.instagram.com";
+const INSTAGRAM_INVALID_TOKEN_PATTERN =
+  /OAuthException|Error validating access token|Session has expired|access token|invalid token|token expired|expired/i;
 
 export const REQUIRED_IG_SCOPES = [
   "instagram_business_basic",
   "instagram_business_manage_insights",
 ] as const;
+
+export function isInstagramInvalidTokenError(error: unknown): boolean {
+  const message = error instanceof Error ? error.message : String(error ?? "");
+  return INSTAGRAM_INVALID_TOKEN_PATTERN.test(message);
+}
 
 export async function getInstagramAuthUrl(state: string): Promise<string> {
   const redirectUri = getRequiredOAuthRedirectUri("INSTAGRAM_REDIRECT_URI");

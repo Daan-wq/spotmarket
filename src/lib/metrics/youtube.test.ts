@@ -7,7 +7,11 @@ const recordRawMock = vi.fn();
 let fetchSpy: any;
 
 vi.mock("@/lib/token-refresh", () => ({
-  getFreshYoutubeAccessToken: (...a: unknown[]) => getFreshTokenMock(...a),
+  isYoutubeInvalidTokenError: (err: unknown) =>
+    /invalid_token|invalid credentials|invalid_grant|401|403/i.test(
+      err instanceof Error ? err.message : String(err),
+    ),
+  withFreshYoutubeAccessToken: (...a: unknown[]) => getFreshTokenMock(...a),
 }));
 vi.mock("./raw-storage", () => ({
   recordRawApiResponse: (...a: unknown[]) => recordRawMock(...a),
@@ -35,7 +39,10 @@ beforeEach(() => {
   getFreshTokenMock.mockReset();
   recordRawMock.mockReset();
   fetchSpy = vi.spyOn(globalThis, "fetch");
-  getFreshTokenMock.mockResolvedValue("decoded-token");
+  getFreshTokenMock.mockImplementation((
+    _conn: unknown,
+    operation: (token: string) => unknown,
+  ) => operation("decoded-token"));
   recordRawMock.mockResolvedValue(undefined);
 });
 
@@ -84,12 +91,15 @@ describe("fetchYoutubeMetric", () => {
 
     const r = await fetchYoutubeMetric(
       conn(),
-      { platform: "YOUTUBE", postId: "vid_1", authorHandle: null, normalizedUrl: "https://youtu.be/vid_1" },
+      { platform: "YOUTUBE", postId: "stale_url_id", authorHandle: null, normalizedUrl: "https://youtu.be/stale_url_id" },
       "sub_yt",
+      { platformApiMediaId: "vid_1" },
     );
 
     expect(r.ok).toBe(true);
     if (!r.ok) return;
+    expect(r.resolvedIdentity).toEqual({ platformApiMediaId: "vid_1" });
+    expect(fetchSpy.mock.calls[0]?.[0]).toContain("id=vid_1");
     expect(r.viewCount).toBe(BigInt(162290));
     expect(r.likeCount).toBe(6000);
     expect(r.commentCount).toBe(37);
@@ -155,5 +165,31 @@ describe("fetchYoutubeMetric", () => {
       shares: false,
       watchTime: false,
     });
+  });
+
+  it("returns TOKEN_BROKEN after an invalid-token retry still fails", async () => {
+    getFreshTokenMock.mockImplementation(async (
+      _conn: unknown,
+      operation: (token: string) => Promise<unknown>,
+    ) => {
+      try {
+        return await operation("expired-token");
+      } catch (err) {
+        if (!/401|403|invalid/i.test((err as Error).message)) throw err;
+        return await operation("refreshed-token");
+      }
+    });
+    fetchSpy
+      .mockResolvedValueOnce(jsonResponse({ error: "Invalid Credentials" }, 401))
+      .mockResolvedValueOnce(jsonResponse({ error: "Invalid Credentials" }, 401));
+
+    const r = await fetchYoutubeMetric(
+      conn(),
+      { platform: "YOUTUBE", postId: "vid_1", authorHandle: null, normalizedUrl: "https://youtu.be/vid_1" },
+    );
+
+    expect(r.ok).toBe(false);
+    if (r.ok) return;
+    expect(r.reason).toBe("TOKEN_BROKEN");
   });
 });

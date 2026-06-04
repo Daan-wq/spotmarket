@@ -13,13 +13,14 @@
  */
 
 import type { CreatorIgConnection } from "@prisma/client";
-import { decrypt } from "@/lib/crypto";
 import {
   fetchInstagramMediaMetadata,
   fetchRecentMedia,
   fetchMediaInsights,
+  isInstagramInvalidTokenError,
   type MediaInsightType,
 } from "@/lib/instagram";
+import { withFreshInstagramAccessToken } from "@/lib/token-refresh";
 import type { ParsedClipUrl } from "@/lib/parse-clip-url";
 import { metricAvailability } from "@/lib/contracts/metrics";
 import { failure, type MetricFetcherResult } from "./router";
@@ -69,15 +70,41 @@ export async function fetchInstagramMetric(
     return failure("NO_TOKEN", "IG connection missing ig_user_id", { type: "IG", id: conn.id });
   }
 
-  let token: string;
   try {
-    token = decrypt(conn.accessToken, conn.accessTokenIv);
+    const result = await withFreshInstagramAccessToken(conn, (token) =>
+      fetchInstagramMetricWithToken(conn, parsed, token, submissionId, identity),
+    );
+    if (!result) {
+      return failure("TOKEN_EXPIRED", "IG token expired and refresh failed", {
+        type: "IG",
+        id: conn.id,
+      });
+    }
+    return result;
   } catch (err) {
+    if (isInstagramInvalidTokenError(err)) {
+      return failure("TOKEN_BROKEN", (err as Error).message, { type: "IG", id: conn.id });
+    }
     return failure(
-      "TOKEN_BROKEN",
-      `IG token decrypt failed: ${(err as Error).message}`,
+      "PLATFORM_ERROR",
+      err instanceof Error ? err.message : "Instagram metrics request failed",
       { type: "IG", id: conn.id },
     );
+  }
+}
+
+async function fetchInstagramMetricWithToken(
+  conn: CreatorIgConnection,
+  parsed: ParsedClipUrl,
+  token: string,
+  submissionId?: string,
+  identity?: {
+    platformApiMediaId?: string | null;
+    mediaProductType?: string | null;
+  },
+): Promise<MetricFetcherResult> {
+  if (!conn.igUserId) {
+    return failure("NO_TOKEN", "IG connection missing ig_user_id", { type: "IG", id: conn.id });
   }
 
   let matched: MatchedMedia | null = null;
@@ -100,6 +127,7 @@ export async function fetchInstagramMetric(
       const media = await fetchInstagramMediaMetadata(canonicalMediaId, token);
       matched = toMatchedMedia(media);
     } catch (err) {
+      if (isInstagramInvalidTokenError(err)) throw err;
       return instagramFailure(err, conn.id);
     }
   } else {
@@ -111,6 +139,7 @@ export async function fetchInstagramMetric(
       try {
         result = await fetchRecentMedia(token, conn.igUserId, 50, cursor);
       } catch (err) {
+        if (isInstagramInvalidTokenError(err)) throw err;
         return instagramFailure(err, conn.id);
       }
       for (const media of result.media) {
@@ -141,6 +170,7 @@ export async function fetchInstagramMetric(
   try {
     insights = await fetchMediaInsights(matched.id, token, mediaType);
   } catch (err) {
+    if (isInstagramInvalidTokenError(err)) throw err;
     return instagramFailure(err, conn.id);
   }
 

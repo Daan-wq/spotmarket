@@ -10,7 +10,8 @@ const routeMocks = vi.hoisted(() => ({
   ytFindFirst: vi.fn(),
   fbFindFirst: vi.fn(),
   withFreshTikTokAccessToken: vi.fn(),
-  getFreshYoutubeAccessToken: vi.fn(),
+  withFreshInstagramAccessToken: vi.fn(),
+  withFreshYoutubeAccessToken: vi.fn(),
   fetchRecentMedia: vi.fn(),
   fetchTikTokVideos: vi.fn(),
   fetchFacebookPagePostsPaginated: vi.fn(),
@@ -39,14 +40,19 @@ vi.mock("@/lib/crypto", () => ({
 }));
 
 vi.mock("@/lib/token-refresh", () => ({
+  isYoutubeInvalidTokenError: (err: unknown) =>
+    /invalid_token|invalid credentials|401|403/i.test(err instanceof Error ? err.message : String(err)),
   isTikTokInvalidTokenError: (err: unknown) =>
     /access_token_invalid|access_token_expired/i.test(err instanceof Error ? err.message : String(err)),
   withFreshTikTokAccessToken: routeMocks.withFreshTikTokAccessToken,
-  getFreshYoutubeAccessToken: routeMocks.getFreshYoutubeAccessToken,
+  withFreshInstagramAccessToken: routeMocks.withFreshInstagramAccessToken,
+  withFreshYoutubeAccessToken: routeMocks.withFreshYoutubeAccessToken,
 }));
 
 vi.mock("@/lib/instagram", () => ({
   fetchRecentMedia: routeMocks.fetchRecentMedia,
+  isInstagramInvalidTokenError: (err: unknown) =>
+    /OAuthException|access token|invalid token|expired/i.test(err instanceof Error ? err.message : String(err)),
 }));
 
 vi.mock("@/lib/tiktok", () => ({
@@ -55,6 +61,8 @@ vi.mock("@/lib/tiktok", () => ({
 
 vi.mock("@/lib/facebook", () => ({
   fetchFacebookPagePostsPaginated: routeMocks.fetchFacebookPagePostsPaginated,
+  isFacebookInvalidTokenError: (err: unknown) =>
+    /OAuthException|access token|invalid token|expired/i.test(err instanceof Error ? err.message : String(err)),
 }));
 
 vi.mock("@/lib/youtube", () => ({
@@ -85,6 +93,14 @@ describe("GET /api/creator/media", () => {
     ) =>
       operation("fresh-tiktok-token")
     );
+    routeMocks.withFreshInstagramAccessToken.mockImplementation((
+      _conn: unknown,
+      operation: (token: string) => unknown,
+    ) => operation("fresh-instagram-token"));
+    routeMocks.withFreshYoutubeAccessToken.mockImplementation((
+      _conn: unknown,
+      operation: (token: string) => unknown,
+    ) => operation("fresh-youtube-token"));
     routeMocks.cacheInstagramMedia.mockImplementation(({ media }: { media: Array<{
       id: string;
       permalink: string;
@@ -134,9 +150,11 @@ describe("GET /api/creator/media", () => {
 
   it("returns fresh cached Instagram media without calling the platform API", async () => {
     routeMocks.igFindFirst.mockResolvedValue({
+      id: "ig-conn-1",
       igUserId: "ig-user-1",
       accessToken: "encrypted",
       accessTokenIv: "iv",
+      tokenExpiresAt: null,
     });
     routeMocks.readCachedCreatorMedia.mockResolvedValue({
       posts: [
@@ -180,16 +198,18 @@ describe("GET /api/creator/media", () => {
     });
     expect(routeMocks.igFindFirst).toHaveBeenCalledWith({
       where: { id: "ig-conn-1", creatorProfileId: "creator-profile-1", isVerified: true },
-      select: { igUserId: true, accessToken: true, accessTokenIv: true },
+      select: { id: true, igUserId: true, accessToken: true, accessTokenIv: true, tokenExpiresAt: true },
     });
     expect(routeMocks.fetchRecentMedia).not.toHaveBeenCalled();
   });
 
   it("bypasses the Instagram media cache when refresh is requested", async () => {
     routeMocks.igFindFirst.mockResolvedValue({
+      id: "ig-conn-1",
       igUserId: "ig-user-1",
       accessToken: "encrypted",
       accessTokenIv: "iv",
+      tokenExpiresAt: null,
     });
     routeMocks.fetchRecentMedia.mockResolvedValue({
       media: [
@@ -216,7 +236,7 @@ describe("GET /api/creator/media", () => {
     expect(response.status).toBe(200);
     expect(routeMocks.readCachedCreatorMedia).not.toHaveBeenCalled();
     expect(routeMocks.fetchRecentMedia).toHaveBeenCalledWith(
-      "decrypted-token",
+      "fresh-instagram-token",
       "ig-user-1",
       10,
       undefined
@@ -239,7 +259,6 @@ describe("GET /api/creator/media", () => {
       refreshTokenIv: "refresh-iv",
       tokenExpiresAt: new Date("2026-05-16T10:00:00.000Z"),
     });
-    routeMocks.getFreshYoutubeAccessToken.mockResolvedValue("fresh-youtube-token");
     routeMocks.fetchRecentYoutubeVideos.mockResolvedValue([
       {
         id: "short_1",
@@ -298,8 +317,9 @@ describe("GET /api/creator/media", () => {
       nextCursor: null,
       hasMore: false,
     });
-    expect(routeMocks.getFreshYoutubeAccessToken).toHaveBeenCalledWith(
-      expect.objectContaining({ id: "yt-conn-1", channelId: "UC_test" })
+    expect(routeMocks.withFreshYoutubeAccessToken).toHaveBeenCalledWith(
+      expect.objectContaining({ id: "yt-conn-1", channelId: "UC_test" }),
+      expect.any(Function),
     );
     expect(routeMocks.fetchRecentYoutubeVideos).toHaveBeenCalledWith(
       "fresh-youtube-token",

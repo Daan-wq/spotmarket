@@ -4,16 +4,21 @@ import type { CreatorIgConnection } from "@prisma/client";
 const fetchRecentMediaMock = vi.fn();
 const fetchMediaInsightsMock = vi.fn();
 const fetchInstagramMediaMetadataMock = vi.fn();
-const decryptMock = vi.fn();
+const withFreshInstagramAccessTokenMock = vi.fn();
 const recordRawMock = vi.fn();
 
 vi.mock("@/lib/instagram", () => ({
   fetchRecentMedia: (...a: unknown[]) => fetchRecentMediaMock(...a),
   fetchMediaInsights: (...a: unknown[]) => fetchMediaInsightsMock(...a),
   fetchInstagramMediaMetadata: (...a: unknown[]) => fetchInstagramMediaMetadataMock(...a),
+  isInstagramInvalidTokenError: (err: unknown) =>
+    /OAuthException|access token|invalid token|expired/i.test(
+      err instanceof Error ? err.message : String(err),
+    ),
 }));
-vi.mock("@/lib/crypto", () => ({
-  decrypt: (...a: unknown[]) => decryptMock(...a),
+vi.mock("@/lib/token-refresh", () => ({
+  withFreshInstagramAccessToken: (...a: unknown[]) =>
+    withFreshInstagramAccessTokenMock(...a),
 }));
 vi.mock("./raw-storage", () => ({
   recordRawApiResponse: (...a: unknown[]) => recordRawMock(...a),
@@ -34,9 +39,12 @@ beforeEach(() => {
   fetchRecentMediaMock.mockReset();
   fetchMediaInsightsMock.mockReset();
   fetchInstagramMediaMetadataMock.mockReset();
-  decryptMock.mockReset();
+  withFreshInstagramAccessTokenMock.mockReset();
   recordRawMock.mockReset();
-  decryptMock.mockReturnValue("decoded");
+  withFreshInstagramAccessTokenMock.mockImplementation((
+    _conn: unknown,
+    operation: (token: string) => unknown,
+  ) => operation("ig-token"));
   recordRawMock.mockResolvedValue(undefined);
 });
 
@@ -81,7 +89,7 @@ describe("fetchInstagramMetric", () => {
     expect(fetchRecentMediaMock).not.toHaveBeenCalled();
     expect(fetchMediaInsightsMock).toHaveBeenCalledWith(
       "18339548662175976",
-      "decoded",
+      "ig-token",
       "REEL",
     );
     if (!r.ok) return;
@@ -167,7 +175,7 @@ describe("fetchInstagramMetric", () => {
       platformApiMediaId: "media_99",
       mediaProductType: "REELS",
     });
-    expect(fetchMediaInsightsMock).toHaveBeenCalledWith("media_99", "decoded", "REEL");
+    expect(fetchMediaInsightsMock).toHaveBeenCalledWith("media_99", "ig-token", "REEL");
     expect(recordRawMock).toHaveBeenCalledWith(
       expect.objectContaining({
         connectionType: "IG",
@@ -226,7 +234,7 @@ describe("fetchInstagramMetric", () => {
 
     expect(r.ok).toBe(true);
     if (!r.ok) return;
-    expect(fetchMediaInsightsMock).toHaveBeenCalledWith("story_77", "decoded", "STORY");
+    expect(fetchMediaInsightsMock).toHaveBeenCalledWith("story_77", "ig-token", "STORY");
     expect(r.profileActivity).toEqual({
       BIO_LINK_CLICKED: 5,
       CALL: 0,
@@ -299,5 +307,36 @@ describe("fetchInstagramMetric", () => {
     expect(r.ok).toBe(false);
     if (r.ok) return;
     expect(r.reason).toBe("API_SCHEMA_ERROR");
+  });
+
+  it("returns TOKEN_BROKEN after an invalid-token retry still fails", async () => {
+    withFreshInstagramAccessTokenMock.mockImplementation(async (
+      _conn: unknown,
+      operation: (token: string) => Promise<unknown>,
+    ) => {
+      try {
+        return await operation("expired-token");
+      } catch (err) {
+        if (!/OAuthException|token|expired/i.test((err as Error).message)) throw err;
+        return operation("refreshed-token");
+      }
+    });
+    fetchRecentMediaMock
+      .mockRejectedValueOnce(new Error("OAuthException: Error validating access token"))
+      .mockRejectedValueOnce(new Error("OAuthException: Error validating access token"));
+
+    const r = await fetchInstagramMetric(
+      conn(),
+      {
+        platform: "INSTAGRAM",
+        postId: "ABC123",
+        authorHandle: null,
+        normalizedUrl: "https://www.instagram.com/reel/ABC123/",
+      },
+    );
+
+    expect(r.ok).toBe(false);
+    if (r.ok) return;
+    expect(r.reason).toBe("TOKEN_BROKEN");
   });
 });

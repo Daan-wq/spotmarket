@@ -8,7 +8,7 @@ const recordRawMock = vi.fn();
 let fetchSpy: any;
 
 vi.mock("@/lib/token-refresh", () => ({
-  getFreshYoutubeAccessToken: (...a: unknown[]) => tokenMock(...a),
+  withFreshYoutubeAccessToken: (...a: unknown[]) => tokenMock(...a),
 }));
 vi.mock("@/lib/prisma", () => ({
   prisma: {
@@ -33,7 +33,10 @@ beforeEach(() => {
   upsertMock.mockReset();
   recordRawMock.mockReset();
   fetchSpy = vi.spyOn(globalThis, "fetch");
-  tokenMock.mockResolvedValue("yt_token");
+  tokenMock.mockImplementation((
+    _conn: unknown,
+    operation: (token: string) => unknown,
+  ) => operation("yt_token"));
   upsertMock.mockResolvedValue({ id: "row_1" });
   recordRawMock.mockResolvedValue(undefined);
 });

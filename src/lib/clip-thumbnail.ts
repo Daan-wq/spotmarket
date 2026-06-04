@@ -1,10 +1,9 @@
 import { parseClipUrl } from "./parse-clip-url";
 import { prisma } from "./prisma";
-import { decrypt } from "./crypto";
 import { fetchRecentMedia, type IgMediaItem } from "./instagram";
 import { normalizeIgMediaType, type ClipMediaType } from "./instagram-media-type";
 import { fetchTikTokVideos } from "./tiktok";
-import { withFreshTikTokAccessToken } from "./token-refresh";
+import { withFreshInstagramAccessToken, withFreshTikTokAccessToken } from "./token-refresh";
 import {
   cacheCreatorMediaThumbnail,
   cacheInstagramMedia,
@@ -204,6 +203,7 @@ export async function resolveInstagramThumbnail(
                 igUserId: true,
                 accessToken: true,
                 accessTokenIv: true,
+                tokenExpiresAt: true,
               },
               take: 1,
             },
@@ -216,6 +216,7 @@ export async function resolveInstagramThumbnail(
     if (!conn?.accessToken || !conn.accessTokenIv || !conn.igUserId) {
       return null;
     }
+    const igUserId = conn.igUserId;
 
     const cached = await findCachedInstagramMediaForUrl({
       connectionId: conn.id,
@@ -229,38 +230,39 @@ export async function resolveInstagramThumbnail(
       };
     }
 
-    const token = decrypt(conn.accessToken, conn.accessTokenIv);
-
     const targetShortcode = parsed.postId; // e.g. "C7xYz123"
     const normalizedTarget = normalizePermalink(postUrl);
 
-    let cursor: string | undefined = undefined;
-    for (let page = 0; page < 3; page++) {
-      const { media, nextCursor }: { media: IgMediaItem[]; nextCursor: string | null } =
-        await fetchRecentMedia(token, conn.igUserId, 50, cursor);
+    return await withFreshInstagramAccessToken(conn, async (token) => {
+      let cursor: string | undefined = undefined;
+      for (let page = 0; page < 3; page++) {
+        const { media, nextCursor }: { media: IgMediaItem[]; nextCursor: string | null } =
+          await fetchRecentMedia(token, igUserId, 50, cursor);
 
-      const match = media.find((m) => {
-        if (!m.permalink) return false;
-        if (normalizePermalink(m.permalink) === normalizedTarget) return true;
-        if (targetShortcode && m.permalink.includes(`/${targetShortcode}`)) return true;
-        return false;
-      });
-
-      if (match) {
-        const [cachedMatch] = await cacheInstagramMedia({
-          connectionId: conn.id,
-          media: [match],
-          updateState: false,
+        const match = media.find((m) => {
+          if (!m.permalink) return false;
+          if (normalizePermalink(m.permalink) === normalizedTarget) return true;
+          if (targetShortcode && m.permalink.includes(`/${targetShortcode}`)) return true;
+          return false;
         });
-        return {
-          thumbnailUrl: cachedMatch?.thumbnail ?? null,
-          mediaType: cachedMatch?.mediaType ?? normalizeIgMediaType(match.media_type, match.media_product_type),
-        };
-      }
 
-      if (!nextCursor) break;
-      cursor = nextCursor;
-    }
+        if (match) {
+          const [cachedMatch] = await cacheInstagramMedia({
+            connectionId: conn.id,
+            media: [match],
+            updateState: false,
+          });
+          return {
+            thumbnailUrl: cachedMatch?.thumbnail ?? null,
+            mediaType: cachedMatch?.mediaType ?? normalizeIgMediaType(match.media_type, match.media_product_type),
+          };
+        }
+
+        if (!nextCursor) break;
+        cursor = nextCursor;
+      }
+      return null;
+    });
   } catch (err) {
     console.warn("[clip-thumbnail] IG resolve failed", err);
   }
