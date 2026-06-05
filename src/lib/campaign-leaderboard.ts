@@ -7,6 +7,7 @@ type NumericLike = number | string | { toString(): string } | null | undefined;
 interface CampaignLeaderboardMetricSnapshot {
   viewCount: NumericLike;
   capturedAt?: Date | string | null;
+  source?: string | null;
 }
 
 export interface CampaignLeaderboardSubmission {
@@ -46,6 +47,28 @@ export interface CampaignLeaderboardRow {
   bestPostViews: number;
 }
 
+export type CampaignLeaderboardSort = "views" | "earnings" | "score";
+
+export interface ScoredCampaignLeaderboardRow extends CampaignLeaderboardRow {
+  score: number | null;
+}
+
+export interface RankedCampaignLeaderboardRow extends ScoredCampaignLeaderboardRow {
+  rank: number;
+}
+
+export interface CampaignLeaderboardSelection {
+  leaderboard: RankedCampaignLeaderboardRow[];
+  currentUserEntry: RankedCampaignLeaderboardRow | null;
+  totalClippers: number;
+}
+
+export interface CampaignLeaderboardDisplayRow {
+  row: RankedCampaignLeaderboardRow;
+  isCurrentUser: boolean;
+  isAdditional: boolean;
+}
+
 function toNumber(value: NumericLike): number {
   if (value == null) return 0;
   if (typeof value === "number") return Number.isFinite(value) ? value : 0;
@@ -60,7 +83,9 @@ function roundMoney(value: number): number {
 export function campaignLeaderboardTotalViews(
   submission: CampaignLeaderboardSubmission,
 ): number {
-  const latestSnapshotViews = submission.metricSnapshots?.[0]?.viewCount;
+  const latestSnapshotViews = submission.metricSnapshots?.find(
+    (snapshot) => snapshot.source !== "OAUTH_FAILED",
+  )?.viewCount;
   return toNumber(latestSnapshotViews ?? submission.viewCount ?? submission.claimedViews ?? 0);
 }
 
@@ -83,14 +108,7 @@ export function campaignLeaderboardPayableViews(
 export function campaignLeaderboardEarnings(
   submission: CampaignLeaderboardSubmission,
 ): number {
-  const stored = toNumber(submission.earnedAmount);
-  if (stored > 0 || toNumber(submission.eligibleViews) > 0) {
-    return roundMoney(stored);
-  }
-
-  return roundMoney(
-    campaignLeaderboardPayableViews(submission) * toNumber(submission.campaign.creatorCpv),
-  );
+  return roundMoney(toNumber(submission.earnedAmount));
 }
 
 export function buildCampaignLeaderboardRows(
@@ -132,4 +150,89 @@ export function buildCampaignLeaderboardRows(
   }
 
   return Array.from(byCreator.values());
+}
+
+export function selectCampaignLeaderboardRows(
+  rows: ReadonlyArray<ScoredCampaignLeaderboardRow>,
+  {
+    sort,
+    currentUserId,
+    limit = 5,
+  }: {
+    sort: CampaignLeaderboardSort;
+    currentUserId?: string | null;
+    limit?: number;
+  },
+): CampaignLeaderboardSelection {
+  const ranked = [...rows]
+    .sort((a, b) => compareLeaderboardRows(a, b, sort))
+    .map((row, index) => ({
+      rank: index + 1,
+      ...row,
+    }));
+  const visibleLimit = Number.isFinite(limit)
+    ? Math.max(1, Math.min(5, Math.trunc(limit)))
+    : 5;
+
+  return {
+    leaderboard: ranked.slice(0, visibleLimit),
+    currentUserEntry: currentUserId
+      ? ranked.find((row) => row.creatorId === currentUserId) ?? null
+      : null,
+    totalClippers: ranked.length,
+  };
+}
+
+export function buildCampaignLeaderboardDisplayRows(
+  leaderboard: ReadonlyArray<RankedCampaignLeaderboardRow>,
+  currentUserEntry: RankedCampaignLeaderboardRow | null,
+): CampaignLeaderboardDisplayRow[] {
+  const currentUserId = currentUserEntry?.creatorId ?? null;
+  const displayRows = leaderboard.map((row) => ({
+    row,
+    isCurrentUser: row.creatorId === currentUserId,
+    isAdditional: false,
+  }));
+
+  if (
+    currentUserEntry &&
+    !leaderboard.some((row) => row.creatorId === currentUserEntry.creatorId)
+  ) {
+    displayRows.push({
+      row: currentUserEntry,
+      isCurrentUser: true,
+      isAdditional: true,
+    });
+  }
+
+  return displayRows;
+}
+
+function compareLeaderboardRows(
+  a: ScoredCampaignLeaderboardRow,
+  b: ScoredCampaignLeaderboardRow,
+  sort: CampaignLeaderboardSort,
+): number {
+  if (sort === "earnings") {
+    return (
+      b.totalEarned - a.totalEarned ||
+      b.totalViews - a.totalViews ||
+      a.creatorId.localeCompare(b.creatorId)
+    );
+  }
+
+  if (sort === "score") {
+    return (
+      (b.score ?? -1) - (a.score ?? -1) ||
+      b.totalViews - a.totalViews ||
+      b.totalEarned - a.totalEarned ||
+      a.creatorId.localeCompare(b.creatorId)
+    );
+  }
+
+  return (
+    b.totalViews - a.totalViews ||
+    b.totalEarned - a.totalEarned ||
+    a.creatorId.localeCompare(b.creatorId)
+  );
 }

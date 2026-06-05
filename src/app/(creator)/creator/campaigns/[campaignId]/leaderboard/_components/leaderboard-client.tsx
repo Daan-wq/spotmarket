@@ -4,27 +4,17 @@ import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useLocale, useTranslations } from "next-intl";
 import { formatCurrency, formatNumber } from "@/lib/i18n-format";
-
-type Sort = "views" | "earnings" | "score";
-
-interface LeaderboardRow {
-  rank: number;
-  creatorId: string;
-  creatorProfileId: string | null;
-  displayName: string;
-  avatarUrl: string | null;
-  submissionCount: number;
-  totalViews: number;
-  totalEarned: number;
-  bestPostUrl: string | null;
-  bestPostViews: number;
-  score: number | null;
-}
+import {
+  buildCampaignLeaderboardDisplayRows,
+  type CampaignLeaderboardSort,
+  type RankedCampaignLeaderboardRow,
+} from "@/lib/campaign-leaderboard";
 
 interface LeaderboardResponse {
   campaign: { id: string; name: string; creatorCpv: number };
-  sort: Sort;
-  leaderboard: LeaderboardRow[];
+  sort: CampaignLeaderboardSort;
+  leaderboard: RankedCampaignLeaderboardRow[];
+  currentUserEntry: RankedCampaignLeaderboardRow | null;
   totalClippers: number;
 }
 
@@ -32,8 +22,8 @@ export function CampaignLeaderboardClient({ campaignId }: { campaignId: string }
   const locale = useLocale();
   const t = useTranslations("creator.campaigns.leaderboard");
   const sharedT = useTranslations("creator.shared");
-  const [sort, setSort] = useState<Sort>("views");
-  const sortOptions: Array<{ key: Sort; label: string }> = [
+  const [sort, setSort] = useState<CampaignLeaderboardSort>("views");
+  const sortOptions: Array<{ key: CampaignLeaderboardSort; label: string }> = [
     { key: "views", label: sharedT("labels.views") },
     { key: "earnings", label: sharedT("labels.earned") },
     { key: "score", label: t("score") },
@@ -53,6 +43,12 @@ export function CampaignLeaderboardClient({ campaignId }: { campaignId: string }
   });
 
   const loading = isFetching && !data;
+  const displayRows = data
+    ? buildCampaignLeaderboardDisplayRows(
+        data.leaderboard,
+        data.currentUserEntry,
+      )
+    : [];
 
   return (
     <div
@@ -129,10 +125,16 @@ export function CampaignLeaderboardClient({ campaignId }: { campaignId: string }
             </tr>
           </thead>
           <tbody>
-            {data.leaderboard.map((row) => (
+            {displayRows.map(({ row, isCurrentUser, isAdditional }) => (
               <tr
                 key={row.creatorId}
-                style={{ borderBottom: "1px solid var(--border-default)" }}
+                style={{
+                  borderBottom: "1px solid var(--border-default)",
+                  borderTop: isAdditional
+                    ? "2px solid var(--border-default)"
+                    : undefined,
+                  background: isCurrentUser ? "var(--accent-bg)" : undefined,
+                }}
               >
                 <td className="py-3 px-4">
                   <RankCell rank={row.rank} />
@@ -143,6 +145,17 @@ export function CampaignLeaderboardClient({ campaignId }: { campaignId: string }
                     <span style={{ color: "var(--text-primary)" }}>
                       {row.displayName}
                     </span>
+                    {isCurrentUser ? (
+                      <span
+                        className="rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide"
+                        style={{
+                          background: "var(--primary)",
+                          color: "#FFFFFF",
+                        }}
+                      >
+                        {t("you")}
+                      </span>
+                    ) : null}
                   </div>
                 </td>
                 <td className="py-3 px-4" style={{ color: "var(--text-secondary)" }}>
