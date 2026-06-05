@@ -81,28 +81,32 @@ The route will:
 Provider failures will be logged server-side without disclosing whether the
 email address belongs to an account.
 
-### Recovery callback
+### Recovery confirmation
 
-Add a server route:
+Add a ClipProfit page:
 
 `GET /auth/recovery`
 
-The route will validate the `token_hash`, call Supabase `verifyOtp` with the
-`recovery` type, allow the Supabase server client to write the authenticated
-session cookies, and redirect to `/reset-password`.
+The GET request only renders a localized confirmation screen and does not
+consume the recovery token. This prevents email security scanners from
+invalidating a one-time link before the user opens it.
 
-Invalid, missing, or expired tokens redirect to:
+After the user explicitly clicks the confirmation button, the page sends the
+token to:
 
-`/sign-in?auth_error=recovery_failed`
+`POST /api/auth/password-reset/verify`
 
-The sign-in page will show a localized, non-technical recovery error for that
-query value.
+The POST route validates the `token_hash`, calls Supabase `verifyOtp` with the
+`recovery` type, allows the Supabase server client to write the authenticated
+session cookies, and returns success so the client can open `/reset-password`.
+Missing, invalid, or expired tokens render localized, non-technical errors.
 
 ## Security And Deliverability
 
 - The service-role key remains server-only.
 - Recovery tokens are generated and verified by Supabase; the application does
   not invent or persist password-reset secrets.
+- Opening or prefetching the email link does not consume the one-time token.
 - Recovery links use HTTPS ClipProfit origins in production.
 - Email HTML contains only ClipProfit links and no tracking parameters.
 - Resend click/open tracking must remain disabled for these transactional auth
@@ -121,7 +125,7 @@ query value.
 - Unknown users receive HTTP 200 and the same UI success state as known users.
 - Resend or Supabase outages return a generic localized failure only when the
   route cannot safely complete the request.
-- Recovery callback failures never expose Supabase error details in the URL.
+- Recovery verification failures never expose Supabase error details.
 
 ## Testing
 
@@ -133,7 +137,7 @@ Add focused tests for:
 - ClipProfit-only CTA and fallback links.
 - Password-reset route input validation, locale selection, rate limiting,
   generic unknown-user success, recovery-token extraction, and Resend payload.
-- Recovery callback verification and success/failure redirects.
+- Explicit recovery verification and success/failure responses.
 - Signup verification continuing to use the same renderer.
 
 After focused tests pass, run:

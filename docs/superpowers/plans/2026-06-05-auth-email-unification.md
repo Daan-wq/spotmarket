@@ -4,7 +4,7 @@
 
 **Goal:** Send ClipProfit account-verification and password-recovery emails through one localized branded Resend flow with ClipProfit-only user-facing links.
 
-**Architecture:** A focused `src/lib/auth-email` module owns sender identity, domain-based locale selection, escaped HTML rendering, and Resend delivery. The signup route delegates verification email delivery to that module; a new password-reset API generates Supabase recovery tokens without Supabase mail, and a server recovery callback verifies the token before redirecting to the existing reset form.
+**Architecture:** A focused `src/lib/auth-email` module owns sender identity, domain-based locale selection, escaped HTML rendering, and Resend delivery. The signup route delegates verification email delivery to that module; a new password-reset API generates Supabase recovery tokens without Supabase mail, and a ClipProfit confirmation page verifies the token through an explicit POST before redirecting to the existing reset form.
 
 **Tech Stack:** Next.js App Router, TypeScript, Supabase Auth admin API, Resend, next-intl, Vitest.
 
@@ -52,8 +52,10 @@ Expected: PASS.
 **Files:**
 - Create: `src/app/api/auth/password-reset/route.ts`
 - Create: `src/app/api/auth/password-reset/route.test.ts`
-- Create: `src/app/auth/recovery/route.ts`
-- Create: `src/app/auth/recovery/route.test.ts`
+- Create: `src/app/auth/recovery/page.tsx`
+- Create: `src/app/auth/recovery/recovery-form.tsx`
+- Create: `src/app/api/auth/password-reset/verify/route.ts`
+- Create: `src/app/api/auth/password-reset/verify/route.test.ts`
 - Modify: `src/app/sign-in/sign-in-form.tsx`
 - Modify: `messages/en.json`
 - Modify: `messages/nl.json`
@@ -62,26 +64,27 @@ Expected: PASS.
 
 Test invalid input, IP rate-limit rejection, `recovery` link generation,
 ClipProfit recovery URL construction, Dutch/English locale delivery, generic
-success for `user_not_found`, `verifyOtp({ type: "recovery" })`, and callback
-success/failure redirects.
+success for `user_not_found`, and explicit POST verification with
+`verifyOtp({ type: "recovery" })`.
 
 - [ ] **Step 2: Verify the tests fail**
 
 Run:
 
 ```bash
-npm test -- src/app/api/auth/password-reset/route.test.ts src/app/auth/recovery/route.test.ts
+npm test -- src/app/api/auth/password-reset/route.test.ts src/app/api/auth/password-reset/verify/route.test.ts
 ```
 
 Expected: FAIL because both routes do not exist.
 
 - [ ] **Step 3: Implement the API and callback**
 
-The POST route validates a lowercased email, applies `AUTH_LIMIT`, calls
+The request route validates a lowercased email, applies `AUTH_LIMIT`, calls
 `admin.auth.admin.generateLink({ type: "recovery", email })`, sends the shared
 auth email with `/auth/recovery?token_hash=...`, and returns generic success for
-unknown users. The GET callback verifies the hash with Supabase and redirects to
-`/reset-password`, or to `/sign-in?auth_error=recovery_failed` on failure.
+unknown users. The GET page does not consume the token. Its explicit button
+posts the hash to the verify route, which establishes the Supabase recovery
+session before opening `/reset-password`.
 
 - [ ] **Step 4: Replace the browser Supabase mail call**
 
@@ -94,7 +97,7 @@ messages.
 Run:
 
 ```bash
-npm test -- src/app/api/auth/password-reset/route.test.ts src/app/auth/recovery/route.test.ts
+npm test -- src/app/api/auth/password-reset/route.test.ts src/app/api/auth/password-reset/verify/route.test.ts
 ```
 
 Expected: PASS.
