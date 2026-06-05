@@ -58,6 +58,7 @@ const patchSchema = z.object({
   minEngagementRate: z.number().min(0).max(100).optional(),
   bioRequirement: z.string().optional().nullable(),
   linkInBioRequired: z.string().optional().nullable(),
+  bioKeywords: z.array(z.string().trim().min(1).max(200)).optional(),
   totalBudget: z.number().positive().optional(),
   goalViews: z.number().int().positive().optional().nullable(),
   minimumPaidViews: z.number().int().min(0).optional(),
@@ -194,6 +195,15 @@ export async function PATCH(
   ) {
     return NextResponse.json(
       { error: "Maximum paid views must be blank or greater than or equal to minimum paid views" },
+      { status: 400 },
+    );
+  }
+
+  const nextRequiresApproval = rest.requiresApproval ?? authorized.campaign.requiresApproval;
+  const nextBioKeywords = rest.bioKeywords ?? authorized.campaign.bioKeywords;
+  if (nextRequiresApproval && nextBioKeywords.length === 0) {
+    return NextResponse.json(
+      { error: "Bio keywords are required when approval is enabled" },
       { status: 400 },
     );
   }

@@ -103,6 +103,7 @@ export default async function MyVideosPage() {
     PENDING: videos.filter((v) => v.status === "PENDING").length,
     FLAGGED: videos.filter((v) => v.status === "FLAGGED").length,
     REJECTED: videos.filter((v) => v.status === "REJECTED").length,
+    BIO_FAILED: videos.filter((v) => v.status === "BIO_FAILED").length,
     APPROVED: videos.filter((v) => v.status === "APPROVED").length,
     ALL: videos.length,
   };

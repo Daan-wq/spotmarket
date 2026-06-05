@@ -7,6 +7,7 @@ import {
   buildCampaignEditPayload,
   calculateGoalViewsFromBudgetAndCpm,
   cpvToRatePerK,
+  parseLines,
   type CampaignEditFormState,
 } from "@/lib/campaign-edit";
 
@@ -120,6 +121,7 @@ interface CampaignData {
   minEngagementRate?: NumericValue;
   bioRequirement?: string | null;
   linkInBioRequired?: string | null;
+  bioKeywords?: string[];
   totalBudget?: NumericValue;
   goalViews?: NumericValue;
   minimumPaidViews?: NumericValue;
@@ -192,6 +194,7 @@ export function CampaignEditForm({
     minEngagementRate: toInputValue(campaign.minEngagementRate),
     bioRequirement: campaign.bioRequirement ?? "",
     linkInBioRequired: campaign.linkInBioRequired ?? "",
+    bioKeywordsText: (campaign.bioKeywords ?? []).join("\n"),
     totalBudget: toInputValue(campaign.totalBudget),
     goalViews: toInputValue(campaign.goalViews),
     minimumPaidViews: toInputValue(campaign.minimumPaidViews),
@@ -591,9 +594,9 @@ export function CampaignEditForm({
 
           <div className="grid gap-4 md:grid-cols-2">
             <Field label="Bio requirement">
-              <input
+              <textarea
                 className={controlClass}
-                style={inputStyle}
+                style={{ ...inputStyle, minHeight: 112, resize: "vertical" }}
                 value={form.bioRequirement}
                 onChange={(event) => setField("bioRequirement", event.target.value)}
               />
@@ -608,6 +611,16 @@ export function CampaignEditForm({
               />
             </Field>
           </div>
+
+          <Field label="Bio keywords for automatic check">
+            <textarea
+              className={controlClass}
+              style={{ ...inputStyle, minHeight: 96, resize: "vertical" }}
+              value={form.bioKeywordsText}
+              onChange={(event) => setField("bioKeywordsText", event.target.value)}
+              placeholder="One required keyword or URL per line"
+            />
+          </Field>
         </Section>
 
         <Section title="Budget, uitbetaling en planning">
@@ -799,6 +812,9 @@ function validateForm(state: CampaignEditFormState): string | null {
   if (!state.name.trim()) return "Campagnenaam is verplicht";
   if (state.platforms.length === 0) return "Selecteer minimaal een platform";
   if (!state.deadline) return "Deadline is verplicht";
+  if (state.requiresApproval && parseLines(state.bioKeywordsText).length === 0) {
+    return "Bio keywords zijn verplicht wanneer goedkeuring is ingeschakeld";
+  }
 
   const positiveChecks: Array<[string, string]> = [["Totaalbudget", state.totalBudget]];
   for (const [label, value] of positiveChecks) {

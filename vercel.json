@@ -34,6 +34,10 @@
       "schedule": "20 0 * * *"
     },
     {
+      "path": "/api/cron/process-bio-checks",
+      "schedule": "25 0 * * *"
+    },
+    {
       "path": "/api/cron/prune-raw-responses",
       "schedule": "30 4 * * *"
     },

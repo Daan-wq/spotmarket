@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from "next/server";
+import { after, NextRequest, NextResponse } from "next/server";
 import type { ConnectionType } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { requireAuth } from "@/lib/auth";
@@ -11,6 +11,7 @@ import {
   getCampaignClosedForSubmissionsMessage,
   isCampaignClosedForSubmissions,
 } from "@/lib/campaign-submission-state";
+import { campaignRequiresBioGate, runSubmissionBioCheck } from "@/lib/campaign-bio-gate";
 
 const DUPLICATE_SUBMISSION_ERROR = "This clip has already been submitted.";
 
@@ -202,6 +203,15 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Application not found or unauthorized" }, { status: 404 });
     }
 
+    const applicationCanSubmit =
+      ["active", "approved"].includes(app.status) || !campaignRequiresBioGate(app.campaign);
+    if (!applicationCanSubmit) {
+      return NextResponse.json(
+        { error: "Complete campaign bio verification before submitting clips." },
+        { status: 403 },
+      );
+    }
+
     if (
       isCampaignClosedForSubmissions({
         status: app.campaign.status,
@@ -227,6 +237,31 @@ export async function POST(req: NextRequest) {
     }
 
     const sourcePlatform = PLATFORM_TO_BIO[parsed.platform];
+    const bioGateRequired = campaignRequiresBioGate(app.campaign);
+    if (bioGateRequired) {
+      if (!app.campaign.bioKeywords.length) {
+        return NextResponse.json(
+          { error: "Campaign bio gate is not configured." },
+          { status: 400 },
+        );
+      }
+      const verifiedCampaignAccount = await prisma.campaignApplicationConnection.findFirst({
+        where: {
+          applicationId,
+          connectionType: sourceConnection.connection.type,
+          connectionId: sourceConnection.connection.id,
+          status: "VERIFIED",
+        },
+        select: { id: true },
+      });
+      if (!verifiedCampaignAccount) {
+        return NextResponse.json(
+          { error: "This account has not been bio-verified for this campaign." },
+          { status: 403 },
+        );
+      }
+    }
+
     let platformApiMediaId =
       parsed.platform === "INSTAGRAM" ? null : parsed.platformVideoId;
     let platformMediaProductType: string | null = null;
@@ -300,6 +335,7 @@ export async function POST(req: NextRequest) {
         authorHandle: parsed.authorHandle,
         sourceConnectionType: sourceConnection.connection.type,
         sourceConnectionId: sourceConnection.connection.id,
+        bioCheckStatus: bioGateRequired ? "PENDING" : "NOT_REQUIRED",
         logoStatus: "PENDING",
       },
       select: {
@@ -313,6 +349,7 @@ export async function POST(req: NextRequest) {
         sourceMethod: true,
         sourceConnectionType: true,
         sourceConnectionId: true,
+        bioCheckStatus: true,
         logoStatus: true,
       },
     });
@@ -338,6 +375,16 @@ export async function POST(req: NextRequest) {
         creatorId: creator.id,
         sourcePlatform: eventPlatform,
         occurredAt: submission.createdAt.toISOString(),
+      });
+    }
+
+    if (bioGateRequired) {
+      after(async () => {
+        try {
+          await runSubmissionBioCheck(submission.id);
+        } catch (err) {
+          console.error("[submissions POST] background bio check failed", err);
+        }
       });
     }
 

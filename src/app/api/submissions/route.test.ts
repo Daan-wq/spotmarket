@@ -12,7 +12,16 @@ const routeMocks = vi.hoisted(() => ({
   resolveInstagramThumbnail: vi.fn(),
   resolveStableSubmissionThumbnail: vi.fn(),
   creatorMediaCacheFindUnique: vi.fn(),
+  campaignApplicationConnectionFindFirst: vi.fn(),
+  campaignRequiresBioGate: vi.fn(),
+  runSubmissionBioCheck: vi.fn(),
+  after: vi.fn(),
 }));
+
+vi.mock("next/server", async () => {
+  const actual = await vi.importActual<typeof import("next/server")>("next/server");
+  return { ...actual, after: routeMocks.after };
+});
 
 vi.mock("@/lib/auth", () => ({
   requireAuth: routeMocks.requireAuth,
@@ -34,6 +43,9 @@ vi.mock("@/lib/prisma", () => ({
     creatorMediaCache: {
       findUnique: routeMocks.creatorMediaCacheFindUnique,
     },
+    campaignApplicationConnection: {
+      findFirst: routeMocks.campaignApplicationConnectionFindFirst,
+    },
   },
 }));
 
@@ -48,6 +60,11 @@ vi.mock("@/lib/event-bus", () => ({
 vi.mock("@/lib/clip-thumbnail", () => ({
   resolveInstagramThumbnail: routeMocks.resolveInstagramThumbnail,
   resolveStableSubmissionThumbnail: routeMocks.resolveStableSubmissionThumbnail,
+}));
+
+vi.mock("@/lib/campaign-bio-gate", () => ({
+  campaignRequiresBioGate: routeMocks.campaignRequiresBioGate,
+  runSubmissionBioCheck: routeMocks.runSubmissionBioCheck,
 }));
 
 function request(body: unknown) {
@@ -76,6 +93,11 @@ describe("POST /api/submissions", () => {
     routeMocks.resolveInstagramThumbnail.mockResolvedValue(null);
     routeMocks.resolveStableSubmissionThumbnail.mockResolvedValue(null);
     routeMocks.creatorMediaCacheFindUnique.mockResolvedValue(null);
+    routeMocks.campaignApplicationConnectionFindFirst.mockResolvedValue(null);
+    routeMocks.campaignRequiresBioGate.mockImplementation((campaign) =>
+      Boolean(campaign.requiresApproval),
+    );
+    routeMocks.runSubmissionBioCheck.mockResolvedValue(undefined);
   });
 
   test("rejects submissions after an active campaign deadline has passed", async () => {
@@ -526,5 +548,80 @@ describe("POST /api/submissions", () => {
         }),
       }),
     );
+  });
+
+  test("rejects a bio-gated submission from an account that was not verified for the campaign", async () => {
+    routeMocks.applicationFindUnique.mockResolvedValue({
+      id: "application-1",
+      status: "active",
+      creatorProfileId: "creator-profile-1",
+      campaignId: "campaign-1",
+      campaign: {
+        status: "active",
+        deadline: new Date("2026-06-17T00:00:00.000Z"),
+        requiresApproval: true,
+        bioKeywords: ["clipprofit"],
+      },
+    });
+
+    const response = await POST(
+      request({
+        applicationId: "application-1",
+        postUrl: "https://www.instagram.com/reel/ABC123/",
+        connectionId: "ig-conn-1",
+      }),
+    );
+
+    expect(response.status).toBe(403);
+    await expect(response.json()).resolves.toEqual({
+      error: "This account has not been bio-verified for this campaign.",
+    });
+    expect(routeMocks.submissionCreate).not.toHaveBeenCalled();
+  });
+
+  test("queues the post-response bio check for a verified campaign account", async () => {
+    routeMocks.applicationFindUnique.mockResolvedValue({
+      id: "application-1",
+      status: "active",
+      creatorProfileId: "creator-profile-1",
+      campaignId: "campaign-1",
+      campaign: {
+        status: "active",
+        deadline: new Date("2026-06-17T00:00:00.000Z"),
+        requiresApproval: true,
+        bioKeywords: ["clipprofit"],
+      },
+    });
+    routeMocks.campaignApplicationConnectionFindFirst.mockResolvedValue({ id: "verified-1" });
+    routeMocks.submissionCreate.mockResolvedValue({
+      id: "submission-1",
+      postUrl: "https://www.instagram.com/reel/ABC123/",
+      status: "PENDING",
+      createdAt: new Date("2026-05-20T10:00:00.000Z"),
+      applicationId: "application-1",
+      campaignId: "campaign-1",
+      sourcePlatform: "INSTAGRAM",
+      sourceMethod: "OAUTH",
+      sourceConnectionType: "IG",
+      sourceConnectionId: "ig-conn-1",
+      bioCheckStatus: "PENDING",
+      logoStatus: "PENDING",
+    });
+
+    const response = await POST(
+      request({
+        applicationId: "application-1",
+        postUrl: "https://www.instagram.com/reel/ABC123/",
+        connectionId: "ig-conn-1",
+      }),
+    );
+
+    expect(response.status).toBe(201);
+    expect(routeMocks.submissionCreate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({ bioCheckStatus: "PENDING" }),
+      }),
+    );
+    expect(routeMocks.after).toHaveBeenCalledOnce();
   });
 });

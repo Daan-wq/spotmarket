@@ -29,6 +29,7 @@ export interface CampaignEditFormState {
   minEngagementRate: string;
   bioRequirement: string;
   linkInBioRequired: string;
+  bioKeywordsText: string;
   totalBudget: string;
   goalViews: string;
   minimumPaidViews: string;
@@ -118,6 +119,7 @@ export function buildCampaignEditPayload(state: CampaignEditFormState) {
     minEngagementRate: numberOrZero(state.minEngagementRate),
     bioRequirement: emptyToNull(state.bioRequirement),
     linkInBioRequired: emptyToNull(state.linkInBioRequired),
+    bioKeywords: parseLines(state.bioKeywordsText),
     totalBudget,
     goalViews,
     minimumPaidViews: numberOrZero(state.minimumPaidViews),

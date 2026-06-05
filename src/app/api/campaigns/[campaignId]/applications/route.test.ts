@@ -7,9 +7,15 @@ const routeMocks = vi.hoisted(() => ({
   userFindUnique: vi.fn(),
   applicationFindFirst: vi.fn(),
   applicationCreate: vi.fn(),
+  applicationUpdate: vi.fn(),
   applicationDelete: vi.fn(),
+  applicationConnectionUpsert: vi.fn(),
   notificationCreate: vi.fn(),
   getSocialAccountSummariesForProfile: vi.fn(),
+  campaignRequiresBioGate: vi.fn(),
+  campaignBioGateIsConfigured: vi.fn(),
+  getCreatorCampaignAccountOptions: vi.fn(),
+  verifySelectedCampaignAccounts: vi.fn(),
   ensureDiscordCampaignProvisioning: vi.fn(),
   addDiscordCampaignRole: vi.fn(),
   removeDiscordCampaignRole: vi.fn(),
@@ -26,7 +32,11 @@ vi.mock("@/lib/prisma", () => ({
     campaignApplication: {
       findFirst: routeMocks.applicationFindFirst,
       create: routeMocks.applicationCreate,
+      update: routeMocks.applicationUpdate,
       delete: routeMocks.applicationDelete,
+    },
+    campaignApplicationConnection: {
+      upsert: routeMocks.applicationConnectionUpsert,
     },
     notification: { create: routeMocks.notificationCreate },
   },
@@ -56,6 +66,13 @@ vi.mock("@/lib/discord-campaign-provisioning", () => ({
 
 vi.mock("@/lib/social-account-summary", () => ({
   getSocialAccountSummariesForProfile: routeMocks.getSocialAccountSummariesForProfile,
+}));
+
+vi.mock("@/lib/campaign-bio-gate", () => ({
+  campaignRequiresBioGate: routeMocks.campaignRequiresBioGate,
+  campaignBioGateIsConfigured: routeMocks.campaignBioGateIsConfigured,
+  getCreatorCampaignAccountOptions: routeMocks.getCreatorCampaignAccountOptions,
+  verifySelectedCampaignAccounts: routeMocks.verifySelectedCampaignAccounts,
 }));
 
 const params = { params: Promise.resolve({ campaignId: "campaign-1" }) };
@@ -111,7 +128,12 @@ describe("POST /api/campaigns/[campaignId]/applications", () => {
       id: "application-1",
       status: "pending",
     });
+    routeMocks.applicationUpdate.mockResolvedValue({
+      id: "application-1",
+      status: "active",
+    });
     routeMocks.applicationDelete.mockResolvedValue({});
+    routeMocks.applicationConnectionUpsert.mockResolvedValue({});
     routeMocks.notificationCreate.mockResolvedValue({});
     routeMocks.ensureDiscordCampaignProvisioning.mockImplementation(async (campaign) => ({
       campaign,
@@ -132,6 +154,14 @@ describe("POST /api/campaigns/[campaignId]/applications", () => {
         fbConnections: [],
       }),
     );
+    routeMocks.campaignRequiresBioGate.mockImplementation((campaign) =>
+      Boolean(campaign.requiresApproval),
+    );
+    routeMocks.campaignBioGateIsConfigured.mockImplementation(
+      (campaign) => Array.isArray(campaign.bioKeywords) && campaign.bioKeywords.length > 0,
+    );
+    routeMocks.getCreatorCampaignAccountOptions.mockResolvedValue([]);
+    routeMocks.verifySelectedCampaignAccounts.mockResolvedValue([]);
   });
 
   it("allows a TikTok-only creator to join a TikTok campaign without Instagram", async () => {
@@ -368,6 +398,78 @@ describe("POST /api/campaigns/[campaignId]/applications", () => {
     });
     expect(routeMocks.userFindUnique).not.toHaveBeenCalled();
     expect(routeMocks.applicationCreate).not.toHaveBeenCalled();
+  });
+
+  it("activates a bio-gated application after the selected account passes verification", async () => {
+    routeMocks.campaignFindUnique.mockResolvedValueOnce({
+      id: "campaign-1",
+      createdByUserId: "admin-user-1",
+      platforms: ["TIKTOK"],
+      status: "active",
+      deadline: new Date("2026-06-17T00:00:00.000Z"),
+      requiresApproval: true,
+      bioKeywords: ["clipprofit"],
+    });
+    routeMocks.verifySelectedCampaignAccounts.mockResolvedValueOnce([
+      {
+        connectionType: "TT",
+        connectionId: "tt-connection-1",
+        platform: "tt",
+        label: "TikTok creator",
+        handle: "@creator",
+        audienceCount: 1200,
+        isVerified: true,
+        status: "VERIFIED",
+        missingKeywords: [],
+        failureReason: null,
+      },
+    ]);
+
+    const response = await POST(
+      new Request("https://app.test/api/campaigns/campaign-1/applications", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          selectedAccounts: [
+            { connectionType: "TT", connectionId: "tt-connection-1" },
+          ],
+        }),
+      }) as never,
+      params,
+    );
+
+    expect(response.status).toBe(201);
+    await expect(response.json()).resolves.toEqual({
+      id: "application-1",
+      application: {
+        id: "application-1",
+        status: "active",
+      },
+      verifiedAccounts: [
+        expect.objectContaining({
+          connectionType: "TT",
+          connectionId: "tt-connection-1",
+          status: "VERIFIED",
+        }),
+      ],
+      skippedAccountIds: [],
+    });
+    expect(routeMocks.applicationConnectionUpsert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        create: expect.objectContaining({
+          applicationId: "application-1",
+          connectionType: "TT",
+          connectionId: "tt-connection-1",
+          status: "VERIFIED",
+        }),
+      }),
+    );
+    expect(routeMocks.applicationUpdate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { id: "application-1" },
+        data: expect.objectContaining({ status: "active" }),
+      }),
+    );
   });
 
   it("removes the Discord role when a creator leaves before submitting clips", async () => {
