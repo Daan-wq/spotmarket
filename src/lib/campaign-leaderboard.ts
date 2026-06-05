@@ -167,8 +167,8 @@ export function selectCampaignLeaderboardRows(
   const ranked = [...rows]
     .sort((a, b) => compareLeaderboardRows(a, b, sort))
     .map((row, index) => ({
-      rank: index + 1,
       ...row,
+      rank: index + 1,
     }));
   const visibleLimit = Number.isFinite(limit)
     ? Math.max(1, Math.min(5, Math.trunc(limit)))

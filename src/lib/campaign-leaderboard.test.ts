@@ -181,6 +181,19 @@ describe("campaign leaderboard helpers", () => {
     expect(selected.totalClippers).toBe(8);
   });
 
+  it("overwrites stale input ranks with the newly computed global rank", () => {
+    const rows = [
+      { ...leaderboardRow({ creatorId: "leader", totalViews: 2_000 }), rank: 99 },
+      { ...leaderboardRow({ creatorId: "runner_up", totalViews: 1_000 }), rank: 42 },
+    ];
+
+    const selected = selectCampaignLeaderboardRows(rows, {
+      sort: "views",
+    });
+
+    expect(selected.leaderboard.map((row) => row.rank)).toEqual([1, 2]);
+  });
+
   it("marks a current creator in the top five without adding a duplicate row", () => {
     const rows = Array.from({ length: 6 }, (_, index) =>
       leaderboardRow({
