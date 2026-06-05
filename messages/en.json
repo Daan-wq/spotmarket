@@ -22,7 +22,8 @@
       "submit": "Sign in",
       "submitting": "Signing in...",
       "passwordUpdated": "Password updated. Sign in with your new password.",
-      "callbackFailed": "We could not finish signing you in. Please try again."
+      "callbackFailed": "We could not finish signing you in. Please try again.",
+      "recoveryFailed": "This password reset link is invalid or has expired. Request a new link."
     },
     "forgot": {
       "title": "Reset password",
@@ -30,6 +31,7 @@
       "submit": "Send reset link",
       "submitting": "Sending...",
       "success": "Check your email - we sent a password reset link.",
+      "failed": "We could not send the reset link. Please try again.",
       "back": "Back to sign in"
     },
     "signUp": {
@@ -82,11 +84,23 @@
       "passwordMismatch": "Passwords do not match.",
       "passwordTooShort": "Password must be at least 6 characters."
     },
+    "recovery": {
+      "title": "Continue password reset",
+      "description": "For your security, confirm that you want to use this link before choosing a new password.",
+      "button": "Continue securely",
+      "submitting": "Checking link...",
+      "invalidTitle": "Invalid reset link",
+      "invalidBody": "This password reset link is incomplete or has expired.",
+      "failed": "We could not verify this reset link. Request a new one.",
+      "back": "Back to sign in"
+    },
     "api": {
       "invalidInput": "Invalid input",
       "rateLimited": "Please wait before requesting another verification email.",
       "alreadyExists": "An account with this email already exists.",
-      "createFailed": "Failed to create account."
+      "createFailed": "Failed to create account.",
+      "passwordResetFailed": "We could not send the reset link. Please try again.",
+      "recoveryFailed": "This password reset link is invalid or has expired."
     }
   },
   "onboarding": {

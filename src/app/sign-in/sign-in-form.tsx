@@ -40,7 +40,11 @@ export function SignInForm() {
   const [showPassword, setShowPassword] = useState(false);
   const [showOtherMethods, setShowOtherMethods] = useState(false);
   const [error, setError] = useState<string | null>(
-    authError === "callback_failed" ? t("callbackFailed") : authError
+    authError === "callback_failed"
+      ? t("callbackFailed")
+      : authError === "recovery_failed"
+        ? t("recoveryFailed")
+        : authError
   );
   const [success, setSuccess] = useState<string | null>(
     passwordReset ? t("passwordUpdated") : null
@@ -70,15 +74,17 @@ export function SignInForm() {
     setError(null);
     setLoading(true);
 
-    const supabase = createSupabaseBrowserClient();
-    const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: `${window.location.origin}/reset-password`,
+    const response = await fetch("/api/auth/password-reset", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email }),
     });
+    const data = await response.json().catch(() => null);
 
     setLoading(false);
 
-    if (error) {
-      setError(error.message);
+    if (!response.ok) {
+      setError(data?.error || forgotT("failed"));
       return;
     }
 

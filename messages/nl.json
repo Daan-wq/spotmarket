@@ -22,7 +22,8 @@
       "submit": "Inloggen",
       "submitting": "Inloggen...",
       "passwordUpdated": "Wachtwoord bijgewerkt. Log in met je nieuwe wachtwoord.",
-      "callbackFailed": "We konden het inloggen niet afronden. Probeer het opnieuw."
+      "callbackFailed": "We konden het inloggen niet afronden. Probeer het opnieuw.",
+      "recoveryFailed": "Deze wachtwoordresetlink is ongeldig of verlopen. Vraag een nieuwe link aan."
     },
     "forgot": {
       "title": "Wachtwoord resetten",
@@ -30,6 +31,7 @@
       "submit": "Resetlink sturen",
       "submitting": "Versturen...",
       "success": "Check je e-mail - we hebben een resetlink gestuurd.",
+      "failed": "We konden de resetlink niet versturen. Probeer het opnieuw.",
       "back": "Terug naar inloggen"
     },
     "signUp": {
@@ -82,11 +84,23 @@
       "passwordMismatch": "Wachtwoorden komen niet overeen.",
       "passwordTooShort": "Wachtwoord moet minimaal 6 tekens zijn."
     },
+    "recovery": {
+      "title": "Ga verder met je wachtwoordreset",
+      "description": "Bevestig voor je veiligheid dat je deze link wilt gebruiken voordat je een nieuw wachtwoord kiest.",
+      "button": "Veilig doorgaan",
+      "submitting": "Link controleren...",
+      "invalidTitle": "Ongeldige resetlink",
+      "invalidBody": "Deze wachtwoordresetlink is onvolledig of verlopen.",
+      "failed": "We konden deze resetlink niet verifieren. Vraag een nieuwe aan.",
+      "back": "Terug naar inloggen"
+    },
     "api": {
       "invalidInput": "Ongeldige invoer",
       "rateLimited": "Wacht even voordat je nog een verificatie-e-mail aanvraagt.",
       "alreadyExists": "Er bestaat al een account met dit e-mailadres.",
-      "createFailed": "Account aanmaken is mislukt."
+      "createFailed": "Account aanmaken is mislukt.",
+      "passwordResetFailed": "We konden de resetlink niet versturen. Probeer het opnieuw.",
+      "recoveryFailed": "Deze wachtwoordresetlink is ongeldig of verlopen."
     }
   },
   "onboarding": {
