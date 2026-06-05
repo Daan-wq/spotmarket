@@ -9,7 +9,7 @@
     "lint": "eslint",
     "test": "vitest run",
     "deploy:testing": "vercel deploy",
-    "deploy:prod": "node -e \"const b=require('child_process').execSync('git rev-parse --abbrev-ref HEAD').toString().trim(); if(b!=='master'){console.error('deploy:prod must be run from master, currently on '+b); process.exit(1)}\" && vercel deploy --prod"
+    "deploy:prod": "node scripts/verify-production-deploy.mjs --local && vercel deploy --prod"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.93.0",
