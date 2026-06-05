@@ -35,7 +35,13 @@ const HOT_BATCH = 1000;
 const WARM_BATCH = 300;
 const COLD_BATCH = 100;
 
-const ACTIVE_STATUSES: $Enums.SubmissionStatus[] = ["PENDING", "APPROVED", "FLAGGED"];
+const POLLABLE_STATUSES: $Enums.SubmissionStatus[] = [
+  "PENDING",
+  "APPROVED",
+  "NEEDS_REVISION",
+  "REJECTED",
+  "FLAGGED",
+];
 
 interface RunOptions {
   tier: Tier;
@@ -414,7 +420,7 @@ function dueWhere(
 ): Prisma.CampaignSubmissionWhereInput {
   return {
     AND: [
-      { status: { in: ACTIVE_STATUSES } },
+      { status: { in: POLLABLE_STATUSES } },
       tierScope(tier, now),
       {
         OR: [

@@ -791,7 +791,11 @@ describe("pollSubmissions scheduling", () => {
       expect.objectContaining({
         where: expect.objectContaining({
           AND: expect.arrayContaining([
-            { status: { in: ["PENDING", "APPROVED", "FLAGGED"] } },
+            {
+              status: {
+                in: ["PENDING", "APPROVED", "NEEDS_REVISION", "REJECTED", "FLAGGED"],
+              },
+            },
             expect.objectContaining({
               campaign: expect.objectContaining({ status: "active" }),
             }),
@@ -860,6 +864,36 @@ describe("pollSubmissions scheduling", () => {
           metricsPollLockedAt: null,
         }),
       }),
+    );
+  });
+
+  it("keeps rejected submissions pollable for historical reporting", async () => {
+    findManySubmissionMock.mockResolvedValueOnce([
+      dueSubmission({
+        id: "sub_rejected",
+        status: "REJECTED",
+        campaign: {
+          status: "completed",
+          deadline: new Date("2026-05-01T00:00:00.000Z"),
+          creatorCpv: 0.01,
+          minimumPaidViews: 0,
+          maximumPaidViews: null,
+        },
+      }),
+    ]);
+    routeMetricMock.mockResolvedValueOnce({
+      ok: false,
+      source: "OAUTH_FAILED",
+      reason: "POST_NOT_FOUND",
+      message: "missing",
+      connection: { type: "IG", id: "ig-conn-1" },
+    });
+
+    const result = await pollSubmissions({ tier: "warm", limit: 1 });
+
+    expect(result.processed).toBe(1);
+    expect(routeMetricMock).toHaveBeenCalledWith(
+      expect.objectContaining({ id: "sub_rejected", status: "REJECTED" }),
     );
   });
 

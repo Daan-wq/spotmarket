@@ -6,14 +6,15 @@ Poll Instagram and Facebook permanently by canonical API media ID, persist struc
 
 ## Tasks
 
-- [ ] Add canonical identity and last-error fields plus `MetricPollFailure` schema and additive backfill migration.
-- [ ] Add typed provider failure details and valid-snapshot query helpers.
-- [ ] Resolve Instagram once, then poll metadata and insights directly by Graph media ID.
-- [ ] Fetch Facebook post engagement and video insights separately with structured Meta error classification.
-- [ ] Persist failed attempts outside `MetricSnapshot` and retain existing polling cadence and locks.
-- [ ] Validate picker media IDs and store canonical identities during submission.
-- [ ] Exclude historical `OAUTH_FAILED` rows from reporting, earnings, leaderboards, review, stats, velocity, and anti-bot consumers.
-- [ ] Apply the migration, run the full verification suite, commit, push, and create a preview.
+- [x] Add canonical identity and last-error fields plus `MetricPollFailure` schema and additive backfill migration.
+- [x] Add typed provider failure details and valid-snapshot query helpers.
+- [x] Resolve Instagram once, then poll metadata and insights directly by Graph media ID.
+- [x] Fetch Facebook post engagement and video insights separately with structured Meta error classification.
+- [x] Persist failed attempts outside `MetricSnapshot` and retain existing polling cadence and locks.
+- [x] Keep every submission status pollable, including rejected and needs-revision rows.
+- [x] Validate picker media IDs and store canonical identities during submission.
+- [x] Exclude historical `OAUTH_FAILED` rows from reporting, earnings, leaderboards, review, stats, velocity, and anti-bot consumers.
+- [x] Apply the migration, run the full verification suite, commit, push, and deploy.
 
 ## Done When
 
