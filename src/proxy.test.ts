@@ -41,4 +41,15 @@ describe("proxy canonical app domain", () => {
     expect(response.headers.get("x-locale")).toBe("en");
     expect(response.headers.get("set-cookie")).toBeNull();
   });
+
+  it("keeps password recovery confirmation public without consuming its token", async () => {
+    const response = await proxy(
+      new NextRequest(
+        "https://app.clipprofit.com/auth/recovery?token_hash=recovery-token",
+      ),
+    );
+
+    expect(response.status).toBe(200);
+    expect(response.headers.get("location")).toBeNull();
+  });
 });

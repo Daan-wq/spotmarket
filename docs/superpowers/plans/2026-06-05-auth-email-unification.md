@@ -56,6 +56,8 @@ Expected: PASS.
 - Create: `src/app/auth/recovery/recovery-form.tsx`
 - Create: `src/app/api/auth/password-reset/verify/route.ts`
 - Create: `src/app/api/auth/password-reset/verify/route.test.ts`
+- Modify: `src/proxy.ts`
+- Modify: `src/proxy.test.ts`
 - Modify: `src/app/sign-in/sign-in-form.tsx`
 - Modify: `messages/en.json`
 - Modify: `messages/nl.json`
@@ -84,7 +86,8 @@ The request route validates a lowercased email, applies `AUTH_LIMIT`, calls
 auth email with `/auth/recovery?token_hash=...`, and returns generic success for
 unknown users. The GET page does not consume the token. Its explicit button
 posts the hash to the verify route, which establishes the Supabase recovery
-session before opening `/reset-password`.
+session before opening `/reset-password`. Add `/auth/recovery` to the proxy's
+public routes and cover that behavior with a regression test.
 
 - [ ] **Step 4: Replace the browser Supabase mail call**
 

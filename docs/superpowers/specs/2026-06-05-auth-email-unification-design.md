@@ -90,6 +90,8 @@ Add a ClipProfit page:
 The GET request only renders a localized confirmation screen and does not
 consume the recovery token. This prevents email security scanners from
 invalidating a one-time link before the user opens it.
+The application proxy treats this page as a public auth route so an unauthenticated
+recipient can open it directly from the email.
 
 After the user explicitly clicks the confirmation button, the page sends the
 token to:
