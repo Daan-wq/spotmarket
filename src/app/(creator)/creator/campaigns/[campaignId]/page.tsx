@@ -155,7 +155,7 @@ export default async function CampaignDetailPage({
         where: VALID_METRIC_SNAPSHOT_WHERE,
         orderBy: { capturedAt: "desc" },
         take: 1,
-        select: { viewCount: true, capturedAt: true },
+        select: { viewCount: true, capturedAt: true, source: true },
       },
       campaign: {
         select: {

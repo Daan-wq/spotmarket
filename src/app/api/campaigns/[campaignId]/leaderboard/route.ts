@@ -14,14 +14,16 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAuth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import {
+  buildCampaignLeaderboardRows,
+  selectCampaignLeaderboardRows,
+  type CampaignLeaderboardSort,
+} from "@/lib/campaign-leaderboard";
 import { VALID_METRIC_SNAPSHOT_WHERE } from "@/lib/metrics/valid-snapshots";
-import { buildCampaignLeaderboardRows } from "@/lib/campaign-leaderboard";
 
 export const dynamic = "force-dynamic";
 
-type Sort = "views" | "earnings" | "score";
-
-function parseSort(value: string | null): Sort {
+function parseSort(value: string | null): CampaignLeaderboardSort {
   if (value === "earnings" || value === "score") return value;
   return "views";
 }
@@ -30,8 +32,9 @@ export async function GET(
   req: NextRequest,
   { params }: { params: Promise<{ campaignId: string }> }
 ) {
+  let authUserId: string;
   try {
-    await requireAuth("creator");
+    ({ userId: authUserId } = await requireAuth("creator"));
   } catch {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
@@ -43,16 +46,22 @@ export async function GET(
     ? Math.min(5, Math.max(1, Math.trunc(requestedLimit)))
     : 5;
 
-  const campaign = await prisma.campaign.findUnique({
-    where: { id: campaignId },
-    select: {
-      id: true,
-      name: true,
-      creatorCpv: true,
-      minimumPaidViews: true,
-      maximumPaidViews: true,
-    },
-  });
+  const [campaign, currentUser] = await Promise.all([
+    prisma.campaign.findUnique({
+      where: { id: campaignId },
+      select: {
+        id: true,
+        name: true,
+        creatorCpv: true,
+        minimumPaidViews: true,
+        maximumPaidViews: true,
+      },
+    }),
+    prisma.user.findUnique({
+      where: { supabaseId: authUserId },
+      select: { id: true },
+    }),
+  ]);
   if (!campaign) {
     return NextResponse.json({ error: "Campaign not found" }, { status: 404 });
   }
@@ -75,7 +84,7 @@ export async function GET(
         where: VALID_METRIC_SNAPSHOT_WHERE,
         orderBy: { capturedAt: "desc" },
         take: 1,
-        select: { viewCount: true, capturedAt: true },
+        select: { viewCount: true, capturedAt: true, source: true },
       },
       creator: {
         select: {
@@ -125,21 +134,11 @@ export async function GET(
       : null,
   }));
 
-  rows.sort((a, b) => {
-    if (sort === "earnings") return b.totalEarned - a.totalEarned;
-    if (sort === "score") {
-      const sa = a.score ?? -1;
-      const sb = b.score ?? -1;
-      if (sb !== sa) return sb - sa;
-      return b.totalViews - a.totalViews; // tiebreak
-    }
-    return b.totalViews - a.totalViews;
+  const selected = selectCampaignLeaderboardRows(rows, {
+    sort,
+    currentUserId: currentUser?.id,
+    limit,
   });
-
-  const ranked = rows.slice(0, limit).map((r, i) => ({
-    rank: i + 1,
-    ...r,
-  }));
 
   return NextResponse.json({
     campaign: {
@@ -148,7 +147,6 @@ export async function GET(
       creatorCpv: Number(campaign.creatorCpv),
     },
     sort,
-    leaderboard: ranked,
-    totalClippers: rows.length,
+    ...selected,
   });
 }
