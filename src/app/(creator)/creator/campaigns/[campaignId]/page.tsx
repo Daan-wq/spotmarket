@@ -12,6 +12,7 @@ import {
   formatShortDate,
 } from "@/lib/i18n-format";
 import { prisma } from "@/lib/prisma";
+import { VALID_METRIC_SNAPSHOT_WHERE } from "@/lib/metrics/valid-snapshots";
 import { resolveThumbnail } from "@/lib/clip-thumbnail";
 import { parseClipUrl, type ClipPlatform } from "@/lib/parse-clip-url";
 import {
@@ -151,6 +152,7 @@ export default async function CampaignDetailPage({
       baselineViews: true,
       earnedAmount: true,
       metricSnapshots: {
+        where: VALID_METRIC_SNAPSHOT_WHERE,
         orderBy: { capturedAt: "desc" },
         take: 1,
         select: { viewCount: true, capturedAt: true },

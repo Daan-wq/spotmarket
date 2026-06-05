@@ -826,15 +826,20 @@ model CampaignSubmission {
 
   // Source tracking for bio-verify fallback flow
   sourcePlatform           BioPlatform?
-  sourceMethod             SubmissionMethod @default(UNKNOWN)
+  sourceMethod             SubmissionMethod         @default(UNKNOWN)
   authorHandle             String?
   sourceConnectionType     ConnectionType?
   sourceConnectionId       String?
+  platformApiMediaId       String?
+  platformMediaProductType String?
   lastMetricsRefreshAt     DateTime?
   lastMetricsPollAttemptAt DateTime?
   nextMetricsPollAt        DateTime?
   metricsPollLockedAt      DateTime?
-  metricsRefreshFailures   Int              @default(0)
+  metricsRefreshFailures   Int                      @default(0)
+  lastMetricsErrorCode     MetricPollFailureReason?
+  lastMetricsErrorMessage  String?                  @db.Text
+  lastMetricsErrorAt       DateTime?
 
   reviewedAt    DateTime?
   reviewedBy    String?
@@ -853,11 +858,12 @@ model CampaignSubmission {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  referralPayouts   ReferralPayout[]   @relation("ReferralPayouts")
-  metricSnapshots   MetricSnapshot[]
-  submissionSignals SubmissionSignal[]
-  qcReviews         QcReview[]
-  payoutRunItems    PayoutRunItem[]
+  referralPayouts    ReferralPayout[]    @relation("ReferralPayouts")
+  metricSnapshots    MetricSnapshot[]
+  metricPollFailures MetricPollFailure[]
+  submissionSignals  SubmissionSignal[]
+  qcReviews          QcReview[]
+  payoutRunItems     PayoutRunItem[]
 
   @@unique([normalizedPlatform, platformVideoId])
   @@index([applicationId])
@@ -868,6 +874,8 @@ model CampaignSubmission {
   @@index([nextMetricsPollAt])
   @@index([metricsPollLockedAt])
   @@index([sourceConnectionType, sourceConnectionId])
+  @@index([platformApiMediaId])
+  @@index([lastMetricsErrorCode])
   @@index([logoStatus])
   @@index([productionAssignmentId])
 }
@@ -1463,6 +1471,39 @@ model MetricSnapshot {
 
   @@index([submissionId, capturedAt])
   @@index([source])
+}
+
+model MetricPollFailure {
+  id              String                  @id @default(cuid())
+  submissionId    String
+  submission      CampaignSubmission      @relation(fields: [submissionId], references: [id], onDelete: Cascade)
+  attemptedAt     DateTime                @default(now())
+  reason          MetricPollFailureReason
+  httpStatus      Int?
+  providerCode    Int?
+  providerSubcode Int?
+  providerType    String?
+  connectionType  ConnectionType?
+  connectionId    String?
+  message         String                  @db.Text
+  raw             Json?
+
+  @@index([submissionId, attemptedAt])
+  @@index([reason, attemptedAt])
+  @@index([connectionType, connectionId, attemptedAt])
+}
+
+enum MetricPollFailureReason {
+  NO_CONNECTION
+  NO_TOKEN
+  TOKEN_EXPIRED
+  TOKEN_BROKEN
+  PERMISSION_DENIED
+  API_SCHEMA_ERROR
+  PLATFORM_ERROR
+  UNSUPPORTED_PLATFORM
+  POST_NOT_FOUND
+  RATE_LIMITED
 }
 
 enum MetricSource {

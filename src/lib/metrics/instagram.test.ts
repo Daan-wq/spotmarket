@@ -3,12 +3,14 @@ import type { CreatorIgConnection } from "@prisma/client";
 
 const fetchRecentMediaMock = vi.fn();
 const fetchMediaInsightsMock = vi.fn();
+const fetchInstagramMediaMetadataMock = vi.fn();
 const decryptMock = vi.fn();
 const recordRawMock = vi.fn();
 
 vi.mock("@/lib/instagram", () => ({
   fetchRecentMedia: (...a: unknown[]) => fetchRecentMediaMock(...a),
   fetchMediaInsights: (...a: unknown[]) => fetchMediaInsightsMock(...a),
+  fetchInstagramMediaMetadata: (...a: unknown[]) => fetchInstagramMediaMetadataMock(...a),
 }));
 vi.mock("@/lib/crypto", () => ({
   decrypt: (...a: unknown[]) => decryptMock(...a),
@@ -31,6 +33,7 @@ function conn(): CreatorIgConnection {
 beforeEach(() => {
   fetchRecentMediaMock.mockReset();
   fetchMediaInsightsMock.mockReset();
+  fetchInstagramMediaMetadataMock.mockReset();
   decryptMock.mockReset();
   recordRawMock.mockReset();
   decryptMock.mockReturnValue("decoded");
@@ -42,6 +45,52 @@ afterEach(() => {
 });
 
 describe("fetchInstagramMetric", () => {
+  it("polls a known Graph media id directly without scanning recent media", async () => {
+    fetchMediaInsightsMock.mockResolvedValue({
+      reach: 5000,
+      views: 12000,
+      shares: 30,
+      totalInteractions: 320,
+      likes: 250,
+      comments: 12,
+      saved: 18,
+      follows: null,
+      profileVisits: null,
+      avgWatchTime: 9.4,
+      totalWatchTime: 4500,
+      replies: null,
+      profileActivityBioLink: null,
+      profileActivityCall: null,
+      profileActivityDirection: null,
+      profileActivityEmail: null,
+      profileActivityText: null,
+      navigationForward: null,
+      navigationBack: null,
+      navigationExit: null,
+      navigationNextStory: null,
+    });
+
+    const r = await fetchInstagramMetric(
+      conn(),
+      { platform: "INSTAGRAM", postId: "ABC123", authorHandle: null, normalizedUrl: "https://www.instagram.com/reel/ABC123/" },
+      "sub_direct",
+      { platformApiMediaId: "18339548662175976", mediaProductType: "REELS" },
+    );
+
+    expect(r.ok).toBe(true);
+    expect(fetchRecentMediaMock).not.toHaveBeenCalled();
+    expect(fetchMediaInsightsMock).toHaveBeenCalledWith(
+      "18339548662175976",
+      "decoded",
+      "REEL",
+    );
+    if (!r.ok) return;
+    expect(r.resolvedIdentity).toEqual({
+      platformApiMediaId: "18339548662175976",
+      mediaProductType: "REELS",
+    });
+  });
+
   it("classifies a REEL and returns watch time + interactions", async () => {
     fetchRecentMediaMock.mockResolvedValue({
       media: [
@@ -114,6 +163,10 @@ describe("fetchInstagramMetric", () => {
     });
     // REEL has no profile_activity breakdown
     expect(r.profileActivity).toBeNull();
+    expect(r.resolvedIdentity).toEqual({
+      platformApiMediaId: "media_99",
+      mediaProductType: "REELS",
+    });
     expect(fetchMediaInsightsMock).toHaveBeenCalledWith("media_99", "decoded", "REEL");
     expect(recordRawMock).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -209,5 +262,42 @@ describe("fetchInstagramMetric", () => {
     expect(r.ok).toBe(false);
     if (r.ok) return;
     expect(r.reason).toBe("POST_NOT_FOUND");
+  });
+
+  it("does not turn a missing Reel views metric into a successful zero snapshot", async () => {
+    fetchMediaInsightsMock.mockResolvedValue({
+      reach: 5000,
+      views: null,
+      shares: 30,
+      totalInteractions: 320,
+      likes: 250,
+      comments: 12,
+      saved: 18,
+      follows: null,
+      profileVisits: null,
+      avgWatchTime: 9.4,
+      totalWatchTime: 4500,
+      replies: null,
+      profileActivityBioLink: null,
+      profileActivityCall: null,
+      profileActivityDirection: null,
+      profileActivityEmail: null,
+      profileActivityText: null,
+      navigationForward: null,
+      navigationBack: null,
+      navigationExit: null,
+      navigationNextStory: null,
+    });
+
+    const r = await fetchInstagramMetric(
+      conn(),
+      { platform: "INSTAGRAM", postId: "ABC123", authorHandle: null, normalizedUrl: "https://www.instagram.com/reel/ABC123/" },
+      "sub_missing_views",
+      { platformApiMediaId: "18339548662175976", mediaProductType: "REELS" },
+    );
+
+    expect(r.ok).toBe(false);
+    if (r.ok) return;
+    expect(r.reason).toBe("API_SCHEMA_ERROR");
   });
 });

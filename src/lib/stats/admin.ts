@@ -9,6 +9,7 @@ import {
 } from "./types";
 import { aggregateAudience, latestPerConnection } from "./audience";
 import { getSocialAccountSummary } from "@/lib/social-account-summary";
+import { VALID_METRIC_SNAPSHOT_WHERE } from "@/lib/metrics/valid-snapshots";
 
 export interface AdminPlatformAggregate {
   slug: PlatformSlug;
@@ -36,7 +37,12 @@ async function getAllSubmissionIdsByPlatform(
     select: {
       id: true,
       sourcePlatform: true,
-      metricSnapshots: { orderBy: { capturedAt: "desc" }, take: 1, select: { source: true } },
+      metricSnapshots: {
+        where: VALID_METRIC_SNAPSHOT_WHERE,
+        orderBy: { capturedAt: "desc" },
+        take: 1,
+        select: { source: true },
+      },
     },
   });
   const out: Record<PlatformSlug, string[]> = { ig: [], tt: [], yt: [], fb: [] };
@@ -60,6 +66,7 @@ async function sumWindowViewsAndEngagement(
   if (submissionIds.length === 0) return { views: 0, engagement: 0 };
   const cap = withinRange(range);
   const where = {
+    ...VALID_METRIC_SNAPSHOT_WHERE,
     submissionId: { in: submissionIds },
     ...(cap.gte ? { capturedAt: { gte: cap.gte, lte: cap.lte } } : {}),
   };
@@ -117,13 +124,18 @@ async function effectiveCpv(range: Range): Promise<number> {
 
 async function oauthSuccessRate(range: Range): Promise<number> {
   const cap = withinRange(range);
-  const where = cap.gte ? { capturedAt: { gte: cap.gte, lte: cap.lte } } : {};
-  const [success, total] = await Promise.all([
+  const successWhere = cap.gte ? { capturedAt: { gte: cap.gte, lte: cap.lte } } : {};
+  const failureWhere = cap.gte ? { attemptedAt: { gte: cap.gte, lte: cap.lte } } : {};
+  const [success, failures] = await Promise.all([
     prisma.metricSnapshot.count({
-      where: { ...where, source: { in: ["OAUTH_IG", "OAUTH_TT", "OAUTH_YT", "OAUTH_FB"] } },
+      where: {
+        ...VALID_METRIC_SNAPSHOT_WHERE,
+        ...successWhere,
+      },
     }),
-    prisma.metricSnapshot.count({ where }),
+    prisma.metricPollFailure.count({ where: failureWhere }),
   ]);
+  const total = success + failures;
   return total > 0 ? (success / total) * 100 : 0;
 }
 
@@ -153,6 +165,7 @@ async function findTopCreator(
   const cap = withinRange(range);
   const latest = await prisma.metricSnapshot.findMany({
     where: {
+      ...VALID_METRIC_SNAPSHOT_WHERE,
       submissionId: { in: submissionIds },
       ...(cap.gte ? { capturedAt: { gte: cap.gte, lte: cap.lte } } : {}),
     },
@@ -283,6 +296,7 @@ async function listTopCreators(
   const cap = withinRange(range);
   const latest = await prisma.metricSnapshot.findMany({
     where: {
+      ...VALID_METRIC_SNAPSHOT_WHERE,
       submissionId: { in: submissionIds },
       ...(cap.gte ? { capturedAt: { gte: cap.gte, lte: cap.lte } } : {}),
     },

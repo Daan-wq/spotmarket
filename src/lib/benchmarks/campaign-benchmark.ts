@@ -27,6 +27,7 @@
 import type { CampaignBenchmark } from "@/lib/contracts/scores";
 import type { MetricSnapshot } from "@/lib/contracts/metrics";
 import { prisma } from "@/lib/prisma";
+import { VALID_METRIC_SNAPSHOT_WHERE } from "@/lib/metrics/valid-snapshots";
 import { publishEvent } from "@/lib/event-bus";
 
 const DEFAULT_WINDOW_HOURS = 14 * 24;
@@ -120,6 +121,7 @@ export async function loadCampaignSnapshots(
 
   const rows = await prisma.metricSnapshot.findMany({
     where: {
+      ...VALID_METRIC_SNAPSHOT_WHERE,
       capturedAt: { gte: since },
       submission: { campaignId },
     },

@@ -11,6 +11,7 @@ const routeMocks = vi.hoisted(() => ({
   publishEvent: vi.fn(),
   resolveInstagramThumbnail: vi.fn(),
   resolveStableSubmissionThumbnail: vi.fn(),
+  creatorMediaCacheFindUnique: vi.fn(),
 }));
 
 vi.mock("@/lib/auth", () => ({
@@ -29,6 +30,9 @@ vi.mock("@/lib/prisma", () => ({
     },
     campaignApplication: {
       findUnique: routeMocks.applicationFindUnique,
+    },
+    creatorMediaCache: {
+      findUnique: routeMocks.creatorMediaCacheFindUnique,
     },
   },
 }));
@@ -71,6 +75,7 @@ describe("POST /api/submissions", () => {
     routeMocks.findDuplicate.mockResolvedValue(null);
     routeMocks.resolveInstagramThumbnail.mockResolvedValue(null);
     routeMocks.resolveStableSubmissionThumbnail.mockResolvedValue(null);
+    routeMocks.creatorMediaCacheFindUnique.mockResolvedValue(null);
   });
 
   test("rejects submissions after an active campaign deadline has passed", async () => {
@@ -457,6 +462,67 @@ describe("POST /api/submissions", () => {
         data: expect.objectContaining({
           sourceConnectionType: "IG",
           sourceConnectionId: "ig-conn-1",
+        }),
+      }),
+    );
+  });
+
+  test("validates and stores an Instagram picker Graph media id", async () => {
+    routeMocks.applicationFindUnique.mockResolvedValue({
+      id: "application-1",
+      creatorProfileId: "creator-profile-1",
+      campaignId: "campaign-1",
+      campaign: {
+        status: "active",
+        deadline: new Date("2026-06-17T00:00:00.000Z"),
+      },
+    });
+    routeMocks.creatorMediaCacheFindUnique.mockResolvedValue({
+      platformMediaId: "18339548662175976",
+      permalink: "https://www.instagram.com/reel/ABC123/",
+      mediaProductType: "REELS",
+    });
+    routeMocks.submissionCreate.mockResolvedValue({
+      id: "submission-1",
+      postUrl: "https://www.instagram.com/reel/ABC123/",
+      status: "PENDING",
+      createdAt: new Date("2026-05-20T10:00:00.000Z"),
+      applicationId: "application-1",
+      campaignId: "campaign-1",
+      sourcePlatform: "INSTAGRAM",
+      sourceMethod: "OAUTH",
+      logoStatus: "PENDING",
+    });
+
+    const response = await POST(
+      request({
+        applicationId: "application-1",
+        postUrl: "https://www.instagram.com/reel/ABC123/",
+        connectionId: "ig-conn-1",
+        pickerMediaId: "18339548662175976",
+      }),
+    );
+
+    expect(response.status).toBe(201);
+    expect(routeMocks.creatorMediaCacheFindUnique).toHaveBeenCalledWith({
+      where: {
+        platform_connectionId_platformMediaId: {
+          platform: "ig",
+          connectionId: "ig-conn-1",
+          platformMediaId: "18339548662175976",
+        },
+      },
+      select: {
+        platformMediaId: true,
+        permalink: true,
+        mediaProductType: true,
+      },
+    });
+    expect(routeMocks.submissionCreate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          platformApiMediaId: "18339548662175976",
+          platformMediaProductType: "REELS",
         }),
       }),
     );

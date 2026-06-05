@@ -27,8 +27,9 @@ export async function fetchTikTokMetric(
   conn: CreatorTikTokConnection,
   parsed: ParsedClipUrl,
   submissionId?: string,
+  identity?: { platformApiMediaId?: string | null },
 ): Promise<MetricFetcherResult> {
-  const videoId = parsed.platformVideoId ?? parsed.postId;
+  const videoId = identity?.platformApiMediaId ?? parsed.platformVideoId ?? parsed.postId;
   if (!videoId) {
     return failure("POST_NOT_FOUND", "TT URL does not contain a stable video ID", {
       type: "TT",
@@ -154,6 +155,7 @@ function buildSuccess(match: TikTokVideo, connectionId: string): MetricFetcherRe
     ok: true,
     source: "OAUTH_TT",
     connection: { type: "TT", id: connectionId },
+    resolvedIdentity: { platformApiMediaId: match.id },
     viewCount: BigInt(match.viewCount ?? 0),
     likeCount: match.likeCount ?? 0,
     commentCount: match.commentCount ?? 0,

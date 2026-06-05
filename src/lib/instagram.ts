@@ -5,6 +5,7 @@
 
 import type { IgDemographics, IgMediaItem, ComputedCreatorStats } from "@/types/instagram";
 import { getRequiredOAuthEnv, getRequiredOAuthRedirectUri } from "@/lib/oauth-env";
+import { metaApiErrorFromResponse } from "@/lib/metrics/meta-api-error";
 
 // Re-export types for convenience
 export type { IgDemographics, IgMediaItem, ComputedCreatorStats };
@@ -315,9 +316,7 @@ export async function fetchRecentMedia(
   if (cursor) params.set("after", cursor);
   const res = await fetch(`${GRAPH_BASE}/${igUserId}/media?${params}`);
   if (!res.ok) {
-    const errText = await res.text();
-    console.warn(`fetchRecentMedia ${res.status}: ${errText.slice(0, 120)}`);
-    return { media: [], nextCursor: null };
+    throw await metaApiErrorFromResponse(res);
   }
   const data = await res.json();
   const media = (data.data ?? []).map((item: unknown): IgMediaItem => {
@@ -338,6 +337,32 @@ export async function fetchRecentMedia(
   const nextCursor =
     data.paging?.next ? (data.paging?.cursors?.after ?? null) : null;
   return { media, nextCursor };
+}
+
+export async function fetchInstagramMediaMetadata(
+  mediaId: string,
+  accessToken: string,
+): Promise<IgMediaItem> {
+  const params = new URLSearchParams({
+    fields:
+      "id,caption,media_type,media_product_type,permalink,timestamp,like_count,comments_count,media_url,thumbnail_url",
+    access_token: accessToken,
+  });
+  const res = await fetch(`${GRAPH_BASE}/${mediaId}?${params}`);
+  if (!res.ok) throw await metaApiErrorFromResponse(res);
+  const item = (await res.json()) as Record<string, unknown>;
+  return {
+    id: String(item.id ?? mediaId),
+    caption: (item.caption as string | null) ?? null,
+    media_type: (item.media_type as string) ?? "",
+    media_product_type: (item.media_product_type as string) ?? "",
+    permalink: (item.permalink as string) ?? "",
+    timestamp: (item.timestamp as string) ?? "",
+    like_count: (item.like_count as number) ?? 0,
+    comments_count: (item.comments_count as number) ?? 0,
+    media_url: (item.media_url as string | null) ?? null,
+    thumbnail_url: (item.thumbnail_url as string | null) ?? null,
+  };
 }
 
 // ─────────────────────────────────────────
@@ -720,93 +745,81 @@ export async function fetchMediaInsights(
     navigationExit: null, navigationNextStory: null,
   };
 
-  try {
-    let metricList: string;
-    const params: Record<string, string> = {
-      period: "lifetime",
-      access_token: accessToken,
-    };
+  let metricList: string;
+  const params: Record<string, string> = {
+    period: "lifetime",
+    access_token: accessToken,
+  };
 
-    if (mediaType === "REEL") {
-      metricList = "reach,views,likes,comments,saved,shares,total_interactions,ig_reels_avg_watch_time,ig_reels_video_view_total_time";
-    } else if (mediaType === "STORY") {
-      metricList = "reach,views,shares,replies,total_interactions,follows,profile_visits";
-    } else {
-      // FEED
-      metricList = "reach,views,likes,comments,saved,shares,total_interactions,follows,profile_visits";
-    }
-
-    params.metric = metricList;
-    const url = `${GRAPH_BASE}/${igMediaId}/insights?${new URLSearchParams(params)}`;
-    const res = await fetch(url);
-    if (!res.ok) return empty;
-    const data = (await res.json()).data ?? [];
-
-    const result: MediaInsightResult = {
-      reach: getValue(data, "reach"),
-      views: getValue(data, "views"),
-      shares: getValue(data, "shares"),
-      totalInteractions: getValue(data, "total_interactions"),
-      likes: getValue(data, "likes"),
-      comments: getValue(data, "comments"),
-      saved: getValue(data, "saved"),
-      follows: getValue(data, "follows"),
-      profileVisits: getValue(data, "profile_visits"),
-      avgWatchTime: getValue(data, "ig_reels_avg_watch_time"),
-      totalWatchTime: getValue(data, "ig_reels_video_view_total_time"),
-      replies: getValue(data, "replies"),
-      profileActivityBioLink: null,
-      profileActivityCall: null,
-      profileActivityDirection: null,
-      profileActivityEmail: null,
-      profileActivityText: null,
-      navigationForward: null,
-      navigationBack: null,
-      navigationExit: null,
-      navigationNextStory: null,
-    };
-
-    // profile_activity breakdown (FEED + STORY)
-    if (mediaType === "FEED" || mediaType === "STORY") {
-      const activityParams = new URLSearchParams({
-        metric: "profile_activity",
-        period: "lifetime",
-        breakdown: "action_type",
-        access_token: accessToken,
-      });
-      const actRes = await fetch(`${GRAPH_BASE}/${igMediaId}/insights?${activityParams}`);
-      if (actRes.ok) {
-        const actData = (await actRes.json()).data ?? [];
-        result.profileActivityBioLink = getBreakdown(actData, "profile_activity", "BIO_LINK_CLICKED");
-        result.profileActivityCall = getBreakdown(actData, "profile_activity", "CALL");
-        result.profileActivityDirection = getBreakdown(actData, "profile_activity", "DIRECTION");
-        result.profileActivityEmail = getBreakdown(actData, "profile_activity", "EMAIL");
-        result.profileActivityText = getBreakdown(actData, "profile_activity", "TEXT");
-      }
-    }
-
-    // navigation breakdown (STORY only)
-    if (mediaType === "STORY") {
-      const navParams = new URLSearchParams({
-        metric: "navigation",
-        period: "lifetime",
-        breakdown: "story_navigation_action_type",
-        access_token: accessToken,
-      });
-      const navRes = await fetch(`${GRAPH_BASE}/${igMediaId}/insights?${navParams}`);
-      if (navRes.ok) {
-        const navData = (await navRes.json()).data ?? [];
-        result.navigationForward = getBreakdown(navData, "navigation", "TAP_FORWARD");
-        result.navigationBack = getBreakdown(navData, "navigation", "TAP_BACK");
-        result.navigationExit = getBreakdown(navData, "navigation", "TAP_EXIT");
-        result.navigationNextStory = getBreakdown(navData, "navigation", "SWIPE_FORWARD");
-      }
-    }
-
-    return result;
-  } catch {
-    return empty;
+  if (mediaType === "REEL") {
+    metricList = "reach,views,likes,comments,saved,shares,total_interactions,ig_reels_avg_watch_time,ig_reels_video_view_total_time";
+  } else if (mediaType === "STORY") {
+    metricList = "reach,views,shares,replies,total_interactions,follows,profile_visits";
+  } else {
+    // FEED
+    metricList = "reach,views,likes,comments,saved,shares,total_interactions,follows,profile_visits";
   }
+
+  params.metric = metricList;
+  const url = `${GRAPH_BASE}/${igMediaId}/insights?${new URLSearchParams(params)}`;
+  const res = await fetch(url);
+  if (!res.ok) throw await metaApiErrorFromResponse(res);
+  const data = (await res.json()).data ?? [];
+
+  const result: MediaInsightResult = {
+    ...empty,
+    reach: getValue(data, "reach"),
+    views: getValue(data, "views"),
+    shares: getValue(data, "shares"),
+    totalInteractions: getValue(data, "total_interactions"),
+    likes: getValue(data, "likes"),
+    comments: getValue(data, "comments"),
+    saved: getValue(data, "saved"),
+    follows: getValue(data, "follows"),
+    profileVisits: getValue(data, "profile_visits"),
+    avgWatchTime: getValue(data, "ig_reels_avg_watch_time"),
+    totalWatchTime: getValue(data, "ig_reels_video_view_total_time"),
+    replies: getValue(data, "replies"),
+  };
+
+  // profile_activity breakdown (FEED + STORY)
+  if (mediaType === "FEED" || mediaType === "STORY") {
+    const activityParams = new URLSearchParams({
+      metric: "profile_activity",
+      period: "lifetime",
+      breakdown: "action_type",
+      access_token: accessToken,
+    });
+    const actRes = await fetch(`${GRAPH_BASE}/${igMediaId}/insights?${activityParams}`);
+    if (actRes.ok) {
+      const actData = (await actRes.json()).data ?? [];
+      result.profileActivityBioLink = getBreakdown(actData, "profile_activity", "BIO_LINK_CLICKED");
+      result.profileActivityCall = getBreakdown(actData, "profile_activity", "CALL");
+      result.profileActivityDirection = getBreakdown(actData, "profile_activity", "DIRECTION");
+      result.profileActivityEmail = getBreakdown(actData, "profile_activity", "EMAIL");
+      result.profileActivityText = getBreakdown(actData, "profile_activity", "TEXT");
+    }
+  }
+
+  // navigation breakdown (STORY only)
+  if (mediaType === "STORY") {
+    const navParams = new URLSearchParams({
+      metric: "navigation",
+      period: "lifetime",
+      breakdown: "story_navigation_action_type",
+      access_token: accessToken,
+    });
+    const navRes = await fetch(`${GRAPH_BASE}/${igMediaId}/insights?${navParams}`);
+    if (navRes.ok) {
+      const navData = (await navRes.json()).data ?? [];
+      result.navigationForward = getBreakdown(navData, "navigation", "TAP_FORWARD");
+      result.navigationBack = getBreakdown(navData, "navigation", "TAP_BACK");
+      result.navigationExit = getBreakdown(navData, "navigation", "TAP_EXIT");
+      result.navigationNextStory = getBreakdown(navData, "navigation", "SWIPE_FORWARD");
+    }
+  }
+
+  return result;
 }
 
 // ─────────────────────────────────────────

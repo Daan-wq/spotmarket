@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import { VALID_METRIC_SNAPSHOT_WHERE } from "@/lib/metrics/valid-snapshots";
 import { resolveThumbnail } from "@/lib/clip-thumbnail";
 import { parseClipUrl, type ClipPlatform } from "@/lib/parse-clip-url";
 import {
@@ -98,6 +99,7 @@ export async function getContentRows({
   const cap = withinRange(range);
   const latest = await prisma.metricSnapshot.findMany({
     where: {
+      ...VALID_METRIC_SNAPSHOT_WHERE,
       submissionId: { in: submissionIds },
       ...(cap.gte ? { capturedAt: { gte: cap.gte, lte: cap.lte } } : {}),
     },

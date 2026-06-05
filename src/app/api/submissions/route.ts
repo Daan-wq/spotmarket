@@ -21,6 +21,7 @@ const createSubmissionSchema = z.object({
   thumbnailUrl: z.string().url().optional(),
   mediaType: z.enum(["video", "image", "carousel"]).optional(),
   connectionId: z.string().min(1).optional(),
+  pickerMediaId: z.string().min(1).optional(),
 });
 
 const PLATFORM_TO_BIO: Record<ClipPlatform, "INSTAGRAM" | "TIKTOK" | "FACEBOOK" | null> = {
@@ -107,7 +108,15 @@ export async function POST(req: NextRequest) {
     const { userId } = await requireAuth("creator");
 
     const body = await req.json();
-    const { applicationId, postUrl, screenshotUrl, thumbnailUrl, mediaType, connectionId } =
+    const {
+      applicationId,
+      postUrl,
+      screenshotUrl,
+      thumbnailUrl,
+      mediaType,
+      connectionId,
+      pickerMediaId,
+    } =
       createSubmissionSchema.parse(body);
 
     const creator = await prisma.user.findUnique({
@@ -218,6 +227,41 @@ export async function POST(req: NextRequest) {
     }
 
     const sourcePlatform = PLATFORM_TO_BIO[parsed.platform];
+    let platformApiMediaId =
+      parsed.platform === "INSTAGRAM" ? null : parsed.platformVideoId;
+    let platformMediaProductType: string | null = null;
+
+    if (pickerMediaId && parsed.platform === "INSTAGRAM") {
+      const cachedMedia = await prisma.creatorMediaCache.findUnique({
+        where: {
+          platform_connectionId_platformMediaId: {
+            platform: "ig",
+            connectionId: sourceConnection.connection.id,
+            platformMediaId: pickerMediaId,
+          },
+        },
+        select: {
+          platformMediaId: true,
+          permalink: true,
+          mediaProductType: true,
+        },
+      });
+
+      if (!cachedMedia || !matchesInstagramSubmissionUrl(cachedMedia.permalink, parsed.postId)) {
+        return NextResponse.json(
+          { error: "Selected Instagram post does not match this URL or connected account." },
+          { status: 400 },
+        );
+      }
+
+      platformApiMediaId = cachedMedia.platformMediaId;
+      platformMediaProductType = cachedMedia.mediaProductType;
+    } else if (pickerMediaId && pickerMediaId !== parsed.platformVideoId) {
+      return NextResponse.json(
+        { error: "Selected post does not match the submitted URL." },
+        { status: 400 },
+      );
+    }
 
     // Server-side thumbnail stabilization: provider CDN URLs from the client
     // are candidates; final submission thumbnails must be app-owned or stable.
@@ -244,6 +288,8 @@ export async function POST(req: NextRequest) {
         postUrl,
         normalizedPlatform: parsed.normalizedPlatform,
         platformVideoId: parsed.platformVideoId,
+        platformApiMediaId,
+        platformMediaProductType,
         screenshotUrl: screenshotUrl ?? null,
         thumbnailUrl: resolvedThumbnail,
         mediaType: resolvedMediaType,
@@ -412,4 +458,14 @@ function isNonNull<T>(value: T | null): value is T {
 function isUniqueConstraintError(err: unknown): boolean {
   if (!err || typeof err !== "object") return false;
   return "code" in err && (err as { code?: unknown }).code === "P2002";
+}
+
+function matchesInstagramSubmissionUrl(
+  permalink: string | null,
+  postId: string | null,
+): boolean {
+  if (!permalink || !postId) return false;
+  const cached = parseClipUrl(permalink);
+  return cached.platform === "INSTAGRAM" &&
+    cached.platformVideoId?.toLowerCase() === postId.toLowerCase();
 }

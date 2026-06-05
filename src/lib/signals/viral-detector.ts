@@ -17,6 +17,7 @@
 import { on, publishEvent } from "@/lib/event-bus";
 import { prisma } from "@/lib/prisma";
 import type { SubmissionMetricsUpdatedEvent } from "@/lib/contracts/events";
+import { VALID_METRIC_SNAPSHOT_WHERE } from "@/lib/metrics/valid-snapshots";
 
 export const VIRAL_MULTIPLIER = 2;
 export const VIRAL_WINDOW_HOURS = 48;
@@ -89,7 +90,10 @@ export async function handleMetricsUpdated(
 
   // Pull all snapshots since the submission's creation, ascending.
   const snaps = await prisma.metricSnapshot.findMany({
-    where: { submissionId: submission.id },
+    where: {
+      ...VALID_METRIC_SNAPSHOT_WHERE,
+      submissionId: submission.id,
+    },
     orderBy: { capturedAt: "asc" },
     select: { capturedAt: true, viewCount: true },
   });

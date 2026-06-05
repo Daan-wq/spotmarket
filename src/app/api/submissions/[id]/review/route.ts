@@ -3,6 +3,7 @@ import { Prisma } from "@prisma/client";
 import { z } from "zod";
 import { requireAuth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { VALID_METRIC_SNAPSHOT_WHERE } from "@/lib/metrics/valid-snapshots";
 import { reconcileCampaignBudgetCap } from "@/lib/campaign-budget-cap";
 import { calculatePaidViews } from "@/lib/paid-views";
 import { reconcileReferralPayoutForSubmission } from "@/lib/referral-reconciliation";
@@ -65,6 +66,7 @@ export async function POST(
         application: true,
         payoutRunItems: { select: { id: true } },
         metricSnapshots: {
+          where: VALID_METRIC_SNAPSHOT_WHERE,
           orderBy: { capturedAt: "desc" },
           take: 1,
           select: { viewCount: true },

@@ -14,6 +14,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAuth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { VALID_METRIC_SNAPSHOT_WHERE } from "@/lib/metrics/valid-snapshots";
 import { buildCampaignLeaderboardRows } from "@/lib/campaign-leaderboard";
 
 export const dynamic = "force-dynamic";
@@ -71,6 +72,7 @@ export async function GET(
       createdAt: true,
       creatorId: true,
       metricSnapshots: {
+        where: VALID_METRIC_SNAPSHOT_WHERE,
         orderBy: { capturedAt: "desc" },
         take: 1,
         select: { viewCount: true, capturedAt: true },

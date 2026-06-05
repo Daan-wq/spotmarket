@@ -8,6 +8,10 @@ import { PageHeader, SectionHeader, StatCard } from "@/components/ui/page";
 import { formatDate, formatNumber, titleCaseEnum } from "@/lib/admin/agency-format";
 import { metricAvailabilityValue, type MetricAvailabilityKey } from "@/lib/contracts/metrics";
 import { AUTO_ANTIBOT_RESOLVED_BY } from "@/lib/metrics/anti-bot-signal";
+import {
+  isValidMetricSnapshot,
+  VALID_METRIC_SNAPSHOT_WHERE,
+} from "@/lib/metrics/valid-snapshots";
 import { prisma } from "@/lib/prisma";
 import { viewsPerHourFromLatestValidPair } from "@/lib/stats/view-growth-buckets";
 
@@ -70,6 +74,7 @@ export default async function SignalDetailPage({ params }: PageProps) {
             },
           },
           metricSnapshots: {
+            where: VALID_METRIC_SNAPSHOT_WHERE,
             orderBy: { capturedAt: "desc" },
             select: {
               capturedAt: true,
@@ -99,7 +104,7 @@ export default async function SignalDetailPage({ params }: PageProps) {
 
   const submission = signal.submission;
   const snapshots = [...submission.metricSnapshots].reverse();
-  const latest = latestSnapshot(snapshots.filter((snapshot) => snapshot.source !== "OAUTH_FAILED"));
+  const latest = latestSnapshot(snapshots.filter(isValidMetricSnapshot));
   const currentViews = latest ? Number(latest.viewCount) : (submission.viewCount ?? submission.claimedViews);
   const currentEngagements = latest
     ? snapshotEngagements(latest)
@@ -262,7 +267,7 @@ async function loadComparisonRows(submission: {
   const where: Prisma.CampaignSubmissionWhereInput = {
     creatorId: submission.creatorId,
     id: { not: submission.id },
-    metricSnapshots: { some: {} },
+    metricSnapshots: { some: VALID_METRIC_SNAPSHOT_WHERE },
   };
 
   if (submission.sourceConnectionType && submission.sourceConnectionId) {
@@ -286,6 +291,7 @@ async function loadComparisonRows(submission: {
       commentCount: true,
       shareCount: true,
       metricSnapshots: {
+        where: VALID_METRIC_SNAPSHOT_WHERE,
         orderBy: { capturedAt: "desc" },
         take: 2,
         select: {

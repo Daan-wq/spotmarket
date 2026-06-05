@@ -371,6 +371,7 @@ export default function SubmitPageClient({
           thumbnailUrl: post.thumbnail ?? undefined,
           mediaType: post.mediaType,
           connectionId: activeConnectionId,
+          pickerMediaId: post.id,
         }),
       });
       if (res.ok) {
@@ -424,6 +425,7 @@ export default function SubmitPageClient({
             thumbnailUrl: post.thumbnail ?? undefined,
             mediaType: post.mediaType,
             connectionId: activeConnectionId,
+            pickerMediaId: post.id,
           }),
         });
         if (res.ok) {

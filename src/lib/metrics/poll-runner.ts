@@ -18,9 +18,9 @@ import { fetchTikTokMetricsByVideoIds } from "./tiktok";
 import { scoreVelocity, type FlagDraft } from "@/lib/velocity-scorer";
 import { reconcileCampaignBudgetCap } from "@/lib/campaign-budget-cap";
 import { calculatePaidViews } from "@/lib/paid-views";
-import { UNAVAILABLE_METRICS } from "@/lib/contracts/metrics";
 import { syncAntiBotSignal } from "./anti-bot-signal";
 import { reconcileReferralPayoutForSubmission } from "@/lib/referral-reconciliation";
+import { VALID_METRIC_SNAPSHOT_WHERE } from "./valid-snapshots";
 
 export type Tier = "hot" | "warm" | "cold";
 
@@ -57,6 +57,8 @@ interface PollSubmission {
   postUrl: string;
   normalizedPlatform: string | null;
   platformVideoId: string | null;
+  platformApiMediaId: string | null;
+  platformMediaProductType: string | null;
   creatorId: string;
   campaignId: string;
   status: $Enums.SubmissionStatus;
@@ -119,7 +121,10 @@ export async function pollSubmissions(opts: RunOptions): Promise<PollResult> {
         });
 
         const recent = await prisma.metricSnapshot.findMany({
-          where: { submissionId: sub.id },
+          where: {
+            ...VALID_METRIC_SNAPSHOT_WHERE,
+            submissionId: sub.id,
+          },
           orderBy: { capturedAt: "desc" },
           take: 200,
           select: {
@@ -191,10 +196,21 @@ export async function pollSubmissions(opts: RunOptions): Promise<PollResult> {
               shareCount: fetched.metricAvailability.shares ? fetched.shareCount : null,
               velocityScore: scored.velocityScore ?? undefined,
               sourceMethod: "OAUTH",
+              lastMetricsErrorCode: null,
+              lastMetricsErrorMessage: null,
+              lastMetricsErrorAt: null,
               ...(fetched.connection
                 ? {
                     sourceConnectionType: fetched.connection.type,
                     sourceConnectionId: fetched.connection.id,
+                  }
+                : {}),
+              ...(fetched.resolvedIdentity
+                ? {
+                    platformApiMediaId: fetched.resolvedIdentity.platformApiMediaId,
+                    platformMediaProductType:
+                      fetched.resolvedIdentity.mediaProductType ??
+                      sub.platformMediaProductType,
                   }
                 : {}),
               ...(paidViews
@@ -242,26 +258,33 @@ export async function pollSubmissions(opts: RunOptions): Promise<PollResult> {
         succeeded++;
       } else {
         const failedAt = new Date();
-        await prisma.metricSnapshot.create({
+        await prisma.metricPollFailure.create({
           data: {
             submissionId: sub.id,
-            source: "OAUTH_FAILED",
-            viewCount: BigInt(0),
-            likeCount: 0,
-            commentCount: 0,
-            shareCount: 0,
-            metricAvailability: UNAVAILABLE_METRICS as unknown as Prisma.InputJsonValue,
-            raw: { reason: fetched.reason, message: fetched.message } as Prisma.InputJsonValue,
+            attemptedAt: failedAt,
+            reason: fetched.reason,
+            httpStatus: fetched.details?.httpStatus ?? null,
+            providerCode: fetched.details?.providerCode ?? null,
+            providerSubcode: fetched.details?.providerSubcode ?? null,
+            providerType: fetched.details?.providerType ?? null,
+            connectionType: fetched.connection?.type ?? null,
+            connectionId: fetched.connection?.id ?? null,
+            message: fetched.message,
+            ...(fetched.details?.raw == null
+              ? {}
+              : { raw: fetched.details.raw as Prisma.InputJsonValue }),
           },
         });
 
         await prisma.campaignSubmission.update({
           where: { id: sub.id },
           data: {
-            lastMetricsRefreshAt: failedAt,
             lastMetricsPollAttemptAt: failedAt,
             nextMetricsPollAt: computeNextMetricsPollAt(sub, fetched, failedAt),
             metricsPollLockedAt: null,
+            lastMetricsErrorCode: fetched.reason,
+            lastMetricsErrorMessage: fetched.message,
+            lastMetricsErrorAt: failedAt,
             ...(fetched.reason === "RATE_LIMITED"
               ? {}
               : { metricsRefreshFailures: { increment: 1 } }),
@@ -286,16 +309,31 @@ export async function pollSubmissions(opts: RunOptions): Promise<PollResult> {
     } catch (err) {
       console.error(`[poll-runner] ${sub.id}`, err);
       const erroredAt = new Date();
+      const message = err instanceof Error ? err.message : "Unexpected metrics polling failure";
       failed++;
+      await prisma.metricPollFailure
+        .create({
+          data: {
+            submissionId: sub.id,
+            attemptedAt: erroredAt,
+            reason: "PLATFORM_ERROR",
+            connectionType: sub.sourceConnectionType,
+            connectionId: sub.sourceConnectionId,
+            message,
+          },
+        })
+        .catch(() => undefined);
       await prisma.campaignSubmission
         .update({
           where: { id: sub.id },
           data: {
-            lastMetricsRefreshAt: erroredAt,
             lastMetricsPollAttemptAt: erroredAt,
             nextMetricsPollAt: computeNextMetricsPollAt(sub, null, erroredAt),
             metricsPollLockedAt: null,
             metricsRefreshFailures: { increment: 1 },
+            lastMetricsErrorCode: "PLATFORM_ERROR",
+            lastMetricsErrorMessage: message,
+            lastMetricsErrorAt: erroredAt,
           },
         })
         .catch(() => undefined);
@@ -326,6 +364,8 @@ async function claimDueSubmissions(opts: RunOptions, runStartedAt: Date): Promis
       postUrl: true,
       normalizedPlatform: true,
       platformVideoId: true,
+      platformApiMediaId: true,
+      platformMediaProductType: true,
       creatorId: true,
       campaignId: true,
       status: true,
@@ -424,12 +464,15 @@ async function prefetchTikTokMetrics(
       sub.normalizedPlatform !== "TIKTOK" ||
       sub.sourceConnectionType !== "TT" ||
       !sub.sourceConnectionId ||
-      !sub.platformVideoId
+      !(sub.platformApiMediaId ?? sub.platformVideoId)
     ) {
       continue;
     }
     const bucket = byConnection.get(sub.sourceConnectionId) ?? [];
-    bucket.push({ submissionId: sub.id, videoId: sub.platformVideoId });
+    bucket.push({
+      submissionId: sub.id,
+      videoId: sub.platformApiMediaId ?? sub.platformVideoId!,
+    });
     byConnection.set(sub.sourceConnectionId, bucket);
   }
 

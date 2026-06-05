@@ -15,6 +15,7 @@
 import type { CreatorIgConnection } from "@prisma/client";
 import { decrypt } from "@/lib/crypto";
 import {
+  fetchInstagramMediaMetadata,
   fetchRecentMedia,
   fetchMediaInsights,
   type MediaInsightType,
@@ -23,6 +24,10 @@ import type { ParsedClipUrl } from "@/lib/parse-clip-url";
 import { metricAvailability } from "@/lib/contracts/metrics";
 import { failure, type MetricFetcherResult } from "./router";
 import { recordRawApiResponse } from "./raw-storage";
+import {
+  classifyMetaApiError,
+  MetaApiRequestError,
+} from "./meta-api-error";
 
 /**
  * IG media list returns up to 100 recent posts at once. We page until we either
@@ -52,6 +57,10 @@ export async function fetchInstagramMetric(
   conn: CreatorIgConnection,
   parsed: ParsedClipUrl,
   submissionId?: string,
+  identity?: {
+    platformApiMediaId?: string | null;
+    mediaProductType?: string | null;
+  },
 ): Promise<MetricFetcherResult> {
   if (!conn.accessToken || !conn.accessTokenIv) {
     return failure("NO_TOKEN", "IG connection missing access token", { type: "IG", id: conn.id });
@@ -71,45 +80,53 @@ export async function fetchInstagramMetric(
     );
   }
 
-  // Walk recent media looking for a permalink that contains the post id from
-  // the parsed URL. IG permalinks look like https://www.instagram.com/reel/<shortcode>/.
-  const targetPostId = parsed.postId?.toLowerCase();
-  let cursor: string | undefined = undefined;
   let matched: MatchedMedia | null = null;
+  const canonicalMediaId = identity?.platformApiMediaId ?? null;
+  const knownProductType = identity?.mediaProductType ?? null;
 
-  for (let page = 0; page < MAX_PAGES; page++) {
-    let result: Awaited<ReturnType<typeof fetchRecentMedia>>;
+  if (canonicalMediaId && knownProductType) {
+    matched = {
+      id: canonicalMediaId,
+      mediaType: isVideoProductType(knownProductType) ? "VIDEO" : "",
+      mediaProductType: knownProductType,
+      permalink: parsed.normalizedUrl,
+      timestamp: "",
+      caption: null,
+      likeCount: 0,
+      commentCount: 0,
+    };
+  } else if (canonicalMediaId) {
     try {
-      result = await fetchRecentMedia(token, conn.igUserId, 50, cursor);
+      const media = await fetchInstagramMediaMetadata(canonicalMediaId, token);
+      matched = toMatchedMedia(media);
     } catch (err) {
-      const msg = (err as Error).message?.toLowerCase() ?? "";
-      if (msg.includes("oauth") || msg.includes("token") || msg.includes("expired")) {
-        return failure("TOKEN_BROKEN", (err as Error).message, { type: "IG", id: conn.id });
-      }
-      return failure("PLATFORM_ERROR", (err as Error).message, { type: "IG", id: conn.id });
+      return instagramFailure(err, conn.id);
     }
-    for (const media of result.media) {
-      const permalink = (media.permalink ?? "").toLowerCase();
-      if (
-        targetPostId &&
-        (permalink.includes(`/${targetPostId}/`) || permalink.includes(targetPostId))
-      ) {
-        matched = {
-          id: media.id,
-          mediaType: media.media_type ?? "",
-          mediaProductType: media.media_product_type ?? "",
-          permalink: media.permalink ?? "",
-          timestamp: media.timestamp ?? "",
-          caption: media.caption ?? null,
-          likeCount: media.like_count ?? 0,
-          commentCount: media.comments_count ?? 0,
-        };
-        break;
+  } else {
+    const targetPostId = parsed.postId?.toLowerCase();
+    let cursor: string | undefined;
+
+    for (let page = 0; page < MAX_PAGES; page++) {
+      let result: Awaited<ReturnType<typeof fetchRecentMedia>>;
+      try {
+        result = await fetchRecentMedia(token, conn.igUserId, 50, cursor);
+      } catch (err) {
+        return instagramFailure(err, conn.id);
       }
+      for (const media of result.media) {
+        const permalink = (media.permalink ?? "").toLowerCase();
+        if (
+          targetPostId &&
+          (permalink.includes(`/${targetPostId}/`) || permalink.includes(targetPostId))
+        ) {
+          matched = toMatchedMedia(media);
+          break;
+        }
+      }
+      if (matched) break;
+      if (!result.nextCursor) break;
+      cursor = result.nextCursor;
     }
-    if (matched) break;
-    if (!result.nextCursor) break;
-    cursor = result.nextCursor;
   }
 
   if (!matched) {
@@ -120,7 +137,12 @@ export async function fetchInstagramMetric(
   }
 
   const mediaType = classifyMedia(matched);
-  const insights = await fetchMediaInsights(matched.id, token, mediaType);
+  let insights: Awaited<ReturnType<typeof fetchMediaInsights>>;
+  try {
+    insights = await fetchMediaInsights(matched.id, token, mediaType);
+  } catch (err) {
+    return instagramFailure(err, conn.id);
+  }
 
   // Build the profile_activity breakdown only when at least one bucket is non-null,
   // so we don't bloat MetricSnapshot rows with empty `{}` for REEL media.
@@ -160,12 +182,15 @@ export async function fetchInstagramMetric(
   // photo/carousel submissions can still earn on view-based campaigns.
   const isVideoLike =
     mediaType === "REEL" || matched.mediaType.toUpperCase() === "VIDEO";
-  const rawViews = insights.views ?? 0;
   const reachCount = insights.reach ?? null;
-  const viewCount =
-    !isVideoLike && rawViews === 0 && reachCount != null
-      ? reachCount
-      : rawViews;
+  if (isVideoLike && insights.views == null) {
+    return failure(
+      "API_SCHEMA_ERROR",
+      `Instagram returned no views metric for ${mediaType.toLowerCase()} ${matched.id}`,
+      { type: "IG", id: conn.id },
+    );
+  }
+  const viewCount = insights.views ?? reachCount ?? 0;
   const likeCount = insights.likes ?? matched.likeCount;
   const commentCount = insights.comments ?? matched.commentCount;
   const shareCount = insights.shares ?? 0;
@@ -202,6 +227,10 @@ export async function fetchInstagramMetric(
     ok: true,
     source: "OAUTH_IG",
     connection: { type: "IG", id: conn.id },
+    resolvedIdentity: {
+      platformApiMediaId: matched.id,
+      mediaProductType: matched.mediaProductType || null,
+    },
     viewCount: BigInt(viewCount),
     likeCount,
     commentCount,
@@ -237,4 +266,54 @@ export async function fetchInstagramMetric(
       replies: insights.replies ?? null,
     },
   };
+}
+
+function toMatchedMedia(media: {
+  id: string;
+  media_type?: string | null;
+  media_product_type?: string | null;
+  permalink?: string | null;
+  timestamp?: string | null;
+  caption?: string | null;
+  like_count?: number | null;
+  comments_count?: number | null;
+}): MatchedMedia {
+  return {
+    id: media.id,
+    mediaType: media.media_type ?? "",
+    mediaProductType: media.media_product_type ?? "",
+    permalink: media.permalink ?? "",
+    timestamp: media.timestamp ?? "",
+    caption: media.caption ?? null,
+    likeCount: media.like_count ?? 0,
+    commentCount: media.comments_count ?? 0,
+  };
+}
+
+function isVideoProductType(mediaProductType: string): boolean {
+  const value = mediaProductType.toUpperCase();
+  return value === "REEL" || value === "REELS" || value === "STORY";
+}
+
+function instagramFailure(error: unknown, connectionId: string): MetricFetcherResult {
+  if (error instanceof MetaApiRequestError) {
+    return failure(
+      classifyMetaApiError(error.details),
+      error.message,
+      { type: "IG", id: connectionId },
+      {
+        httpStatus: error.details.httpStatus,
+        providerCode: error.details.providerCode,
+        providerSubcode: error.details.providerSubcode,
+        providerType: error.details.providerType,
+        raw: error.details.raw,
+      },
+    );
+  }
+
+  return failure(
+    "PLATFORM_ERROR",
+    error instanceof Error ? error.message : "Instagram metrics request failed",
+    { type: "IG", id: connectionId },
+  );
 }

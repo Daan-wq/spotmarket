@@ -48,10 +48,11 @@ function jsonResponse(body: unknown, status = 200): Response {
 
 describe("fetchFacebookMetric", () => {
   it("extracts reaction-type breakdown, retention graph, FB Reels plays", async () => {
-    fetchSpy.mockResolvedValueOnce(
-      jsonResponse({
+    fetchSpy
+      .mockResolvedValueOnce(
+        jsonResponse({
         id: "pg_42_v9",
-        views: 1000,
+        attachments: { data: [{ target: { id: "bare_video_9" } }] },
         likes: { summary: { total_count: 600 } },
         reactions: { summary: { total_count: 750 } },
         comments: { summary: { total_count: 12 } },
@@ -65,7 +66,10 @@ describe("fetchFacebookMetric", () => {
         reactions_thankful: { summary: { total_count: 0 } },
         reactions_pride: { summary: { total_count: 0 } },
         reactions_care: { summary: { total_count: 0 } },
-        video_insights: {
+      }),
+      )
+      .mockResolvedValueOnce(
+        jsonResponse({
           data: [
             { name: "total_video_views", values: [{ value: 1000 }] },
             { name: "post_impressions_unique", values: [{ value: 850 }] },
@@ -73,6 +77,12 @@ describe("fetchFacebookMetric", () => {
             { name: "fb_reels_replay_count", values: [{ value: 250 }] },
             { name: "post_video_view_time", values: [{ value: 2_400_000 }] }, // 2400 sec
             { name: "post_video_avg_time_watched", values: [{ value: 9000 }] }, // 9 sec
+          ],
+        }),
+      )
+      .mockResolvedValueOnce(
+        jsonResponse({
+          data: [
             { name: "post_video_followers", values: [{ value: 7 }] },
             {
               name: "post_video_retention_graph",
@@ -81,9 +91,8 @@ describe("fetchFacebookMetric", () => {
               ],
             },
           ],
-        },
-      }),
-    );
+        }),
+      );
 
     const r = await fetchFacebookMetric(
       conn(),
@@ -93,7 +102,7 @@ describe("fetchFacebookMetric", () => {
 
     expect(r.ok).toBe(true);
     if (!r.ok) return;
-    expect(r.viewCount).toBe(BigInt(1000));
+    expect(r.viewCount).toBe(BigInt(1500));
     expect(r.likeCount).toBe(600); // from LIKE breakdown
     expect(r.commentCount).toBe(12);
     expect(r.shareCount).toBe(4);
@@ -130,13 +139,17 @@ describe("fetchFacebookMetric", () => {
       expect.objectContaining({
         connectionType: "FB",
         connectionId: "conn_fb",
-        endpoint: "facebook.post.insights",
+        endpoint: "facebook.video.insights",
         submissionId: "sub_99",
       }),
     );
+    expect(r.resolvedIdentity).toEqual({ platformApiMediaId: "bare_video_9" });
+    expect(String(fetchSpy.mock.calls[0][0])).not.toContain("reactions_like%3Areactions");
+    expect(String(fetchSpy.mock.calls[0][0])).toContain(".as%28reactions_like%29");
+    expect(String(fetchSpy.mock.calls[1][0])).toContain("/bare_video_9/video_insights?");
   });
 
-  it("returns TOKEN_BROKEN on 401", async () => {
+  it("returns a token failure on 401", async () => {
     fetchSpy.mockResolvedValueOnce(new Response("auth", { status: 401 }));
     const r = await fetchFacebookMetric(
       conn(),
@@ -145,7 +158,35 @@ describe("fetchFacebookMetric", () => {
     );
     expect(r.ok).toBe(false);
     if (r.ok) return;
-    expect(r.reason).toBe("TOKEN_BROKEN");
+    expect(r.reason).toBe("TOKEN_EXPIRED");
+  });
+
+  it("classifies an OAuthException code 100 invalid field as API_SCHEMA_ERROR", async () => {
+    fetchSpy.mockResolvedValueOnce(
+      jsonResponse(
+        {
+          error: {
+            message: "(#100) Tried accessing nonexisting field (views)",
+            type: "OAuthException",
+            code: 100,
+          },
+        },
+        400,
+      ),
+    );
+    const r = await fetchFacebookMetric(
+      conn(),
+      { platform: "FACEBOOK", postId: "v1", authorHandle: null, normalizedUrl: "https://www.facebook.com/reel/v1/" },
+      "sub_schema",
+    );
+    expect(r.ok).toBe(false);
+    if (r.ok) return;
+    expect(r.reason).toBe("API_SCHEMA_ERROR");
+    expect(r.details).toMatchObject({
+      httpStatus: 400,
+      providerCode: 100,
+      providerType: "OAuthException",
+    });
   });
 
   it("falls back to bare videoId after 404 on composite id", async () => {
@@ -154,13 +195,18 @@ describe("fetchFacebookMetric", () => {
       .mockResolvedValueOnce(
         jsonResponse({
           id: "v1",
-          views: 50,
           likes: { summary: { total_count: 5 } },
           reactions: { summary: { total_count: 5 } },
           comments: { summary: { total_count: 0 } },
           shares: { count: 0 },
         }),
-      );
+      )
+      .mockResolvedValueOnce(
+        jsonResponse({
+          data: [{ name: "fb_reels_total_plays", values: [{ value: 50 }] }],
+        }),
+      )
+      .mockResolvedValueOnce(jsonResponse({ data: [] }));
     const r = await fetchFacebookMetric(
       conn(),
       { platform: "FACEBOOK", postId: "v1", authorHandle: null, normalizedUrl: "https://www.facebook.com/page/videos/v1/" },
@@ -169,6 +215,7 @@ describe("fetchFacebookMetric", () => {
     expect(r.ok).toBe(true);
     if (!r.ok) return;
     expect(r.viewCount).toBe(BigInt(50));
-    expect(fetchSpy).toHaveBeenCalledTimes(2);
+    expect(fetchSpy).toHaveBeenCalledTimes(4);
+    expect(String(fetchSpy.mock.calls[2][0])).toContain("/v1/video_insights?");
   });
 });

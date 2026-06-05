@@ -13,6 +13,7 @@ import {
   getSocialAccountSummary,
   type SocialAccountSummary,
 } from "@/lib/social-account-summary";
+import { VALID_METRIC_SNAPSHOT_WHERE } from "@/lib/metrics/valid-snapshots";
 
 export interface PlatformAggregate {
   slug: PlatformSlug;
@@ -73,6 +74,7 @@ async function sumWindowViewsAndEngagement(
   if (submissionIds.length === 0) return { views: 0, engagement: 0 };
   const cap = withinRange(range);
   const where = {
+    ...VALID_METRIC_SNAPSHOT_WHERE,
     submissionId: { in: submissionIds },
     ...(cap.gte ? { capturedAt: { gte: cap.gte, lte: cap.lte } } : {}),
   };
@@ -174,6 +176,7 @@ async function getSubmissionIdsByPlatform(
       id: true,
       sourcePlatform: true,
       metricSnapshots: {
+        where: VALID_METRIC_SNAPSHOT_WHERE,
         orderBy: { capturedAt: "desc" },
         take: 1,
         select: { source: true },
@@ -293,6 +296,7 @@ async function findTopPost(
   const cap = withinRange(range);
   const latest = await prisma.metricSnapshot.findMany({
     where: {
+      ...VALID_METRIC_SNAPSHOT_WHERE,
       submissionId: { in: submissionIds },
       ...(cap.gte ? { capturedAt: { gte: cap.gte, lte: cap.lte } } : {}),
     },
@@ -554,7 +558,12 @@ export async function findCreatorSubmissionsByHandle(
     },
     select: {
       id: true,
-      metricSnapshots: { orderBy: { capturedAt: "desc" }, take: 1, select: { source: true } },
+      metricSnapshots: {
+        where: VALID_METRIC_SNAPSHOT_WHERE,
+        orderBy: { capturedAt: "desc" },
+        take: 1,
+        select: { source: true },
+      },
       sourcePlatform: true,
     },
   });

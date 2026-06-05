@@ -3,6 +3,7 @@ import { publishEvent } from "@/lib/event-bus";
 import { prisma } from "@/lib/prisma";
 import type { AntiBotPayload, SignalSeverity } from "@/lib/contracts/signals";
 import { scoreVelocity } from "@/lib/velocity-scorer";
+import { VALID_METRIC_SNAPSHOT_WHERE } from "./valid-snapshots";
 
 export const AUTO_ANTIBOT_RESOLVED_BY = "system:auto-antibot-recompute";
 
@@ -134,6 +135,7 @@ export async function recomputeOpenAntiBotSignals(
           sourceConnectionType: true,
           sourceConnectionId: true,
           metricSnapshots: {
+            where: VALID_METRIC_SNAPSHOT_WHERE,
             orderBy: { capturedAt: "desc" },
             take: 200,
             select: {

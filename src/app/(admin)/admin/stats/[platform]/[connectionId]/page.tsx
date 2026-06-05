@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
+import { VALID_METRIC_SNAPSHOT_WHERE } from "@/lib/metrics/valid-snapshots";
 import { parseRange } from "@/lib/stats/range";
 import { PLATFORM_LABEL, isPlatformSlug, slugToConnectionType, type PlatformSlug } from "@/lib/stats/types";
 import { getAdminConnectionStats } from "@/lib/stats/admin";
@@ -57,7 +58,12 @@ async function findSubmissionIds(platform: PlatformSlug, matchHandle: string): P
     select: {
       id: true,
       sourcePlatform: true,
-      metricSnapshots: { orderBy: { capturedAt: "desc" }, take: 1, select: { source: true } },
+      metricSnapshots: {
+        where: VALID_METRIC_SNAPSHOT_WHERE,
+        orderBy: { capturedAt: "desc" },
+        take: 1,
+        select: { source: true },
+      },
     },
   });
   const out: string[] = [];

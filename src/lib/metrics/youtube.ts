@@ -32,6 +32,7 @@ export async function fetchYoutubeMetric(
   conn: CreatorYtConnection,
   parsed: ParsedClipUrl,
   submissionId?: string,
+  identity?: { platformApiMediaId?: string | null },
 ): Promise<MetricFetcherResult> {
   if (!conn.accessToken || !conn.accessTokenIv) {
     return failure("NO_TOKEN", "YT connection missing access token", { type: "YT", id: conn.id });
@@ -54,7 +55,7 @@ export async function fetchYoutubeMetric(
     });
   }
 
-  const videoId = parsed.postId ?? "";
+  const videoId = identity?.platformApiMediaId ?? parsed.postId ?? "";
   if (!videoId) {
     return failure("POST_NOT_FOUND", "YT URL missing video id", { type: "YT", id: conn.id });
   }
@@ -150,6 +151,7 @@ export async function fetchYoutubeMetric(
     ok: true,
     source: "OAUTH_YT",
     connection: { type: "YT", id: conn.id },
+    resolvedIdentity: { platformApiMediaId: item.id },
     viewCount: BigInt(viewCount),
     likeCount,
     commentCount,

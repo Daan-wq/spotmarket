@@ -3,6 +3,7 @@ import { DataTable } from "@/components/ui/data-table";
 import { EmptyState } from "@/components/ui/empty-state";
 import { PageHeader, SectionHeader, StatCard } from "@/components/ui/page";
 import { prisma } from "@/lib/prisma";
+import { VALID_METRIC_SNAPSHOT_WHERE } from "@/lib/metrics/valid-snapshots";
 import { formatCurrencyPrecise, formatNumber, formatShortDate } from "@/lib/admin/agency-format";
 
 export const dynamic = "force-dynamic";
@@ -28,6 +29,7 @@ export default async function ClippersPage() {
               commentCount: true,
               shareCount: true,
               metricSnapshots: {
+                where: VALID_METRIC_SNAPSHOT_WHERE,
                 orderBy: { capturedAt: "desc" },
                 take: 1,
                 select: {

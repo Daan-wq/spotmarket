@@ -8,6 +8,7 @@ import {
 import { type Range, withinRange } from "./range";
 import { computeDayDeltas } from "./trends";
 import { findCreatorSubmissionsByHandle } from "./creator";
+import { VALID_METRIC_SNAPSHOT_WHERE } from "@/lib/metrics/valid-snapshots";
 
 export type TimelineEventKind = "submission" | "story";
 
@@ -90,6 +91,7 @@ async function getSubmissionIds(profile: TimelineProfileScope, scope: TimelineFi
       id: true,
       sourcePlatform: true,
       metricSnapshots: {
+        where: VALID_METRIC_SNAPSHOT_WHERE,
         orderBy: { capturedAt: "desc" },
         take: 1,
         select: { source: true },
@@ -210,7 +212,10 @@ async function buildSubmissionEvents(
 
   // Earliest snapshot per submission = postedAt proxy.
   const earliest = await prisma.metricSnapshot.findMany({
-    where: { submissionId: { in: submissionIds } },
+    where: {
+      ...VALID_METRIC_SNAPSHOT_WHERE,
+      submissionId: { in: submissionIds },
+    },
     orderBy: { capturedAt: "asc" },
     distinct: ["submissionId"],
     select: { submissionId: true, capturedAt: true, source: true },
@@ -220,7 +225,10 @@ async function buildSubmissionEvents(
 
   // Latest snapshot per submission for views/engagement totals.
   const latest = await prisma.metricSnapshot.findMany({
-    where: { submissionId: { in: submissionIds } },
+    where: {
+      ...VALID_METRIC_SNAPSHOT_WHERE,
+      submissionId: { in: submissionIds },
+    },
     orderBy: { capturedAt: "desc" },
     distinct: ["submissionId"],
     select: {
@@ -240,6 +248,7 @@ async function buildSubmissionEvents(
   // Single query bounded by the existing range.
   const subsForDayDelta = await prisma.metricSnapshot.findMany({
     where: {
+      ...VALID_METRIC_SNAPSHOT_WHERE,
       submissionId: { in: submissionIds },
       ...(cap.gte ? { capturedAt: { gte: cap.gte, lte: cap.lte } } : {}),
     },
@@ -397,6 +406,7 @@ export async function getPostLifts7d(
 
   const snaps = await prisma.metricSnapshot.findMany({
     where: {
+      ...VALID_METRIC_SNAPSHOT_WHERE,
       submissionId: { in: submissions.map((s) => s.id) },
       capturedAt: { gte: minStart, lte: maxEnd },
     },

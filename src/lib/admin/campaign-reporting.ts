@@ -6,6 +6,7 @@ import {
   type CampaignReportSectionSettings,
 } from "@/lib/admin/campaign-report-shared";
 import { prisma } from "@/lib/prisma";
+import { VALID_METRIC_SNAPSHOT_WHERE } from "@/lib/metrics/valid-snapshots";
 import { computeDayDeltas } from "@/lib/stats/trends";
 import { DEFAULT_LOCALE } from "@/i18n/routing";
 
@@ -413,7 +414,10 @@ export async function getCampaignReportLiveData({
   periodStart?: Date | string | null;
   periodEnd?: Date | string | null;
 }): Promise<CampaignReportLiveData | null> {
-  const metricWhere = dateWindow(periodStart, periodEnd);
+  const metricWhere = {
+    ...VALID_METRIC_SNAPSHOT_WHERE,
+    ...dateWindow(periodStart, periodEnd),
+  };
   const campaign = await prisma.campaign.findUnique({
     where: { id: campaignId },
     select: {

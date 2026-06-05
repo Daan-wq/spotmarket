@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import { VALID_METRIC_SNAPSHOT_WHERE } from "@/lib/metrics/valid-snapshots";
 import { type Range, withinRange } from "./range";
 
 // ──────────────────────────────────────────────
@@ -90,6 +91,7 @@ export async function getAggregateRetentionCurve(
   const cap = withinRange(range);
   const curves = await prisma.videoRetentionCurve.findMany({
     where: {
+      ...VALID_METRIC_SNAPSHOT_WHERE,
       submissionId: { in: submissionIds },
       source: "OAUTH_FB",
       ...(cap.gte ? { capturedAt: { gte: cap.gte, lte: cap.lte } } : {}),
@@ -209,6 +211,7 @@ export async function getFbReactionsOverTime(
   const cap = withinRange(range);
   const snaps = await prisma.metricSnapshot.findMany({
     where: {
+      ...VALID_METRIC_SNAPSHOT_WHERE,
       submissionId: { in: submissionIds },
       source: "OAUTH_FB",
       ...(cap.gte ? { capturedAt: { gte: cap.gte, lte: cap.lte } } : {}),
@@ -296,6 +299,7 @@ export async function getDailyViewsSeries(
   const cap = withinRange(range);
   const snaps = await prisma.metricSnapshot.findMany({
     where: {
+      ...VALID_METRIC_SNAPSHOT_WHERE,
       submissionId: { in: submissionIds },
       ...(cap.gte ? { capturedAt: { gte: cap.gte, lte: cap.lte } } : {}),
     },

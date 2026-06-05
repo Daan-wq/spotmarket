@@ -11,6 +11,7 @@ const findFirstTikTokConnectionMock = vi.fn();
 const transactionMock = vi.fn();
 const createMetricSnapshotMock = vi.fn();
 const findManyMetricSnapshotMock = vi.fn();
+const createMetricPollFailureMock = vi.fn();
 const findFirstCampaignBenchmarkMock = vi.fn();
 const findFirstPlatformAccountSnapshotMock = vi.fn();
 const publishEventMock = vi.fn();
@@ -50,6 +51,9 @@ vi.mock("@/lib/prisma", () => ({
     metricSnapshot: {
       create: (...args: unknown[]) => createMetricSnapshotMock(...args),
       findMany: (...args: unknown[]) => findManyMetricSnapshotMock(...args),
+    },
+    metricPollFailure: {
+      create: (...args: unknown[]) => createMetricPollFailureMock(...args),
     },
     submissionSignal: {
       findFirst: (...args: unknown[]) => findFirstSignalMock(...args),
@@ -104,6 +108,7 @@ beforeEach(() => {
   transactionMock.mockReset();
   createMetricSnapshotMock.mockReset();
   findManyMetricSnapshotMock.mockReset();
+  createMetricPollFailureMock.mockReset();
   findFirstCampaignBenchmarkMock.mockReset();
   findFirstPlatformAccountSnapshotMock.mockReset();
   publishEventMock.mockReset();
@@ -138,6 +143,7 @@ beforeEach(() => {
     viewCount: BigInt(0),
     capturedAt: new Date("2026-05-12T10:00:00.000Z"),
   });
+  createMetricPollFailureMock.mockResolvedValue({ id: "failure_1" });
   findManyMetricSnapshotMock.mockResolvedValue([]);
   scoreVelocityMock.mockReturnValue({
     velocity: null,
@@ -726,6 +732,57 @@ describe("pollSubmissions scheduling", () => {
       connection: { type: source === "OAUTH_TT" ? "TT" : "IG", id: source === "OAUTH_TT" ? "tt-conn-1" : "ig-conn-1" },
     };
   }
+
+  it("stores failed attempts outside MetricSnapshot and preserves the last successful refresh", async () => {
+    findManySubmissionMock.mockResolvedValueOnce([
+      dueSubmission({
+        id: "sub_failed",
+        normalizedPlatform: "INSTAGRAM",
+        sourceConnectionType: "IG",
+        sourceConnectionId: "ig-conn-1",
+      }),
+    ]);
+    routeMetricMock.mockResolvedValueOnce({
+      ok: false,
+      source: "OAUTH_FAILED",
+      reason: "API_SCHEMA_ERROR",
+      message: "invalid views field",
+      connection: { type: "IG", id: "ig-conn-1" },
+      details: {
+        httpStatus: 400,
+        providerCode: 100,
+        providerType: "OAuthException",
+        raw: { error: { code: 100 } },
+      },
+    });
+
+    await pollSubmissions({ tier: "hot", limit: 1 });
+
+    expect(createMetricSnapshotMock).not.toHaveBeenCalled();
+    expect(createMetricPollFailureMock).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        submissionId: "sub_failed",
+        reason: "API_SCHEMA_ERROR",
+        httpStatus: 400,
+        providerCode: 100,
+        providerType: "OAuthException",
+        connectionType: "IG",
+        connectionId: "ig-conn-1",
+      }),
+    });
+    expect(updateSubmissionMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { id: "sub_failed" },
+        data: expect.objectContaining({
+          lastMetricsErrorCode: "API_SCHEMA_ERROR",
+          lastMetricsErrorMessage: "invalid views field",
+          lastMetricsErrorAt: expect.any(Date),
+        }),
+      }),
+    );
+    const update = updateSubmissionMock.mock.calls.at(-1)?.[0];
+    expect(update.data).not.toHaveProperty("lastMetricsRefreshAt");
+  });
 
   it("selects hot rows from active campaigns by nextMetricsPollAt instead of submission age", async () => {
     await pollSubmissions({ tier: "hot", limit: 5 });

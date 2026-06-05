@@ -102,6 +102,8 @@ describe("routeMetric", () => {
       postUrl: "https://www.instagram.com/reel/ABC123/",
       sourceConnectionType: "IG",
       sourceConnectionId: "ig-selected",
+      platformApiMediaId: "graph-media-1",
+      platformMediaProductType: "REELS",
     } as never);
 
     expect(result.ok).toBe(true);
@@ -118,6 +120,10 @@ describe("routeMetric", () => {
       selected,
       expect.objectContaining({ postId: "ABC123" }),
       "sub-1",
+      {
+        platformApiMediaId: "graph-media-1",
+        mediaProductType: "REELS",
+      },
     );
   });
 
@@ -160,12 +166,14 @@ describe("routeMetric", () => {
       wrong,
       expect.objectContaining({ postId: "ABC123" }),
       "sub-legacy",
+      { platformApiMediaId: null, mediaProductType: null },
     );
     expect(fetchInstagramMetricMock).toHaveBeenNthCalledWith(
       2,
       right,
       expect.objectContaining({ postId: "ABC123" }),
       "sub-legacy",
+      { platformApiMediaId: null, mediaProductType: null },
     );
   });
 

@@ -15,6 +15,7 @@
 
 import { on, publishEvent } from "@/lib/event-bus";
 import { prisma } from "@/lib/prisma";
+import { VALID_METRIC_SNAPSHOT_WHERE } from "@/lib/metrics/valid-snapshots";
 import type {
   SubmissionMetricsUpdatedEvent,
   SubmissionUnderperformEvent,
@@ -115,7 +116,10 @@ export async function scanSubmission(
   if (!benchmark) return { published: false, reason: "no-benchmark" };
 
   const snaps = await prisma.metricSnapshot.findMany({
-    where: { submissionId: submission.id },
+    where: {
+      ...VALID_METRIC_SNAPSHOT_WHERE,
+      submissionId: submission.id,
+    },
     orderBy: { capturedAt: "asc" },
     select: {
       capturedAt: true,
