@@ -92,6 +92,7 @@ model CreatorProfile {
   applications             CampaignApplication[]
   payouts                  Payout[]
   balanceAdjustments       CreatorBalanceAdjustment[]
+  campaignBonuses          CreatorCampaignBonus[]
   operationalProfile       ClipperOperationalProfile?
   approvedCandidateRecords ClipperCandidate[]         @relation("ApprovedCandidateProfile")
   productionAssignments    ProductionAssignment[]
@@ -632,6 +633,7 @@ model Campaign {
 
   applications          CampaignApplication[]
   campaignSubmissions   CampaignSubmission[]
+  creatorBonuses        CreatorCampaignBonus[]
   inviteLinks           CampaignInviteLink[]
   referralAttributions  CampaignReferralAttribution[]
   productionAssignments ProductionAssignment[]
@@ -996,6 +998,22 @@ model CreatorBalanceAdjustment {
   createdAt        DateTime       @default(now())
 
   @@index([creatorProfileId, createdAt])
+}
+
+model CreatorCampaignBonus {
+  id               String         @id @default(cuid())
+  creatorProfileId String
+  creatorProfile   CreatorProfile @relation(fields: [creatorProfileId], references: [id], onDelete: Cascade)
+  campaignId       String
+  campaign         Campaign       @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  amount           Decimal        @db.Decimal(12, 2)
+  reason           String         @db.Text
+  reference        String         @unique
+  createdByUserId  String?
+  createdAt        DateTime       @default(now())
+
+  @@index([creatorProfileId, createdAt])
+  @@index([campaignId, createdAt])
 }
 
 enum PayoutType {
