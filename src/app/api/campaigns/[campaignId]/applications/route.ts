@@ -292,7 +292,7 @@ export async function POST(
         creatorProfileId: user.creatorProfile.id,
         followerSnapshot,
         engagementSnapshot: user.creatorProfile.engagementRate,
-        status: "active",
+        status: "pending",
       },
       include: { creatorProfile: true },
     });

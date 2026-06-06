@@ -94,9 +94,7 @@ describe("POST /api/submissions", () => {
     routeMocks.resolveStableSubmissionThumbnail.mockResolvedValue(null);
     routeMocks.creatorMediaCacheFindUnique.mockResolvedValue(null);
     routeMocks.campaignApplicationConnectionFindFirst.mockResolvedValue(null);
-    routeMocks.campaignRequiresBioGate.mockImplementation((campaign) =>
-      Boolean(campaign.requiresApproval),
-    );
+    routeMocks.campaignRequiresBioGate.mockReturnValue(false);
     routeMocks.runSubmissionBioCheck.mockResolvedValue(undefined);
   });
 
@@ -550,10 +548,10 @@ describe("POST /api/submissions", () => {
     );
   });
 
-  test("rejects a bio-gated submission from an account that was not verified for the campaign", async () => {
+  test("allows a pending approval application without bio verification", async () => {
     routeMocks.applicationFindUnique.mockResolvedValue({
       id: "application-1",
-      status: "active",
+      status: "pending",
       creatorProfileId: "creator-profile-1",
       campaignId: "campaign-1",
       campaign: {
@@ -563,36 +561,6 @@ describe("POST /api/submissions", () => {
         bioKeywords: ["clipprofit"],
       },
     });
-
-    const response = await POST(
-      request({
-        applicationId: "application-1",
-        postUrl: "https://www.instagram.com/reel/ABC123/",
-        connectionId: "ig-conn-1",
-      }),
-    );
-
-    expect(response.status).toBe(403);
-    await expect(response.json()).resolves.toEqual({
-      error: "This account has not been bio-verified for this campaign.",
-    });
-    expect(routeMocks.submissionCreate).not.toHaveBeenCalled();
-  });
-
-  test("queues the post-response bio check for a verified campaign account", async () => {
-    routeMocks.applicationFindUnique.mockResolvedValue({
-      id: "application-1",
-      status: "active",
-      creatorProfileId: "creator-profile-1",
-      campaignId: "campaign-1",
-      campaign: {
-        status: "active",
-        deadline: new Date("2026-06-17T00:00:00.000Z"),
-        requiresApproval: true,
-        bioKeywords: ["clipprofit"],
-      },
-    });
-    routeMocks.campaignApplicationConnectionFindFirst.mockResolvedValue({ id: "verified-1" });
     routeMocks.submissionCreate.mockResolvedValue({
       id: "submission-1",
       postUrl: "https://www.instagram.com/reel/ABC123/",
@@ -604,7 +572,7 @@ describe("POST /api/submissions", () => {
       sourceMethod: "OAUTH",
       sourceConnectionType: "IG",
       sourceConnectionId: "ig-conn-1",
-      bioCheckStatus: "PENDING",
+      bioCheckStatus: "NOT_REQUIRED",
       logoStatus: "PENDING",
     });
 
@@ -619,9 +587,10 @@ describe("POST /api/submissions", () => {
     expect(response.status).toBe(201);
     expect(routeMocks.submissionCreate).toHaveBeenCalledWith(
       expect.objectContaining({
-        data: expect.objectContaining({ bioCheckStatus: "PENDING" }),
+        data: expect.objectContaining({ bioCheckStatus: "NOT_REQUIRED" }),
       }),
     );
-    expect(routeMocks.after).toHaveBeenCalledOnce();
+    expect(routeMocks.campaignApplicationConnectionFindFirst).not.toHaveBeenCalled();
+    expect(routeMocks.after).not.toHaveBeenCalled();
   });
 });

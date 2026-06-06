@@ -1,11 +1,16 @@
 import { describe, expect, it } from "vitest";
 import {
   campaignAllowedConnectionTypes,
+  campaignRequiresBioGate,
   checkBioKeywords,
   normalizeBioKeywords,
 } from "./campaign-bio-gate";
 
 describe("campaign bio gate helpers", () => {
+  it("does not turn normal campaign approval into a bio requirement", () => {
+    expect(campaignRequiresBioGate({ requiresApproval: true })).toBe(false);
+  });
+
   it("deduplicates and trims configured keywords", () => {
     expect(normalizeBioKeywords([" BetSpecialist ", "", "betspecialist"])).toEqual([
       "BetSpecialist",

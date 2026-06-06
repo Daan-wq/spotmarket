@@ -37,7 +37,6 @@ import {
 } from "@/lib/campaign-submission-state";
 import { buildCreatorCampaignConfigSections } from "@/lib/creator-campaign-display";
 import { buildCampaignLeaderboardRows } from "@/lib/campaign-leaderboard";
-import { getCreatorCampaignAccountOptions } from "@/lib/campaign-bio-gate";
 import {
   SubmittedClipsList,
   type SubmittedClipData,
@@ -115,19 +114,7 @@ export default async function CampaignDetailPage({
 
   const existingApplication = await prisma.campaignApplication.findFirst({
     where: { campaignId, creatorProfileId: profile.id },
-    include: {
-      connections: {
-        where: { status: "VERIFIED" },
-        select: { connectionType: true, connectionId: true },
-      },
-    },
   });
-  const applicationCanSubmit =
-    !!existingApplication &&
-    ["active", "approved"].includes(existingApplication.status);
-  const bioGateAccounts = campaign.requiresApproval
-    ? await getCreatorCampaignAccountOptions(profile.id, campaign.platforms)
-    : [];
 
   const mySubmissions = await prisma.campaignSubmission.findMany({
     where: { campaignId, creatorId: user.id },
@@ -212,7 +199,7 @@ export default async function CampaignDetailPage({
   });
   const canApply =
     eligibility.eligible &&
-    !applicationCanSubmit &&
+    !existingApplication &&
     hasDiscord &&
     !isClosedForSubmissions;
   const configSections = buildCreatorCampaignConfigSections(
@@ -385,15 +372,12 @@ export default async function CampaignDetailPage({
         campaignId={campaignId}
         campaignName={campaign.name}
         canApply={canApply}
-        hasApplication={applicationCanSubmit}
-        applicationId={applicationCanSubmit ? existingApplication?.id : undefined}
-        requiresBioGate={campaign.requiresApproval}
-        bioRequirement={campaign.bioRequirement}
-        bioKeywords={campaign.bioKeywords}
-        bioGateAccounts={bioGateAccounts}
-        verifiedBioGateAccountKeys={(existingApplication?.connections ?? []).map(
-          (connection) => `${connection.connectionType}:${connection.connectionId}`,
-        )}
+        hasApplication={!!existingApplication}
+        applicationId={existingApplication?.id}
+        requiresBioGate={false}
+        bioKeywords={[]}
+        bioGateAccounts={[]}
+        verifiedBioGateAccountKeys={[]}
         hasRequiredPlatform={eligibility.eligible}
         missingPlatformLabels={eligibility.missingPlatformLabels}
         hasDiscord={hasDiscord}
@@ -482,7 +466,7 @@ export default async function CampaignDetailPage({
               title: t("noClipsTitle"),
               description: t("noClipsDescription"),
               primaryCta:
-                applicationCanSubmit && existingApplication?.id && !isClosedForSubmissions
+                existingApplication?.id && !isClosedForSubmissions
                   ? {
                       label: sharedT("actions.submitClip"),
                       href: `/creator/applications/${existingApplication.id}/submit`,

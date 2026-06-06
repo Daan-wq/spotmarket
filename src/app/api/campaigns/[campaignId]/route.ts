@@ -199,15 +199,6 @@ export async function PATCH(
     );
   }
 
-  const nextRequiresApproval = rest.requiresApproval ?? authorized.campaign.requiresApproval;
-  const nextBioKeywords = rest.bioKeywords ?? authorized.campaign.bioKeywords;
-  if (nextRequiresApproval && nextBioKeywords.length === 0) {
-    return NextResponse.json(
-      { error: "Bio keywords are required when approval is enabled" },
-      { status: 400 },
-    );
-  }
-
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const data: Record<string, any> = { ...rest };
   if (deadline) data.deadline = new Date(deadline);

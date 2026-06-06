@@ -61,8 +61,11 @@ export function normalizeBioKeywords(keywords: readonly string[] | null | undefi
   return normalized;
 }
 
-export function campaignRequiresBioGate(campaign: Pick<Campaign, "requiresApproval">): boolean {
-  return campaign.requiresApproval;
+export function campaignRequiresBioGate(
+  campaign: Pick<Campaign, "requiresApproval">,
+): boolean {
+  void campaign;
+  return false;
 }
 
 export function campaignBioGateIsConfigured(campaign: Pick<Campaign, "bioKeywords">): boolean {

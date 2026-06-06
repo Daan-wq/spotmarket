@@ -173,7 +173,6 @@ export function CampaignCreateForm() {
   const [minEngagementRate, setMinEngagementRate] = useState("");
   const [bioRequirement, setBioRequirement] = useState("");
   const [linkInBioRequired, setLinkInBioRequired] = useState("");
-  const [bioKeywordsText, setBioKeywordsText] = useState("");
   const [deadline, setDeadline] = useState("");
   const [startsAt, setStartsAt] = useState("");
   const [maxSlots, setMaxSlots] = useState("");
@@ -232,11 +231,6 @@ export function CampaignCreateForm() {
     if (!businessPerK || businessPerK <= 0 || !goalViews) { setError("Business CPM moet hoger zijn dan 0"); return; }
     if (!deadline) { setError("Deadline is verplicht"); return; }
     if (creatorPerK !== null && creatorPerK < 0) { setError("Marge is te hoog - creatortarief zou negatief worden"); return; }
-    const bioKeywords = parseLines(bioKeywordsText);
-    if (bioKeywords.length === 0) {
-      setError("Bio keywords zijn verplicht wanneer automatische bio-approval aan staat");
-      return;
-    }
     if (minimumPaidViewsRaw.trim() && minimumPaidViews === null) { setError("Minimum betaalde views moet een heel getal zijn"); return; }
     if (maximumPaidViewsRaw.trim() && maximumPaidViews === null) { setError("Maximum betaalde views moet een heel getal zijn of leeg blijven"); return; }
     if (maximumPaidViews !== null && minimumPaidViews !== null && maximumPaidViews < minimumPaidViews) {
@@ -288,7 +282,6 @@ export function CampaignCreateForm() {
         minEngagementRate: numberOrUndefined(minEngagementRate),
         bioRequirement: bioRequirement || undefined,
         linkInBioRequired: linkInBioRequired || undefined,
-        bioKeywords,
         totalBudget: budget,
         goalViews: goalViews ?? undefined,
         minimumPaidViews: minimumPaidViews ?? 0,
@@ -859,15 +852,6 @@ export function CampaignCreateForm() {
               style={inputStyle}
               value={linkInBioRequired}
               onChange={(e) => setLinkInBioRequired(e.target.value)}
-            />
-          </div>
-          <div style={{ gridColumn: "1 / -1" }}>
-            <label style={labelStyle}>Bio keywords voor automatische check</label>
-            <textarea
-              style={{ ...inputStyle, minHeight: "96px", resize: "vertical" }}
-              value={bioKeywordsText}
-              onChange={(e) => setBioKeywordsText(e.target.value)}
-              placeholder="Eén verplicht keyword of URL per regel"
             />
           </div>
         </div>

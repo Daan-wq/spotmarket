@@ -154,9 +154,7 @@ describe("POST /api/campaigns/[campaignId]/applications", () => {
         fbConnections: [],
       }),
     );
-    routeMocks.campaignRequiresBioGate.mockImplementation((campaign) =>
-      Boolean(campaign.requiresApproval),
-    );
+    routeMocks.campaignRequiresBioGate.mockReturnValue(false);
     routeMocks.campaignBioGateIsConfigured.mockImplementation(
       (campaign) => Array.isArray(campaign.bioKeywords) && campaign.bioKeywords.length > 0,
     );
@@ -185,6 +183,7 @@ describe("POST /api/campaigns/[campaignId]/applications", () => {
         data: expect.objectContaining({
           campaignId: "campaign-1",
           creatorProfileId: "creator-profile-1",
+          status: "pending",
         }),
       }),
     );
@@ -400,7 +399,7 @@ describe("POST /api/campaigns/[campaignId]/applications", () => {
     expect(routeMocks.applicationCreate).not.toHaveBeenCalled();
   });
 
-  it("activates a bio-gated application after the selected account passes verification", async () => {
+  it("does not require bio verification when campaign approval is enabled", async () => {
     routeMocks.campaignFindUnique.mockResolvedValueOnce({
       id: "campaign-1",
       createdByUserId: "admin-user-1",
@@ -410,30 +409,10 @@ describe("POST /api/campaigns/[campaignId]/applications", () => {
       requiresApproval: true,
       bioKeywords: ["clipprofit"],
     });
-    routeMocks.verifySelectedCampaignAccounts.mockResolvedValueOnce([
-      {
-        connectionType: "TT",
-        connectionId: "tt-connection-1",
-        platform: "tt",
-        label: "TikTok creator",
-        handle: "@creator",
-        audienceCount: 1200,
-        isVerified: true,
-        status: "VERIFIED",
-        missingKeywords: [],
-        failureReason: null,
-      },
-    ]);
 
     const response = await POST(
       new Request("https://app.test/api/campaigns/campaign-1/applications", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          selectedAccounts: [
-            { connectionType: "TT", connectionId: "tt-connection-1" },
-          ],
-        }),
       }) as never,
       params,
     );
@@ -443,33 +422,19 @@ describe("POST /api/campaigns/[campaignId]/applications", () => {
       id: "application-1",
       application: {
         id: "application-1",
-        status: "active",
+        status: "pending",
       },
-      verifiedAccounts: [
-        expect.objectContaining({
-          connectionType: "TT",
-          connectionId: "tt-connection-1",
-          status: "VERIFIED",
-        }),
-      ],
-      skippedAccountIds: [],
     });
-    expect(routeMocks.applicationConnectionUpsert).toHaveBeenCalledWith(
+    expect(routeMocks.applicationCreate).toHaveBeenCalledWith(
       expect.objectContaining({
-        create: expect.objectContaining({
-          applicationId: "application-1",
-          connectionType: "TT",
-          connectionId: "tt-connection-1",
-          status: "VERIFIED",
+        data: expect.objectContaining({
+          status: "pending",
         }),
       }),
     );
-    expect(routeMocks.applicationUpdate).toHaveBeenCalledWith(
-      expect.objectContaining({
-        where: { id: "application-1" },
-        data: expect.objectContaining({ status: "active" }),
-      }),
-    );
+    expect(routeMocks.verifySelectedCampaignAccounts).not.toHaveBeenCalled();
+    expect(routeMocks.applicationConnectionUpsert).not.toHaveBeenCalled();
+    expect(routeMocks.applicationUpdate).not.toHaveBeenCalled();
   });
 
   it("removes the Discord role when a creator leaves before submitting clips", async () => {

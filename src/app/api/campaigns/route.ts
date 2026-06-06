@@ -59,13 +59,6 @@ const createCampaignSchema = z.object({
       message: "Maximum paid views must be blank or greater than or equal to minimum paid views",
     });
   }
-  if (data.requiresApproval && data.bioKeywords.length === 0) {
-    ctx.addIssue({
-      code: "custom",
-      path: ["bioKeywords"],
-      message: "Bio keywords are required when approval is enabled",
-    });
-  }
 });
 
 export async function GET(req: Request) {

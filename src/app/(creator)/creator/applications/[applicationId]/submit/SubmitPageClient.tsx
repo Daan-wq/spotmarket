@@ -382,7 +382,7 @@ export default function SubmitPageClient({
           next.delete(k);
           return next;
         });
-        setSuccess(t("submittedBackgroundCheck"));
+        setSuccess("Clip submitted.");
       } else {
         const data = await res.json().catch(() => ({}));
         setError(data.error || "Failed to submit");
