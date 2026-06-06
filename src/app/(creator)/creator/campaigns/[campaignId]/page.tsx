@@ -116,30 +116,39 @@ export default async function CampaignDetailPage({
     where: { campaignId, creatorProfileId: profile.id },
   });
 
-  const mySubmissions = await prisma.campaignSubmission.findMany({
-    where: { campaignId, creatorId: user.id },
-    orderBy: { createdAt: "desc" },
-    select: {
-      id: true,
-      postUrl: true,
-      thumbnailUrl: true,
-      mediaType: true,
-      status: true,
-      earnedAmount: true,
-      claimedViews: true,
-      viewCount: true,
-      baselineViews: true,
-      createdAt: true,
-      campaign: {
-        select: {
-          name: true,
-          creatorCpv: true,
-          minimumPaidViews: true,
-          maximumPaidViews: true,
+  const [mySubmissions, campaignBonus] = await Promise.all([
+    prisma.campaignSubmission.findMany({
+      where: { campaignId, creatorId: user.id },
+      orderBy: { createdAt: "desc" },
+      select: {
+        id: true,
+        postUrl: true,
+        thumbnailUrl: true,
+        mediaType: true,
+        status: true,
+        earnedAmount: true,
+        claimedViews: true,
+        viewCount: true,
+        baselineViews: true,
+        createdAt: true,
+        campaign: {
+          select: {
+            name: true,
+            creatorCpv: true,
+            minimumPaidViews: true,
+            maximumPaidViews: true,
+          },
         },
       },
-    },
-  });
+    }),
+    prisma.creatorCampaignBonus.aggregate({
+      where: {
+        creatorProfileId: profile.id,
+        campaignId,
+      },
+      _sum: { amount: true },
+    }),
+  ]);
 
   const topEarnerSubmissions = await prisma.campaignSubmission.findMany({
     where: { campaignId, status: "APPROVED" },
@@ -307,7 +316,9 @@ export default async function CampaignDetailPage({
     ALL: videos.length,
   };
   const myViews = videos.reduce((sum, video) => sum + video.views, 0);
-  const recordedEarned = videos.reduce((sum, video) => sum + video.earned, 0);
+  const recordedEarned =
+    videos.reduce((sum, video) => sum + video.earned, 0) +
+    Number(campaignBonus._sum.amount ?? 0);
   const headerStore = await headers();
   const campaignReferralUrl =
     campaign.slug && user.referralCode

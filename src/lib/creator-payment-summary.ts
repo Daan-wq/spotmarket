@@ -39,6 +39,12 @@ export interface CreatorPaymentAdjustment {
   amount: NumericLike;
 }
 
+export interface CreatorCampaignBonus {
+  campaignId: string;
+  campaignName: string;
+  amount: NumericLike;
+}
+
 export interface CreatorCampaignEarningsRow {
   campaignId: string;
   campaignName: string;
@@ -87,14 +93,20 @@ export function buildCreatorPaymentSummary({
   submissions,
   payouts,
   adjustments = [],
+  campaignBonuses = [],
 }: {
   submissions: ReadonlyArray<CreatorPaymentSubmission>;
   payouts: ReadonlyArray<CreatorPaymentPayout>;
   adjustments?: ReadonlyArray<CreatorPaymentAdjustment>;
+  campaignBonuses?: ReadonlyArray<CreatorCampaignBonus>;
 }): CreatorPaymentSummary {
-  const totalEarned = roundMoney(
+  const submissionEarnings = roundMoney(
     submissions.reduce((sum, submission) => sum + toNumber(submission.earnedAmount), 0),
   );
+  const campaignBonusEarnings = roundMoney(
+    campaignBonuses.reduce((sum, bonus) => sum + toNumber(bonus.amount), 0),
+  );
+  const totalEarned = roundMoney(submissionEarnings + campaignBonusEarnings);
   const totalAdjustments = roundMoney(
     adjustments.reduce((sum, adjustment) => sum + toNumber(adjustment.amount), 0),
   );
@@ -127,6 +139,19 @@ export function buildCreatorPaymentSummary({
     current.totalEarned = roundMoney(current.totalEarned + toNumber(submission.earnedAmount));
     current.count += 1;
     byCampaign.set(submission.campaignId, current);
+  }
+
+  for (const bonus of campaignBonuses) {
+    const current = byCampaign.get(bonus.campaignId) ?? {
+      campaignId: bonus.campaignId,
+      campaignName: bonus.campaignName,
+      totalViews: 0,
+      totalEarned: 0,
+      count: 0,
+    };
+
+    current.totalEarned = roundMoney(current.totalEarned + toNumber(bonus.amount));
+    byCampaign.set(bonus.campaignId, current);
   }
 
   return {
@@ -174,7 +199,7 @@ export async function getCreatorPaymentSummary(
   creatorProfileId: string,
 ): Promise<CreatorPaymentSummary> {
   const { prisma } = await import("@/lib/prisma");
-  const [submissions, payouts, adjustments] = await Promise.all([
+  const [submissions, payouts, adjustments, campaignBonuses] = await Promise.all([
     prisma.campaignSubmission.findMany({
       where: { creatorId: userId, status: "APPROVED" },
       select: {
@@ -217,6 +242,14 @@ export async function getCreatorPaymentSummary(
       where: { creatorProfileId },
       select: { amount: true },
     }),
+    prisma.creatorCampaignBonus.findMany({
+      where: { creatorProfileId },
+      select: {
+        campaignId: true,
+        amount: true,
+        campaign: { select: { name: true } },
+      },
+    }),
   ]);
 
   return buildCreatorPaymentSummary({
@@ -237,5 +270,10 @@ export async function getCreatorPaymentSummary(
     })),
     payouts,
     adjustments,
+    campaignBonuses: campaignBonuses.map((bonus) => ({
+      campaignId: bonus.campaignId,
+      campaignName: bonus.campaign.name,
+      amount: bonus.amount,
+    })),
   });
 }

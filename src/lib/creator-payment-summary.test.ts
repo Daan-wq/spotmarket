@@ -34,6 +34,17 @@ function adjustment(
   };
 }
 
+function campaignBonus(
+  overrides: Partial<NonNullable<Parameters<typeof buildCreatorPaymentSummary>[0]["campaignBonuses"]>[number]>,
+) {
+  return {
+    campaignId: "campaign_1",
+    campaignName: "ClipProfit",
+    amount: 0,
+    ...overrides,
+  };
+}
+
 describe("buildCreatorPaymentSummary", () => {
   it("uses approved stored earnings as creator-facing financial truth", () => {
     const summary = buildCreatorPaymentSummary({
@@ -123,6 +134,47 @@ describe("buildCreatorPaymentSummary", () => {
     expect(summary.totalPaid).toBe(160.81);
     expect(summary.availableBalance).toBe(0);
     expect(summary.earningsByCampaign[0]?.totalEarned).toBe(150.13);
+  });
+
+  it("adds a courtesy bonus to total and campaign earnings", () => {
+    const summary = buildCreatorPaymentSummary({
+      submissions: [submission({ earnedAmount: 152.11 })],
+      payouts: [payout({ amount: 160.81, status: "confirmed" })],
+      campaignBonuses: [campaignBonus({ amount: 10.66 })],
+    });
+
+    expect(summary.totalEarned).toBe(162.77);
+    expect(summary.availableBalance).toBe(1.96);
+    expect(summary.earningsByCampaign[0]).toMatchObject({
+      campaignId: "campaign_1",
+      campaignName: "ClipProfit",
+      totalEarned: 162.77,
+      count: 1,
+    });
+  });
+
+  it("creates a campaign earnings row for a bonus without submissions", () => {
+    const summary = buildCreatorPaymentSummary({
+      submissions: [],
+      payouts: [],
+      campaignBonuses: [
+        campaignBonus({
+          campaignId: "campaign_bonus",
+          campaignName: "Courtesy Campaign",
+          amount: 8.7,
+        }),
+      ],
+    });
+
+    expect(summary.earningsByCampaign).toEqual([
+      {
+        campaignId: "campaign_bonus",
+        campaignName: "Courtesy Campaign",
+        totalViews: 0,
+        totalEarned: 8.7,
+        count: 0,
+      },
+    ]);
   });
 
   it("prefers eligible views, then verified views, then claimed views for campaign rows", () => {
