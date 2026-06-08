@@ -246,7 +246,11 @@ export async function POST(
       return { ...sub, earnedAmount: finalEarnedAmount };
     }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
 
-    return NextResponse.json({ submission: updated });
+    return NextResponse.json({
+      success: true,
+      submissionId: updated.id,
+      status: updated.status,
+    });
   } catch (err: unknown) {
     console.error("[submissions review]", err);
     if (err instanceof z.ZodError) {

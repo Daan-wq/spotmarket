@@ -313,6 +313,34 @@ describe("POST /api/submissions/[id]/review", () => {
     );
   });
 
+  it("returns a minimal JSON response when the updated campaign contains BigInt goal views", async () => {
+    routeMocks.submissionFindUnique.mockResolvedValue(submission());
+    routeMocks.tx.campaignSubmission.update.mockResolvedValue({
+      id: "submission-1",
+      status: "APPROVED",
+      earnedAmount: 0,
+      campaign: {
+        id: "campaign-1",
+        goalViews: BigInt(5_000_000),
+      },
+      creator: {
+        id: "creator-user-1",
+      },
+    });
+
+    const response = await POST(
+      reviewRequest({ status: "APPROVED" }),
+      params,
+    );
+
+    expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toEqual({
+      success: true,
+      submissionId: "submission-1",
+      status: "APPROVED",
+    });
+  });
+
   it("approves without manual views and stores earnings from tracked metrics", async () => {
     routeMocks.submissionFindUnique.mockResolvedValue(
       submission({
