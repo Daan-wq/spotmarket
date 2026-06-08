@@ -13,13 +13,13 @@
     "admin": "Admin"
   },
   "connectionHealth": {
-    "title": "Token expired. Please connect your page again.",
+    "title": "Connection expired",
     "creatorDescription": "One or more connected pages need attention.",
     "adminDescription": "Connected pages need attention across creator accounts.",
-    "analyticsStopped": "Analytics tracking has stopped for this page.",
+    "analyticsStopped": "New analytics will appear after you reconnect.",
     "reconnect": "Reconnect",
-    "viewConnections": "Connections",
-    "unlinkHelp": "Can't or don't want to reconnect this page? Unlink it from Connections.",
+    "viewConnections": "Unlink",
+    "unlinkHelp": "No longer using it?",
     "doNotRemind": "Do not remind me again",
     "viewCreator": "View creator",
     "technicalDetails": "Technical details",

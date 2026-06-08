@@ -7,14 +7,13 @@ import {
 import type { ConnectionHealthAlertItem } from "@/lib/connection-health";
 
 const copy: ConnectionHealthAlertCopy = {
-  title: "Token expired. Please connect your page again.",
+  title: "Connection expired",
   creatorDescription: "Analytics tracking has stopped.",
   adminDescription: "Connected accounts need attention.",
-  analyticsStopped: "Analytics tracking has stopped.",
+  analyticsStopped: "New analytics will appear after you reconnect.",
   reconnect: "Reconnect",
-  viewConnections: "Open Connections",
-  unlinkHelp:
-    "Can't or don't want to reconnect this page? Unlink it from Connections.",
+  viewConnections: "Unlink",
+  unlinkHelp: "No longer using it?",
   doNotRemind: "Do not remind me again",
   viewCreator: "View creator",
   technicalDetails: "Technical details",
@@ -36,8 +35,16 @@ describe("ConnectionHealthAlertPanel", () => {
     expect(html).toContain("@page");
     expect(html).toContain("@other");
     expect(html).toContain("href=\"/api/auth/instagram");
-    expect(html.match(/Do not remind me again/g)).toHaveLength(2);
-    expect(html).toContain("Unlink it from Connections");
+    expect(html.match(/role="switch"/g)).toHaveLength(2);
+    expect(html).toContain(
+      "aria-label=\"Do not remind me again: @page\"",
+    );
+    expect(html).toContain(
+      "aria-label=\"Do not remind me again: @other\"",
+    );
+    expect(html).toContain("No longer using it?");
+    expect(html).toContain("Instagram");
+    expect(html).not.toContain(">Token expired");
   });
 
   it("groups admin incidents by creator and links overflow to Signals", () => {

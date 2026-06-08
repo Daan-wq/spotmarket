@@ -1,10 +1,11 @@
 "use client";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { AlertTriangle, ExternalLink } from "lucide-react";
+import { AlertTriangle, ArrowUpRight, ExternalLink } from "lucide-react";
 import Link from "next/link";
 import { useTranslations } from "next-intl";
 import type { ConnectionHealthAlertItem } from "@/lib/connection-health";
+import { PlatformLogo } from "@/platform-icons";
 
 const QUERY_KEY = ["connection-health"] as const;
 const ADMIN_VISIBLE_LIMIT = 8;
@@ -111,7 +112,11 @@ export function ConnectionHealthAlerts({
   };
 
   return (
-    <div className="mb-5 w-full lg:fixed lg:right-6 lg:top-6 lg:z-[70] lg:mb-0 lg:w-[430px]">
+    <div
+      className={`mb-5 w-full lg:fixed lg:right-6 lg:top-6 lg:z-[70] lg:mb-0 ${
+        viewerRole === "creator" ? "lg:w-[390px]" : "lg:w-[430px]"
+      }`}
+    >
       <ConnectionHealthAlertPanel
         incidents={visible}
         viewerRole={viewerRole}
@@ -139,10 +144,19 @@ export function ConnectionHealthAlertPanel({
     viewerRole === "admin" ? ADMIN_VISIBLE_LIMIT : CREATOR_VISIBLE_LIMIT;
   const displayed = incidents.slice(0, limit);
   const overflow = Math.max(0, incidents.length - displayed.length);
+
+  if (viewerRole === "creator") {
+    return (
+      <CreatorConnectionHealthPanel
+        incidents={displayed}
+        copy={copy}
+        onDismiss={onDismiss}
+      />
+    );
+  }
+
   const groups =
-    viewerRole === "admin"
-      ? groupByCreator(displayed)
-      : [{ creatorProfileId: "", creatorName: "", incidents: displayed }];
+    groupByCreator(displayed);
 
   return (
     <section
@@ -163,9 +177,7 @@ export function ConnectionHealthAlertPanel({
             {copy.title}
           </h2>
           <p className="mt-1 text-xs leading-5 text-amber-900">
-            {viewerRole === "creator"
-              ? copy.creatorDescription
-              : copy.adminDescription}
+            {copy.adminDescription}
           </p>
         </div>
       </header>
@@ -176,18 +188,15 @@ export function ConnectionHealthAlertPanel({
             key={group.creatorProfileId || "creator"}
             className="border-b border-amber-200 last:border-b-0"
           >
-            {viewerRole === "admin" ? (
-              <div className="bg-amber-100/70 px-4 py-2">
-                <p className="text-xs font-bold text-amber-950">
-                  {group.creatorName}
-                </p>
-              </div>
-            ) : null}
+            <div className="bg-amber-100/70 px-4 py-2">
+              <p className="text-xs font-bold text-amber-950">
+                {group.creatorName}
+              </p>
+            </div>
             {group.incidents.map((incident) => (
-              <IncidentRow
+              <AdminIncidentRow
                 key={incident.id}
                 incident={incident}
-                viewerRole={viewerRole}
                 copy={copy}
                 onDismiss={onDismiss}
               />
@@ -209,62 +218,155 @@ export function ConnectionHealthAlertPanel({
   );
 }
 
-function IncidentRow({
+function CreatorConnectionHealthPanel({
+  incidents,
+  copy,
+  onDismiss,
+}: {
+  incidents: ConnectionHealthAlertItem[];
+  copy: ConnectionHealthAlertCopy;
+  onDismiss: (incidentId: string, dismissed: boolean) => void;
+}) {
+  return (
+    <section
+      role="region"
+      aria-labelledby="connection-health-alert-title"
+      aria-live="polite"
+      className="overflow-hidden rounded-2xl border border-[#e0ded8] bg-white shadow-[0_12px_34px_rgba(31,29,22,0.07)]"
+    >
+      <header className="flex items-center gap-3 px-4 pb-3 pt-4">
+        <span
+          className="h-2.5 w-2.5 shrink-0 rounded-full bg-[#d89736] ring-4 ring-[#fbf0df]"
+          aria-hidden
+        />
+        <div className="min-w-0">
+          <h2
+            id="connection-health-alert-title"
+            className="text-sm font-semibold tracking-[-0.015em] text-[#1f1f1a]"
+          >
+            {copy.title}
+          </h2>
+          {incidents.length > 1 ? (
+            <p className="mt-0.5 text-[11px] leading-4 text-[#77736b]">
+              {copy.creatorDescription}
+            </p>
+          ) : null}
+        </div>
+      </header>
+
+      <div>
+        {incidents.map((incident) => (
+          <CreatorIncidentRow
+            key={incident.id}
+            incident={incident}
+            copy={copy}
+            onDismiss={onDismiss}
+          />
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function CreatorIncidentRow({
   incident,
-  viewerRole,
   copy,
   onDismiss,
 }: {
   incident: ConnectionHealthAlertItem;
-  viewerRole: "creator" | "admin";
+  copy: ConnectionHealthAlertCopy;
+  onDismiss: (incidentId: string, dismissed: boolean) => void;
+}) {
+  return (
+    <article className="border-t border-[#ecebe6] px-4 py-3.5">
+      <div className="flex items-center justify-between gap-3">
+        <div className="flex min-w-0 items-center gap-2.5">
+          <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-[#f1f0eb]">
+            <PlatformLogo
+              platform={incident.connectionType}
+              size={17}
+              decorative
+            />
+          </span>
+          <p className="truncate text-xs font-semibold tracking-[-0.015em] text-[#24241f]">
+            {incident.connectionLabel}
+          </p>
+        </div>
+        <Link
+          href={incident.reconnectHref}
+          className="shrink-0 rounded-full bg-[#25251f] px-3 py-2 text-[11px] font-semibold text-white transition-colors hover:bg-[#3a3931] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#d59a44] focus-visible:ring-offset-2"
+        >
+          {copy.reconnect}
+          <ArrowUpRight
+            size={13}
+            strokeWidth={2}
+            className="ml-1 inline-block"
+            aria-hidden
+          />
+        </Link>
+      </div>
+
+      <p className="mt-3 text-xs leading-5 text-[#696961]">
+        {copy.analyticsStopped}
+      </p>
+
+      <div className="mt-3 flex flex-wrap items-center justify-between gap-x-3 gap-y-2">
+        <p className="text-[10px] leading-4 text-[#89857d]">
+          {copy.unlinkHelp}{" "}
+          <Link
+            href={incident.connectionHref}
+            className="font-semibold text-[#57544e] underline decoration-current/40 underline-offset-2"
+          >
+            {copy.viewConnections}
+          </Link>
+        </p>
+
+        <ReminderSwitch
+          incident={incident}
+          label={copy.doNotRemind}
+          onDismiss={onDismiss}
+        />
+      </div>
+    </article>
+  );
+}
+
+function AdminIncidentRow({
+  incident,
+  copy,
+  onDismiss,
+}: {
+  incident: ConnectionHealthAlertItem;
   copy: ConnectionHealthAlertCopy;
   onDismiss: (incidentId: string, dismissed: boolean) => void;
 }) {
   return (
     <article className="px-4 py-3.5">
       <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0">
+        <div className="flex min-w-0 items-center gap-2.5">
+          <PlatformLogo
+            platform={incident.connectionType}
+            size={20}
+            decorative
+            className="shrink-0"
+          />
           <p className="truncate text-sm font-bold text-amber-950">
             {incident.connectionLabel}
           </p>
-          <p className="mt-0.5 text-[11px] font-semibold uppercase tracking-[0.12em] text-amber-700">
-            {platformLabel(incident.connectionType)}
-          </p>
         </div>
-        <div className="flex shrink-0 items-center gap-2">
-          {viewerRole === "creator" ? (
-            <Link
-              href={incident.reconnectHref}
-              className="rounded-full bg-amber-950 px-3 py-1.5 text-xs font-bold text-amber-50 hover:bg-amber-900"
-            >
-              {copy.reconnect}
-            </Link>
-          ) : (
-            <Link
-              href={incident.creatorHref}
-              className="rounded-full bg-amber-950 px-3 py-1.5 text-xs font-bold text-amber-50 hover:bg-amber-900"
-            >
-              {copy.viewCreator}
-            </Link>
-          )}
-        </div>
+        <Link
+          href={incident.creatorHref}
+          className="shrink-0 rounded-full bg-amber-950 px-3 py-1.5 text-xs font-bold text-amber-50 hover:bg-amber-900"
+        >
+          {copy.viewCreator}
+        </Link>
       </div>
 
       <p className="mt-2 text-xs leading-5 text-amber-900">
         {copy.analyticsStopped}
       </p>
 
-      {viewerRole === "creator" ? (
-        <p className="mt-1.5 text-xs leading-5 text-amber-800">
-          {copy.unlinkHelp}{" "}
-          <Link
-            href={incident.connectionHref}
-            className="font-bold underline underline-offset-2"
-          >
-            {copy.viewConnections}
-          </Link>
-        </p>
-      ) : incident.providerDetails ? (
+      {incident.providerDetails ? (
         <details className="mt-2 text-xs text-amber-800">
           <summary className="cursor-pointer font-bold">
             {copy.technicalDetails}
@@ -285,6 +387,41 @@ function IncidentRow({
         {copy.doNotRemind}
       </label>
     </article>
+  );
+}
+
+function ReminderSwitch({
+  incident,
+  label,
+  onDismiss,
+}: {
+  incident: ConnectionHealthAlertItem;
+  label: string;
+  onDismiss: (incidentId: string, dismissed: boolean) => void;
+}) {
+  return (
+    <button
+      type="button"
+      role="switch"
+      aria-checked={incident.dismissed}
+      aria-label={`${label}: ${incident.connectionLabel}`}
+      onClick={() => onDismiss(incident.id, !incident.dismissed)}
+      className="group flex shrink-0 items-center gap-2 rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#d59a44] focus-visible:ring-offset-2"
+    >
+      <span className="text-[9px] font-medium text-[#716e67]">{label}</span>
+      <span
+        className={`relative h-5 w-8 rounded-full transition-colors duration-200 ${
+          incident.dismissed ? "bg-[#b57a29]" : "bg-[#d6d4cd]"
+        }`}
+        aria-hidden
+      >
+        <span
+          className={`absolute left-0.5 top-0.5 h-4 w-4 rounded-full bg-white shadow-sm transition-transform duration-200 ${
+            incident.dismissed ? "translate-x-3" : "translate-x-0"
+          }`}
+        />
+      </span>
+    </button>
   );
 }
 
@@ -310,15 +447,6 @@ function groupByCreator(incidents: ConnectionHealthAlertItem[]) {
     }
   }
   return [...groups.values()];
-}
-
-function platformLabel(type: ConnectionHealthAlertItem["connectionType"]) {
-  return {
-    IG: "Instagram",
-    TT: "TikTok",
-    YT: "YouTube",
-    FB: "Facebook",
-  }[type];
 }
 
 function formatProviderDetails(

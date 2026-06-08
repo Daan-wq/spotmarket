@@ -13,13 +13,13 @@
     "admin": "Admin"
   },
   "connectionHealth": {
-    "title": "Token verlopen. Koppel je pagina opnieuw.",
+    "title": "Connectie verlopen",
     "creatorDescription": "Een of meer gekoppelde pagina's vragen aandacht.",
     "adminDescription": "Gekoppelde pagina's vragen aandacht bij creatoraccounts.",
-    "analyticsStopped": "Analytics-tracking is gestopt voor deze pagina.",
+    "analyticsStopped": "Nieuwe analytics komen pas binnen nadat je opnieuw koppelt.",
     "reconnect": "Opnieuw koppelen",
-    "viewConnections": "Accounts",
-    "unlinkHelp": "Kun of wil je deze pagina niet opnieuw koppelen? Ontkoppel hem bij Accounts.",
+    "viewConnections": "Ontkoppel",
+    "unlinkHelp": "Niet meer gebruiken?",
     "doNotRemind": "Niet meer herinneren",
     "viewCreator": "Creator bekijken",
     "technicalDetails": "Technische details",
