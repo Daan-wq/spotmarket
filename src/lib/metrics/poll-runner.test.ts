@@ -20,6 +20,7 @@ const fetchTikTokMetricsByVideoIdsMock = vi.fn();
 const scoreVelocityMock = vi.fn();
 const syncAntiBotSignalMock = vi.fn();
 const reconcileReferralPayoutForSubmissionMock = vi.fn();
+const recordAccountRefreshFailureMock = vi.fn();
 const availableCoreMetrics = {
   views: true,
   likes: true,
@@ -94,6 +95,11 @@ vi.mock("@/lib/referral-reconciliation", () => ({
     reconcileReferralPayoutForSubmissionMock(...args),
 }));
 
+vi.mock("@/lib/social-account-refresh", () => ({
+  recordAccountRefreshFailure: (...args: unknown[]) =>
+    recordAccountRefreshFailureMock(...args),
+}));
+
 import { emitFlag, pollSubmissions } from "./poll-runner";
 
 beforeEach(() => {
@@ -117,6 +123,7 @@ beforeEach(() => {
   scoreVelocityMock.mockReset();
   syncAntiBotSignalMock.mockReset();
   reconcileReferralPayoutForSubmissionMock.mockReset();
+  recordAccountRefreshFailureMock.mockReset().mockResolvedValue(undefined);
 
   findFirstSignalMock.mockResolvedValue(null);
   createSignalMock.mockResolvedValue({
@@ -894,6 +901,60 @@ describe("pollSubmissions scheduling", () => {
     expect(result.processed).toBe(1);
     expect(routeMetricMock).toHaveBeenCalledWith(
       expect.objectContaining({ id: "sub_rejected", status: "REJECTED" }),
+    );
+  });
+
+  it("records connection health when metric polling returns an authentication failure", async () => {
+    findManySubmissionMock.mockResolvedValueOnce([dueSubmission()]);
+    routeMetricMock.mockResolvedValueOnce({
+      ok: false,
+      source: "OAUTH_FAILED",
+      reason: "TOKEN_BROKEN",
+      message: "OAuthException: session invalidated",
+      connection: { type: "IG", id: "ig-conn-1" },
+      details: {
+        providerCode: 190,
+        providerSubcode: 460,
+        providerType: "OAuthException",
+      },
+    });
+
+    await pollSubmissions({ tier: "hot", limit: 1 });
+
+    expect(recordAccountRefreshFailureMock).toHaveBeenCalledWith({
+      connectionType: "IG",
+      connectionId: "ig-conn-1",
+      error: expect.objectContaining({
+        message: "OAuthException: session invalidated",
+        details: expect.objectContaining({
+          providerCode: 190,
+          providerSubcode: 460,
+          providerType: "OAuthException",
+        }),
+      }),
+      code: "TOKEN_BROKEN",
+      attemptedAt: expect.any(Date),
+    });
+  });
+
+  it("records connection health when a connected account is missing its token", async () => {
+    findManySubmissionMock.mockResolvedValueOnce([dueSubmission()]);
+    routeMetricMock.mockResolvedValueOnce({
+      ok: false,
+      source: "OAUTH_FAILED",
+      reason: "NO_TOKEN",
+      message: "IG connection missing access token",
+      connection: { type: "IG", id: "ig-conn-1" },
+    });
+
+    await pollSubmissions({ tier: "hot", limit: 1 });
+
+    expect(recordAccountRefreshFailureMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        connectionType: "IG",
+        connectionId: "ig-conn-1",
+        code: "NO_TOKEN",
+      }),
     );
   });
 

@@ -3,6 +3,7 @@ import crypto from "node:crypto";
 import { prisma } from "@/lib/prisma";
 import { buildAppUrl, getAppUrlFromRequest } from "@/lib/app-url";
 import { getRequiredOAuthEnv } from "@/lib/oauth-env";
+import { resolveConnectionHealthIncident } from "@/lib/connection-health";
 
 /**
  * Instagram Deauthorize Callback.
@@ -60,6 +61,7 @@ export async function POST(req: NextRequest) {
   });
 
   if (connection) {
+    await resolveConnectionHealthIncident("IG", connection.id, "UNLINKED");
     await prisma.creatorIgConnection.delete({ where: { id: connection.id } });
   }
 

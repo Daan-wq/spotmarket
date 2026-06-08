@@ -14,6 +14,7 @@ import { ScopeErrorDialog } from "@/components/auth/scope-error-dialog";
 import { DashboardShell } from "@/components/layout/dashboard-shell";
 import { FirstClipCoach } from "@/components/onboarding/first-clip-coach";
 import { PostHogIdentify } from "@/components/providers/posthog-identify";
+import { ConnectionHealthAlertLoader } from "@/components/connection-health/connection-health-alert-loader";
 
 export default async function CreatorLayout({
   children,
@@ -63,6 +64,12 @@ export default async function CreatorLayout({
         <PostHogIdentify userId={supabaseId} role="creator" />
         <Suspense fallback={null}>
           <FirstClipCoach supabaseId={supabaseId} />
+        </Suspense>
+        <Suspense fallback={null}>
+          <ConnectionHealthAlertLoader
+            supabaseId={supabaseId}
+            viewerRole="creator"
+          />
         </Suspense>
         {children}
       </DashboardShell>

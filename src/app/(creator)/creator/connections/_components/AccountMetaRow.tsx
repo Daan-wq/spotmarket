@@ -7,6 +7,11 @@ interface Props {
   refreshStatus?: string;
   lastSuccessfulRefreshAt?: string | null;
   lastRefreshErrorMessage?: string | null;
+  requiresReconnect?: boolean;
+  reconnectRequiredText?: string;
+  analyticsStoppedText?: string;
+  refreshFailedText?: string;
+  showTechnicalError?: boolean;
   removeButton?: ReactNode;
 }
 
@@ -17,6 +22,11 @@ export function AccountMetaRow({
   refreshStatus,
   lastSuccessfulRefreshAt,
   lastRefreshErrorMessage,
+  requiresReconnect = false,
+  reconnectRequiredText = "Reconnect required",
+  analyticsStoppedText = "Analytics tracking has stopped.",
+  refreshFailedText = "Refresh temporarily unavailable.",
+  showTechnicalError = false,
   removeButton,
 }: Props) {
   const syncText = lastSyncedText ?? formatRefreshStatus(refreshStatus, lastSuccessfulRefreshAt ?? null);
@@ -36,9 +46,25 @@ export function AccountMetaRow({
         <p className="mt-0.5 text-xs" style={{ color: "var(--text-muted)" }}>
           {meta} - {syncText}
         </p>
-        {refreshStatus === "FAILED" ? (
+        {requiresReconnect ? (
+          <div className="mt-1">
+            <p className="text-xs font-semibold text-amber-700">
+              {reconnectRequiredText}
+            </p>
+            <p className="mt-0.5 text-xs text-amber-700">
+              {analyticsStoppedText}
+            </p>
+            {showTechnicalError && lastRefreshErrorMessage ? (
+              <p className="mt-1 text-xs text-red-600">
+                {lastRefreshErrorMessage}
+              </p>
+            ) : null}
+          </div>
+        ) : refreshStatus === "FAILED" ? (
           <p className="mt-1 text-xs text-red-600">
-            Refresh failed{lastRefreshErrorMessage ? `: ${lastRefreshErrorMessage}` : ""}
+            {showTechnicalError && lastRefreshErrorMessage
+              ? `${refreshFailedText}: ${lastRefreshErrorMessage}`
+              : refreshFailedText}
           </p>
         ) : null}
       </div>

@@ -9,6 +9,7 @@ const tokenMocks = vi.hoisted(() => ({
   refreshTikTokToken: vi.fn(),
   refreshInstagramToken: vi.fn(),
   refreshYoutubeToken: vi.fn(),
+  resolveIncident: vi.fn(),
 }));
 
 vi.mock("@/lib/prisma", () => ({
@@ -36,6 +37,10 @@ vi.mock("@/lib/instagram", () => ({
 
 vi.mock("@/lib/youtube", () => ({
   refreshYoutubeToken: tokenMocks.refreshYoutubeToken,
+}));
+
+vi.mock("@/lib/connection-health", () => ({
+  resolveConnectionHealthIncident: tokenMocks.resolveIncident,
 }));
 
 import {
@@ -71,6 +76,7 @@ beforeEach(() => {
   tokenMocks.refreshTikTokToken.mockReset();
   tokenMocks.refreshInstagramToken.mockReset();
   tokenMocks.refreshYoutubeToken.mockReset();
+  tokenMocks.resolveIncident.mockReset().mockResolvedValue(undefined);
   tokenMocks.decrypt.mockReset().mockImplementation((ciphertext: string) => `plain:${ciphertext}`);
   tokenMocks.encrypt.mockReset().mockImplementation((value: string) => ({
     ciphertext: `enc:${value}`,
@@ -105,6 +111,11 @@ describe("TikTok token refresh", () => {
         refreshTokenExpiresAt: new Date("2027-06-04T12:00:00.000Z"),
       }),
     });
+    expect(tokenMocks.resolveIncident).toHaveBeenCalledWith(
+      "TT",
+      "tt_conn_1",
+      "REFRESH_SUCCEEDED",
+    );
   });
 
   it("keeps the existing refresh token when TikTok does not rotate it", async () => {
@@ -201,6 +212,11 @@ describe("YouTube token refresh", () => {
     expect(tokenMocks.ytUpdate).toHaveBeenCalledWith(
       expect.objectContaining({ where: { id: "yt_conn_1" } }),
     );
+    expect(tokenMocks.resolveIncident).toHaveBeenCalledWith(
+      "YT",
+      "yt_conn_1",
+      "REFRESH_SUCCEEDED",
+    );
   });
 });
 
@@ -291,6 +307,11 @@ describe("Instagram token refresh", () => {
 
     expect(tokenMocks.igUpdate).toHaveBeenCalledWith(
       expect.objectContaining({ where: { id: "ig_conn_1" } }),
+    );
+    expect(tokenMocks.resolveIncident).toHaveBeenCalledWith(
+      "IG",
+      "ig_conn_1",
+      "REFRESH_SUCCEEDED",
     );
   });
 });

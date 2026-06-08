@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import { Suspense, type ReactNode } from "react";
 import { redirect } from "next/navigation";
 import { getLocale } from "next-intl/server";
 import { getCachedAuthClaims, resolveRoleFor } from "@/lib/auth";
@@ -7,6 +7,7 @@ import { AdminSidebar } from "./_components/admin-sidebar";
 import { AdminLocaleDomTranslator } from "./_components/admin-locale-dom-translator";
 import { DashboardShell } from "@/components/layout/dashboard-shell";
 import { PostHogIdentify } from "@/components/providers/posthog-identify";
+import { ConnectionHealthAlertLoader } from "@/components/connection-health/connection-health-alert-loader";
 
 export default async function AdminLayout({ children }: { children: ReactNode }) {
   const claims = await getCachedAuthClaims();
@@ -23,6 +24,12 @@ export default async function AdminLayout({ children }: { children: ReactNode })
     <DashboardShell sidebar={<AdminSidebar initials={initials} email={email} />} mainClassName="admin-content">
       <AdminLocaleDomTranslator locale={locale} />
       <PostHogIdentify userId={claims.sub} role="admin" />
+      <Suspense fallback={null}>
+        <ConnectionHealthAlertLoader
+          supabaseId={claims.sub}
+          viewerRole="admin"
+        />
+      </Suspense>
       {children}
     </DashboardShell>
   );

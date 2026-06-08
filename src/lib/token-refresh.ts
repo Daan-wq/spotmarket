@@ -3,6 +3,7 @@ import { decrypt, encrypt } from "@/lib/crypto";
 import { refreshTikTokToken } from "@/lib/tiktok";
 import { isInstagramInvalidTokenError, refreshInstagramToken } from "@/lib/instagram";
 import { refreshYoutubeToken } from "@/lib/youtube";
+import { resolveConnectionHealthIncident } from "@/lib/connection-health";
 
 const TIKTOK_REFRESH_SKEW_MS = 30 * 60 * 1000;
 const YOUTUBE_REFRESH_SKEW_MS = 5 * 60 * 1000;
@@ -122,6 +123,7 @@ export async function forceRefreshTikTokAccessToken(
       ...refreshData,
     },
   });
+  await resolveConnectionHealthIncident("TT", conn.id, "REFRESH_SUCCEEDED");
   return fresh.accessToken;
 }
 
@@ -175,6 +177,7 @@ export async function forceRefreshYoutubeAccessToken(
       tokenExpiresAt: new Date(Date.now() + fresh.expiresIn * 1000),
     },
   });
+  await resolveConnectionHealthIncident("YT", conn.id, "REFRESH_SUCCEEDED");
   return fresh.accessToken;
 }
 
@@ -225,5 +228,6 @@ export async function forceRefreshInstagramAccessToken(
       tokenExpiresAt: new Date(Date.now() + fresh.expiresIn * 1000),
     },
   });
+  await resolveConnectionHealthIncident("IG", conn.id, "REFRESH_SUCCEEDED");
   return fresh.accessToken;
 }

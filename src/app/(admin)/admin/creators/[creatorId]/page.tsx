@@ -12,6 +12,7 @@ import { getCreatorTopStatsForScope, type CreatorStatsScope } from "@/lib/stats/
 import { formatCurrencyPrecise, formatDate, formatNumber, formatShortDate, titleCaseEnum } from "@/lib/admin/agency-format";
 import { getCreatorPayoutTotals, getCreatorPendingCount, getCreatorPlatformVerification } from "@/app/(creator)/creator/dashboard/_data";
 import { getSocialAccountSummariesForProfile, type SocialAccountsByPlatform } from "@/lib/social-account-summary";
+import { CreatorConnectionHealthWarning } from "@/components/connection-health/creator-connection-health-warning";
 
 export const dynamic = "force-dynamic";
 
@@ -43,7 +44,7 @@ export default async function CreatorProfilePage({ params, searchParams }: PageP
     creatorProfileId: profile.id,
   };
 
-  const [stats, payouts, pendingSubmissions, platformVerification, activeCampaigns, recentSubmissions, socialAccounts] =
+  const [stats, payouts, pendingSubmissions, platformVerification, activeCampaigns, recentSubmissions, socialAccounts, connectionIncidents] =
     await Promise.all([
       getCreatorTopStatsForScope(profileScope, range),
       getCreatorPayoutTotals(profile.user.id),
@@ -82,6 +83,16 @@ export default async function CreatorProfilePage({ params, searchParams }: PageP
         },
       }),
       getSocialAccountSummariesForProfile(profile.id),
+      prisma.connectionHealthIncident.findMany({
+        where: { creatorProfileId: profile.id, resolvedAt: null },
+        orderBy: { openedAt: "desc" },
+        select: {
+          id: true,
+          connectionLabel: true,
+          connectionType: true,
+          providerMessage: true,
+        },
+      }),
     ]);
 
   const allSignals = recentSubmissions.flatMap((submission) =>
@@ -111,6 +122,8 @@ export default async function CreatorProfilePage({ params, searchParams }: PageP
         description={`${profile.user.email} - lid sinds ${formatDate(profile.user.createdAt)} - ${accountStatus.value}`}
         actions={[{ label: "Alle clippers", href: "/admin/clippers" }]}
       />
+
+      <CreatorConnectionHealthWarning incidents={connectionIncidents} />
 
       <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
         <StatCard label="Views" value={formatNumber(stats.totalViews.value)} detail={range.label} />

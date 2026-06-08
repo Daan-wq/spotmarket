@@ -1,8 +1,18 @@
-import { Prisma, type ConnectionType } from "@prisma/client";
+import {
+  Prisma,
+  type ConnectionHealthResolutionReason,
+  type ConnectionType,
+} from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { recordRawApiResponse } from "@/lib/metrics/raw-storage";
+import {
+  recordConnectionHealthFailure,
+  resolveConnectionHealthIncident,
+} from "@/lib/connection-health";
 
 type DbClient = typeof prisma | Prisma.TransactionClient;
+type ResolveIncident = typeof resolveConnectionHealthIncident;
+type RecordHealthFailure = typeof recordConnectionHealthFailure;
 
 export interface AccountRefreshSuccessInput {
   connectionType: ConnectionType;
@@ -14,6 +24,7 @@ export interface AccountRefreshSuccessInput {
   isVerified?: boolean | null;
   raw?: unknown;
   capturedAt?: Date;
+  resolutionReason?: ConnectionHealthResolutionReason;
 }
 
 export interface AccountRefreshFailureInput {
@@ -27,6 +38,7 @@ export interface AccountRefreshFailureInput {
 export async function recordAccountRefreshSuccess(
   input: AccountRefreshSuccessInput,
   db: DbClient = prisma,
+  resolveIncident: ResolveIncident = resolveConnectionHealthIncident,
 ): Promise<void> {
   const capturedAt = input.capturedAt ?? new Date();
   await db.platformAccountSnapshot.create({
@@ -52,6 +64,13 @@ export async function recordAccountRefreshSuccess(
     lastRefreshErrorMessage: null,
     ...legacyCountUpdate(input, capturedAt),
   });
+  await resolveIncident(
+    input.connectionType,
+    input.connectionId,
+    input.resolutionReason ?? "REFRESH_SUCCEEDED",
+    capturedAt,
+    db,
+  );
 
   if (input.raw != null) {
     await recordRawApiResponse({
@@ -66,6 +85,7 @@ export async function recordAccountRefreshSuccess(
 export async function recordAccountRefreshFailure(
   input: AccountRefreshFailureInput,
   db: DbClient = prisma,
+  recordHealthFailure: RecordHealthFailure = recordConnectionHealthFailure,
 ): Promise<void> {
   const attemptedAt = input.attemptedAt ?? new Date();
   const failure = normalizeAccountRefreshError(input.error, input.code);
@@ -76,6 +96,16 @@ export async function recordAccountRefreshFailure(
     lastRefreshErrorCode: failure.code,
     lastRefreshErrorMessage: failure.message,
   });
+  await recordHealthFailure(
+    {
+      connectionType: input.connectionType,
+      connectionId: input.connectionId,
+      error: input.error,
+      code: input.code,
+      detectedAt: attemptedAt,
+    },
+    db,
+  );
 }
 
 export function normalizeAccountRefreshError(

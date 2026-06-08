@@ -21,6 +21,7 @@ import { calculatePaidViews } from "@/lib/paid-views";
 import { syncAntiBotSignal } from "./anti-bot-signal";
 import { reconcileReferralPayoutForSubmission } from "@/lib/referral-reconciliation";
 import { VALID_METRIC_SNAPSHOT_WHERE } from "./valid-snapshots";
+import { recordAccountRefreshFailure } from "@/lib/social-account-refresh";
 
 export type Tier = "hot" | "warm" | "cold";
 
@@ -298,7 +299,30 @@ export async function pollSubmissions(opts: RunOptions): Promise<PollResult> {
         });
 
         if (fetched.reason === "RATE_LIMITED") rateLimited++;
-        if (fetched.reason === "TOKEN_BROKEN" || fetched.reason === "TOKEN_EXPIRED") {
+        if (
+          fetched.reason === "TOKEN_BROKEN" ||
+          fetched.reason === "TOKEN_EXPIRED" ||
+          fetched.reason === "NO_TOKEN"
+        ) {
+          if (fetched.connection?.id) {
+            const authError = Object.assign(new Error(fetched.message), {
+              details: fetched.details
+                ? {
+                    providerCode: fetched.details.providerCode,
+                    providerSubcode: fetched.details.providerSubcode,
+                    providerType: fetched.details.providerType,
+                    message: fetched.message,
+                  }
+                : undefined,
+            });
+            await recordAccountRefreshFailure({
+              connectionType: fetched.connection.type,
+              connectionId: fetched.connection.id,
+              error: authError,
+              code: fetched.reason,
+              attemptedAt: failedAt,
+            });
+          }
           await emitFlag(sub.id, {
             type: "TOKEN_BROKEN",
             severity: "WARN",

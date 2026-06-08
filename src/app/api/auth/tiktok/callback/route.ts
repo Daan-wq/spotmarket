@@ -128,6 +128,7 @@ export async function GET(req: NextRequest) {
       isVerified: ttProfile.isVerified ?? null,
       raw: ttProfile,
       capturedAt: refreshedAt,
+      resolutionReason: "RECONNECTED",
     });
 
     return NextResponse.redirect(new URL(`${returnTo}?tiktok=linked`, req.url));
