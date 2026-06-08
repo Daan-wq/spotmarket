@@ -126,6 +126,7 @@ export async function GET(req: NextRequest) {
       videoCount: channel.videoCount,
       raw: channel,
       capturedAt: refreshedAt,
+      resolutionReason: "RECONNECTED",
     });
 
     return NextResponse.redirect(new URL(`${returnTo}?youtube=linked`, req.url));

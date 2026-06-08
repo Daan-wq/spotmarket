@@ -29,6 +29,8 @@ type ConnectionRow = {
   platform: PlatformSlug;
   accountRefreshStatus?: string;
   lastRefreshErrorMessage?: string | null;
+  requiresReconnect?: boolean;
+  showTechnicalError?: boolean;
   countLabel?: "followers" | "subscribers";
 };
 
@@ -43,7 +45,9 @@ interface AllScopeProps {
 interface PlatformScopeProps {
   kind: "platform";
   platform: PlatformSlug;
-  stats: CreatorPlatformStats;
+  stats: Omit<CreatorPlatformStats, "connections"> & {
+    connections: ConnectionRow[];
+  };
   daily: DailyPoint[];
   range: Range;
   basePath?: string;
@@ -143,6 +147,8 @@ function PlatformScopeView({
           platform,
           accountRefreshStatus: c.accountRefreshStatus,
           lastRefreshErrorMessage: c.lastRefreshErrorMessage,
+          requiresReconnect: c.requiresReconnect,
+          showTechnicalError: c.showTechnicalError,
           countLabel: c.countLabel,
         }))}
         rangeKey={range.key}
@@ -246,11 +252,27 @@ function ConnectionsList({
                   </span>
                 )}
               </div>
-              {c.accountRefreshStatus === "FAILED" && (
-                <p className="text-xs mt-0.5 text-red-600">
-                  Refresh failed{c.lastRefreshErrorMessage ? `: ${c.lastRefreshErrorMessage}` : ""}
+              {c.requiresReconnect ? (
+                <div className="mt-0.5">
+                  <p className="text-xs font-semibold text-amber-700">
+                    {t("reconnectRequired")}
+                  </p>
+                  <p className="text-xs text-amber-700">
+                    {t("analyticsStopped")}
+                  </p>
+                  {c.showTechnicalError && c.lastRefreshErrorMessage ? (
+                    <p className="mt-0.5 text-xs text-red-600">
+                      {c.lastRefreshErrorMessage}
+                    </p>
+                  ) : null}
+                </div>
+              ) : c.accountRefreshStatus === "FAILED" ? (
+                <p className="mt-0.5 text-xs text-red-600">
+                  {c.showTechnicalError && c.lastRefreshErrorMessage
+                    ? `${t("refreshUnavailable")}: ${c.lastRefreshErrorMessage}`
+                    : t("refreshUnavailable")}
                 </p>
-              )}
+              ) : null}
             </div>
             <div className="text-right shrink-0 pl-3">
               <p className="text-sm font-semibold" style={{ color: "var(--text-primary)" }}>

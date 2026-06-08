@@ -12,6 +12,19 @@
     "creator": "Creator",
     "admin": "Admin"
   },
+  "connectionHealth": {
+    "title": "Token expired. Please connect your page again.",
+    "creatorDescription": "One or more connected pages need attention.",
+    "adminDescription": "Connected pages need attention across creator accounts.",
+    "analyticsStopped": "Analytics tracking has stopped for this page.",
+    "reconnect": "Reconnect",
+    "viewConnections": "Connections",
+    "unlinkHelp": "Can't or don't want to reconnect this page? Unlink it from Connections.",
+    "doNotRemind": "Do not remind me again",
+    "viewCreator": "View creator",
+    "technicalDetails": "Technical details",
+    "moreIncidents": "View {count, plural, one {# more affected page} other {# more affected pages}}"
+  },
   "auth": {
     "signIn": {
       "title": "Welcome back",
@@ -1541,7 +1554,11 @@
         "metaFollowers": "{count} followers",
         "metaSubscribers": "{count} subscribers",
         "lastSynced": "Last synced {date}",
-        "neverSynced": "never"
+        "neverSynced": "never",
+        "reconnectRequired": "Reconnect required",
+        "analyticsStopped": "Analytics tracking has stopped.",
+        "refreshUnavailable": "Refresh temporarily unavailable.",
+        "reconnect": "Reconnect"
       },
       "workspace": {
         "overview": "Overview",
@@ -1560,7 +1577,10 @@
         "views": "Views",
         "topPost": "Top post",
         "connections": "Connections",
-        "noConnections": "No connections yet."
+        "noConnections": "No connections yet.",
+        "reconnectRequired": "Reconnect required",
+        "analyticsStopped": "Analytics tracking has stopped.",
+        "refreshUnavailable": "Refresh temporarily unavailable."
       },
       "content": {
         "noPosts": "No posts in this range.",

@@ -12,6 +12,7 @@ import {
 } from "@/lib/facebook";
 import { encrypt } from "@/lib/crypto";
 import { recordAccountRefreshSuccess } from "@/lib/social-account-refresh";
+import { resolveConnectionHealthIncidents } from "@/lib/connection-health";
 
 export async function GET(req: NextRequest) {
   const code = req.nextUrl.searchParams.get("code");
@@ -123,10 +124,24 @@ export async function GET(req: NextRequest) {
         audienceCount: pageProfile.followerCount,
         raw: pageProfile,
         capturedAt: verifiedAt,
+        resolutionReason: "RECONNECTED",
       });
     }
 
     if (fbUserId) {
+      const removedConnections = await prisma.creatorFbConnection.findMany({
+        where: {
+          creatorProfileId,
+          fbUserId,
+          fbPageId: { notIn: authorizedPageIds },
+        },
+        select: { id: true },
+      });
+      await resolveConnectionHealthIncidents(
+        "FB",
+        removedConnections.map((connection) => connection.id),
+        "UNLINKED",
+      );
       await prisma.creatorFbConnection.deleteMany({
         where: {
           creatorProfileId,

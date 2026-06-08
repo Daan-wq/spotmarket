@@ -38,6 +38,7 @@ model User {
   updatedDiscordTemplates      DiscordMessageTemplate[]      @relation("DiscordTemplateUpdatedBy")
   brandContacts                BrandContact[]
   notifications                Notification[]
+  connectionHealthDismissals   ConnectionHealthDismissal[]
   campaignSubmissions          CampaignSubmission[]
   wallet                       Wallet?
   lessonProgress               LessonProgress[]
@@ -97,6 +98,7 @@ model CreatorProfile {
   approvedCandidateRecords ClipperCandidate[]         @relation("ApprovedCandidateProfile")
   productionAssignments    ProductionAssignment[]
   payoutRunItems           PayoutRunItem[]
+  connectionHealthIncidents ConnectionHealthIncident[]
 
   @@index([primaryGeo])
   @@index([engagementRate])
@@ -1388,6 +1390,55 @@ model Notification {
   @@index([userId, read])
   @@index([userId, createdAt])
   @@index([userId, acknowledged])
+}
+
+model ConnectionHealthIncident {
+  id                String                           @id @default(cuid())
+  creatorProfileId  String
+  creatorProfile    CreatorProfile                   @relation(fields: [creatorProfileId], references: [id], onDelete: Cascade)
+  connectionType    ConnectionType
+  connectionId      String
+  connectionLabel   String
+  issueType         ConnectionHealthIssueType
+  providerCode      String?
+  providerSubcode   String?
+  providerType      String?
+  providerMessage   String?                          @db.Text
+  activeKey         String?                          @unique
+  openedAt          DateTime                         @default(now())
+  lastDetectedAt    DateTime                         @default(now())
+  resolvedAt        DateTime?
+  resolutionReason  ConnectionHealthResolutionReason?
+  dismissals        ConnectionHealthDismissal[]
+
+  @@index([creatorProfileId, resolvedAt])
+  @@index([connectionType, connectionId])
+  @@index([resolvedAt, lastDetectedAt])
+}
+
+model ConnectionHealthDismissal {
+  id          String                   @id @default(cuid())
+  incidentId  String
+  incident    ConnectionHealthIncident @relation(fields: [incidentId], references: [id], onDelete: Cascade)
+  viewerId    String
+  viewer      User                     @relation(fields: [viewerId], references: [id], onDelete: Cascade)
+  dismissedAt DateTime                 @default(now())
+
+  @@unique([incidentId, viewerId])
+  @@index([viewerId, dismissedAt])
+}
+
+enum ConnectionHealthIssueType {
+  MISSING_TOKEN
+  TOKEN_EXPIRED
+  TOKEN_REVOKED
+  AUTH_INVALID
+}
+
+enum ConnectionHealthResolutionReason {
+  REFRESH_SUCCEEDED
+  RECONNECTED
+  UNLINKED
 }
 
 enum NotificationType {

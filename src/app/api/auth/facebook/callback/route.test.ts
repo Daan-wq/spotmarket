@@ -33,6 +33,7 @@ const routeMocks = vi.hoisted(() => {
     getUser: vi.fn(),
     userFindUnique: vi.fn(),
     connectionFindUnique: vi.fn(),
+    connectionFindMany: vi.fn(),
     connectionUpdate: vi.fn(),
     connectionCreate: vi.fn(),
     connectionDeleteMany: vi.fn(),
@@ -42,6 +43,7 @@ const routeMocks = vi.hoisted(() => {
     fetchFacebookUserId: vi.fn(),
     encrypt: vi.fn(),
     recordAccountRefreshSuccess: vi.fn(),
+    resolveConnectionHealthIncidents: vi.fn(),
     FacebookOAuthError: MockFacebookOAuthError,
   };
 });
@@ -57,6 +59,7 @@ vi.mock("@/lib/prisma", () => ({
     user: { findUnique: routeMocks.userFindUnique },
     creatorFbConnection: {
       findUnique: routeMocks.connectionFindUnique,
+      findMany: routeMocks.connectionFindMany,
       update: routeMocks.connectionUpdate,
       create: routeMocks.connectionCreate,
       deleteMany: routeMocks.connectionDeleteMany,
@@ -90,6 +93,10 @@ vi.mock("@/lib/social-account-refresh", () => ({
   recordAccountRefreshSuccess: routeMocks.recordAccountRefreshSuccess,
 }));
 
+vi.mock("@/lib/connection-health", () => ({
+  resolveConnectionHealthIncidents: routeMocks.resolveConnectionHealthIncidents,
+}));
+
 function state(returnTo = "/creator/connections") {
   return Buffer.from(JSON.stringify({ returnTo, sub: "supabase-user-1" })).toString("base64url");
 }
@@ -119,10 +126,12 @@ describe("GET /api/auth/facebook/callback", () => {
     });
     routeMocks.fetchFacebookUserId.mockResolvedValue("fb-user-1");
     routeMocks.connectionFindUnique.mockResolvedValue(null);
+    routeMocks.connectionFindMany.mockResolvedValue([]);
     routeMocks.connectionCreate
       .mockResolvedValueOnce({ id: "fb-connection-1" })
       .mockResolvedValueOnce({ id: "fb-connection-2" });
     routeMocks.recordAccountRefreshSuccess.mockResolvedValue(undefined);
+    routeMocks.resolveConnectionHealthIncidents.mockResolvedValue(undefined);
     routeMocks.encrypt.mockImplementation((token: string) => ({
       ciphertext: `encrypted:${token}`,
       iv: `iv:${token}`,

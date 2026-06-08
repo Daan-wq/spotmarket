@@ -117,6 +117,7 @@ export async function GET(req: NextRequest) {
       audienceCount: profile.followerCount,
       raw: profile,
       capturedAt: refreshedAt,
+      resolutionReason: "RECONNECTED",
     });
 
     // Mark creator profile as verified

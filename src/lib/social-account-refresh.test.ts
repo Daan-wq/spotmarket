@@ -15,6 +15,7 @@ describe("social account refresh recording", () => {
       creatorTikTokConnection: { update: vi.fn() },
     };
     const capturedAt = new Date("2026-05-17T12:00:00.000Z");
+    const resolveIncident = vi.fn().mockResolvedValue(undefined);
 
     await recordAccountRefreshSuccess(
       {
@@ -25,6 +26,7 @@ describe("social account refresh recording", () => {
         capturedAt,
       },
       db as never,
+      resolveIncident,
     );
 
     expect(db.platformAccountSnapshot.create).toHaveBeenCalledWith({
@@ -47,6 +49,13 @@ describe("social account refresh recording", () => {
         lastRefreshErrorCode: null,
       }),
     });
+    expect(resolveIncident).toHaveBeenCalledWith(
+      "YT",
+      "yt-1",
+      "REFRESH_SUCCEEDED",
+      capturedAt,
+      db,
+    );
   });
 
   it("records a failed refresh without clearing the last successful timestamp", async () => {
@@ -57,6 +66,10 @@ describe("social account refresh recording", () => {
       creatorTikTokConnection: { update: vi.fn() },
     };
     const attemptedAt = new Date("2026-05-17T12:00:00.000Z");
+    const recordHealthFailure = vi.fn().mockResolvedValue({
+      incidentId: "incident-1",
+      created: true,
+    });
 
     await recordAccountRefreshFailure(
       {
@@ -67,6 +80,7 @@ describe("social account refresh recording", () => {
         attemptedAt,
       },
       db as never,
+      recordHealthFailure,
     );
 
     expect(db.creatorIgConnection.update).toHaveBeenCalledWith({
@@ -85,6 +99,16 @@ describe("social account refresh recording", () => {
         lastRefreshErrorMessage: "Token expired",
       }),
     });
+    expect(recordHealthFailure).toHaveBeenCalledWith(
+      {
+        connectionType: "IG",
+        connectionId: "ig-1",
+        error: expect.any(Error),
+        code: "TOKEN_EXPIRED",
+        detectedAt: attemptedAt,
+      },
+      db,
+    );
   });
 
   it("normalizes unknown errors into a clear refresh failure message", () => {

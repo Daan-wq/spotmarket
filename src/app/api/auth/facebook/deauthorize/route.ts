@@ -3,6 +3,7 @@ import crypto from "node:crypto";
 import { prisma } from "@/lib/prisma";
 import { buildAppUrl, getAppUrlFromRequest } from "@/lib/app-url";
 import { getRequiredOAuthEnv } from "@/lib/oauth-env";
+import { resolveConnectionHealthIncidents } from "@/lib/connection-health";
 
 /**
  * Facebook Deauthorize Callback.
@@ -54,6 +55,15 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "missing user_id" }, { status: 400 });
   }
 
+  const connections = await prisma.creatorFbConnection.findMany({
+    where: { fbUserId },
+    select: { id: true },
+  });
+  await resolveConnectionHealthIncidents(
+    "FB",
+    connections.map((connection) => connection.id),
+    "UNLINKED",
+  );
   await prisma.creatorFbConnection.deleteMany({
     where: { fbUserId },
   });

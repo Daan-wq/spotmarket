@@ -41,8 +41,15 @@ function timeAgo(date: string) {
   return "just now";
 }
 
-function notifText(n: NotificationItem): string {
+export function notifText(n: NotificationItem): string {
   const d = n.data;
+  if (n.type === "TOKEN_BROKEN") {
+    const accountLabel =
+      typeof d.accountLabel === "string" && d.accountLabel
+        ? d.accountLabel
+        : "your connected page";
+    return `Token expired for ${accountLabel}. Please connect your page again.`;
+  }
   if (n.type === "NEW_FOLLOWER") return `${d.followerName} started following you`;
   if (n.type === "CAMPAIGN_LAUNCHED") return `${d.launcherName} launched a new campaign: ${d.campaignName}`;
   if (n.type === "REVIEW_RECEIVED") {
@@ -53,8 +60,15 @@ function notifText(n: NotificationItem): string {
   return "New notification";
 }
 
-function notifHref(n: NotificationItem): string {
+export function notifHref(n: NotificationItem): string {
   const d = n.data;
+  if (
+    n.type === "TOKEN_BROKEN" &&
+    typeof d.href === "string" &&
+    d.href.startsWith("/")
+  ) {
+    return d.href;
+  }
   if (n.type === "NEW_FOLLOWER") return `/profile/${d.followerId}`;
   if (n.type === "CAMPAIGN_LAUNCHED") return `/campaigns/${d.campaignId}`;
   if (n.type === "REVIEW_RECEIVED") return `/campaigns/${d.campaignId}`;

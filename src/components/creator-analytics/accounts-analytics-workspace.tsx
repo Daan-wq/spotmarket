@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import Link from "next/link";
 import type { ReactNode } from "react";
 import { getLocale, getTranslations } from "next-intl/server";
 import { prisma } from "@/lib/prisma";
@@ -59,6 +60,7 @@ import { TimelineSubTab } from "@/app/(creator)/creator/connections/_components/
 import { AudienceSubTab } from "@/app/(creator)/creator/connections/_components/sub-tabs/Audience";
 import { InsightsSubTab } from "@/app/(creator)/creator/connections/_components/sub-tabs/Insights";
 import { getSocialAccountSummariesForProfile } from "@/lib/social-account-summary";
+import { reconnectHref } from "@/lib/connection-health";
 
 export interface AccountsAnalyticsSearchParams {
   range?: string;
@@ -88,6 +90,7 @@ interface AccountInventory {
   accountRefreshStatus: string;
   lastSuccessfulRefreshAt: string | null;
   lastRefreshErrorMessage: string | null;
+  requiresReconnect: boolean;
   removeButton?: ReactNode;
 }
 
@@ -104,7 +107,11 @@ export async function AccountsAnalyticsWorkspace({
   const locale = (await getLocale()) as Locale;
   const t = await getTranslations("creator.connections");
   const range = parseRange(searchParams);
-  const inventory = await loadInventory(profileScope.creatorProfileId, mode);
+  const inventory = await loadInventory(
+    profileScope.creatorProfileId,
+    mode,
+    t("page.reconnect"),
+  );
   const { scope, accountId } = resolveScope(searchParams, inventory, range.key, basePath);
   const subTab = parseSubTab(searchParams.tab, scope, accountId);
   const readOnly = mode === "admin";
@@ -189,6 +196,11 @@ export async function AccountsAnalyticsWorkspace({
           refreshStatus={acc.accountRefreshStatus}
           lastSuccessfulRefreshAt={acc.lastSuccessfulRefreshAt}
           lastRefreshErrorMessage={acc.lastRefreshErrorMessage}
+          requiresReconnect={acc.requiresReconnect}
+          reconnectRequiredText={t("page.reconnectRequired")}
+          analyticsStoppedText={t("page.analyticsStopped")}
+          refreshFailedText={t("page.refreshUnavailable")}
+          showTechnicalError={mode === "admin"}
           removeButton={acc.removeButton}
         />
       );
@@ -240,14 +252,51 @@ export async function AccountsAnalyticsWorkspace({
 async function loadInventory(
   creatorProfileId: string,
   mode: "creator" | "admin",
+  reconnectLabel: string,
 ): Promise<AccountsByPlatform> {
   const stripAt = (s: string) => s.replace(/^@/, "");
   const canMutate = mode === "creator";
-  const accounts = await getSocialAccountSummariesForProfile(creatorProfileId);
+  const [accounts, incidents] = await Promise.all([
+    getSocialAccountSummariesForProfile(creatorProfileId),
+    prisma.connectionHealthIncident.findMany({
+      where: { creatorProfileId, resolvedAt: null },
+      select: {
+        connectionType: true,
+        connectionId: true,
+        providerMessage: true,
+      },
+    }),
+  ]);
+  const incidentByConnection = new Map(
+    incidents.map((incident) => [
+      `${incident.connectionType}:${incident.connectionId}`,
+      incident,
+    ]),
+  );
+
+  const actions = (
+    connectionType: "IG" | "TT" | "YT" | "FB",
+    requiresReconnect: boolean,
+    removeButton: ReactNode,
+  ) =>
+    canMutate ? (
+      <>
+        {requiresReconnect ? (
+          <Link
+            href={reconnectHref(connectionType)}
+            className="rounded-full bg-amber-950 px-3 py-1.5 text-xs font-semibold text-amber-50 hover:bg-amber-900"
+          >
+            {reconnectLabel}
+          </Link>
+        ) : null}
+        {removeButton}
+      </>
+    ) : undefined;
 
   return {
     ig: accounts.ig.map((c) => {
       const handle = stripAt(c.handle ?? c.label);
+      const incident = incidentByConnection.get(`IG:${c.id}`);
       return {
         id: c.id,
         username: handle,
@@ -256,12 +305,21 @@ async function loadInventory(
         countLabel: c.countLabel,
         accountRefreshStatus: c.accountRefreshStatus,
         lastSuccessfulRefreshAt: c.lastSuccessfulRefreshAt?.toISOString() ?? null,
-        lastRefreshErrorMessage: c.lastRefreshErrorMessage,
-        removeButton: canMutate ? <RemovePageButton connectionId={c.id} label={`@${handle}`} /> : undefined,
+        lastRefreshErrorMessage:
+          mode === "admin"
+            ? incident?.providerMessage ?? c.lastRefreshErrorMessage
+            : null,
+        requiresReconnect: Boolean(incident),
+        removeButton: actions(
+          "IG",
+          Boolean(incident),
+          <RemovePageButton connectionId={c.id} label={`@${handle}`} />,
+        ),
       };
     }),
     tt: accounts.tt.map((c) => {
       const handle = stripAt(c.handle ?? c.label);
+      const incident = incidentByConnection.get(`TT:${c.id}`);
       return {
         id: c.id,
         username: handle,
@@ -270,32 +328,62 @@ async function loadInventory(
         countLabel: c.countLabel,
         accountRefreshStatus: c.accountRefreshStatus,
         lastSuccessfulRefreshAt: c.lastSuccessfulRefreshAt?.toISOString() ?? null,
-        lastRefreshErrorMessage: c.lastRefreshErrorMessage,
-        removeButton: canMutate ? <RemoveTikTokPageButton connectionId={c.id} label={`@${handle}`} /> : undefined,
+        lastRefreshErrorMessage:
+          mode === "admin"
+            ? incident?.providerMessage ?? c.lastRefreshErrorMessage
+            : null,
+        requiresReconnect: Boolean(incident),
+        removeButton: actions(
+          "TT",
+          Boolean(incident),
+          <RemoveTikTokPageButton connectionId={c.id} label={`@${handle}`} />,
+        ),
       };
     }),
-    fb: accounts.fb.map((c) => ({
-      id: c.id,
-      username: stripAt(c.label).replace(/\s+/g, ""),
-      label: c.label,
-      audienceCount: c.audienceCount,
-      countLabel: c.countLabel,
-      accountRefreshStatus: c.accountRefreshStatus,
-      lastSuccessfulRefreshAt: c.lastSuccessfulRefreshAt?.toISOString() ?? null,
-      lastRefreshErrorMessage: c.lastRefreshErrorMessage,
-      removeButton: canMutate ? <RemoveFbPageButton connectionId={c.id} label={c.label} /> : undefined,
-    })),
-    yt: accounts.yt.map((c) => ({
-      id: c.id,
-      username: stripAt(c.label).replace(/\s+/g, ""),
-      label: c.label,
-      audienceCount: c.audienceCount,
-      countLabel: c.countLabel,
-      accountRefreshStatus: c.accountRefreshStatus,
-      lastSuccessfulRefreshAt: c.lastSuccessfulRefreshAt?.toISOString() ?? null,
-      lastRefreshErrorMessage: c.lastRefreshErrorMessage,
-      removeButton: canMutate ? <RemoveYtPageButton connectionId={c.id} label={c.label} /> : undefined,
-    })),
+    fb: accounts.fb.map((c) => {
+      const incident = incidentByConnection.get(`FB:${c.id}`);
+      return {
+        id: c.id,
+        username: stripAt(c.label).replace(/\s+/g, ""),
+        label: c.label,
+        audienceCount: c.audienceCount,
+        countLabel: c.countLabel,
+        accountRefreshStatus: c.accountRefreshStatus,
+        lastSuccessfulRefreshAt: c.lastSuccessfulRefreshAt?.toISOString() ?? null,
+        lastRefreshErrorMessage:
+          mode === "admin"
+            ? incident?.providerMessage ?? c.lastRefreshErrorMessage
+            : null,
+        requiresReconnect: Boolean(incident),
+        removeButton: actions(
+          "FB",
+          Boolean(incident),
+          <RemoveFbPageButton connectionId={c.id} label={c.label} />,
+        ),
+      };
+    }),
+    yt: accounts.yt.map((c) => {
+      const incident = incidentByConnection.get(`YT:${c.id}`);
+      return {
+        id: c.id,
+        username: stripAt(c.label).replace(/\s+/g, ""),
+        label: c.label,
+        audienceCount: c.audienceCount,
+        countLabel: c.countLabel,
+        accountRefreshStatus: c.accountRefreshStatus,
+        lastSuccessfulRefreshAt: c.lastSuccessfulRefreshAt?.toISOString() ?? null,
+        lastRefreshErrorMessage:
+          mode === "admin"
+            ? incident?.providerMessage ?? c.lastRefreshErrorMessage
+            : null,
+        requiresReconnect: Boolean(incident),
+        removeButton: actions(
+          "YT",
+          Boolean(incident),
+          <RemoveYtPageButton connectionId={c.id} label={c.label} />,
+        ),
+      };
+    }),
   };
 }
 
@@ -380,7 +468,15 @@ async function resolveSubmissionIds(args: RenderArgs): Promise<{
 }
 
 async function renderOverview(args: RenderArgs): Promise<ReactNode> {
-  const { scope, accountId, range, inventory, profileScope, basePath } = args;
+  const {
+    scope,
+    accountId,
+    range,
+    inventory,
+    profileScope,
+    basePath,
+    readOnly,
+  } = args;
 
   if (scope === "all") {
     const [stats, subs] = await Promise.all([
@@ -397,6 +493,8 @@ async function renderOverview(args: RenderArgs): Promise<ReactNode> {
         platform: p,
         accountRefreshStatus: a.accountRefreshStatus,
         lastRefreshErrorMessage: a.lastRefreshErrorMessage,
+        requiresReconnect: a.requiresReconnect,
+        showTechnicalError: readOnly,
         countLabel: a.countLabel,
       })),
     );
@@ -418,11 +516,29 @@ async function renderOverview(args: RenderArgs): Promise<ReactNode> {
       resolveSubmissionIds(args),
     ]);
     const daily = await getDailyViewsSeries(subs.ids, range);
+    const healthById = new Map(
+      inventory[scope].map((account) => [account.id, account]),
+    );
     return (
       <OverviewSubTab
         kind="platform"
         platform={scope}
-        stats={stats}
+        stats={{
+          ...stats,
+          connections: stats.connections.map((connection) => {
+            const health = healthById.get(connection.id);
+            return {
+              ...connection,
+              platform: scope,
+              requiresReconnect: health?.requiresReconnect ?? false,
+              lastRefreshErrorMessage: readOnly
+                ? health?.lastRefreshErrorMessage ??
+                  connection.lastRefreshErrorMessage
+                : null,
+              showTechnicalError: readOnly,
+            };
+          }),
+        }}
         daily={daily}
         range={range}
         basePath={basePath}

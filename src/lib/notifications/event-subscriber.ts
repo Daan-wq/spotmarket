@@ -1,17 +1,9 @@
 /**
- * Event-bus subscriber for Subsystem E.
+ * Maps domain events into notifications.
  *
- * Maps domain events (published by Subsystem A/B) into Notification rows
- * via `dispatchNotification`.
- *
- * Mapping:
- *   - `submission.viral`         → PERFORMANCE_VIRAL        (creator)
- *   - `submission.underperform`  → PERFORMANCE_UNDERPERFORM (creator)
- *   - `submission.flagged` (severity ≥ WARN) → SIGNAL_FLAGGED (all admins)
- *   - `submission.flagged` (signal=TOKEN_BROKEN) → TOKEN_BROKEN (creator)
- *
- * Defensive — events from B may not yet be published in dev. Handlers
- * silently no-op if the referenced submission/user doesn't exist.
+ * Connection token notifications are created by connection-health incidents.
+ * Submission TOKEN_BROKEN signals remain available to admins, but do not send
+ * additional creator notifications for every affected submission.
  */
 
 import { on } from "@/lib/event-bus";
@@ -39,7 +31,6 @@ async function resolveCreatorUserId(submissionId: string): Promise<string | null
     where: { id: submissionId },
     select: { creatorId: true },
   });
-  // CampaignSubmission.creatorId references User.id directly.
   return sub?.creatorId ?? null;
 }
 
@@ -53,8 +44,8 @@ async function handleSubmissionViral(event: SubmissionViralEvent): Promise<void>
       benchmarkRatio: event.benchmarkRatio,
       occurredAt: event.occurredAt,
     });
-  } catch (err) {
-    console.error("[notifications] viral handler failed", err);
+  } catch (error) {
+    console.error("[notifications] viral handler failed", error);
   }
 }
 
@@ -70,28 +61,16 @@ async function handleSubmissionUnderperform(
       weakDimensions: event.weakDimensions,
       occurredAt: event.occurredAt,
     });
-  } catch (err) {
-    console.error("[notifications] underperform handler failed", err);
+  } catch (error) {
+    console.error("[notifications] underperform handler failed", error);
   }
 }
 
-async function handleSubmissionFlagged(event: SubmissionFlaggedEvent): Promise<void> {
+async function handleSubmissionFlagged(
+  event: SubmissionFlaggedEvent,
+): Promise<void> {
   try {
-    // Token broken → notify the creator only.
-    if (event.signal === "TOKEN_BROKEN") {
-      const userId = await resolveCreatorUserId(event.submissionId);
-      if (!userId) return;
-      await dispatchNotification(userId, "TOKEN_BROKEN", {
-        submissionId: event.submissionId,
-        signalId: event.signalId,
-        signal: event.signal,
-        severity: event.severity,
-        occurredAt: event.occurredAt,
-      });
-      return;
-    }
-
-    // Other flags at severity ≥ WARN → notify all admins.
+    if (event.signal === "TOKEN_BROKEN") return;
     if (event.severity === "INFO") return;
 
     const admins = await prisma.user.findMany({
@@ -99,8 +78,8 @@ async function handleSubmissionFlagged(event: SubmissionFlaggedEvent): Promise<v
       select: { id: true },
     });
     await Promise.all(
-      admins.map((a) =>
-        dispatchNotification(a.id, "SIGNAL_FLAGGED", {
+      admins.map((admin) =>
+        dispatchNotification(admin.id, "SIGNAL_FLAGGED", {
           submissionId: event.submissionId,
           signalId: event.signalId,
           signal: event.signal,
@@ -109,7 +88,7 @@ async function handleSubmissionFlagged(event: SubmissionFlaggedEvent): Promise<v
         }),
       ),
     );
-  } catch (err) {
-    console.error("[notifications] flagged handler failed", err);
+  } catch (error) {
+    console.error("[notifications] flagged handler failed", error);
   }
 }

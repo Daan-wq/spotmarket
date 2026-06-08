@@ -12,6 +12,19 @@
     "creator": "Creator",
     "admin": "Admin"
   },
+  "connectionHealth": {
+    "title": "Token verlopen. Koppel je pagina opnieuw.",
+    "creatorDescription": "Een of meer gekoppelde pagina's vragen aandacht.",
+    "adminDescription": "Gekoppelde pagina's vragen aandacht bij creatoraccounts.",
+    "analyticsStopped": "Analytics-tracking is gestopt voor deze pagina.",
+    "reconnect": "Opnieuw koppelen",
+    "viewConnections": "Accounts",
+    "unlinkHelp": "Kun of wil je deze pagina niet opnieuw koppelen? Ontkoppel hem bij Accounts.",
+    "doNotRemind": "Niet meer herinneren",
+    "viewCreator": "Creator bekijken",
+    "technicalDetails": "Technische details",
+    "moreIncidents": "Bekijk nog {count, plural, one {# getroffen pagina} other {# getroffen pagina's}}"
+  },
   "auth": {
     "signIn": {
       "title": "Welkom terug",
@@ -1541,7 +1554,11 @@
         "metaFollowers": "{count} volgers",
         "metaSubscribers": "{count} abonnees",
         "lastSynced": "Laatst gesynchroniseerd {date}",
-        "neverSynced": "nooit"
+        "neverSynced": "nooit",
+        "reconnectRequired": "Opnieuw koppelen vereist",
+        "analyticsStopped": "Analytics-tracking is gestopt.",
+        "refreshUnavailable": "Verversen is tijdelijk niet beschikbaar.",
+        "reconnect": "Opnieuw koppelen"
       },
       "workspace": {
         "overview": "Overzicht",
@@ -1560,7 +1577,10 @@
         "views": "Views",
         "topPost": "Toppost",
         "connections": "Connecties",
-        "noConnections": "Nog geen connecties."
+        "noConnections": "Nog geen connecties.",
+        "reconnectRequired": "Opnieuw koppelen vereist",
+        "analyticsStopped": "Analytics-tracking is gestopt.",
+        "refreshUnavailable": "Verversen is tijdelijk niet beschikbaar."
       },
       "content": {
         "noPosts": "Geen posts in deze periode.",
