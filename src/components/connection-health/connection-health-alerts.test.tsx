@@ -19,6 +19,7 @@ const copy: ConnectionHealthAlertCopy = {
   close: "Close notification",
   viewCreator: "View creator",
   technicalDetails: "Technical details",
+  creatorMoreIncidents: "1 other page also needs reconnecting",
   moreIncidents: "View 1 more",
 };
 
@@ -44,17 +45,17 @@ describe("ConnectionHealthAlertPanel", () => {
 
     expect(html).toContain(copy.title);
     expect(html).toContain("@page");
-    expect(html).toContain("@other");
+    expect(html).not.toContain("@other");
+    expect(html).toContain(copy.creatorMoreIncidents);
+    expect(html).toContain('href="/creator/connections"');
     expect(
       html.match(
         /href="\/creator\/connections\?platform=ig&amp;account=ig-1"/g,
       ),
     ).toHaveLength(2);
-    expect(
-      html.match(
-        /href="\/creator\/connections\?platform=ig&amp;account=ig-2"/g,
-      ),
-    ).toHaveLength(2);
+    expect(html).not.toContain(
+      "href=\"/creator/connections?platform=ig&amp;account=ig-2\"",
+    );
     expect(html).not.toContain("href=\"/api/auth/instagram");
     expect(html.match(/aria-label="Close notification"/g)).toHaveLength(1);
     expect(html).not.toContain("role=\"switch\"");

@@ -23,6 +23,7 @@
     "close": "Close notification",
     "viewCreator": "View creator",
     "technicalDetails": "Technical details",
+    "creatorMoreIncidents": "{count, plural, one {# other page needs} other {# other pages need}} to be reconnected.",
     "moreIncidents": "View {count, plural, one {# more affected page} other {# more affected pages}}"
   },
   "auth": {
