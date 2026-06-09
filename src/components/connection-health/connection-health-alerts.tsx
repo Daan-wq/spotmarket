@@ -1,7 +1,8 @@
 "use client";
 
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { AlertTriangle, ArrowUpRight, ExternalLink } from "lucide-react";
+import { useEffect, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { AlertTriangle, ArrowUpRight, ExternalLink, X } from "lucide-react";
 import Link from "next/link";
 import { useTranslations } from "next-intl";
 import type { ConnectionHealthAlertItem } from "@/lib/connection-health";
@@ -19,7 +20,7 @@ export interface ConnectionHealthAlertCopy {
   reconnect: string;
   viewConnections: string;
   unlinkHelp: string;
-  doNotRemind: string;
+  close: string;
   viewCreator: string;
   technicalDetails: string;
   moreIncidents: string;
@@ -39,7 +40,6 @@ export function ConnectionHealthAlerts({
   viewerRole,
 }: ConnectionHealthAlertsProps) {
   const t = useTranslations("connectionHealth");
-  const queryClient = useQueryClient();
   const query = useQuery({
     queryKey: QUERY_KEY,
     queryFn: async (): Promise<ConnectionHealthResponse> => {
@@ -52,51 +52,12 @@ export function ConnectionHealthAlerts({
     refetchOnWindowFocus: true,
   });
 
-  const mutation = useMutation({
-    mutationFn: async ({
-      incidentId,
-      dismissed,
-    }: {
-      incidentId: string;
-      dismissed: boolean;
-    }) => {
-      const response = await fetch(
-        `/api/connection-health/${encodeURIComponent(incidentId)}/dismiss`,
-        {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ dismissed }),
-        },
-      );
-      if (!response.ok) throw new Error(`HTTP ${response.status}`);
-    },
-    onMutate: async ({ incidentId, dismissed }) => {
-      await queryClient.cancelQueries({ queryKey: QUERY_KEY });
-      const previous =
-        queryClient.getQueryData<ConnectionHealthResponse>(QUERY_KEY);
-      queryClient.setQueryData<ConnectionHealthResponse>(QUERY_KEY, (current) => ({
-        incidents: (current?.incidents ?? []).map((incident) =>
-          incident.id === incidentId ? { ...incident, dismissed } : incident,
-        ),
-      }));
-      return { previous };
-    },
-    onError: (_error, _variables, context) => {
-      if (context?.previous) {
-        queryClient.setQueryData(QUERY_KEY, context.previous);
-      }
-    },
-    onSettled: () => {
-      void queryClient.invalidateQueries({ queryKey: QUERY_KEY });
-    },
-  });
-
-  const visible = query.data.incidents.filter((incident) => !incident.dismissed);
-  if (visible.length === 0) return null;
+  const incidents = query.data.incidents;
+  if (incidents.length === 0) return null;
 
   const limit =
     viewerRole === "admin" ? ADMIN_VISIBLE_LIMIT : CREATOR_VISIBLE_LIMIT;
-  const overflow = Math.max(0, visible.length - limit);
+  const overflow = Math.max(0, incidents.length - limit);
   const copy: ConnectionHealthAlertCopy = {
     title: t("title"),
     creatorDescription: t("creatorDescription"),
@@ -105,25 +66,58 @@ export function ConnectionHealthAlerts({
     reconnect: t("reconnect"),
     viewConnections: t("viewConnections"),
     unlinkHelp: t("unlinkHelp"),
-    doNotRemind: t("doNotRemind"),
+    close: t("close"),
     viewCreator: t("viewCreator"),
     technicalDetails: t("technicalDetails"),
     moreIncidents: t("moreIncidents", { count: overflow }),
   };
 
   return (
+    <DismissibleConnectionHealthAlert
+      key={incidents.map((incident) => incident.id).join("|")}
+      incidents={incidents}
+      viewerRole={viewerRole}
+      copy={copy}
+    />
+  );
+}
+
+function DismissibleConnectionHealthAlert({
+  incidents,
+  viewerRole,
+  copy,
+}: {
+  incidents: ConnectionHealthAlertItem[];
+  viewerRole: "creator" | "admin";
+  copy: ConnectionHealthAlertCopy;
+}) {
+  const [isClosing, setIsClosing] = useState(false);
+  const [isClosed, setIsClosed] = useState(false);
+
+  useEffect(() => {
+    if (!isClosing) return;
+    const timeout = window.setTimeout(() => setIsClosed(true), 200);
+    return () => window.clearTimeout(timeout);
+  }, [isClosing]);
+
+  if (isClosed) return null;
+
+  return (
     <div
-      className={`mb-5 w-full lg:fixed lg:right-6 lg:top-6 lg:z-[70] lg:mb-0 ${
+      aria-hidden={isClosing}
+      className={`mb-5 w-full origin-top-right transition-[opacity,transform] duration-200 ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:duration-0 lg:fixed lg:right-6 lg:top-6 lg:z-[70] lg:mb-0 ${
         viewerRole === "creator" ? "lg:w-[390px]" : "lg:w-[430px]"
+      } ${
+        isClosing
+          ? "pointer-events-none translate-x-3 scale-[0.98] opacity-0"
+          : "translate-x-0 scale-100 opacity-100"
       }`}
     >
       <ConnectionHealthAlertPanel
-        incidents={visible}
+        incidents={incidents}
         viewerRole={viewerRole}
         copy={copy}
-        onDismiss={(incidentId) =>
-          mutation.mutate({ incidentId, dismissed: true })
-        }
+        onClose={() => setIsClosing(true)}
       />
     </div>
   );
@@ -133,12 +127,12 @@ export function ConnectionHealthAlertPanel({
   incidents,
   viewerRole,
   copy,
-  onDismiss,
+  onClose,
 }: {
   incidents: ConnectionHealthAlertItem[];
   viewerRole: "creator" | "admin";
   copy: ConnectionHealthAlertCopy;
-  onDismiss: (incidentId: string, dismissed: boolean) => void;
+  onClose: () => void;
 }) {
   const limit =
     viewerRole === "admin" ? ADMIN_VISIBLE_LIMIT : CREATOR_VISIBLE_LIMIT;
@@ -150,7 +144,7 @@ export function ConnectionHealthAlertPanel({
       <CreatorConnectionHealthPanel
         incidents={displayed}
         copy={copy}
-        onDismiss={onDismiss}
+        onClose={onClose}
       />
     );
   }
@@ -169,7 +163,7 @@ export function ConnectionHealthAlertPanel({
         <span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-amber-200 text-amber-900">
           <AlertTriangle size={17} aria-hidden />
         </span>
-        <div>
+        <div className="min-w-0 flex-1">
           <h2
             id="connection-health-alert-title"
             className="text-sm font-bold leading-5 text-amber-950"
@@ -180,6 +174,7 @@ export function ConnectionHealthAlertPanel({
             {copy.adminDescription}
           </p>
         </div>
+        <AlertCloseButton label={copy.close} onClose={onClose} tone="admin" />
       </header>
 
       <div className="max-h-[min(68vh,560px)] overflow-y-auto">
@@ -198,7 +193,6 @@ export function ConnectionHealthAlertPanel({
                 key={incident.id}
                 incident={incident}
                 copy={copy}
-                onDismiss={onDismiss}
               />
             ))}
           </div>
@@ -221,11 +215,11 @@ export function ConnectionHealthAlertPanel({
 function CreatorConnectionHealthPanel({
   incidents,
   copy,
-  onDismiss,
+  onClose,
 }: {
   incidents: ConnectionHealthAlertItem[];
   copy: ConnectionHealthAlertCopy;
-  onDismiss: (incidentId: string, dismissed: boolean) => void;
+  onClose: () => void;
 }) {
   return (
     <section
@@ -252,6 +246,7 @@ function CreatorConnectionHealthPanel({
             </p>
           ) : null}
         </div>
+        <AlertCloseButton label={copy.close} onClose={onClose} />
       </header>
 
       <div>
@@ -260,7 +255,6 @@ function CreatorConnectionHealthPanel({
             key={incident.id}
             incident={incident}
             copy={copy}
-            onDismiss={onDismiss}
           />
         ))}
       </div>
@@ -271,11 +265,9 @@ function CreatorConnectionHealthPanel({
 function CreatorIncidentRow({
   incident,
   copy,
-  onDismiss,
 }: {
   incident: ConnectionHealthAlertItem;
   copy: ConnectionHealthAlertCopy;
-  onDismiss: (incidentId: string, dismissed: boolean) => void;
 }) {
   return (
     <article className="border-t border-[#ecebe6] px-4 py-3.5">
@@ -310,7 +302,7 @@ function CreatorIncidentRow({
         {copy.analyticsStopped}
       </p>
 
-      <div className="mt-3 flex flex-wrap items-center justify-between gap-x-3 gap-y-2">
+      <div className="mt-3">
         <p className="text-[10px] leading-4 text-[#89857d]">
           {copy.unlinkHelp}{" "}
           <Link
@@ -320,12 +312,6 @@ function CreatorIncidentRow({
             {copy.viewConnections}
           </Link>
         </p>
-
-        <ReminderSwitch
-          incident={incident}
-          label={copy.doNotRemind}
-          onDismiss={onDismiss}
-        />
       </div>
     </article>
   );
@@ -334,11 +320,9 @@ function CreatorIncidentRow({
 function AdminIncidentRow({
   incident,
   copy,
-  onDismiss,
 }: {
   incident: ConnectionHealthAlertItem;
   copy: ConnectionHealthAlertCopy;
-  onDismiss: (incidentId: string, dismissed: boolean) => void;
 }) {
   return (
     <article className="px-4 py-3.5">
@@ -376,51 +360,32 @@ function AdminIncidentRow({
           </p>
         </details>
       ) : null}
-
-      <label className="mt-3 flex cursor-pointer items-center gap-2 text-xs font-medium text-amber-950">
-        <input
-          type="checkbox"
-          checked={incident.dismissed}
-          onChange={(event) => onDismiss(incident.id, event.target.checked)}
-          className="h-4 w-4 rounded border-amber-500 accent-amber-900"
-        />
-        {copy.doNotRemind}
-      </label>
     </article>
   );
 }
 
-function ReminderSwitch({
-  incident,
+function AlertCloseButton({
   label,
-  onDismiss,
+  onClose,
+  tone = "creator",
 }: {
-  incident: ConnectionHealthAlertItem;
   label: string;
-  onDismiss: (incidentId: string, dismissed: boolean) => void;
+  onClose: () => void;
+  tone?: "creator" | "admin";
 }) {
   return (
     <button
       type="button"
-      role="switch"
-      aria-checked={incident.dismissed}
-      aria-label={`${label}: ${incident.connectionLabel}`}
-      onClick={() => onDismiss(incident.id, !incident.dismissed)}
-      className="group flex shrink-0 items-center gap-2 rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#d59a44] focus-visible:ring-offset-2"
+      aria-label={label}
+      title={label}
+      onClick={onClose}
+      className={`ml-auto flex h-7 w-7 shrink-0 items-center justify-center rounded-full transition-[background-color,color,transform] duration-150 hover:scale-105 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 ${
+        tone === "admin"
+          ? "text-amber-700 hover:bg-amber-200/70 hover:text-amber-950 focus-visible:ring-amber-700"
+          : "text-[#8a877f] hover:bg-[#f1f0eb] hover:text-[#25251f] focus-visible:ring-[#d59a44]"
+      }`}
     >
-      <span className="text-[9px] font-medium text-[#716e67]">{label}</span>
-      <span
-        className={`relative h-5 w-8 rounded-full transition-colors duration-200 ${
-          incident.dismissed ? "bg-[#b57a29]" : "bg-[#d6d4cd]"
-        }`}
-        aria-hidden
-      >
-        <span
-          className={`absolute left-0.5 top-0.5 h-4 w-4 rounded-full bg-white shadow-sm transition-transform duration-200 ${
-            incident.dismissed ? "translate-x-3" : "translate-x-0"
-          }`}
-        />
-      </span>
+      <X size={15} strokeWidth={1.8} aria-hidden />
     </button>
   );
 }

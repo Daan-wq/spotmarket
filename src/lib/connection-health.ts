@@ -44,7 +44,6 @@ export interface ConnectionHealthAlertItem {
   issueType: ConnectionHealthIssueType;
   openedAt: string;
   lastDetectedAt: string;
-  dismissed: boolean;
   connectionHref: string;
   reconnectHref: string;
   creatorHref: string;
@@ -279,11 +278,6 @@ export async function getConnectionHealthAlertsForViewer(
           user: { select: { email: true } },
         },
       },
-      dismissals: {
-        where: { viewerId: viewer.id },
-        select: { id: true },
-        take: 1,
-      },
     },
   });
 
@@ -298,7 +292,6 @@ export async function getConnectionHealthAlertsForViewer(
     issueType: incident.issueType,
     openedAt: incident.openedAt.toISOString(),
     lastDetectedAt: incident.lastDetectedAt.toISOString(),
-    dismissed: incident.dismissals.length > 0,
     connectionHref: connectionHref(
       incident.connectionType,
       incident.connectionId,

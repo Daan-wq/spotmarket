@@ -20,7 +20,7 @@
     "reconnect": "Reconnect",
     "viewConnections": "Unlink",
     "unlinkHelp": "No longer using it?",
-    "doNotRemind": "Do not remind me again",
+    "close": "Close notification",
     "viewCreator": "View creator",
     "technicalDetails": "Technical details",
     "moreIncidents": "View {count, plural, one {# more affected page} other {# more affected pages}}"
