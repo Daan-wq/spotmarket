@@ -11,6 +11,26 @@ import { PlatformLogo } from "@/platform-icons";
 const QUERY_KEY = ["connection-health"] as const;
 const ADMIN_VISIBLE_LIMIT = 8;
 const CREATOR_VISIBLE_LIMIT = 10;
+const EXIT_ANIMATION_MS = 240;
+
+type AlertMotionPhase = "entering" | "visible" | "closing";
+
+export function connectionHealthAlertMotionClass(
+  phase: AlertMotionPhase,
+): string {
+  const base =
+    "transition-[opacity,transform] motion-reduce:transform-none motion-reduce:duration-[120ms]";
+
+  if (phase === "visible") {
+    return `${base} translate-x-0 opacity-100 duration-[360ms] ease-[cubic-bezier(0.16,1,0.3,1)]`;
+  }
+
+  if (phase === "closing") {
+    return `${base} pointer-events-none translate-x-[calc(100%+1.5rem)] opacity-0 duration-[240ms] ease-[cubic-bezier(0.7,0,0.84,0)]`;
+  }
+
+  return `${base} translate-x-[calc(100%+1.5rem)] opacity-0 duration-[360ms] ease-[cubic-bezier(0.16,1,0.3,1)]`;
+}
 
 export interface ConnectionHealthAlertCopy {
   title: string;
@@ -91,33 +111,41 @@ function DismissibleConnectionHealthAlert({
   viewerRole: "creator" | "admin";
   copy: ConnectionHealthAlertCopy;
 }) {
-  const [isClosing, setIsClosing] = useState(false);
+  const [motionPhase, setMotionPhase] =
+    useState<AlertMotionPhase>("entering");
   const [isClosed, setIsClosed] = useState(false);
 
   useEffect(() => {
-    if (!isClosing) return;
-    const timeout = window.setTimeout(() => setIsClosed(true), 200);
+    if (motionPhase !== "entering") return;
+    const frame = window.requestAnimationFrame(() => {
+      setMotionPhase("visible");
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [motionPhase]);
+
+  useEffect(() => {
+    if (motionPhase !== "closing") return;
+    const timeout = window.setTimeout(
+      () => setIsClosed(true),
+      EXIT_ANIMATION_MS,
+    );
     return () => window.clearTimeout(timeout);
-  }, [isClosing]);
+  }, [motionPhase]);
 
   if (isClosed) return null;
 
   return (
     <div
-      aria-hidden={isClosing}
-      className={`mb-5 w-full origin-top-right transition-[opacity,transform] duration-200 ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:duration-0 lg:fixed lg:right-6 lg:top-6 lg:z-[70] lg:mb-0 ${
+      aria-hidden={motionPhase === "closing"}
+      className={`mb-5 w-full lg:fixed lg:right-6 lg:top-6 lg:z-[70] lg:mb-0 ${
         viewerRole === "creator" ? "lg:w-[390px]" : "lg:w-[430px]"
-      } ${
-        isClosing
-          ? "pointer-events-none translate-x-3 scale-[0.98] opacity-0"
-          : "translate-x-0 scale-100 opacity-100"
-      }`}
+      } ${connectionHealthAlertMotionClass(motionPhase)}`}
     >
       <ConnectionHealthAlertPanel
         incidents={incidents}
         viewerRole={viewerRole}
         copy={copy}
-        onClose={() => setIsClosing(true)}
+        onClose={() => setMotionPhase("closing")}
       />
     </div>
   );
