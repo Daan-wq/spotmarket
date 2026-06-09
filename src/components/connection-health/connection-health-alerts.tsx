@@ -19,7 +19,7 @@ export function connectionHealthAlertMotionClass(
   phase: AlertMotionPhase,
 ): string {
   const base =
-    "transition-[opacity,transform] motion-reduce:transform-none motion-reduce:duration-[120ms]";
+    "transition-[opacity,translate] motion-reduce:translate-x-0 motion-reduce:duration-[120ms]";
 
   if (phase === "visible") {
     return `${base} translate-x-0 opacity-100 duration-[360ms] ease-[cubic-bezier(0.16,1,0.3,1)]`;
