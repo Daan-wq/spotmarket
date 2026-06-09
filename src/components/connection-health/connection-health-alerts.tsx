@@ -285,7 +285,7 @@ function CreatorIncidentRow({
           </p>
         </div>
         <Link
-          href={incident.reconnectHref}
+          href={incident.connectionHref}
           className="shrink-0 rounded-full bg-[#25251f] px-3 py-2 text-[11px] font-semibold text-white transition-colors hover:bg-[#3a3931] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#d59a44] focus-visible:ring-offset-2"
         >
           {copy.reconnect}

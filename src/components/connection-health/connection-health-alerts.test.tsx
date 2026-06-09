@@ -24,7 +24,16 @@ describe("ConnectionHealthAlertPanel", () => {
   it("renders a grouped creator alert with a temporary close action", () => {
     const html = renderToStaticMarkup(
       <ConnectionHealthAlertPanel
-        incidents={[incident(), incident({ id: "incident-2", connectionLabel: "@other" })]}
+        incidents={[
+          incident(),
+          incident({
+            id: "incident-2",
+            connectionId: "ig-2",
+            connectionLabel: "@other",
+            connectionHref:
+              "/creator/connections?platform=ig&account=ig-2",
+          }),
+        ]}
         viewerRole="creator"
         copy={copy}
         onClose={vi.fn()}
@@ -34,7 +43,17 @@ describe("ConnectionHealthAlertPanel", () => {
     expect(html).toContain(copy.title);
     expect(html).toContain("@page");
     expect(html).toContain("@other");
-    expect(html).toContain("href=\"/api/auth/instagram");
+    expect(
+      html.match(
+        /href="\/creator\/connections\?platform=ig&amp;account=ig-1"/g,
+      ),
+    ).toHaveLength(2);
+    expect(
+      html.match(
+        /href="\/creator\/connections\?platform=ig&amp;account=ig-2"/g,
+      ),
+    ).toHaveLength(2);
+    expect(html).not.toContain("href=\"/api/auth/instagram");
     expect(html.match(/aria-label="Close notification"/g)).toHaveLength(1);
     expect(html).not.toContain("role=\"switch\"");
     expect(html).not.toContain("Do not remind me again");
