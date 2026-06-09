@@ -641,6 +641,7 @@ model Campaign {
   productionAssignments ProductionAssignment[]
   contractDocuments     ContractDocument[]
   reports               CampaignReport[]
+  events                CampaignEvent[]
 
   @@index([status])
   @@index([deadline])
@@ -667,6 +668,27 @@ enum Platform {
   YOUTUBE_SHORTS
   FACEBOOK
   X
+}
+
+model CampaignEvent {
+  id              String            @id @default(cuid())
+  campaignId      String
+  campaign        Campaign          @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  type            CampaignEventType
+  occurredAt      DateTime          @default(now())
+  createdByUserId String?
+  transitionKey   String            @unique
+  createdAt       DateTime          @default(now())
+
+  @@index([campaignId, occurredAt])
+  @@index([campaignId, type])
+}
+
+enum CampaignEventType {
+  STARTED
+  PAUSED
+  RESUMED
+  COMPLETED
 }
 
 model CampaignReport {

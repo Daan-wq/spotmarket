@@ -9,6 +9,7 @@ import {
   removeDiscordCampaignRole,
 } from "@/lib/discord-campaign-roles";
 import { sendCampaignAnnouncementOnce } from "@/lib/admin/discord-campaign-announcements";
+import { updateCampaignWithEvent } from "@/lib/campaign-events";
 
 function serialize<T>(data: T): T {
   return JSON.parse(
@@ -239,10 +240,17 @@ export async function PATCH(
       data.discordChannelId = discordProvisioning.channelId;
     }
 
-    const updated = await prisma.campaign.update({
-      where: { id: campaignId },
-      data,
-    });
+    const nextStatus = rest.status ?? authorized.campaign.status;
+    const updated = await prisma.$transaction((tx) =>
+      updateCampaignWithEvent(tx, {
+        campaignId,
+        previousStatus: authorized.campaign.status,
+        previousUpdatedAt: authorized.campaign.updatedAt,
+        nextStatus,
+        data,
+        createdByUserId: authorized.user.id,
+      }),
+    );
 
     let discordAnnouncement:
       | Awaited<ReturnType<typeof sendCampaignAnnouncementOnce>>

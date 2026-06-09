@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
 import {
+  buildBrandTimeline,
+  buildBrandMilestones,
+  calculateBrandGoalDelivery,
+  calculateExpectedGoalDate,
   buildBrandPortalCampaignWhere,
   buildBrandVisibleReportWhere,
   sanitizeBrandCampaignDashboardData,
@@ -264,30 +268,27 @@ describe("brand report portal helpers", () => {
     expect(sanitized.campaign).not.toHaveProperty("adminMargin");
     expect(sanitized.performance).not.toHaveProperty("statusCounts");
     expect(sanitized).not.toHaveProperty("referral");
-    expect(sanitized.quality).toEqual({
-      status: "Aandacht nodig",
-      reviewedClips: 4,
-    });
+    expect(sanitized).not.toHaveProperty("quality");
+    expect(sanitized).not.toHaveProperty("creators");
+    expect(sanitized).not.toHaveProperty("defaults");
+    expect(sanitized.performance.overdeliveryViews).toBe(10000);
+    expect(sanitized.performance.overdeliveryPercent).toBeCloseTo(10000 / 180000);
     expect(sanitized.topContent[0]).toEqual({
       id: "submission-1",
-      creator: "Creator #1",
       platform: "TikTok",
       postUrl: "https://tiktok.com/@creator/video/1",
       thumbnailUrl: "https://example.com/thumb.jpg",
       views: 100000,
       engagement: 4200,
     });
-    expect(sanitized.creators[0]).toEqual({
-      creator: "Creator #1",
-      submissions: 2,
-      approvedSubmissions: 2,
-      views: 100000,
-      approvalRate: 1,
-    });
   });
 
-  it("creates a minimal dashboard projection with only approved top content sorted by views", () => {
+  it("creates the expanded dashboard projection with goal-based delivery and approved top content", () => {
     const data = liveData();
+    data.timeline = [
+      { date: "2026-05-01", views: 1000, likes: 25, comments: 4, shares: 2 },
+      { date: "2026-05-02", views: 2500, likes: 50, comments: 8, shares: 4 },
+    ];
     data.topContent = [
       {
         id: "rejected-high",
@@ -335,6 +336,7 @@ describe("brand report portal helpers", () => {
         brandName: "Bram's Fruit",
         platforms: ["TikTok"],
         totalBudget: 2500,
+        businessCpm: 14,
         goalViews: 180000,
         startsAt: "2026-05-01T00:00:00.000Z",
         deadline: "2026-05-31T00:00:00.000Z",
@@ -345,10 +347,35 @@ describe("brand report portal helpers", () => {
         deliveryProgress: 1.13,
         budgetUsed: 2500,
         budgetUsedPercent: 1,
-        overdeliveryViews: 25000,
-        overdeliveryPercent: 0.14,
+        budgetRemaining: 0,
+        businessCpm: 14,
+        effectiveCpm: 12.2,
+        overdeliveryViews: 10000,
+        overdeliveryPercent: 10000 / 180000,
+        totalSubmissions: 5,
+        approvedClips: 4,
+        uniquePages: 3,
+        averageViewsPerApprovedClip: 47500,
+        totalEngagement: 8200,
+        engagementRate: 8200 / 190000,
+        expectedGoalDate: "2026-06-01",
       },
-      timeline: [{ date: "2026-05-01", views: 1000 }],
+      timeline: [
+        { date: "2026-05-01", views: 1000, cumulativeViews: 1000 },
+        { date: "2026-05-02", views: 2500, cumulativeViews: 3500 },
+      ],
+      milestones: [
+        { type: "STARTED", date: "2026-05-01", label: "Campagne gestart" },
+        { type: "PLANNED_END", date: "2026-05-31", label: "Geplande einddatum" },
+      ],
+      platformBreakdown: [{
+        platform: "TikTok",
+        views: 205000,
+        clips: 4,
+        engagement: 8200,
+        engagementRate: 0.04,
+        effectiveCpm: 12.2,
+      }],
       topContent: [
         {
           id: "approved-high",
@@ -371,5 +398,113 @@ describe("brand report portal helpers", () => {
     expect(dashboard).not.toHaveProperty("quality");
     expect(dashboard).not.toHaveProperty("creators");
     expect(dashboard).not.toHaveProperty("referral");
+  });
+
+  it("defines brand overdelivery only as approved views above the campaign goal", () => {
+    expect(calculateBrandGoalDelivery(864453, 2625000)).toEqual({
+      overdeliveryViews: 0,
+      overdeliveryPercent: 0,
+    });
+    expect(calculateBrandGoalDelivery(2800000, 2625000)).toEqual({
+      overdeliveryViews: 175000,
+      overdeliveryPercent: 175000 / 2625000,
+    });
+    expect(calculateBrandGoalDelivery(1000, null)).toEqual({
+      overdeliveryViews: 0,
+      overdeliveryPercent: null,
+    });
+  });
+
+  it("calculates the expected goal date from average approved views per calendar day", () => {
+    expect(calculateExpectedGoalDate({
+      startsAt: "2026-05-01T10:00:00.000Z",
+      generatedAt: "2026-05-10T12:00:00.000Z",
+      approvedViews: 100000,
+      goalViews: 200000,
+      timeline: [{ date: "2026-05-10", views: 100000 }],
+    })).toBe("2026-05-20");
+  });
+
+  it("returns the reached date and handles missing or unusable forecast inputs", () => {
+    const reachedTimeline = [
+      { date: "2026-05-01", views: 60000 },
+      { date: "2026-05-02", views: 50000 },
+    ];
+
+    expect(calculateExpectedGoalDate({
+      startsAt: "2026-05-01T00:00:00.000Z",
+      generatedAt: "2026-05-02T12:00:00.000Z",
+      approvedViews: 110000,
+      goalViews: 100000,
+      timeline: reachedTimeline,
+    })).toBe("2026-05-02");
+    expect(calculateExpectedGoalDate({
+      startsAt: "2026-05-01T00:00:00.000Z",
+      generatedAt: "2026-05-02T12:00:00.000Z",
+      approvedViews: 0,
+      goalViews: 100000,
+      timeline: [],
+    })).toBeNull();
+    expect(calculateExpectedGoalDate({
+      startsAt: null,
+      generatedAt: "2026-05-02T12:00:00.000Z",
+      approvedViews: 1000,
+      goalViews: 100000,
+      timeline: [],
+    })).toBeNull();
+    expect(calculateExpectedGoalDate({
+      startsAt: "2026-05-01T00:00:00.000Z",
+      generatedAt: "2026-05-02T12:00:00.000Z",
+      approvedViews: 1000,
+      goalViews: null,
+      timeline: [],
+    })).toBeNull();
+  });
+
+  it("adds cumulative approved views to each chart point", () => {
+    expect(buildBrandTimeline([
+      { date: "2026-05-01", views: 1000 },
+      { date: "2026-05-02", views: 2500 },
+      { date: "2026-05-03", views: 500 },
+    ])).toEqual([
+      { date: "2026-05-01", views: 1000, cumulativeViews: 1000 },
+      { date: "2026-05-02", views: 2500, cumulativeViews: 3500 },
+      { date: "2026-05-03", views: 500, cumulativeViews: 4000 },
+    ]);
+  });
+
+  it("combines derived and stored campaign milestones without inventing history", () => {
+    expect(buildBrandMilestones({
+      startsAt: "2026-05-01T10:00:00.000Z",
+      deadline: "2026-05-31T23:00:00.000Z",
+      goalViews: 3000,
+      timeline: buildBrandTimeline([
+        { date: "2026-05-01", views: 1000 },
+        { date: "2026-05-02", views: 2500 },
+      ]),
+      events: [
+        { type: "STARTED", occurredAt: new Date("2026-05-01T11:00:00.000Z") },
+        { type: "PAUSED", occurredAt: new Date("2026-05-10T09:00:00.000Z") },
+        { type: "RESUMED", occurredAt: new Date("2026-05-12T09:00:00.000Z") },
+        { type: "COMPLETED", occurredAt: new Date("2026-05-29T09:00:00.000Z") },
+      ],
+    })).toEqual([
+      { type: "STARTED", date: "2026-05-01", label: "Campagne gestart" },
+      { type: "GOAL_REACHED", date: "2026-05-02", label: "Viewdoel gehaald" },
+      { type: "PAUSED", date: "2026-05-10", label: "Campagne gepauzeerd" },
+      { type: "RESUMED", date: "2026-05-12", label: "Campagne hervat" },
+      { type: "COMPLETED", date: "2026-05-29", label: "Campagne afgerond" },
+      { type: "PLANNED_END", date: "2026-05-31", label: "Geplande einddatum" },
+    ]);
+
+    expect(buildBrandMilestones({
+      startsAt: null,
+      deadline: "2026-05-31T23:00:00.000Z",
+      goalViews: 5000,
+      timeline: [],
+      events: [],
+    })).toEqual([
+      { type: "PLANNED_END", date: "2026-05-31", label: "Geplande einddatum" },
+    ]);
   });
 });

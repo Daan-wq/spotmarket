@@ -40,7 +40,17 @@ export async function GET(_req: Request, { params }: RouteContext) {
     if (!liveData) return NextResponse.json({ error: "Campaign not found" }, { status: 404 });
 
     return NextResponse.json({
-      report: serialize(report),
+      report: serialize({
+        id: report.id,
+        title: report.title,
+        campaignId: report.campaignId,
+        periodStart: report.periodStart,
+        periodEnd: report.periodEnd,
+        brandVisibleAt: report.brandVisibleAt,
+        updatedAt: report.updatedAt,
+        brand: report.brand,
+        campaign: report.campaign,
+      }),
       liveData: sanitizeBrandReportLiveData(liveData),
     });
   } catch (error) {

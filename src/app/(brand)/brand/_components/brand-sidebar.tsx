@@ -1,5 +1,8 @@
+"use client";
+
 import Link from "next/link";
-import { LayoutDashboard } from "lucide-react";
+import { Clapperboard, FileText, LayoutDashboard } from "lucide-react";
+import { usePathname } from "next/navigation";
 import { Logo } from "@/components/shared/logo";
 
 interface BrandSidebarProps {
@@ -9,7 +12,13 @@ interface BrandSidebarProps {
 }
 
 export function BrandSidebar({ email, brandNames, isAdminPreview }: BrandSidebarProps) {
+  const pathname = usePathname();
   const primaryBrand = isAdminPreview ? "Admin preview" : brandNames[0] ?? "Brand";
+  const navigation = [
+    { href: "/brand", label: "Dashboard", icon: LayoutDashboard, active: pathname === "/brand" },
+    { href: "/brand/content", label: "Content", icon: Clapperboard, active: pathname.startsWith("/brand/content") },
+    { href: "/brand/reports", label: "Rapporten", icon: FileText, active: pathname.startsWith("/brand/reports") },
+  ];
 
   return (
     <aside className="fixed left-8 top-0 hidden h-screen w-56 flex-col py-10 lg:flex">
@@ -21,13 +30,23 @@ export function BrandSidebar({ email, brandNames, isAdminPreview }: BrandSidebar
       </div>
 
       <nav className="flex-1 space-y-1">
-        <Link
-          href="/brand"
-          className="flex h-11 items-center gap-3 rounded-xl bg-neutral-200 px-4 text-sm font-medium text-neutral-950"
-        >
-          <LayoutDashboard className="h-4 w-4" />
-          Dashboard
-        </Link>
+        {navigation.map((item) => {
+          const Icon = item.icon;
+          return (
+            <Link
+              key={item.href}
+              href={item.href}
+              className={`flex h-11 items-center gap-3 rounded-xl px-4 text-sm font-medium transition ${
+                item.active
+                  ? "bg-neutral-200 text-neutral-950"
+                  : "text-neutral-500 hover:bg-neutral-100 hover:text-neutral-950"
+              }`}
+            >
+              <Icon className="h-4 w-4" />
+              {item.label}
+            </Link>
+          );
+        })}
       </nav>
 
       <div className="mt-6 rounded-xl border border-neutral-200 bg-neutral-100/70 p-3">

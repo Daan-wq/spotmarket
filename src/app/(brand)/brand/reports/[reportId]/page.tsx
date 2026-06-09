@@ -1,6 +1,11 @@
 import type { Prisma } from "@prisma/client";
-import { notFound, redirect } from "next/navigation";
-import { buildBrandVisibleReportWhere } from "@/lib/brand-report-portal";
+import { notFound } from "next/navigation";
+import { BrandReportDocument } from "@/components/brand/brand-report-document";
+import { getCampaignReportLiveData } from "@/lib/admin/campaign-reporting";
+import {
+  buildBrandVisibleReportWhere,
+  sanitizeBrandReportLiveData,
+} from "@/lib/brand-report-portal";
 import { getBrandPortalContext } from "@/lib/brand-auth";
 import { prisma } from "@/lib/prisma";
 
@@ -15,12 +20,32 @@ export default async function BrandReportPage({ params }: PageProps) {
   const context = await getBrandPortalContext();
   const where: Prisma.CampaignReportWhereInput = context.brandIds
     ? { id: reportId, ...buildBrandVisibleReportWhere(context.brandIds) }
-    : { id: reportId, status: "FINAL" as const, visibleToBrand: true, brand: { portalEnabled: true } };
+    : { id: reportId, status: "FINAL", visibleToBrand: true, brand: { portalEnabled: true } };
   const report = await prisma.campaignReport.findFirst({
     where,
-    select: { campaignId: true },
+    select: {
+      id: true,
+      title: true,
+      campaignId: true,
+      periodStart: true,
+      periodEnd: true,
+      brandVisibleAt: true,
+      updatedAt: true,
+    },
   });
 
   if (!report) notFound();
-  redirect(`/brand?campaignId=${encodeURIComponent(report.campaignId)}`);
+  const liveData = await getCampaignReportLiveData({
+    campaignId: report.campaignId,
+    periodStart: report.periodStart,
+    periodEnd: report.periodEnd,
+  });
+  if (!liveData) notFound();
+
+  return (
+    <BrandReportDocument
+      report={report}
+      data={sanitizeBrandReportLiveData(liveData)}
+    />
+  );
 }

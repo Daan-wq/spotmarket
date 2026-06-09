@@ -5,6 +5,7 @@ import type { Niche } from "@prisma/client";
 import { z } from "zod";
 import { ensureDiscordCampaignProvisioning } from "@/lib/discord-campaign-provisioning";
 import { sendCampaignAnnouncementOnce } from "@/lib/admin/discord-campaign-announcements";
+import { updateCampaignWithEvent } from "@/lib/campaign-events";
 
 const launchCampaignSchema = z.object({
   name: z.string().min(3),
@@ -86,10 +87,16 @@ export async function POST(req: NextRequest) {
     });
 
     const provisioned = await ensureDiscordCampaignProvisioning(campaign);
-    const activeCampaign = await prisma.campaign.update({
-      where: { id: campaign.id },
-      data: { status: "active" },
-    });
+    const activeCampaign = await prisma.$transaction((tx) =>
+      updateCampaignWithEvent(tx, {
+        campaignId: campaign.id,
+        previousStatus: campaign.status,
+        previousUpdatedAt: campaign.updatedAt,
+        nextStatus: "active",
+        data: { status: "active" },
+        createdByUserId: user.id,
+      }),
+    );
 
     try {
       const discordAnnouncement = await sendCampaignAnnouncementOnce({

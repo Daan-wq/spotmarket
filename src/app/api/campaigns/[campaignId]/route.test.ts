@@ -6,6 +6,7 @@ const routeMocks = vi.hoisted(() => ({
   userFindUnique: vi.fn(),
   campaignFindUnique: vi.fn(),
   campaignUpdate: vi.fn(),
+  campaignEventUpsert: vi.fn(),
   applicationFindMany: vi.fn(),
   ensureDiscordCampaignResources: vi.fn(),
   removeDiscordCampaignRole: vi.fn(),
@@ -26,6 +27,10 @@ vi.mock("@/lib/prisma", () => ({
       update: routeMocks.campaignUpdate,
     },
     campaignApplication: { findMany: routeMocks.applicationFindMany },
+    $transaction: vi.fn(async (callback) => callback({
+      campaign: { update: routeMocks.campaignUpdate },
+      campaignEvent: { upsert: routeMocks.campaignEventUpsert },
+    })),
   },
 }));
 
@@ -62,6 +67,7 @@ function campaign(status = "active") {
     discordAnnouncementChannelId: null,
     discordAnnouncementMessageId: null,
     discordAnnouncementSentAt: null,
+    updatedAt: new Date("2026-06-01T08:00:00.000Z"),
   };
 }
 
@@ -106,6 +112,17 @@ describe("PATCH /api/campaigns/[campaignId]", () => {
       },
     });
     expect(routeMocks.removeDiscordCampaignRole).toHaveBeenCalledTimes(2);
+    expect(routeMocks.campaignEventUpsert).toHaveBeenCalledWith({
+      where: {
+        transitionKey: "campaign-1:active:completed:2026-06-01T08:00:00.000Z",
+      },
+      create: expect.objectContaining({
+        campaignId: "campaign-1",
+        type: "COMPLETED",
+        createdByUserId: "admin-user-1",
+      }),
+      update: {},
+    });
     expect(routeMocks.removeDiscordCampaignRole).toHaveBeenCalledWith(
       expect.objectContaining({ id: "campaign-1", name: "ClipProfit" }),
       "discord-user-1",
@@ -133,6 +150,11 @@ describe("PATCH /api/campaigns/[campaignId]", () => {
     expect(routeMocks.removeDiscordCampaignRole).not.toHaveBeenCalled();
     expect(routeMocks.ensureDiscordCampaignResources).not.toHaveBeenCalled();
     expect(routeMocks.sendCampaignAnnouncementOnce).not.toHaveBeenCalled();
+    expect(routeMocks.campaignEventUpsert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        create: expect.objectContaining({ type: "PAUSED" }),
+      }),
+    );
   });
 
   it("provisions Discord resources and posts an announcement when a campaign becomes active", async () => {
@@ -172,6 +194,11 @@ describe("PATCH /api/campaigns/[campaignId]", () => {
       }),
       userId: "admin-user-1",
     });
+    expect(routeMocks.campaignEventUpsert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        create: expect.objectContaining({ type: "STARTED" }),
+      }),
+    );
     await expect(response.json()).resolves.toEqual(
       expect.objectContaining({
         discordProvisioning: {

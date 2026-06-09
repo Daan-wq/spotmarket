@@ -6,6 +6,7 @@ const routeMocks = vi.hoisted(() => ({
   userFindUnique: vi.fn(),
   campaignCreate: vi.fn(),
   campaignUpdate: vi.fn(),
+  campaignEventUpsert: vi.fn(),
   ensureDiscordCampaignProvisioning: vi.fn(),
   sendCampaignAnnouncementOnce: vi.fn(),
 }));
@@ -21,6 +22,10 @@ vi.mock("@/lib/prisma", () => ({
       create: routeMocks.campaignCreate,
       update: routeMocks.campaignUpdate,
     },
+    $transaction: vi.fn(async (callback) => callback({
+      campaign: { update: routeMocks.campaignUpdate },
+      campaignEvent: { upsert: routeMocks.campaignEventUpsert },
+    })),
   },
 }));
 
@@ -41,6 +46,7 @@ const draftCampaign = {
   discordAnnouncementChannelId: null,
   discordAnnouncementMessageId: null,
   discordAnnouncementSentAt: null,
+  updatedAt: new Date("2026-06-01T08:00:00.000Z"),
 };
 
 function launchRequest() {
@@ -92,6 +98,17 @@ describe("POST /api/campaigns/launch", () => {
     expect(routeMocks.campaignUpdate).toHaveBeenCalledWith({
       where: { id: "campaign-1" },
       data: { status: "active" },
+    });
+    expect(routeMocks.campaignEventUpsert).toHaveBeenCalledWith({
+      where: {
+        transitionKey: "campaign-1:draft:active:2026-06-01T08:00:00.000Z",
+      },
+      create: expect.objectContaining({
+        campaignId: "campaign-1",
+        type: "STARTED",
+        createdByUserId: "admin-user-1",
+      }),
+      update: {},
     });
     expect(routeMocks.sendCampaignAnnouncementOnce).toHaveBeenCalledWith({
       campaign: expect.objectContaining({ id: "campaign-1", status: "active" }),

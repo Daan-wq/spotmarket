@@ -28,6 +28,10 @@ const campaignSelect = {
   startsAt: true,
   deadline: true,
   updatedAt: true,
+  events: {
+    select: { type: true, occurredAt: true },
+    orderBy: { occurredAt: "asc" as const },
+  },
   brand: { select: { id: true, name: true } },
 } as const;
 
@@ -84,7 +88,7 @@ export default async function BrandPortalPage({ searchParams }: PageProps) {
     <BrandCampaignDashboard
       campaigns={campaignOptions}
       selectedCampaignId={selectedCampaign.id}
-      data={sanitizeBrandCampaignDashboardData(liveData)}
+      data={sanitizeBrandCampaignDashboardData(liveData, selectedCampaign.events)}
     />
   );
 }

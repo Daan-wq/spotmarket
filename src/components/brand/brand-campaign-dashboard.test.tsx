@@ -16,6 +16,7 @@ const data: BrandCampaignDashboardData = {
     brandName: "ClipProfit Brand",
     platforms: ["TikTok", "Instagram"],
     totalBudget: 5000,
+    businessCpm: 14,
     goalViews: 500000,
     startsAt: "2026-06-01T00:00:00.000Z",
     deadline: "2026-07-01T00:00:00.000Z",
@@ -26,10 +27,34 @@ const data: BrandCampaignDashboardData = {
     deliveryProgress: 0.65,
     budgetUsed: 2750,
     budgetUsedPercent: 0.55,
-    overdeliveryViews: 25000,
-    overdeliveryPercent: 0.08,
+    budgetRemaining: 2250,
+    businessCpm: 14,
+    effectiveCpm: 8.46,
+    overdeliveryViews: 0,
+    overdeliveryPercent: 0,
+    totalSubmissions: 18,
+    approvedClips: 12,
+    uniquePages: 7,
+    averageViewsPerApprovedClip: 27083.33,
+    totalEngagement: 14500,
+    engagementRate: 0.0446,
+    expectedGoalDate: "2026-06-14",
   },
-  timeline: [{ date: "2026-06-08", views: 45000 }],
+  timeline: [{ date: "2026-06-08", views: 45000, cumulativeViews: 325000 }],
+  milestones: [
+    { type: "STARTED", date: "2026-06-01", label: "Campagne gestart" },
+    { type: "PLANNED_END", date: "2026-07-01", label: "Geplande einddatum" },
+  ],
+  platformBreakdown: [
+    {
+      platform: "TikTok",
+      views: 250000,
+      clips: 8,
+      engagement: 12000,
+      engagementRate: 0.048,
+      effectiveCpm: 8.4,
+    },
+  ],
   topContent: [
     {
       id: "clip-1",
@@ -69,9 +94,17 @@ describe("BrandCampaignDashboard", () => {
     expect(html).toContain("Afgerond");
     expect(html).toContain("Totale views");
     expect(html).toContain("Budgetverbruik");
+    expect(html).toContain("Budget resterend");
+    expect(html).toContain("Afgesproken CPM");
+    expect(html).toContain("Effectieve CPM");
+    expect(html).toContain("Verwachte doeldatum");
+    expect(html).toContain("Postende accounts");
+    expect(html).toContain("Clips ingezonden");
+    expect(html).toContain("Platformoverzicht");
     expect(html).toContain("Over-delivery");
     expect(html).toContain("Reageer op deze video’s voor extra engagement en bereik via je eigen socials.");
     expect(html).toContain("https://example.com/clip-1");
+    expect(html).toContain("/brand/content?campaignId=campaign-active");
     expect(html).not.toContain("bots");
     expect(html).not.toContain("flags");
   });

@@ -1,5 +1,6 @@
 import Link from "next/link";
 import {
+  ArrowRight,
   CalendarDays,
   ChevronDown,
   ExternalLink,
@@ -108,6 +109,22 @@ export function BrandCampaignDashboard({
         </div>
       </section>
 
+      <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+        <DashboardMetric label="Budget resterend" value={formatCurrency(data.performance.budgetRemaining, "EUR", "nl")} />
+        <DashboardMetric label="Afgesproken CPM" value={formatCurrency(data.performance.businessCpm, "EUR", "nl")} />
+        <DashboardMetric label="Effectieve CPM" value={formatNullableCurrency(data.performance.effectiveCpm)} />
+        <DashboardMetric label="Verwachte doeldatum" value={data.performance.expectedGoalDate ? formatDate(data.performance.expectedGoalDate, "nl") : "–"} />
+        <DashboardMetric label="Postende accounts" value={formatNumber(data.performance.uniquePages, "nl")} />
+        <DashboardMetric label="Clips ingezonden" value={formatNumber(data.performance.totalSubmissions, "nl")} />
+        <DashboardMetric label="Goedgekeurde clips" value={formatNumber(data.performance.approvedClips, "nl")} />
+        <DashboardMetric label="Gem. views per clip" value={formatNullableNumber(data.performance.averageViewsPerApprovedClip)} />
+        <DashboardMetric
+          label="Engagement"
+          value={formatNumber(data.performance.totalEngagement, "nl")}
+          detail={formatPercent(data.performance.engagementRate)}
+        />
+      </section>
+
       <section className="border-t border-neutral-200 pt-8">
         <div className="mb-6 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
           <div>
@@ -116,13 +133,45 @@ export function BrandCampaignDashboard({
           </div>
           <p className="text-sm text-neutral-500">Alleen goedgekeurde campagneprestaties</p>
         </div>
-        <BrandViewsChart data={data.timeline} />
+        <BrandViewsChart data={data.timeline} milestones={data.milestones} />
+
+        <div className="mt-10">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-neutral-400">Per kanaal</p>
+          <h3 className="mt-2 text-xl font-semibold tracking-[-0.02em] text-neutral-950">Platformoverzicht</h3>
+          {data.platformBreakdown.length > 0 ? (
+            <div className="mt-4 overflow-hidden rounded-2xl border border-neutral-200">
+              <div className="hidden grid-cols-[1.2fr_repeat(4,1fr)] gap-4 bg-neutral-50 px-5 py-3 text-xs font-semibold uppercase tracking-[0.08em] text-neutral-400 md:grid">
+                <span>Platform</span><span>Views</span><span>Clips</span><span>Engagement</span><span>Effectieve CPM</span>
+              </div>
+              {data.platformBreakdown.map((platform) => (
+                <div key={platform.platform} className="grid gap-3 border-t border-neutral-200 px-5 py-4 first:border-t-0 md:grid-cols-[1.2fr_repeat(4,1fr)] md:items-center">
+                  <p className="font-semibold text-neutral-950">{platform.platform}</p>
+                  <PlatformValue label="Views" value={formatNumber(platform.views, "nl")} />
+                  <PlatformValue label="Clips" value={formatNumber(platform.clips, "nl")} />
+                  <PlatformValue label="Engagement" value={formatPercent(platform.engagementRate)} />
+                  <PlatformValue label="Effectieve CPM" value={formatNullableCurrency(platform.effectiveCpm)} />
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="mt-4 text-sm text-neutral-500">Nog geen platformdata beschikbaar.</p>
+          )}
+        </div>
       </section>
 
       <section className="space-y-6 border-t border-neutral-200 pt-8">
-        <div>
-          <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-neutral-400">Leaderboard</p>
-          <h2 className="mt-2 text-2xl font-semibold tracking-[-0.025em] text-neutral-950">Topcontent</h2>
+        <div className="flex flex-wrap items-end justify-between gap-4">
+          <div>
+            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-neutral-400">Leaderboard</p>
+            <h2 className="mt-2 text-2xl font-semibold tracking-[-0.025em] text-neutral-950">Topcontent</h2>
+          </div>
+          <Link
+            href={`/brand/content?campaignId=${encodeURIComponent(selectedCampaignId)}`}
+            className="inline-flex items-center gap-2 text-sm font-semibold text-neutral-700 hover:text-neutral-950"
+          >
+            Alle content bekijken
+            <ArrowRight className="h-4 w-4" />
+          </Link>
         </div>
 
         <div className="flex items-start gap-3 rounded-2xl bg-amber-50 px-4 py-3.5 text-amber-950">
@@ -188,6 +237,35 @@ export function BrandCampaignDashboard({
           </div>
         )}
       </section>
+    </div>
+  );
+}
+
+function DashboardMetric({
+  label,
+  value,
+  detail,
+}: {
+  label: string;
+  value: string;
+  detail?: string;
+}) {
+  return (
+    <div className="rounded-2xl border border-neutral-200 bg-white p-5">
+      <p className="text-sm text-neutral-500">{label}</p>
+      <div className="mt-2 flex items-end justify-between gap-3">
+        <p className="text-2xl font-semibold tracking-[-0.025em] text-neutral-950">{value}</p>
+        {detail ? <p className="text-xs text-neutral-500">{detail}</p> : null}
+      </div>
+    </div>
+  );
+}
+
+function PlatformValue({ label, value }: { label: string; value: string }) {
+  return (
+    <div>
+      <p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-neutral-400 md:hidden">{label}</p>
+      <p className="mt-0.5 text-sm font-medium tabular-nums text-neutral-700 md:mt-0">{value}</p>
     </div>
   );
 }
@@ -269,9 +347,17 @@ function formatCampaignPeriod(start: string | null, end: string) {
 }
 
 function formatPercent(value: number | null) {
-  if (value == null) return "0%";
+  if (value == null) return "–";
   return new Intl.NumberFormat("nl-NL", {
     style: "percent",
     maximumFractionDigits: 0,
   }).format(value);
+}
+
+function formatNullableCurrency(value: number | null) {
+  return value == null ? "–" : formatCurrency(value, "EUR", "nl");
+}
+
+function formatNullableNumber(value: number | null) {
+  return value == null ? "–" : formatNumber(Math.round(value), "nl");
 }

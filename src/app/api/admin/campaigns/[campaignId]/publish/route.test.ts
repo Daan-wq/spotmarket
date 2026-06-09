@@ -6,6 +6,7 @@ const routeMocks = vi.hoisted(() => ({
   userFindUnique: vi.fn(),
   campaignFindUnique: vi.fn(),
   campaignUpdate: vi.fn(),
+  campaignEventUpsert: vi.fn(),
   ensureDiscordCampaignProvisioning: vi.fn(),
   sendCampaignAnnouncementOnce: vi.fn(),
 }));
@@ -21,6 +22,10 @@ vi.mock("@/lib/prisma", () => ({
       findUnique: routeMocks.campaignFindUnique,
       update: routeMocks.campaignUpdate,
     },
+    $transaction: vi.fn(async (callback) => callback({
+      campaign: { update: routeMocks.campaignUpdate },
+      campaignEvent: { upsert: routeMocks.campaignEventUpsert },
+    })),
   },
 }));
 
@@ -43,6 +48,7 @@ const campaign = {
   discordAnnouncementChannelId: null,
   discordAnnouncementMessageId: null,
   discordAnnouncementSentAt: null,
+  updatedAt: new Date("2026-06-01T08:00:00.000Z"),
 };
 
 describe("POST /api/admin/campaigns/[campaignId]/publish", () => {
@@ -76,6 +82,17 @@ describe("POST /api/admin/campaigns/[campaignId]/publish", () => {
     expect(routeMocks.campaignUpdate).toHaveBeenCalledWith({
       where: { id: "campaign-1" },
       data: { status: "active" },
+    });
+    expect(routeMocks.campaignEventUpsert).toHaveBeenCalledWith({
+      where: {
+        transitionKey: "campaign-1:draft:active:2026-06-01T08:00:00.000Z",
+      },
+      create: expect.objectContaining({
+        campaignId: "campaign-1",
+        type: "STARTED",
+        createdByUserId: "admin-user-1",
+      }),
+      update: {},
     });
     expect(routeMocks.sendCampaignAnnouncementOnce).toHaveBeenCalledWith({
       campaign: expect.objectContaining({ id: "campaign-1", status: "active" }),
@@ -112,6 +129,7 @@ describe("POST /api/admin/campaigns/[campaignId]/publish", () => {
 
     expect(response.status).toBe(200);
     expect(routeMocks.campaignUpdate).not.toHaveBeenCalled();
+    expect(routeMocks.campaignEventUpsert).not.toHaveBeenCalled();
     expect(routeMocks.sendCampaignAnnouncementOnce).toHaveBeenCalled();
     await expect(response.json()).resolves.toEqual(
       expect.objectContaining({

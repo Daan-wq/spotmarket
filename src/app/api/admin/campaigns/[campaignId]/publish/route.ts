@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { requireAuth } from "@/lib/auth";
 import { ensureDiscordCampaignProvisioning } from "@/lib/discord-campaign-provisioning";
 import { sendCampaignAnnouncementOnce } from "@/lib/admin/discord-campaign-announcements";
+import { updateCampaignWithEvent } from "@/lib/campaign-events";
 
 export async function POST(
   _req: Request,
@@ -33,10 +34,16 @@ export async function POST(
   const campaignForAnnouncement =
     provisioned.campaign.status === "active"
       ? provisioned.campaign
-      : await prisma.campaign.update({
-          where: { id: campaignId },
-          data: { status: "active" },
-        });
+      : await prisma.$transaction((tx) =>
+          updateCampaignWithEvent(tx, {
+            campaignId,
+            previousStatus: provisioned.campaign.status,
+            previousUpdatedAt: provisioned.campaign.updatedAt,
+            nextStatus: "active",
+            data: { status: "active" },
+            createdByUserId: admin.id,
+          }),
+        );
 
   try {
     const discordAnnouncement = await sendCampaignAnnouncementOnce({
