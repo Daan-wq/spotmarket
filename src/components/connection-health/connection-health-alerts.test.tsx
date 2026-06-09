@@ -92,18 +92,20 @@ describe("ConnectionHealthAlertPanel", () => {
 
 describe("connectionHealthAlertMotionClass", () => {
   it("slides in from the right and exits to the right", () => {
-    expect(connectionHealthAlertMotionClass("entering")).toContain(
+    const entering = connectionHealthAlertMotionClass("entering");
+    const visible = connectionHealthAlertMotionClass("visible");
+    const closing = connectionHealthAlertMotionClass("closing");
+
+    expect(entering).toContain("transition-[opacity,translate]");
+    expect(entering).not.toContain("transition-[opacity,transform]");
+    expect(entering).toContain(
       "translate-x-[calc(100%+1.5rem)]",
     );
-    expect(connectionHealthAlertMotionClass("visible")).toContain(
-      "translate-x-0",
-    );
-    expect(connectionHealthAlertMotionClass("closing")).toContain(
+    expect(visible).toContain("translate-x-0");
+    expect(closing).toContain(
       "translate-x-[calc(100%+1.5rem)]",
     );
-    expect(connectionHealthAlertMotionClass("closing")).toContain(
-      "duration-[240ms]",
-    );
+    expect(closing).toContain("duration-[240ms]");
   });
 });
 
