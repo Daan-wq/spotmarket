@@ -23,6 +23,7 @@
     "close": "Melding sluiten",
     "viewCreator": "Creator bekijken",
     "technicalDetails": "Technische details",
+    "creatorMoreIncidents": "Nog {count, plural, one {# pagina moet} other {# pagina's moeten}} opnieuw gekoppeld worden.",
     "moreIncidents": "Bekijk nog {count, plural, one {# getroffen pagina} other {# getroffen pagina's}}"
   },
   "auth": {

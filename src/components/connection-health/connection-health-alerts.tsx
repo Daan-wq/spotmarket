@@ -10,7 +10,7 @@ import { PlatformLogo } from "@/platform-icons";
 
 const QUERY_KEY = ["connection-health"] as const;
 const ADMIN_VISIBLE_LIMIT = 8;
-const CREATOR_VISIBLE_LIMIT = 10;
+const CREATOR_VISIBLE_LIMIT = 1;
 const EXIT_ANIMATION_MS = 240;
 
 type AlertMotionPhase = "entering" | "visible" | "closing";
@@ -59,6 +59,7 @@ export interface ConnectionHealthAlertCopy {
   close: string;
   viewCreator: string;
   technicalDetails: string;
+  creatorMoreIncidents: string;
   moreIncidents: string;
 }
 
@@ -105,6 +106,7 @@ export function ConnectionHealthAlerts({
     close: t("close"),
     viewCreator: t("viewCreator"),
     technicalDetails: t("technicalDetails"),
+    creatorMoreIncidents: t("creatorMoreIncidents", { count: overflow }),
     moreIncidents: t("moreIncidents", { count: overflow }),
   };
 
@@ -188,6 +190,7 @@ export function ConnectionHealthAlertPanel({
     return (
       <CreatorConnectionHealthPanel
         incidents={displayed}
+        overflow={overflow}
         copy={copy}
         onClose={onClose}
       />
@@ -259,10 +262,12 @@ export function ConnectionHealthAlertPanel({
 
 function CreatorConnectionHealthPanel({
   incidents,
+  overflow,
   copy,
   onClose,
 }: {
   incidents: ConnectionHealthAlertItem[];
+  overflow: number;
   copy: ConnectionHealthAlertCopy;
   onClose: () => void;
 }) {
@@ -303,6 +308,15 @@ function CreatorConnectionHealthPanel({
           />
         ))}
       </div>
+      {overflow > 0 ? (
+        <Link
+          href="/creator/connections"
+          className="flex items-center justify-between gap-3 border-t border-[#ecebe6] bg-[#faf9f6] px-4 py-3 text-[11px] font-medium leading-4 text-[#696961] transition-colors hover:bg-[#f5f3ed] hover:text-[#25251f] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#d59a44]"
+        >
+          <span>{copy.creatorMoreIncidents}</span>
+          <ArrowUpRight size={13} className="shrink-0" aria-hidden />
+        </Link>
+      ) : null}
     </section>
   );
 }
