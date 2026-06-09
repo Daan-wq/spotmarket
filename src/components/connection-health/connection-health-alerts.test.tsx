@@ -3,6 +3,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import {
   ConnectionHealthAlertPanel,
   connectionHealthAlertMotionClass,
+  scheduleConnectionHealthAlertEntrance,
   type ConnectionHealthAlertCopy,
 } from "./connection-health-alerts";
 import type { ConnectionHealthAlertItem } from "@/lib/connection-health";
@@ -103,6 +104,30 @@ describe("connectionHealthAlertMotionClass", () => {
     expect(connectionHealthAlertMotionClass("closing")).toContain(
       "duration-[240ms]",
     );
+  });
+});
+
+describe("scheduleConnectionHealthAlertEntrance", () => {
+  it("waits until the frame after the initial paint before showing the alert", () => {
+    const frames: FrameRequestCallback[] = [];
+    const onReady = vi.fn();
+    const requestFrame = vi.fn((callback: FrameRequestCallback) => {
+      frames.push(callback);
+      return frames.length;
+    });
+
+    scheduleConnectionHealthAlertEntrance(
+      requestFrame,
+      vi.fn(),
+      onReady,
+    );
+
+    expect(requestFrame).toHaveBeenCalledTimes(1);
+    frames.shift()?.(0);
+    expect(onReady).not.toHaveBeenCalled();
+    expect(requestFrame).toHaveBeenCalledTimes(2);
+    frames.shift()?.(16);
+    expect(onReady).toHaveBeenCalledTimes(1);
   });
 });
 

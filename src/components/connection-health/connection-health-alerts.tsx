@@ -32,6 +32,22 @@ export function connectionHealthAlertMotionClass(
   return `${base} translate-x-[calc(100%+1.5rem)] opacity-0 duration-[360ms] ease-[cubic-bezier(0.16,1,0.3,1)]`;
 }
 
+export function scheduleConnectionHealthAlertEntrance(
+  requestFrame: (callback: FrameRequestCallback) => number,
+  cancelFrame: (frameId: number) => void,
+  onReady: () => void,
+): () => void {
+  let visibleFrame: number | null = null;
+  const paintedFrame = requestFrame(() => {
+    visibleFrame = requestFrame(onReady);
+  });
+
+  return () => {
+    cancelFrame(paintedFrame);
+    if (visibleFrame !== null) cancelFrame(visibleFrame);
+  };
+}
+
 export interface ConnectionHealthAlertCopy {
   title: string;
   creatorDescription: string;
@@ -117,10 +133,11 @@ function DismissibleConnectionHealthAlert({
 
   useEffect(() => {
     if (motionPhase !== "entering") return;
-    const frame = window.requestAnimationFrame(() => {
-      setMotionPhase("visible");
-    });
-    return () => window.cancelAnimationFrame(frame);
+    return scheduleConnectionHealthAlertEntrance(
+      window.requestAnimationFrame.bind(window),
+      window.cancelAnimationFrame.bind(window),
+      () => setMotionPhase("visible"),
+    );
   }, [motionPhase]);
 
   useEffect(() => {
