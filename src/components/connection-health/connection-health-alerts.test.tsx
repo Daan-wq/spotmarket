@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
 import {
   ConnectionHealthAlertPanel,
+  connectionHealthAlertMotionClass,
   type ConnectionHealthAlertCopy,
 } from "./connection-health-alerts";
 import type { ConnectionHealthAlertItem } from "@/lib/connection-health";
@@ -85,6 +86,23 @@ describe("ConnectionHealthAlertPanel", () => {
     expect(html).toContain("/admin/signals?type=TOKEN_BROKEN");
     expect(html).toContain("View 1 more");
     expect(html.match(/aria-label="Close notification"/g)).toHaveLength(1);
+  });
+});
+
+describe("connectionHealthAlertMotionClass", () => {
+  it("slides in from the right and exits to the right", () => {
+    expect(connectionHealthAlertMotionClass("entering")).toContain(
+      "translate-x-[calc(100%+1.5rem)]",
+    );
+    expect(connectionHealthAlertMotionClass("visible")).toContain(
+      "translate-x-0",
+    );
+    expect(connectionHealthAlertMotionClass("closing")).toContain(
+      "translate-x-[calc(100%+1.5rem)]",
+    );
+    expect(connectionHealthAlertMotionClass("closing")).toContain(
+      "duration-[240ms]",
+    );
   });
 });
 
