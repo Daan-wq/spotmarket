@@ -14,20 +14,20 @@ const copy: ConnectionHealthAlertCopy = {
   reconnect: "Reconnect",
   viewConnections: "Unlink",
   unlinkHelp: "No longer using it?",
-  doNotRemind: "Do not remind me again",
+  close: "Close notification",
   viewCreator: "View creator",
   technicalDetails: "Technical details",
   moreIncidents: "View 1 more",
 };
 
 describe("ConnectionHealthAlertPanel", () => {
-  it("renders a grouped creator alert with reconnect and per-page suppression", () => {
+  it("renders a grouped creator alert with a temporary close action", () => {
     const html = renderToStaticMarkup(
       <ConnectionHealthAlertPanel
         incidents={[incident(), incident({ id: "incident-2", connectionLabel: "@other" })]}
         viewerRole="creator"
         copy={copy}
-        onDismiss={vi.fn()}
+        onClose={vi.fn()}
       />,
     );
 
@@ -35,13 +35,9 @@ describe("ConnectionHealthAlertPanel", () => {
     expect(html).toContain("@page");
     expect(html).toContain("@other");
     expect(html).toContain("href=\"/api/auth/instagram");
-    expect(html.match(/role="switch"/g)).toHaveLength(2);
-    expect(html).toContain(
-      "aria-label=\"Do not remind me again: @page\"",
-    );
-    expect(html).toContain(
-      "aria-label=\"Do not remind me again: @other\"",
-    );
+    expect(html.match(/aria-label="Close notification"/g)).toHaveLength(1);
+    expect(html).not.toContain("role=\"switch\"");
+    expect(html).not.toContain("Do not remind me again");
     expect(html).toContain("No longer using it?");
     expect(html).toContain("Instagram");
     expect(html).not.toContain(">Token expired");
@@ -61,7 +57,7 @@ describe("ConnectionHealthAlertPanel", () => {
         incidents={incidents}
         viewerRole="admin"
         copy={copy}
-        onDismiss={vi.fn()}
+        onClose={vi.fn()}
       />,
     );
 
@@ -69,6 +65,7 @@ describe("ConnectionHealthAlertPanel", () => {
     expect(html).toContain("Technical details");
     expect(html).toContain("/admin/signals?type=TOKEN_BROKEN");
     expect(html).toContain("View 1 more");
+    expect(html.match(/aria-label="Close notification"/g)).toHaveLength(1);
   });
 });
 
@@ -86,7 +83,6 @@ function incident(
     issueType: "TOKEN_REVOKED",
     openedAt: "2026-06-08T12:00:00.000Z",
     lastDetectedAt: "2026-06-08T13:00:00.000Z",
-    dismissed: false,
     connectionHref: "/creator/connections?platform=ig&account=ig-1",
     reconnectHref:
       "/api/auth/instagram?return_to=%2Fcreator%2Fconnections",

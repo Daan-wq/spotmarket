@@ -217,9 +217,7 @@ describe("connection health incident lifecycle", () => {
 describe("connection health alert visibility", () => {
   it("limits creators to their own incidents and hides provider diagnostics", async () => {
     const db = createDb();
-    db.connectionHealthIncident.findMany.mockResolvedValue([
-      incidentRow({ dismissals: [] }),
-    ]);
+    db.connectionHealthIncident.findMany.mockResolvedValue([incidentRow()]);
 
     const alerts = await getConnectionHealthAlertsForViewer(
       { id: "user-1", role: "creator" },
@@ -234,11 +232,12 @@ describe("connection health alert visibility", () => {
         },
       }),
     );
+    const query = db.connectionHealthIncident.findMany.mock.calls[0]?.[0];
+    expect(query.select).not.toHaveProperty("dismissals");
     expect(alerts[0]).toMatchObject({
       id: "incident-1",
       creatorName: "Creator One",
       connectionLabel: "@page",
-      dismissed: false,
       providerDetails: null,
       reconnectHref:
         "/api/auth/instagram?return_to=%2Fcreator%2Fconnections",
@@ -247,9 +246,7 @@ describe("connection health alert visibility", () => {
 
   it("returns global incidents and provider diagnostics to admins", async () => {
     const db = createDb();
-    db.connectionHealthIncident.findMany.mockResolvedValue([
-      incidentRow({ dismissals: [{ id: "dismissal-1" }] }),
-    ]);
+    db.connectionHealthIncident.findMany.mockResolvedValue([incidentRow()]);
 
     const alerts = await getConnectionHealthAlertsForViewer(
       { id: "admin-1", role: "admin" },
@@ -262,7 +259,6 @@ describe("connection health alert visibility", () => {
       }),
     );
     expect(alerts[0]).toMatchObject({
-      dismissed: true,
       creatorHref: "/admin/creators/profile-1?platform=ig&account=ig-1",
       providerDetails: {
         code: "190",
@@ -314,7 +310,6 @@ function incidentRow(overrides: Record<string, unknown> = {}) {
       displayName: "Creator One",
       user: { email: "creator@example.com" },
     },
-    dismissals: [],
     ...overrides,
   };
 }

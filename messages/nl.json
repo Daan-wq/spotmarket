@@ -20,7 +20,7 @@
     "reconnect": "Opnieuw koppelen",
     "viewConnections": "Ontkoppel",
     "unlinkHelp": "Niet meer gebruiken?",
-    "doNotRemind": "Niet meer herinneren",
+    "close": "Melding sluiten",
     "viewCreator": "Creator bekijken",
     "technicalDetails": "Technische details",
     "moreIncidents": "Bekijk nog {count, plural, one {# getroffen pagina} other {# getroffen pagina's}}"
