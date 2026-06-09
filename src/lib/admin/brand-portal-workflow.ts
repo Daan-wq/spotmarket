@@ -15,16 +15,15 @@ export const brandPortalWorkflowInclude = Prisma.validator<Prisma.BrandInclude>(
     },
     orderBy: [{ status: "asc" }, { updatedAt: "desc" }],
   },
-  campaignReports: {
+  campaigns: {
+    where: {
+      status: { in: ["active", "completed"] },
+    },
     select: {
       id: true,
-      title: true,
       status: true,
-      visibleToBrand: true,
-      brandVisibleAt: true,
-      updatedAt: true,
     },
-    orderBy: [{ brandVisibleAt: "desc" }, { updatedAt: "desc" }],
+    orderBy: [{ updatedAt: "desc" }],
   },
   _count: { select: { campaigns: true } },
 });
@@ -33,9 +32,14 @@ export type BrandWithPortalWorkflowRelations = Prisma.BrandGetPayload<{
   include: typeof brandPortalWorkflowInclude;
 }>;
 
-export function toBrandPortalWorkflowBrand(brand: BrandWithPortalWorkflowRelations): BrandPortalWorkflowBrand {
-  const visibleReports = brand.campaignReports.filter((report) => report.status === "FINAL" && report.visibleToBrand);
-  const latestVisibleReport = visibleReports[0] ?? null;
+type BrandPortalWorkflowInput = Pick<
+  BrandWithPortalWorkflowRelations,
+  "id" | "name" | "contactEmail" | "portalEnabled" | "portalCreatedAt" | "contacts" | "campaigns" | "_count"
+>;
+
+export function toBrandPortalWorkflowBrand(brand: BrandPortalWorkflowInput): BrandPortalWorkflowBrand {
+  const activeCampaigns = brand.campaigns.filter((campaign) => campaign.status === "active");
+  const completedCampaigns = brand.campaigns.filter((campaign) => campaign.status === "completed");
 
   return {
     id: brand.id,
@@ -54,10 +58,10 @@ export function toBrandPortalWorkflowBrand(brand: BrandWithPortalWorkflowRelatio
       acceptedAt: contact.acceptedAt ? contact.acceptedAt.toISOString() : null,
     })),
     campaignsCount: brand._count.campaigns,
-    visibleReportsCount: visibleReports.length,
-    finalHiddenReportsCount: brand.campaignReports.filter((report) => report.status === "FINAL" && !report.visibleToBrand).length,
-    draftReportsCount: brand.campaignReports.filter((report) => report.status === "DRAFT").length,
-    latestVisibleReportId: latestVisibleReport?.id ?? null,
-    latestVisibleReportTitle: latestVisibleReport?.title ?? null,
+    visibleCampaignsCount: brand.portalEnabled
+      ? activeCampaigns.length + completedCampaigns.length
+      : 0,
+    activeCampaignsCount: activeCampaigns.length,
+    completedCampaignsCount: completedCampaigns.length,
   };
 }

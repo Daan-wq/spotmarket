@@ -155,7 +155,9 @@ describe("buildCampaignReportLiveData", () => {
         engagementRate: 0.0525,
       }),
     ]);
-    expect(report.topContent[1]).toMatchObject({ id: "sub-2", platform: "Instagram", views: 90_000 });
+    expect(report.topContent).toEqual([
+      expect.objectContaining({ id: "sub-1", platform: "TikTok", views: 400_000, status: "APPROVED" }),
+    ]);
     expect(report.platformBreakdown.some((row) => row.platform === "Oauth Failed")).toBe(false);
     expect(report.performance.pacingStatus).toBe("Achter op schema");
     expect(report.financial).toMatchObject({

@@ -89,7 +89,7 @@ export default async function BrandsPage() {
       </section>
 
       <section>
-        <SectionHeader title="/brand toegang" description="Maak toegang tot /brand aan, verstuur invites en publiceer rapporten vanuit een vaste flow." />
+        <SectionHeader title="/brand toegang" description="Maak toegang tot /brand aan en verstuur invites. Actieve en afgeronde campagnes verschijnen automatisch." />
         <BrandPortalWorkflow brands={serialize(brands.map(toBrandPortalWorkflowBrand)) as BrandPortalWorkflowBrand[]} />
       </section>
     </div>

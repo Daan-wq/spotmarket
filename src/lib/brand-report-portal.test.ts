@@ -1,7 +1,10 @@
 import { describe, expect, it } from "vitest";
 import {
+  buildBrandPortalCampaignWhere,
   buildBrandVisibleReportWhere,
+  sanitizeBrandCampaignDashboardData,
   sanitizeBrandReportLiveData,
+  selectBrandPortalCampaign,
 } from "@/lib/brand-report-portal";
 import type { CampaignReportLiveData } from "@/lib/admin/campaign-reporting";
 
@@ -182,6 +185,69 @@ function liveData(): CampaignReportLiveData {
 }
 
 describe("brand report portal helpers", () => {
+  it("limits brand dashboards to active and completed campaigns for authorized brands", () => {
+    expect(buildBrandPortalCampaignWhere(["brand-1", "brand-2"])).toEqual({
+      brandId: { in: ["brand-1", "brand-2"] },
+      brand: { portalEnabled: true },
+      status: { in: ["active", "completed"] },
+    });
+
+    expect(buildBrandPortalCampaignWhere(null)).toEqual({
+      brand: { portalEnabled: true },
+      status: { in: ["active", "completed"] },
+    });
+  });
+
+  it("keeps a requested authorized campaign selected and safely falls back to the newest active campaign", () => {
+    const campaigns = [
+      {
+        id: "completed-new",
+        status: "completed" as const,
+        startsAt: new Date("2026-04-01T00:00:00.000Z"),
+        deadline: new Date("2026-05-31T00:00:00.000Z"),
+        updatedAt: new Date("2026-06-01T00:00:00.000Z"),
+      },
+      {
+        id: "active-old",
+        status: "active" as const,
+        startsAt: new Date("2026-05-01T00:00:00.000Z"),
+        deadline: new Date("2026-06-30T00:00:00.000Z"),
+        updatedAt: new Date("2026-05-01T00:00:00.000Z"),
+      },
+      {
+        id: "active-new",
+        status: "active" as const,
+        startsAt: new Date("2026-06-01T00:00:00.000Z"),
+        deadline: new Date("2026-07-31T00:00:00.000Z"),
+        updatedAt: new Date("2026-06-01T00:00:00.000Z"),
+      },
+    ];
+
+    expect(selectBrandPortalCampaign(campaigns, "completed-new")?.id).toBe("completed-new");
+    expect(selectBrandPortalCampaign(campaigns, "not-authorized")?.id).toBe("active-new");
+  });
+
+  it("falls back to the most recent completed campaign when no active campaign exists", () => {
+    const campaigns = [
+      {
+        id: "completed-old",
+        status: "completed" as const,
+        startsAt: null,
+        deadline: new Date("2026-04-30T00:00:00.000Z"),
+        updatedAt: new Date("2026-05-01T00:00:00.000Z"),
+      },
+      {
+        id: "completed-new",
+        status: "completed" as const,
+        startsAt: null,
+        deadline: new Date("2026-05-31T00:00:00.000Z"),
+        updatedAt: new Date("2026-06-01T00:00:00.000Z"),
+      },
+    ];
+
+    expect(selectBrandPortalCampaign(campaigns, null)?.id).toBe("completed-new");
+  });
+
   it("filters reports to final visible reports for the brand memberships", () => {
     expect(buildBrandVisibleReportWhere(["brand-1", "brand-2"])).toEqual({
       brandId: { in: ["brand-1", "brand-2"] },
@@ -218,5 +284,92 @@ describe("brand report portal helpers", () => {
       views: 100000,
       approvalRate: 1,
     });
+  });
+
+  it("creates a minimal dashboard projection with only approved top content sorted by views", () => {
+    const data = liveData();
+    data.topContent = [
+      {
+        id: "rejected-high",
+        creator: "Rejected Creator",
+        platform: "TikTok",
+        postUrl: "https://example.com/rejected",
+        thumbnailUrl: null,
+        views: 900000,
+        engagement: 10000,
+        earnedAmount: 0,
+        status: "REJECTED",
+      },
+      {
+        id: "approved-low",
+        creator: "Approved Creator",
+        platform: "Instagram",
+        postUrl: "https://example.com/approved-low",
+        thumbnailUrl: null,
+        views: 50000,
+        engagement: 2000,
+        earnedAmount: 500,
+        status: "APPROVED",
+      },
+      {
+        id: "approved-high",
+        creator: "Approved Creator",
+        platform: "TikTok",
+        postUrl: "https://example.com/approved-high",
+        thumbnailUrl: null,
+        views: 150000,
+        engagement: 5000,
+        earnedAmount: 1000,
+        status: "APPROVED",
+      },
+    ];
+
+    const dashboard = sanitizeBrandCampaignDashboardData(data);
+
+    expect(dashboard).toEqual({
+      generatedAt: "2026-06-01T12:00:00.000Z",
+      campaign: {
+        id: "campaign-1",
+        name: "Fruit launch",
+        brandId: "brand-1",
+        brandName: "Bram's Fruit",
+        platforms: ["TikTok"],
+        totalBudget: 2500,
+        goalViews: 180000,
+        startsAt: "2026-05-01T00:00:00.000Z",
+        deadline: "2026-05-31T00:00:00.000Z",
+      },
+      performance: {
+        currentViews: 190000,
+        targetViews: 180000,
+        deliveryProgress: 1.13,
+        budgetUsed: 2500,
+        budgetUsedPercent: 1,
+        overdeliveryViews: 25000,
+        overdeliveryPercent: 0.14,
+      },
+      timeline: [{ date: "2026-05-01", views: 1000 }],
+      topContent: [
+        {
+          id: "approved-high",
+          platform: "TikTok",
+          postUrl: "https://example.com/approved-high",
+          thumbnailUrl: null,
+          views: 150000,
+          engagement: 5000,
+        },
+        {
+          id: "approved-low",
+          platform: "Instagram",
+          postUrl: "https://example.com/approved-low",
+          thumbnailUrl: null,
+          views: 50000,
+          engagement: 2000,
+        },
+      ],
+    });
+    expect(dashboard).not.toHaveProperty("quality");
+    expect(dashboard).not.toHaveProperty("creators");
+    expect(dashboard).not.toHaveProperty("referral");
   });
 });

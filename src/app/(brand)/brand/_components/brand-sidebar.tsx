@@ -1,10 +1,6 @@
-"use client";
-
 import Link from "next/link";
-import { usePathname } from "next/navigation";
-import { FileText, LayoutDashboard } from "lucide-react";
+import { LayoutDashboard } from "lucide-react";
 import { Logo } from "@/components/shared/logo";
-import { cn } from "@/lib/cn";
 
 interface BrandSidebarProps {
   email: string;
@@ -13,7 +9,6 @@ interface BrandSidebarProps {
 }
 
 export function BrandSidebar({ email, brandNames, isAdminPreview }: BrandSidebarProps) {
-  const pathname = usePathname();
   const primaryBrand = isAdminPreview ? "Admin preview" : brandNames[0] ?? "Brand";
 
   return (
@@ -26,12 +21,13 @@ export function BrandSidebar({ email, brandNames, isAdminPreview }: BrandSidebar
       </div>
 
       <nav className="flex-1 space-y-1">
-        <BrandNavLink href="/brand" active={pathname === "/brand"} icon={<LayoutDashboard className="h-4 w-4" />}>
-          Rapporten
-        </BrandNavLink>
-        <BrandNavLink href="/brand#history" active={pathname.startsWith("/brand/reports")} icon={<FileText className="h-4 w-4" />}>
-          Historie
-        </BrandNavLink>
+        <Link
+          href="/brand"
+          className="flex h-11 items-center gap-3 rounded-xl bg-neutral-200 px-4 text-sm font-medium text-neutral-950"
+        >
+          <LayoutDashboard className="h-4 w-4" />
+          Dashboard
+        </Link>
       </nav>
 
       <div className="mt-6 rounded-xl border border-neutral-200 bg-neutral-100/70 p-3">
@@ -42,30 +38,5 @@ export function BrandSidebar({ email, brandNames, isAdminPreview }: BrandSidebar
         </a>
       </div>
     </aside>
-  );
-}
-
-function BrandNavLink({
-  href,
-  active,
-  icon,
-  children,
-}: {
-  href: string;
-  active: boolean;
-  icon: React.ReactNode;
-  children: React.ReactNode;
-}) {
-  return (
-    <Link
-      href={href}
-      className={cn(
-        "flex h-11 items-center gap-3 rounded-xl px-4 text-sm font-medium transition",
-        active ? "bg-neutral-200 text-neutral-950" : "text-neutral-600 hover:bg-neutral-100 hover:text-neutral-950",
-      )}
-    >
-      {icon}
-      {children}
-    </Link>
   );
 }

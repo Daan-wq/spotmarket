@@ -26,27 +26,22 @@ export default async function ClientAccessPage({ searchParams }: PageProps) {
   });
   const activePortals = portalBrands.filter((brand) => brand.portalEnabled).length;
   const activeLogins = portalBrands.reduce((sum, brand) => sum + brand.contacts.filter((contact) => contact.status === "ACTIVE").length, 0);
-  const visibleReports = portalBrands.reduce((sum, brand) => sum + brand.visibleReportsCount, 0);
-  const hiddenFinalReports = portalBrands.reduce((sum, brand) => sum + brand.finalHiddenReportsCount, 0);
+  const activeCampaigns = portalBrands.reduce((sum, brand) => sum + brand.activeCampaignsCount, 0);
+  const completedCampaigns = portalBrands.reduce((sum, brand) => sum + brand.completedCampaignsCount, 0);
 
   return (
     <div className="space-y-9">
       <PageHeader
         eyebrow="/brand"
         title="/brand toegang"
-        description="Maak per merk toegang tot de klantomgeving op /brand, nodig brandcontacten uit en publiceer definitieve campagnerapporten."
+        description="Maak per merk toegang tot de klantomgeving op /brand. Actieve en afgeronde campagnes verschijnen daarna automatisch."
       />
 
       <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
         <StatCard label="/brand aangemaakt" value={String(activePortals)} detail="Merken met klanttoegang" />
         <StatCard label="Actieve logins" value={String(activeLogins)} detail="Geaccepteerde brandcontacten" />
-        <StatCard label="Zichtbare rapporten" value={String(visibleReports)} detail="FINAL en gepubliceerd" />
-        <StatCard
-          label="Nog verborgen"
-          value={String(hiddenFinalReports)}
-          detail="FINAL maar niet zichtbaar"
-          tone={hiddenFinalReports > 0 ? "warning" : "neutral"}
-        />
+        <StatCard label="Actieve campagnes" value={String(activeCampaigns)} detail="Automatisch zichtbaar" />
+        <StatCard label="Afgeronde campagnes" value={String(completedCampaigns)} detail="Beschikbaar in historie" />
       </div>
 
       <BrandPortalWorkflow brands={serialize(portalBrands) as BrandPortalWorkflowBrand[]} />

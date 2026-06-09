@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
-import { CheckCircle2, Copy, ExternalLink, FileText, Mail, Plus, RotateCw, Trash2 } from "lucide-react";
+import { CheckCircle2, Copy, ExternalLink, FileText, LayoutDashboard, Mail, Plus, RotateCw, Trash2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
@@ -27,11 +27,9 @@ export interface BrandPortalWorkflowBrand {
   portalCreatedAt: string | null;
   contacts: BrandPortalWorkflowContact[];
   campaignsCount: number;
-  visibleReportsCount: number;
-  finalHiddenReportsCount: number;
-  draftReportsCount: number;
-  latestVisibleReportId: string | null;
-  latestVisibleReportTitle: string | null;
+  visibleCampaignsCount: number;
+  activeCampaignsCount: number;
+  completedCampaignsCount: number;
 }
 
 interface BrandPortalWorkflowProps {
@@ -162,15 +160,15 @@ export function BrandPortalWorkflow({ brands, compact = false }: BrandPortalWork
                   <PortalBadge enabled={brand.portalEnabled} />
                 </div>
                 <p className="mt-1 text-sm text-neutral-500">
-                  {brand.campaignsCount} campagnes / {brand.visibleReportsCount} zichtbaar / {activeContactCount(brand.contacts)} actieve logins
+                  {brand.campaignsCount} campagnes / {brand.visibleCampaignsCount} zichtbaar / {activeContactCount(brand.contacts)} actieve logins
                 </p>
               </div>
               <Link
-                href={`/admin/reports?brandId=${brand.id}`}
+                href="/admin/campaigns"
                 className="inline-flex h-10 items-center justify-center gap-2 rounded-lg border border-neutral-200 px-3 text-sm font-semibold text-neutral-700 hover:border-neutral-300 hover:text-neutral-950"
               >
-                <FileText className="h-4 w-4" />
-                Rapportages
+                <LayoutDashboard className="h-4 w-4" />
+                Campagnes
               </Link>
             </div>
 
@@ -239,15 +237,13 @@ export function BrandPortalWorkflow({ brands, compact = false }: BrandPortalWork
 
               <section className="rounded-lg border border-neutral-100 bg-neutral-50 px-4 py-4">
                 <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-neutral-400">Stap 3</p>
-                <h4 className="mt-2 text-sm font-semibold text-neutral-950">Rapport publiceren</h4>
+                <h4 className="mt-2 text-sm font-semibold text-neutral-950">Campagnedata bekijken</h4>
                 <p className="mt-1 min-h-[40px] text-sm text-neutral-500">
-                  {brand.finalHiddenReportsCount > 0
-                    ? `${brand.finalHiddenReportsCount} definitieve rapporten staan nog verborgen.`
-                    : brand.visibleReportsCount > 0
-                      ? `${brand.visibleReportsCount} rapporten zijn zichtbaar voor de brand.`
-                      : "Maak een rapport FINAL en zet het daarna zichtbaar."}
+                  {brand.visibleCampaignsCount > 0
+                    ? `${brand.activeCampaignsCount} actief en ${brand.completedCampaignsCount} afgerond. Deze campagnes zijn automatisch zichtbaar.`
+                    : "Actieve en afgeronde campagnes worden automatisch zichtbaar zodra ze beschikbaar zijn."}
                 </p>
-                {brand.latestVisibleReportId ? (
+                {brand.portalEnabled ? (
                   <Link
                     href="/brand"
                     className="mt-3 inline-flex h-9 items-center justify-center gap-2 rounded-lg bg-neutral-950 px-3 text-sm font-semibold text-white hover:bg-neutral-800"
@@ -257,11 +253,11 @@ export function BrandPortalWorkflow({ brands, compact = false }: BrandPortalWork
                   </Link>
                 ) : (
                   <Link
-                    href={`/admin/reports?brandId=${brand.id}`}
+                    href="/admin/campaigns"
                     className="mt-3 inline-flex h-9 items-center justify-center gap-2 rounded-lg border border-neutral-200 px-3 text-sm font-semibold text-neutral-700 hover:border-neutral-300 hover:text-neutral-950"
                   >
-                    <FileText className="h-4 w-4" />
-                    Naar rapport
+                    <LayoutDashboard className="h-4 w-4" />
+                    Naar campagnes
                   </Link>
                 )}
               </section>

@@ -746,6 +746,7 @@ function buildPlatformBreakdown(submissions: CampaignReportSubmissionInput[]) {
 
 function buildTopContent(submissions: CampaignReportSubmissionInput[]) {
   return submissions
+    .filter((submission) => submission.status === "APPROVED")
     .map((submission) => ({
       id: submission.id,
       creator: submission.creatorLabel,

@@ -1,6 +1,40 @@
 import type { CampaignReportLiveData } from "@/lib/admin/campaign-reporting";
 import type { Prisma } from "@prisma/client";
 
+export const BRAND_PORTAL_CAMPAIGN_STATUSES = ["active", "completed"] as const;
+
+interface BrandPortalCampaignSelection {
+  id: string;
+  status: string;
+  startsAt: Date | string | null;
+  deadline: Date | string;
+  updatedAt: Date | string;
+}
+
+export function buildBrandPortalCampaignWhere(brandIds: string[] | null): Prisma.CampaignWhereInput {
+  return {
+    ...(brandIds ? { brandId: { in: brandIds } } : {}),
+    brand: { portalEnabled: true },
+    status: { in: [...BRAND_PORTAL_CAMPAIGN_STATUSES] },
+  };
+}
+
+export function sortBrandPortalCampaigns<T extends BrandPortalCampaignSelection>(campaigns: T[]): T[] {
+  return [...campaigns].sort((a, b) => {
+    if (a.status !== b.status) return a.status === "active" ? -1 : 1;
+    return campaignRecency(b) - campaignRecency(a);
+  });
+}
+
+export function selectBrandPortalCampaign<T extends BrandPortalCampaignSelection>(
+  campaigns: T[],
+  requestedId: string | null | undefined,
+): T | null {
+  const requested = requestedId ? campaigns.find((campaign) => campaign.id === requestedId) : null;
+  if (requested) return requested;
+  return sortBrandPortalCampaigns(campaigns)[0] ?? null;
+}
+
 export function buildBrandVisibleReportWhere(brandIds: string[]): Prisma.CampaignReportWhereInput {
   return {
     brandId: { in: brandIds },
@@ -11,6 +45,46 @@ export function buildBrandVisibleReportWhere(brandIds: string[]): Prisma.Campaig
 }
 
 export type BrandReportLiveData = ReturnType<typeof sanitizeBrandReportLiveData>;
+export type BrandCampaignDashboardData = ReturnType<typeof sanitizeBrandCampaignDashboardData>;
+
+export function sanitizeBrandCampaignDashboardData(data: CampaignReportLiveData) {
+  return {
+    generatedAt: data.generatedAt,
+    campaign: {
+      id: data.campaign.id,
+      name: data.campaign.name,
+      brandId: data.campaign.brandId,
+      brandName: data.campaign.brandName,
+      platforms: data.campaign.platforms,
+      totalBudget: data.campaign.totalBudget,
+      goalViews: data.campaign.goalViews,
+      startsAt: data.campaign.startsAt,
+      deadline: data.campaign.deadline,
+    },
+    performance: {
+      currentViews: data.performance.approvedViews,
+      targetViews: data.campaign.goalViews,
+      deliveryProgress: data.performance.goalCompletion,
+      budgetUsed: data.performance.budgetUsed,
+      budgetUsedPercent: data.performance.budgetUsedPercent,
+      overdeliveryViews: data.financial.overdeliveryViews,
+      overdeliveryPercent: data.financial.overdeliveryRate,
+    },
+    timeline: data.timeline.map((row) => ({ date: row.date, views: row.views })),
+    topContent: data.topContent
+      .filter((row) => row.status === "APPROVED")
+      .sort((a, b) => b.views - a.views)
+      .slice(0, 6)
+      .map((row) => ({
+        id: row.id,
+        platform: row.platform,
+        postUrl: row.postUrl,
+        thumbnailUrl: row.thumbnailUrl,
+        views: row.views,
+        engagement: row.engagement,
+      })),
+  };
+}
 
 export function sanitizeBrandReportLiveData(data: CampaignReportLiveData) {
   const creatorAliases = buildCreatorAliases(data);
@@ -106,4 +180,12 @@ function aliasForCreator(aliases: Map<string, string>, primary: string, fallback
 function estimateApprovedSubmissions(submissions: number, approvalRate: number | null) {
   if (approvalRate == null) return submissions;
   return Math.round(submissions * approvalRate);
+}
+
+function campaignRecency(campaign: BrandPortalCampaignSelection) {
+  const value = campaign.status === "active"
+    ? campaign.startsAt ?? campaign.updatedAt
+    : campaign.deadline;
+  const time = new Date(value).getTime();
+  return Number.isFinite(time) ? time : 0;
 }
