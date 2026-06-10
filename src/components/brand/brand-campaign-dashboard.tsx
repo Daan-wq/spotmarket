@@ -35,11 +35,10 @@ export function BrandCampaignDashboard({
   const targetViews = data.performance.targetViews;
   const progress = data.performance.deliveryProgress
     ?? (targetViews && targetViews > 0 ? data.performance.currentViews / targetViews : null);
-  const progressPercent = progress == null ? null : Math.max(0, Math.round(progress * 100));
-  const progressWidth = progressPercent == null ? 0 : Math.min(progressPercent, 100);
+  const goalMeter = buildGoalMeterState(progress, targetViews);
 
   return (
-    <div className="space-y-10">
+    <div>
       <header className="flex flex-col gap-6 border-b border-neutral-200 pb-8 lg:flex-row lg:items-end lg:justify-between">
         <div className="max-w-3xl">
           <div className="flex flex-wrap items-center gap-2">
@@ -63,200 +62,303 @@ export function BrandCampaignDashboard({
         <CampaignPicker campaigns={campaigns} selectedCampaignId={selectedCampaignId} />
       </header>
 
-      <section className="grid gap-5 lg:grid-cols-[minmax(0,1.35fr)_minmax(320px,0.65fr)]">
-        <div className="rounded-[28px] bg-neutral-950 p-6 text-white sm:p-8">
-          <div className="flex flex-wrap items-start justify-between gap-5">
-            <div>
-              <p className="text-sm font-medium text-neutral-400">Campagnedoel</p>
-              <p className="mt-3 text-4xl font-semibold tracking-[-0.04em] sm:text-5xl">
-                {formatNumber(data.performance.currentViews, "nl")}
-              </p>
-              <p className="mt-2 text-sm text-neutral-400">
-                {targetViews
-                  ? `van ${formatNumber(targetViews, "nl")} doelviews`
-                  : "goedgekeurde views"}
-              </p>
+      <section className="grid gap-10 border-b border-neutral-200 py-10 lg:grid-cols-[minmax(0,1.45fr)_minmax(300px,0.55fr)] lg:gap-14 lg:py-14">
+        <div className="grid items-center gap-8 sm:grid-cols-[minmax(170px,0.65fr)_minmax(0,1.35fr)] lg:gap-10">
+          <GoalMeter meter={goalMeter} />
+
+          <div>
+            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-neutral-400">
+              Totale views
+            </p>
+            <p className="mt-3 text-[clamp(3rem,7vw,6rem)] font-semibold leading-[0.88] tracking-[-0.065em] text-neutral-950">
+              {formatNumber(data.performance.currentViews, "nl")}
+            </p>
+            <p className="mt-4 max-w-md text-sm leading-6 text-neutral-500">
+              {targetViews
+                ? `van ${formatNumber(targetViews, "nl")} doelviews uit alle goedgekeurde campagnecontent`
+                : "goedgekeurde views uit alle campagnecontent"}
+            </p>
+
+            <div className="mt-8 inline-flex flex-wrap items-baseline gap-x-3 gap-y-1 border-t border-neutral-950 pt-3">
+              <span className="text-xs text-neutral-500">Verwachte doeldatum</span>
+              <strong className="text-xl font-semibold tracking-[-0.025em] text-neutral-950">
+                {data.performance.expectedGoalDate
+                  ? formatDate(data.performance.expectedGoalDate, "nl")
+                  : "–"}
+              </strong>
             </div>
-            <div className="flex h-20 w-20 items-center justify-center rounded-full border border-white/15 bg-white/5">
-              <span className="text-lg font-semibold">{progressPercent == null ? "–" : `${progressPercent}%`}</span>
-            </div>
-          </div>
-          <div className="mt-10 h-2 overflow-hidden rounded-full bg-white/15">
-            <div
-              className="h-full rounded-full bg-white transition-[width] duration-500"
-              style={{ width: `${progressWidth}%` }}
-            />
           </div>
         </div>
 
-        <div className="grid gap-px overflow-hidden rounded-[28px] border border-neutral-200 bg-neutral-200">
-          <MetricRow
-            label="Totale views"
-            value={formatNumber(data.performance.currentViews, "nl")}
-            detail="Goedgekeurde content"
-          />
-          <MetricRow
+        <div className="border-t-2 border-neutral-950">
+          <LedgerRow
             label="Budgetverbruik"
             value={formatCurrency(data.performance.budgetUsed, "EUR", "nl")}
-            detail={`${formatCurrency(data.campaign.totalBudget, "EUR", "nl")} totaal · ${formatPercent(data.performance.budgetUsedPercent)}`}
+            detail={`${formatPercent(data.performance.budgetUsedPercent)} van ${formatCurrency(data.campaign.totalBudget, "EUR", "nl")}`}
           />
-          <MetricRow
+          <LedgerRow
+            label="Budget resterend"
+            value={formatCurrency(data.performance.budgetRemaining, "EUR", "nl")}
+            detail={
+              data.performance.budgetUsedPercent == null
+                ? "– beschikbaar"
+                : `${formatPercent(Math.max(0, 1 - data.performance.budgetUsedPercent))} beschikbaar`
+            }
+          />
+          <LedgerRow
+            label="Effectieve CPM"
+            value={formatNullableCurrency(data.performance.effectiveCpm)}
+            detail={`Afgesproken CPM ${formatCurrency(data.performance.businessCpm, "EUR", "nl")}`}
+          />
+          <LedgerRow
             label="Over-delivery"
             value={formatNumber(data.performance.overdeliveryViews, "nl")}
-            detail={`${formatPercent(data.performance.overdeliveryPercent)} extra bereik`}
+            detail={`${formatPercent(data.performance.overdeliveryPercent)} boven viewdoel`}
             accent={data.performance.overdeliveryViews > 0}
           />
         </div>
       </section>
 
-      <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-        <DashboardMetric label="Budget resterend" value={formatCurrency(data.performance.budgetRemaining, "EUR", "nl")} />
-        <DashboardMetric label="Afgesproken CPM" value={formatCurrency(data.performance.businessCpm, "EUR", "nl")} />
-        <DashboardMetric label="Effectieve CPM" value={formatNullableCurrency(data.performance.effectiveCpm)} />
-        <DashboardMetric label="Verwachte doeldatum" value={data.performance.expectedGoalDate ? formatDate(data.performance.expectedGoalDate, "nl") : "–"} />
-        <DashboardMetric label="Postende accounts" value={formatNumber(data.performance.uniquePages, "nl")} />
-        <DashboardMetric label="Clips ingezonden" value={formatNumber(data.performance.totalSubmissions, "nl")} />
-        <DashboardMetric label="Goedgekeurde clips" value={formatNumber(data.performance.approvedClips, "nl")} />
-        <DashboardMetric label="Gem. views per clip" value={formatNullableNumber(data.performance.averageViewsPerApprovedClip)} />
-        <DashboardMetric
-          label="Engagement"
+      <section className="grid grid-cols-2 border-b border-neutral-200 sm:grid-cols-3 xl:grid-cols-5">
+        <StripMetric label="Postende accounts" value={formatNumber(data.performance.uniquePages, "nl")} />
+        <StripMetric label="Clips ingezonden" value={formatNumber(data.performance.totalSubmissions, "nl")} />
+        <StripMetric label="Goedgekeurde clips" value={formatNumber(data.performance.approvedClips, "nl")} />
+        <StripMetric
+          label="Gem. views per clip"
+          value={formatNullableNumber(data.performance.averageViewsPerApprovedClip)}
+        />
+        <StripMetric
+          label={`Engagement · ${formatPercent(data.performance.engagementRate)}`}
           value={formatNumber(data.performance.totalEngagement, "nl")}
-          detail={formatPercent(data.performance.engagementRate)}
+          className="col-span-2 sm:col-span-1"
         />
       </section>
 
-      <section className="border-t border-neutral-200 pt-8">
-        <div className="mb-6 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
-          <div>
-            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-neutral-400">Bereik</p>
-            <h2 className="mt-2 text-2xl font-semibold tracking-[-0.025em] text-neutral-950">Viewgroei per dag</h2>
-          </div>
-          <p className="text-sm text-neutral-500">Alleen goedgekeurde campagneprestaties</p>
+      <section className="border-b border-neutral-200 py-10 lg:py-12">
+        <SectionHeading
+          eyebrow="Bereik"
+          title="Viewgroei per dag"
+          detail="Alleen goedgekeurde campagneprestaties"
+        />
+        <div className="mt-7">
+          <BrandViewsChart data={data.timeline} milestones={data.milestones} />
         </div>
-        <BrandViewsChart data={data.timeline} milestones={data.milestones} />
+      </section>
 
-        <div className="mt-10">
-          <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-neutral-400">Per kanaal</p>
-          <h3 className="mt-2 text-xl font-semibold tracking-[-0.02em] text-neutral-950">Platformoverzicht</h3>
+      <section className="grid gap-12 py-10 lg:grid-cols-[minmax(280px,0.72fr)_minmax(0,1.28fr)] lg:py-12">
+        <div>
+          <SectionHeading eyebrow="Per kanaal" title="Platformoverzicht" />
           {data.platformBreakdown.length > 0 ? (
-            <div className="mt-4 overflow-hidden rounded-2xl border border-neutral-200">
-              <div className="hidden grid-cols-[1.2fr_repeat(4,1fr)] gap-4 bg-neutral-50 px-5 py-3 text-xs font-semibold uppercase tracking-[0.08em] text-neutral-400 md:grid">
-                <span>Platform</span><span>Views</span><span>Clips</span><span>Engagement</span><span>Effectieve CPM</span>
-              </div>
+            <div className="mt-6 border-t-2 border-neutral-950">
               {data.platformBreakdown.map((platform) => (
-                <div key={platform.platform} className="grid gap-3 border-t border-neutral-200 px-5 py-4 first:border-t-0 md:grid-cols-[1.2fr_repeat(4,1fr)] md:items-center">
-                  <p className="font-semibold text-neutral-950">{platform.platform}</p>
-                  <PlatformValue label="Views" value={formatNumber(platform.views, "nl")} />
-                  <PlatformValue label="Clips" value={formatNumber(platform.clips, "nl")} />
-                  <PlatformValue label="Engagement" value={formatPercent(platform.engagementRate)} />
-                  <PlatformValue label="Effectieve CPM" value={formatNullableCurrency(platform.effectiveCpm)} />
+                <div
+                  key={platform.platform}
+                  className="grid gap-4 border-b border-neutral-200 py-4 sm:grid-cols-[1fr_auto] sm:items-start"
+                >
+                  <div>
+                    <p className="font-semibold text-neutral-950">{platform.platform}</p>
+                    <p className="mt-1 text-xs text-neutral-500">
+                      {formatNumber(platform.clips, "nl")} clips · {formatPercent(platform.engagementRate)} engagement
+                    </p>
+                  </div>
+                  <div className="grid grid-cols-2 gap-x-6 text-right">
+                    <PlatformValue label="Views" value={formatNumber(platform.views, "nl")} />
+                    <PlatformValue label="Effectieve CPM" value={formatNullableCurrency(platform.effectiveCpm)} />
+                  </div>
                 </div>
               ))}
             </div>
           ) : (
-            <p className="mt-4 text-sm text-neutral-500">Nog geen platformdata beschikbaar.</p>
+            <div className="mt-6 border-t-2 border-neutral-950 py-8 text-sm text-neutral-500">
+              Nog geen platformdata beschikbaar.
+            </div>
           )}
         </div>
-      </section>
 
-      <section className="space-y-6 border-t border-neutral-200 pt-8">
-        <div className="flex flex-wrap items-end justify-between gap-4">
-          <div>
-            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-neutral-400">Leaderboard</p>
-            <h2 className="mt-2 text-2xl font-semibold tracking-[-0.025em] text-neutral-950">Topcontent</h2>
+        <div>
+          <div className="flex flex-wrap items-end justify-between gap-4">
+            <div>
+              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-neutral-400">Leaderboard</p>
+              <h2 className="mt-2 text-2xl font-semibold tracking-[-0.025em] text-neutral-950">Topcontent</h2>
+            </div>
+            <Link
+              href={`/brand/content?campaignId=${encodeURIComponent(selectedCampaignId)}`}
+              className="inline-flex items-center gap-2 text-sm font-semibold text-neutral-700 hover:text-neutral-950"
+            >
+              Alle content bekijken
+              <ArrowRight className="h-4 w-4" />
+            </Link>
           </div>
-          <Link
-            href={`/brand/content?campaignId=${encodeURIComponent(selectedCampaignId)}`}
-            className="inline-flex items-center gap-2 text-sm font-semibold text-neutral-700 hover:text-neutral-950"
-          >
-            Alle content bekijken
-            <ArrowRight className="h-4 w-4" />
-          </Link>
-        </div>
 
-        <div className="flex items-start gap-3 rounded-2xl bg-amber-50 px-4 py-3.5 text-amber-950">
-          <Info className="mt-0.5 h-4 w-4 shrink-0" />
-          <p className="text-sm leading-6">
-            Reageer op deze video’s voor extra engagement en bereik via je eigen socials.
-          </p>
-        </div>
-
-        {data.topContent.length > 0 ? (
-          <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-3">
-            {data.topContent.map((video, index) => (
-              <article key={video.id} className="group overflow-hidden rounded-2xl border border-neutral-200 bg-white">
-                <div className="relative aspect-[4/3] overflow-hidden bg-neutral-100">
-                  {video.thumbnailUrl ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img
-                      src={video.thumbnailUrl}
-                      alt=""
-                      className="h-full w-full object-cover transition duration-500 group-hover:scale-[1.025]"
-                    />
-                  ) : (
-                    <div className="flex h-full items-center justify-center text-neutral-300">
-                      <Play className="h-10 w-10" />
-                    </div>
-                  )}
-                  <span className="absolute left-4 top-4 flex h-9 min-w-9 items-center justify-center rounded-full bg-neutral-950 px-2 text-sm font-semibold text-white">
-                    {index + 1}
-                  </span>
-                </div>
-                <div className="p-5">
-                  <div className="flex items-start justify-between gap-4">
-                    <div>
-                      <p className="text-xs font-semibold uppercase tracking-[0.14em] text-neutral-400">{video.platform}</p>
-                      <p className="mt-2 text-2xl font-semibold tracking-[-0.03em] text-neutral-950">
-                        {formatNumber(video.views, "nl")} views
-                      </p>
-                      <p className="mt-1 text-sm text-neutral-500">
-                        {formatNumber(video.engagement, "nl")} engagement
-                      </p>
-                    </div>
-                    <Link
-                      href={video.postUrl}
-                      target="_blank"
-                      rel="noreferrer"
-                      aria-label="Open video"
-                      className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-neutral-200 text-neutral-700 transition hover:border-neutral-950 hover:bg-neutral-950 hover:text-white"
-                    >
-                      <ExternalLink className="h-4 w-4" />
-                    </Link>
-                  </div>
-                </div>
-              </article>
-            ))}
-          </div>
-        ) : (
-          <div className="rounded-2xl border border-dashed border-neutral-200 bg-neutral-50 px-6 py-12 text-center">
-            <Target className="mx-auto h-6 w-6 text-neutral-300" />
-            <h3 className="mt-4 text-base font-semibold text-neutral-950">Nog geen goedgekeurde topcontent</h3>
-            <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-neutral-500">
-              Zodra goedgekeurde video’s views verzamelen, verschijnt de best presterende content hier.
+          <div className="mt-6 flex items-start gap-3 rounded-2xl bg-amber-50 px-4 py-3.5 text-amber-950">
+            <Info className="mt-0.5 h-4 w-4 shrink-0" />
+            <p className="text-sm leading-6">
+              Reageer op deze video’s voor extra engagement en bereik via je eigen socials.
             </p>
           </div>
-        )}
+
+          {data.topContent.length > 0 ? (
+            <div className="mt-5 border-t-2 border-neutral-950">
+              {data.topContent.map((video, index) => (
+                <article
+                  key={video.id}
+                  className="group grid grid-cols-[2rem_5rem_minmax(0,1fr)_auto] items-center gap-3 border-b border-neutral-200 py-3 sm:grid-cols-[2rem_6rem_minmax(0,1fr)_auto_auto] sm:gap-4"
+                >
+                  <span className="text-lg font-semibold tabular-nums text-neutral-400">{index + 1}</span>
+                  <div className="relative aspect-[4/3] overflow-hidden rounded-xl bg-neutral-100">
+                    {video.thumbnailUrl ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img
+                        src={video.thumbnailUrl}
+                        alt=""
+                        className="h-full w-full object-cover transition duration-500 group-hover:scale-[1.025]"
+                      />
+                    ) : (
+                      <div className="flex h-full items-center justify-center text-neutral-300">
+                        <Play className="h-6 w-6" />
+                      </div>
+                    )}
+                  </div>
+                  <div className="min-w-0">
+                    <p className="truncate text-sm font-semibold text-neutral-950">{video.platform}</p>
+                    <p className="mt-1 text-xs text-neutral-500">
+                      {formatNumber(video.engagement, "nl")} engagement
+                    </p>
+                    <p className="mt-1 text-xs font-semibold tabular-nums text-neutral-700 sm:hidden">
+                      {formatNumber(video.views, "nl")} views
+                    </p>
+                  </div>
+                  <p className="hidden text-right text-sm font-semibold tabular-nums text-neutral-950 sm:block">
+                    {formatNumber(video.views, "nl")} views
+                  </p>
+                  <Link
+                    href={video.postUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    aria-label="Open video"
+                    className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-neutral-200 text-neutral-700 transition hover:border-neutral-950 hover:bg-neutral-950 hover:text-white"
+                  >
+                    <ExternalLink className="h-4 w-4" />
+                  </Link>
+                </article>
+              ))}
+            </div>
+          ) : (
+            <div className="mt-5 border-t-2 border-neutral-950 py-12 text-center">
+              <Target className="mx-auto h-6 w-6 text-neutral-300" />
+              <h3 className="mt-4 text-base font-semibold text-neutral-950">Nog geen goedgekeurde topcontent</h3>
+              <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-neutral-500">
+                Zodra goedgekeurde video’s views verzamelen, verschijnt de best presterende content hier.
+              </p>
+            </div>
+          )}
+        </div>
       </section>
     </div>
   );
 }
 
-function DashboardMetric({
+export function buildGoalMeterState(progress: number | null, targetViews: number | null) {
+  if (!targetViews || targetViews <= 0 || progress == null || !Number.isFinite(progress)) {
+    return {
+      label: "–",
+      degrees: 0,
+      hasGoal: false,
+    };
+  }
+
+  const normalizedProgress = Math.max(0, progress);
+  return {
+    label: `${Math.round(normalizedProgress * 100)}%`,
+    degrees: Math.round(Math.min(normalizedProgress, 1) * 360),
+    hasGoal: true,
+  };
+}
+
+function GoalMeter({
+  meter,
+}: {
+  meter: ReturnType<typeof buildGoalMeterState>;
+}) {
+  return (
+    <div
+      className="relative mx-auto grid aspect-square w-full max-w-56 place-items-center rounded-full sm:mx-0"
+      style={{
+        background: `conic-gradient(rgb(10 10 10) ${meter.degrees}deg, rgb(229 229 229) ${meter.degrees}deg)`,
+      }}
+      role="img"
+      aria-label={meter.hasGoal ? `${meter.label} van het viewdoel bereikt` : "Geen viewdoel beschikbaar"}
+    >
+      <div className="absolute inset-[12%] rounded-full bg-white" />
+      <div className="relative text-center">
+        <strong className="block text-4xl font-semibold tracking-[-0.05em] text-neutral-950 sm:text-5xl">
+          {meter.label}
+        </strong>
+        <span className="mt-2 block text-[10px] font-semibold uppercase tracking-[0.16em] text-neutral-400">
+          van doel
+        </span>
+      </div>
+    </div>
+  );
+}
+
+function LedgerRow({
   label,
   value,
   detail,
+  accent = false,
 }: {
   label: string;
   value: string;
+  detail: string;
+  accent?: boolean;
+}) {
+  return (
+    <div className="grid grid-cols-[minmax(0,1fr)_auto] items-baseline gap-5 border-b border-neutral-200 py-4">
+      <p className="text-sm text-neutral-500">{label}</p>
+      <div className="text-right">
+        <p className={`text-2xl font-semibold tracking-[-0.03em] ${accent ? "text-emerald-700" : "text-neutral-950"}`}>
+          {value}
+        </p>
+        <p className="mt-1 text-xs text-neutral-500">{detail}</p>
+      </div>
+    </div>
+  );
+}
+
+function StripMetric({
+  label,
+  value,
+  className = "",
+}: {
+  label: string;
+  value: string;
+  className?: string;
+}) {
+  return (
+    <div className={`border-l border-t border-neutral-200 px-4 py-6 first:border-l-0 sm:px-5 xl:border-t-0 ${className}`}>
+      <p className="min-h-8 text-xs leading-4 text-neutral-500">{label}</p>
+      <p className="mt-2 text-2xl font-semibold tracking-[-0.025em] text-neutral-950">{value}</p>
+    </div>
+  );
+}
+
+function SectionHeading({
+  eyebrow,
+  title,
+  detail,
+}: {
+  eyebrow: string;
+  title: string;
   detail?: string;
 }) {
   return (
-    <div className="rounded-2xl border border-neutral-200 bg-white p-5">
-      <p className="text-sm text-neutral-500">{label}</p>
-      <div className="mt-2 flex items-end justify-between gap-3">
-        <p className="text-2xl font-semibold tracking-[-0.025em] text-neutral-950">{value}</p>
-        {detail ? <p className="text-xs text-neutral-500">{detail}</p> : null}
+    <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+      <div>
+        <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-neutral-400">{eyebrow}</p>
+        <h2 className="mt-2 text-2xl font-semibold tracking-[-0.025em] text-neutral-950">{title}</h2>
       </div>
+      {detail ? <p className="text-sm text-neutral-500">{detail}</p> : null}
     </div>
   );
 }
@@ -264,8 +366,8 @@ function DashboardMetric({
 function PlatformValue({ label, value }: { label: string; value: string }) {
   return (
     <div>
-      <p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-neutral-400 md:hidden">{label}</p>
-      <p className="mt-0.5 text-sm font-medium tabular-nums text-neutral-700 md:mt-0">{value}</p>
+      <p className="text-[9px] font-semibold uppercase tracking-[0.08em] text-neutral-400">{label}</p>
+      <p className="mt-1 text-sm font-medium tabular-nums text-neutral-700">{value}</p>
     </div>
   );
 }
@@ -314,30 +416,6 @@ function StatusBadge({ status }: { status: BrandPortalCampaignOption["status"] }
     <Badge variant={status === "active" ? "verified" : "neutral"}>
       {status === "active" ? "Actief" : "Afgerond"}
     </Badge>
-  );
-}
-
-function MetricRow({
-  label,
-  value,
-  detail,
-  accent = false,
-}: {
-  label: string;
-  value: string;
-  detail: string;
-  accent?: boolean;
-}) {
-  return (
-    <div className="bg-white px-5 py-4">
-      <p className="text-sm text-neutral-500">{label}</p>
-      <div className="mt-1 flex flex-wrap items-baseline justify-between gap-3">
-        <p className={`text-2xl font-semibold tracking-[-0.025em] ${accent ? "text-emerald-700" : "text-neutral-950"}`}>
-          {value}
-        </p>
-        <p className="text-xs text-neutral-500">{detail}</p>
-      </div>
-    </div>
   );
 }
 

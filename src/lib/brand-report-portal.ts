@@ -124,7 +124,7 @@ export function sanitizeBrandCampaignDashboardData(
     topContent: data.topContent
       .filter((row) => row.status === "APPROVED")
       .sort((a, b) => b.views - a.views)
-      .slice(0, 6)
+      .slice(0, 5)
       .map((row) => ({
         id: row.id,
         platform: row.platform,

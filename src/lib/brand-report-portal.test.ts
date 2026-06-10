@@ -400,6 +400,44 @@ describe("brand report portal helpers", () => {
     expect(dashboard).not.toHaveProperty("referral");
   });
 
+  it("limits the dashboard preview to the five highest-view approved clips", () => {
+    const data = liveData();
+    data.topContent = [
+      {
+        id: "rejected-high",
+        creator: "Rejected Creator",
+        platform: "TikTok",
+        postUrl: "https://example.com/rejected",
+        thumbnailUrl: null,
+        views: 900000,
+        engagement: 10000,
+        earnedAmount: 0,
+        status: "REJECTED",
+      },
+      ...Array.from({ length: 7 }, (_, index) => ({
+        id: `approved-${index}`,
+        creator: "Approved Creator",
+        platform: "Instagram",
+        postUrl: `https://example.com/approved-${index}`,
+        thumbnailUrl: null,
+        views: 70000 - index * 10000,
+        engagement: 1000 - index * 100,
+        earnedAmount: 100,
+        status: "APPROVED" as const,
+      })),
+    ];
+
+    const dashboard = sanitizeBrandCampaignDashboardData(data);
+
+    expect(dashboard.topContent.map((row) => row.id)).toEqual([
+      "approved-0",
+      "approved-1",
+      "approved-2",
+      "approved-3",
+      "approved-4",
+    ]);
+  });
+
   it("defines brand overdelivery only as approved views above the campaign goal", () => {
     expect(calculateBrandGoalDelivery(864453, 2625000)).toEqual({
       overdeliveryViews: 0,

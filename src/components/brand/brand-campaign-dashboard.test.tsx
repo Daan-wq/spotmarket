@@ -1,6 +1,9 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
-import { BrandCampaignDashboard } from "./brand-campaign-dashboard";
+import {
+  BrandCampaignDashboard,
+  buildGoalMeterState,
+} from "./brand-campaign-dashboard";
 import type { BrandCampaignDashboardData } from "@/lib/brand-report-portal";
 
 vi.mock("./brand-views-chart", () => ({
@@ -83,6 +86,24 @@ const campaigns = [
 ];
 
 describe("BrandCampaignDashboard", () => {
+  it("builds a capped goal meter for normal progress, overdelivery, and missing goals", () => {
+    expect(buildGoalMeterState(0.65, 500000)).toEqual({
+      label: "65%",
+      degrees: 234,
+      hasGoal: true,
+    });
+    expect(buildGoalMeterState(1.2, 500000)).toEqual({
+      label: "120%",
+      degrees: 360,
+      hasGoal: true,
+    });
+    expect(buildGoalMeterState(null, null)).toEqual({
+      label: "–",
+      degrees: 0,
+      hasGoal: false,
+    });
+  });
+
   it("renders the selected campaign, status tags, core metrics, and engagement guidance", () => {
     const html = renderToStaticMarkup(
       <BrandCampaignDashboard campaigns={campaigns} selectedCampaignId="campaign-active" data={data} />,
@@ -109,15 +130,16 @@ describe("BrandCampaignDashboard", () => {
     expect(html).not.toContain("flags");
   });
 
-  it("shows a clear empty state when approved top content is not available yet", () => {
+  it("shows clear empty states when approved content and platform data are not available yet", () => {
     const html = renderToStaticMarkup(
       <BrandCampaignDashboard
         campaigns={campaigns}
         selectedCampaignId="campaign-active"
-        data={{ ...data, topContent: [] }}
+        data={{ ...data, platformBreakdown: [], topContent: [] }}
       />,
     );
 
+    expect(html).toContain("Nog geen platformdata beschikbaar.");
     expect(html).toContain("Nog geen goedgekeurde topcontent");
   });
 });
