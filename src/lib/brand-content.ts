@@ -106,7 +106,7 @@ function contentSorter(sort: BrandContentSort) {
 function normalizeContentSort(value: string | null | undefined): BrandContentSort {
   return BRAND_CONTENT_SORTS.includes(value as BrandContentSort)
     ? value as BrandContentSort
-    : "recent";
+    : "views";
 }
 
 function normalizePlatformFilter(value: string | null | undefined) {

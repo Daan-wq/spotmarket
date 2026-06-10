@@ -119,8 +119,20 @@ describe("brand content projection", () => {
     });
 
     expect(page.platform).toBe("all");
-    expect(page.sort).toBe("recent");
+    expect(page.sort).toBe("views");
     expect(page.page).toBe(2);
     expect(page.items).toHaveLength(1);
+  });
+
+  it("defaults to most views when no sort is provided", () => {
+    const page = buildBrandContentPage(submissions, {
+      platform: "all",
+      sort: undefined,
+      page: 1,
+      pageSize: 24,
+    });
+
+    expect(page.sort).toBe("views");
+    expect(page.items.map((item) => item.id)).toEqual(["approved-new", "approved-old"]);
   });
 });

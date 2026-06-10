@@ -23,10 +23,10 @@ export function BrandSidebar({ email, brandNames, isAdminPreview }: BrandSidebar
   return (
     <aside className="fixed left-8 top-0 hidden h-screen w-56 flex-col py-10 lg:flex">
       <div className="mb-8">
-        <Link href="/brand" aria-label="ClipProfit /brand" className="block">
+        <Link href="/brand" aria-label="ClipProfit Brands" className="block">
           <Logo variant="light" size="fill" />
         </Link>
-        <p className="mt-1 text-xs text-neutral-500">/brand</p>
+        <p className="mt-1 text-xs text-neutral-500">Brands</p>
       </div>
 
       <nav className="flex-1 space-y-1">
