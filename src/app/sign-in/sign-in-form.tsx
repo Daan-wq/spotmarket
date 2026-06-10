@@ -7,6 +7,7 @@ import { useTranslations } from "next-intl";
 import { OAuthButtons, OAuthDivider } from "@/components/auth/oauth-buttons";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import { safeRedirectPath } from "@/lib/safe-redirect";
+import { resolveSignInEmail } from "@/lib/sign-in-identifier";
 
 function EyeIcon({ open }: { open: boolean }) {
   return open ? (
@@ -35,7 +36,7 @@ export function SignInForm() {
   const passwordReset = searchParams.get("reset") === "1";
   const authError = searchParams.get("auth_error");
   const [mode, setMode] = useState<"signin" | "forgot">("signin");
-  const [email, setEmail] = useState("");
+  const [identifier, setIdentifier] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [showOtherMethods, setShowOtherMethods] = useState(false);
@@ -55,6 +56,15 @@ export function SignInForm() {
     e.preventDefault();
     setError(null);
     setLoading(true);
+
+    let email: string;
+    try {
+      email = resolveSignInEmail(identifier);
+    } catch {
+      setError(t("invalidIdentifier"));
+      setLoading(false);
+      return;
+    }
 
     const supabase = createSupabaseBrowserClient();
     const { error } = await supabase.auth.signInWithPassword({ email, password });
@@ -77,7 +87,7 @@ export function SignInForm() {
     const response = await fetch("/api/auth/password-reset", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email }),
+      body: JSON.stringify({ email: identifier }),
     });
     const data = await response.json().catch(() => null);
 
@@ -131,8 +141,8 @@ export function SignInForm() {
               <input
                 id="forgot-email"
                 type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                value={identifier}
+                onChange={(e) => setIdentifier(e.target.value)}
                 required
                 autoFocus
                 className="h-12 w-full rounded-[18px] border border-[#d2d9db] bg-white px-4 text-sm text-[#010405] outline-none transition-[border-color,box-shadow,background-color] placeholder:text-[#8a9699] focus:border-[#5d5fef] focus:bg-white focus:shadow-[0_0_0_4px_rgba(93,95,239,0.14)]"
@@ -202,13 +212,14 @@ export function SignInForm() {
 
           <form onSubmit={handleSignIn} className="space-y-4">
             <div>
-              <label htmlFor="sign-in-email" className="block text-sm font-medium mb-1.5 text-[#d4d4d8]">{commonT("email")}</label>
+              <label htmlFor="sign-in-email" className="block text-sm font-medium mb-1.5 text-[#d4d4d8]">{t("identifier")}</label>
               <input
                 id="sign-in-email"
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                type="text"
+                value={identifier}
+                onChange={(e) => setIdentifier(e.target.value)}
                 required
+                autoComplete="username"
                 className={inputClass}
                 style={inputStyle}
                 onFocus={(e) => { e.currentTarget.style.borderColor = "#5865F2"; e.currentTarget.style.boxShadow = "0 0 0 3px rgba(88,101,242,0.2)"; }}

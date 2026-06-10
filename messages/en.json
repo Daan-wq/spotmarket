@@ -32,6 +32,8 @@
       "subtitle": "Sign in to continue to ClipProfit",
       "noAccount": "No account?",
       "createOne": "Create one",
+      "identifier": "Email or username",
+      "invalidIdentifier": "Enter a valid email address or username.",
       "forgotPassword": "Forgot password?",
       "submit": "Sign in",
       "submitting": "Signing in...",

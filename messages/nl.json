@@ -32,6 +32,8 @@
       "subtitle": "Log in om verder te gaan met ClipProfit",
       "noAccount": "Nog geen account?",
       "createOne": "Maak er een aan",
+      "identifier": "E-mail of gebruikersnaam",
+      "invalidIdentifier": "Vul een geldig e-mailadres of een geldige gebruikersnaam in.",
       "forgotPassword": "Wachtwoord vergeten?",
       "submit": "Inloggen",
       "submitting": "Inloggen...",
