@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   buildBrandPausePeriods,
+  buildBrandPortalHref,
   buildBrandTimeline,
   buildBrandMilestones,
   calculateBrandForecast,
@@ -11,6 +12,7 @@ import {
   sanitizeBrandCampaignDashboardData,
   sanitizeBrandReportLiveData,
   selectBrandPortalCampaign,
+  selectBrandPortalReport,
 } from "@/lib/brand-report-portal";
 import type { CampaignReportLiveData } from "@/lib/admin/campaign-reporting";
 
@@ -272,6 +274,30 @@ describe("brand report portal helpers", () => {
     });
   });
 
+  it("keeps the selected campaign across portal navigation and resets page-specific report state", () => {
+    expect(buildBrandPortalHref("/brand/content", "campaign-2", {
+      platform: "Instagram",
+      sort: "views",
+      page: "4",
+    })).toBe("/brand/content?platform=Instagram&sort=views&campaignId=campaign-2");
+
+    expect(buildBrandPortalHref("/brand/reports", "campaign-2", {
+      reportId: "report-old",
+    })).toBe("/brand/reports?campaignId=campaign-2");
+  });
+
+  it("selects only a report belonging to the active campaign and otherwise uses the newest publication", () => {
+    const reports = [
+      { id: "newest", campaignId: "campaign-1" },
+      { id: "older", campaignId: "campaign-1" },
+      { id: "other-campaign", campaignId: "campaign-2" },
+    ];
+
+    expect(selectBrandPortalReport(reports, "campaign-1", "older")?.id).toBe("older");
+    expect(selectBrandPortalReport(reports, "campaign-1", "other-campaign")?.id).toBe("newest");
+    expect(selectBrandPortalReport(reports, "campaign-3", null)).toBeNull();
+  });
+
   it("sanitizes live report data for brand-facing views", () => {
     const sanitized = sanitizeBrandReportLiveData(liveData());
 
@@ -413,6 +439,7 @@ describe("brand report portal helpers", () => {
       topContent: [
         {
           id: "approved-high",
+          creator: "Approved Creator",
           platform: "TikTok",
           postUrl: "https://example.com/approved-high",
           thumbnailUrl: null,
@@ -421,6 +448,7 @@ describe("brand report portal helpers", () => {
         },
         {
           id: "approved-low",
+          creator: "Approved Creator",
           platform: "Instagram",
           postUrl: "https://example.com/approved-low",
           thumbnailUrl: null,
@@ -428,13 +456,32 @@ describe("brand report portal helpers", () => {
           engagement: 2000,
         },
       ],
+      creators: [{
+        creator: "Internal Creator Name",
+        submissions: 2,
+        approvedSubmissions: 2,
+        views: 100000,
+        approvalRate: 1,
+        reliabilityStatus: "Aanbevolen",
+      }],
+      audience: {
+        sampleCount: 2,
+        ageBuckets: { "18-24": 55 },
+        genderSplit: { female: 65 },
+        topCountries: [{ code: "NL", share: 80 }],
+        fitStatus: "Sterke match",
+      },
+      quality: {
+        status: "needs_attention",
+        reviewedClips: 5,
+        excludedClips: 1,
+        excludedViews: 15000,
+      },
     });
-    expect(dashboard).not.toHaveProperty("quality");
-    expect(dashboard).not.toHaveProperty("creators");
     expect(dashboard).not.toHaveProperty("referral");
   });
 
-  it("limits the dashboard preview to the five highest-view approved clips", () => {
+  it("limits the dashboard preview to the six highest-view approved clips", () => {
     const data = liveData();
     data.topContent = [
       {
@@ -469,6 +516,7 @@ describe("brand report portal helpers", () => {
       "approved-2",
       "approved-3",
       "approved-4",
+      "approved-5",
     ]);
   });
 

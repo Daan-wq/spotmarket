@@ -1,74 +1,164 @@
-import Link from "next/link";
 import type { Prisma } from "@prisma/client";
 import { FileText } from "lucide-react";
+import { BrandReportActions } from "@/components/brand/brand-report-actions";
+import { BrandReportDocument } from "@/components/brand/brand-report-document";
 import { EmptyState } from "@/components/ui/empty-state";
 import { formatDate } from "@/lib/admin/agency-format";
-import { buildBrandVisibleReportWhere } from "@/lib/brand-report-portal";
+import { getCampaignReportLiveData } from "@/lib/admin/campaign-reporting";
+import {
+  normalizeEditorialContent,
+  normalizeSectionSettings,
+  normalizeTextList,
+  type CampaignReportEditorial,
+} from "@/lib/admin/campaign-report-shared";
+import {
+  buildBrandPortalCampaignWhere,
+  buildBrandVisibleReportWhere,
+  sanitizeBrandReportLiveData,
+  selectBrandPortalCampaign,
+  selectBrandPortalReport,
+  sortBrandPortalCampaigns,
+} from "@/lib/brand-report-portal";
 import { getBrandPortalContext } from "@/lib/brand-auth";
 import { prisma } from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
 
-export default async function BrandReportsPage() {
+interface PageProps {
+  searchParams: Promise<{ campaignId?: string; reportId?: string }>;
+}
+
+const reportInclude = {
+  brand: { select: { id: true, name: true } },
+  campaign: { select: { id: true, name: true } },
+} as const;
+
+type ReportWithRelations = Prisma.CampaignReportGetPayload<{ include: typeof reportInclude }>;
+
+export default async function BrandReportsPage({ searchParams }: PageProps) {
+  const params = await searchParams;
   const context = await getBrandPortalContext();
-  const where: Prisma.CampaignReportWhereInput = context.brandIds
-    ? buildBrandVisibleReportWhere(context.brandIds)
-    : { status: "FINAL", visibleToBrand: true, brand: { portalEnabled: true } };
-  const reports = await prisma.campaignReport.findMany({
-    where,
+  const campaigns = sortBrandPortalCampaigns(await prisma.campaign.findMany({
+    where: buildBrandPortalCampaignWhere(context.brandIds),
     select: {
       id: true,
-      title: true,
-      periodStart: true,
-      periodEnd: true,
-      brandVisibleAt: true,
+      name: true,
+      status: true,
+      startsAt: true,
+      deadline: true,
       updatedAt: true,
-      brand: { select: { name: true } },
-      campaign: { select: { name: true } },
     },
-    orderBy: [{ brandVisibleAt: "desc" }, { updatedAt: "desc" }],
-  });
+    orderBy: [{ updatedAt: "desc" }],
+  }));
+  const selectedCampaign = selectBrandPortalCampaign(campaigns, params.campaignId);
 
-  if (reports.length === 0) {
+  if (!selectedCampaign) {
     return (
       <EmptyState
         icon={<FileText className="h-5 w-5" />}
-        title="Nog geen rapporten gepubliceerd"
-        description="Definitieve rapporten verschijnen hier zodra ze voor het merk zijn gepubliceerd."
+        title="Nog geen campagne beschikbaar"
+        description="Een definitief rapport verschijnt zodra een actieve of afgeronde campagne beschikbaar is."
+      />
+    );
+  }
+
+  const visibleWhere: Prisma.CampaignReportWhereInput = context.brandIds
+    ? buildBrandVisibleReportWhere(context.brandIds)
+    : { status: "FINAL", visibleToBrand: true, brand: { portalEnabled: true } };
+  const reports: ReportWithRelations[] = await prisma.campaignReport.findMany({
+    where: {
+      ...visibleWhere,
+      campaignId: selectedCampaign.id,
+    },
+    include: reportInclude,
+    orderBy: [{ brandVisibleAt: "desc" }, { updatedAt: "desc" }],
+  });
+  const report = selectBrandPortalReport(reports, selectedCampaign.id, params.reportId);
+
+  if (!report) {
+    return (
+      <EmptyState
+        icon={<FileText className="h-5 w-5" />}
+        title="Nog geen definitief rapport"
+        description="Voor deze campagne is nog geen definitief rapport voor het merk gepubliceerd."
+      />
+    );
+  }
+
+  const liveData = await getCampaignReportLiveData({
+    campaignId: report.campaignId,
+    periodStart: report.periodStart,
+    periodEnd: report.periodEnd,
+  });
+
+  if (!liveData) {
+    return (
+      <EmptyState
+        icon={<FileText className="h-5 w-5" />}
+        title="Rapportdata tijdelijk niet beschikbaar"
+        description="Het definitieve rapport bestaat, maar de actuele campagnedata kon niet worden geladen."
       />
     );
   }
 
   return (
-    <div className="space-y-8">
-      <header className="border-b border-neutral-200 pb-8">
-        <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-neutral-400">Gepubliceerd</p>
-        <h1 className="mt-3 text-4xl font-semibold tracking-[-0.04em] text-neutral-950 sm:text-5xl">Rapporten</h1>
-        <p className="mt-3 max-w-2xl text-sm leading-6 text-neutral-500">
-          Definitieve campagnerapporten met resultaten, financiële kerncijfers en beschikbare publieksdata.
-        </p>
+    <div className="space-y-6 pb-12 pt-8">
+      <header className="report-studio-chrome flex flex-col gap-5 border-b border-neutral-200 pb-6 sm:flex-row sm:items-end sm:justify-between">
+        <div>
+          <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-neutral-400">
+            Definitief rapport
+          </p>
+          <h1 className="mt-2 text-3xl font-semibold tracking-[-0.035em] text-neutral-950">
+            {report.title}
+          </h1>
+          <p className="mt-2 text-sm text-neutral-500">
+            {report.campaign.name} · gepubliceerd {formatDate(report.brandVisibleAt ?? report.updatedAt, "nl")}
+          </p>
+        </div>
+        <div className="flex flex-wrap items-end gap-3">
+          {reports.length > 1 ? (
+            <form action="/brand/reports" method="get" className="flex items-end gap-2">
+              <input type="hidden" name="campaignId" value={selectedCampaign.id} />
+              <label className="grid gap-1 text-xs font-semibold text-neutral-500">
+                Rapportversie
+                <select
+                  name="reportId"
+                  defaultValue={report.id}
+                  className="h-11 min-w-56 border-0 border-b-2 border-neutral-950 bg-white px-0 text-sm font-semibold text-neutral-950 outline-none"
+                >
+                  {reports.map((item) => (
+                    <option key={item.id} value={item.id}>
+                      {item.title} · {formatDate(item.brandVisibleAt ?? item.updatedAt, "nl")}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <button type="submit" className="h-11 px-3 text-sm font-semibold text-neutral-700 hover:text-neutral-950">
+                Openen
+              </button>
+            </form>
+          ) : null}
+          <BrandReportActions />
+        </div>
       </header>
 
-      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-        {reports.map((report) => (
-          <Link key={report.id} href={`/brand/reports/${report.id}`} className="rounded-2xl border border-neutral-200 bg-white p-5 transition hover:border-neutral-400">
-            <p className="text-xs font-semibold uppercase tracking-[0.12em] text-neutral-400">{report.brand?.name ?? "Brand"}</p>
-            <h2 className="mt-3 text-xl font-semibold tracking-[-0.02em] text-neutral-950">{report.title}</h2>
-            <p className="mt-2 text-sm text-neutral-500">{report.campaign.name}</p>
-            <div className="mt-6 flex items-center justify-between gap-3 border-t border-neutral-100 pt-4 text-xs text-neutral-500">
-              <span>{formatPeriod(report.periodStart, report.periodEnd)}</span>
-              <span>{formatDate(report.brandVisibleAt ?? report.updatedAt, "nl")}</span>
-            </div>
-          </Link>
-        ))}
-      </div>
+      <BrandReportDocument
+        report={report}
+        data={sanitizeBrandReportLiveData(liveData)}
+        editorial={buildEditorial(report)}
+      />
     </div>
   );
 }
 
-function formatPeriod(start: Date | null, end: Date | null) {
-  if (!start && !end) return "Volledige campagne";
-  if (!start) return `Tot ${formatDate(end, "nl")}`;
-  if (!end) return `Vanaf ${formatDate(start, "nl")}`;
-  return `${formatDate(start, "nl")} - ${formatDate(end, "nl")}`;
+function buildEditorial(report: ReportWithRelations): CampaignReportEditorial {
+  return {
+    title: report.title,
+    executiveSummary: report.executiveSummary,
+    keyTakeaways: normalizeTextList(report.keyTakeaways),
+    learnings: normalizeTextList(report.learnings),
+    nextCampaignRecommendations: normalizeTextList(report.nextCampaignRecommendations),
+    sectionSettings: normalizeSectionSettings(report.sectionSettings),
+    editorialContent: normalizeEditorialContent(report.editorialContent),
+  };
 }

@@ -99,11 +99,6 @@ export default async function BrandContentPage({ searchParams }: PageProps) {
 
   return (
     <BrandContentGrid
-      campaigns={campaigns.map((campaign) => ({
-        id: campaign.id,
-        name: campaign.name,
-        status: campaign.status as "active" | "completed",
-      }))}
       selectedCampaignId={selectedCampaign.id}
       {...content}
     />

@@ -71,6 +71,7 @@ const data: BrandCampaignDashboardData = {
   topContent: [
     {
       id: "clip-1",
+      creator: "Creator One",
       platform: "TikTok",
       postUrl: "https://example.com/clip-1",
       thumbnailUrl: "https://example.com/clip-1.jpg",
@@ -78,22 +79,30 @@ const data: BrandCampaignDashboardData = {
       engagement: 12500,
     },
   ],
+  creators: [
+    {
+      creator: "Creator One",
+      submissions: 4,
+      approvedSubmissions: 4,
+      views: 180000,
+      approvalRate: 1,
+      reliabilityStatus: "Aanbevolen",
+    },
+  ],
+  audience: {
+    sampleCount: 2,
+    ageBuckets: { "18-24": 62 },
+    genderSplit: { vrouw: 58, man: 42 },
+    topCountries: [{ code: "NL", share: 84 }],
+    fitStatus: "Sterke match",
+  },
+  quality: {
+    status: "passed" as const,
+    reviewedClips: 12,
+    excludedClips: 0,
+    excludedViews: 0,
+  },
 };
-
-const campaigns = [
-  {
-    id: "campaign-active",
-    name: "Summer launch",
-    status: "active" as const,
-    brandName: "ClipProfit Brand",
-  },
-  {
-    id: "campaign-completed",
-    name: "Spring launch",
-    status: "completed" as const,
-    brandName: "ClipProfit Brand",
-  },
-];
 
 describe("BrandCampaignDashboard", () => {
   it("builds a capped goal meter for normal progress, overdelivery, and missing goals", () => {
@@ -116,13 +125,12 @@ describe("BrandCampaignDashboard", () => {
 
   it("renders the selected campaign, status tags, core metrics, and engagement guidance", () => {
     const html = renderToStaticMarkup(
-      <BrandCampaignDashboard campaigns={campaigns} selectedCampaignId="campaign-active" data={data} />,
+      <BrandCampaignDashboard selectedCampaignId="campaign-active" selectedCampaignStatus="active" data={data} />,
     );
 
     expect(html).toContain("Summer launch");
     expect(html).toContain("Actief");
-    expect(html).toContain("Spring launch");
-    expect(html).toContain("Afgerond");
+    expect(html).not.toContain("Spring launch");
     expect(html).toContain("Totale views");
     expect(html).toContain("Budgetverbruik");
     expect(html).toContain("Budget resterend");
@@ -135,19 +143,26 @@ describe("BrandCampaignDashboard", () => {
     expect(html).toContain("Postende accounts");
     expect(html).toContain("Clips ingezonden");
     expect(html).toContain("Platformoverzicht");
+    expect(html).toContain("Creatorbijdrage");
+    expect(html).toContain("Publiek en bereik");
+    expect(html).toContain("Budget en waarde");
+    expect(html).toContain("Kwaliteitscontrole");
+    expect(html).toContain("Sterke match");
+    expect(html).toContain("Nederland");
     expect(html).toContain("Over-delivery");
     expect(html).toContain("Reageer op deze video’s voor extra engagement en bereik via je eigen socials.");
     expect(html).toContain("https://example.com/clip-1");
     expect(html).toContain("/brand/content?campaignId=campaign-active");
     expect(html).not.toContain("bots");
     expect(html).not.toContain("flags");
+    expect(html).not.toContain("earnedAmount");
   });
 
   it("shows clear empty states when approved content and platform data are not available yet", () => {
     const html = renderToStaticMarkup(
       <BrandCampaignDashboard
-        campaigns={campaigns}
         selectedCampaignId="campaign-active"
+        selectedCampaignStatus="active"
         data={{ ...data, platformBreakdown: [], topContent: [] }}
       />,
     );
@@ -172,8 +187,8 @@ describe("BrandCampaignDashboard", () => {
 
     const html = renderToStaticMarkup(
       <BrandCampaignDashboard
-        campaigns={campaigns}
         selectedCampaignId="campaign-active"
+        selectedCampaignStatus="active"
         data={pausedData}
       />,
     );

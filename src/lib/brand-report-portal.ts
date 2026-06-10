@@ -11,6 +11,18 @@ interface BrandPortalCampaignSelection {
   updatedAt: Date | string;
 }
 
+interface BrandPortalReportSelection {
+  id: string;
+  campaignId: string;
+}
+
+export interface BrandPortalCampaignOption {
+  id: string;
+  name: string;
+  status: "active" | "completed";
+  brandName: string;
+}
+
 export function buildBrandPortalCampaignWhere(brandIds: string[] | null): Prisma.CampaignWhereInput {
   return {
     ...(brandIds ? { brandId: { in: brandIds } } : {}),
@@ -33,6 +45,34 @@ export function selectBrandPortalCampaign<T extends BrandPortalCampaignSelection
   const requested = requestedId ? campaigns.find((campaign) => campaign.id === requestedId) : null;
   if (requested) return requested;
   return sortBrandPortalCampaigns(campaigns)[0] ?? null;
+}
+
+export function selectBrandPortalReport<T extends BrandPortalReportSelection>(
+  reports: T[],
+  campaignId: string,
+  requestedId: string | null | undefined,
+): T | null {
+  const campaignReports = reports.filter((report) => report.campaignId === campaignId);
+  if (requestedId) {
+    const requested = campaignReports.find((report) => report.id === requestedId);
+    if (requested) return requested;
+  }
+  return campaignReports[0] ?? null;
+}
+
+export function buildBrandPortalHref(
+  pathname: string,
+  campaignId: string,
+  currentParams: Record<string, string | undefined> = {},
+) {
+  const params = new URLSearchParams();
+  for (const [key, value] of Object.entries(currentParams)) {
+    if (value) params.set(key, value);
+  }
+  params.delete("page");
+  params.delete("reportId");
+  params.set("campaignId", campaignId);
+  return `${pathname}?${params.toString()}`;
 }
 
 export function buildBrandVisibleReportWhere(brandIds: string[]): Prisma.CampaignReportWhereInput {
@@ -131,15 +171,32 @@ export function sanitizeBrandCampaignDashboardData(
     topContent: data.topContent
       .filter((row) => row.status === "APPROVED")
       .sort((a, b) => b.views - a.views)
-      .slice(0, 5)
+      .slice(0, 6)
       .map((row) => ({
         id: row.id,
+        creator: row.creator,
         platform: row.platform,
         postUrl: row.postUrl,
         thumbnailUrl: row.thumbnailUrl,
         views: row.views,
         engagement: row.engagement,
       })),
+    creators: data.creators.slice(0, 8).map((row) => ({
+      creator: row.creator,
+      submissions: row.submissions,
+      approvedSubmissions: row.approvedSubmissions,
+      views: row.views,
+      approvalRate: row.approvalRate,
+      reliabilityStatus: row.reliabilityStatus,
+    })),
+    audience: {
+      sampleCount: data.audience.sampleCount,
+      ageBuckets: data.audience.ageBuckets,
+      genderSplit: data.audience.genderSplit,
+      topCountries: data.audience.topCountries,
+      fitStatus: data.audience.fitStatus,
+    },
+    quality: brandQualityProjection(data),
   };
 }
 
@@ -223,22 +280,27 @@ export function sanitizeBrandReportLiveData(data: CampaignReportLiveData) {
       approvalRate: row.approvalRate,
       reliabilityStatus: row.reliabilityStatus,
     })),
-    quality: {
-      status: data.quality.criticalSignals > 0
-        ? "needs_attention" as const
-        : data.quality.openSignals > 0 || data.quality.resolvedSignals > 0 || data.quality.excludedClips > 0
-          ? "passed_with_exclusions" as const
-          : "passed" as const,
-      reviewedClips: data.performance.approvedClips + data.quality.excludedClips,
-      excludedClips: data.quality.excludedClips,
-      excludedViews: data.quality.excludedViews,
-    },
+    quality: brandQualityProjection(data),
     audience: {
       sampleCount: data.audience.sampleCount,
       ageBuckets: data.audience.ageBuckets,
       genderSplit: data.audience.genderSplit,
       topCountries: data.audience.topCountries,
+      fitStatus: data.audience.fitStatus,
     },
+  };
+}
+
+function brandQualityProjection(data: CampaignReportLiveData) {
+  return {
+    status: data.quality.criticalSignals > 0
+      ? "needs_attention" as const
+      : data.quality.openSignals > 0 || data.quality.resolvedSignals > 0 || data.quality.excludedClips > 0
+        ? "passed_with_exclusions" as const
+        : "passed" as const,
+    reviewedClips: data.performance.approvedClips + data.quality.excludedClips,
+    excludedClips: data.quality.excludedClips,
+    excludedViews: data.quality.excludedViews,
   };
 }
 
