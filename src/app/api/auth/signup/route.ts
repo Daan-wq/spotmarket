@@ -6,6 +6,8 @@ import { buildAppUrl, getAppUrlFromRequest, getLocaleFromRequest } from "@/lib/a
 import { getAuthEmailLocale, sendAuthEmail } from "@/lib/auth-email";
 import { normalizeCampaignSlug } from "@/lib/campaign-referrals";
 import { getTranslations } from "next-intl/server";
+import { assessBanEvasion } from "@/lib/ban-evasion/enforcement";
+import { recordAccessSignals } from "@/lib/ban-evasion/store";
 
 const signupSchema = z.object({
   email: z.string().email(),
@@ -13,6 +15,7 @@ const signupSchema = z.object({
   ref: z.string().optional(),
   campaign: z.string().optional(),
   click: z.string().optional(),
+  turnstileToken: z.string().max(4096).optional(),
 });
 
 export async function POST(request: Request) {
@@ -33,6 +36,27 @@ export async function POST(request: Request) {
   const campaignSlug = normalizeCampaignSlug(parsed.data.campaign);
   const clickId = parsed.data.click?.trim() || undefined;
   const email = parsed.data.email.toLowerCase();
+  const banAssessment = await assessBanEvasion({
+    request,
+    subjectRole: "creator",
+    turnstileToken: parsed.data.turnstileToken,
+  });
+
+  if (banAssessment.decision === "BLOCK") {
+    return NextResponse.json(
+      { error: "Access unavailable." },
+      { status: 403 },
+    );
+  }
+  if (banAssessment.decision === "CHALLENGE") {
+    return NextResponse.json(
+      {
+        challengeRequired: true,
+        siteKey: process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY ?? "",
+      },
+      { status: 428 },
+    );
+  }
 
   // Rate limit: 1 ticket per email per 60s
   const recentTicket = await prisma.signupTicket.findFirst({
@@ -50,11 +74,13 @@ export async function POST(request: Request) {
 
   // Create Supabase user (unconfirmed)
   const admin = createSupabaseAdminClient();
-  const { error: createError } =
+  const { data: createData, error: createError } =
     await admin.auth.admin.createUser({
       email,
       password,
       email_confirm: false,
+      user_metadata: { role: "creator" },
+      app_metadata: { user_role: "creator" },
     });
 
   if (createError) {
@@ -68,6 +94,23 @@ export async function POST(request: Request) {
       { error: createError.message || t("createFailed") },
       { status: 500 }
     );
+  }
+
+  if (!createData.user?.id) {
+    return NextResponse.json(
+      { error: t("createFailed") },
+      { status: 500 },
+    );
+  }
+
+  try {
+    await recordAccessSignals({
+      supabaseId: createData.user.id,
+      source: "signup",
+      observations: banAssessment.observations,
+    });
+  } catch (error) {
+    console.error("[signup] Failed to record access signals", error);
   }
 
   // Create ticket

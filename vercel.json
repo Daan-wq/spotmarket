@@ -43,6 +43,10 @@
       "schedule": "30 4 * * *"
     },
     {
+      "path": "/api/cron/prune-ban-signals",
+      "schedule": "40 4 * * *"
+    },
+    {
       "path": "/api/cron/poll-stories",
       "schedule": "0 4 * * *"
     },

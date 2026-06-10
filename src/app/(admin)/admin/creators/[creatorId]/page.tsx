@@ -13,6 +13,7 @@ import { formatCurrencyPrecise, formatDate, formatNumber, formatShortDate, title
 import { getCreatorPayoutTotals, getCreatorPendingCount, getCreatorPlatformVerification } from "@/app/(creator)/creator/dashboard/_data";
 import { getSocialAccountSummariesForProfile, type SocialAccountsByPlatform } from "@/lib/social-account-summary";
 import { CreatorConnectionHealthWarning } from "@/components/connection-health/creator-connection-health-warning";
+import { BanManagementPanel } from "@/components/admin/ban-management-panel";
 
 export const dynamic = "force-dynamic";
 
@@ -29,7 +30,34 @@ export default async function CreatorProfilePage({ params, searchParams }: PageP
   const profile = await prisma.creatorProfile.findUnique({
     where: { id: creatorId },
     include: {
-      user: { select: { id: true, email: true, createdAt: true } },
+      user: {
+        select: {
+          id: true,
+          supabaseId: true,
+          email: true,
+          createdAt: true,
+          accountBans: {
+            where: { liftedAt: null },
+            orderBy: { bannedAt: "desc" },
+            take: 1,
+            select: {
+              id: true,
+              reason: true,
+              internalNote: true,
+              bannedAt: true,
+              indicators: {
+                where: { deactivatedAt: null },
+                select: {
+                  id: true,
+                  type: true,
+                  maskedValue: true,
+                  mode: true,
+                },
+              },
+            },
+          },
+        },
+      },
       igConnections: true,
       ttConnections: true,
       ytConnections: true,
@@ -44,7 +72,7 @@ export default async function CreatorProfilePage({ params, searchParams }: PageP
     creatorProfileId: profile.id,
   };
 
-  const [stats, payouts, pendingSubmissions, platformVerification, activeCampaigns, recentSubmissions, socialAccounts, connectionIncidents] =
+  const [stats, payouts, pendingSubmissions, platformVerification, activeCampaigns, recentSubmissions, socialAccounts, connectionIncidents, accessSignals] =
     await Promise.all([
       getCreatorTopStatsForScope(profileScope, range),
       getCreatorPayoutTotals(profile.user.id),
@@ -93,6 +121,19 @@ export default async function CreatorProfilePage({ params, searchParams }: PageP
           providerMessage: true,
         },
       }),
+      prisma.accessSignal.findMany({
+        where: {
+          supabaseId: profile.user.supabaseId,
+          expiresAt: { gt: new Date() },
+        },
+        orderBy: { lastSeenAt: "desc" },
+        select: {
+          id: true,
+          type: true,
+          maskedValue: true,
+          lastSeenAt: true,
+        },
+      }),
     ]);
 
   const allSignals = recentSubmissions.flatMap((submission) =>
@@ -113,6 +154,7 @@ export default async function CreatorProfilePage({ params, searchParams }: PageP
     youtube: profile.ytConnections.some((connection) => connection.isVerified),
     facebook: profile.fbConnections.some((connection) => connection.isVerified),
   });
+  const activeBan = profile.user.accountBans[0] ?? null;
 
   return (
     <div className="space-y-9">
@@ -124,6 +166,22 @@ export default async function CreatorProfilePage({ params, searchParams }: PageP
       />
 
       <CreatorConnectionHealthWarning incidents={connectionIncidents} />
+
+      <BanManagementPanel
+        creatorId={profile.id}
+        ban={
+          activeBan
+            ? {
+                ...activeBan,
+                bannedAt: activeBan.bannedAt.toISOString(),
+              }
+            : null
+        }
+        signals={accessSignals.map((signal) => ({
+          ...signal,
+          lastSeenAt: signal.lastSeenAt.toISOString(),
+        }))}
+      />
 
       <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
         <StatCard label="Views" value={formatNumber(stats.totalViews.value)} detail={range.label} />

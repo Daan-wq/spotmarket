@@ -17,6 +17,8 @@ import {
   extractDiscordIdentity,
   isAuthIdentityConflict,
 } from "@/lib/auth-identity";
+import { assessBanEvasion } from "@/lib/ban-evasion/enforcement";
+import { recordAccessSignals } from "@/lib/ban-evasion/store";
 
 const VALID_ROLES = ["creator"] as const;
 
@@ -52,6 +54,7 @@ export async function POST(req: Request) {
   const attributionSource = (body.attributionSource as string | undefined)?.trim();
   const experienceLevel = (body.experienceLevel as string | undefined)?.trim();
   const portfolioVideoUrl = (body.portfolioVideoUrl as string | undefined)?.trim();
+  const turnstileToken = (body.turnstileToken as string | undefined)?.trim();
 
   if (!displayName) {
     return NextResponse.json({ error: "Display name is required" }, { status: 400 });
@@ -64,6 +67,31 @@ export async function POST(req: Request) {
   const selectedRole = role && VALID_ROLES.includes(role as typeof VALID_ROLES[number])
     ? (role as typeof VALID_ROLES[number])
     : "creator";
+  const discordIdentity = extractDiscordIdentity(authUser);
+  const assessment = await assessBanEvasion({
+    request: req,
+    subjectRole: "creator",
+    supabaseId: authUser.id,
+    identitySignals: discordIdentity
+      ? [{ type: "DISCORD", value: discordIdentity.id }]
+      : [],
+    turnstileToken,
+  });
+  if (assessment.decision === "BLOCK") {
+    return NextResponse.json(
+      { error: "Access unavailable." },
+      { status: 403 },
+    );
+  }
+  if (assessment.decision === "CHALLENGE") {
+    return NextResponse.json(
+      {
+        challengeRequired: true,
+        siteKey: process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY ?? "",
+      },
+      { status: 428 },
+    );
+  }
 
   const campaignAttribution =
     campaignSlug && campaignClickId && refCode
@@ -107,7 +135,6 @@ export async function POST(req: Request) {
     }
   }
 
-  const discordIdentity = extractDiscordIdentity(authUser);
   const claimedUser = await claimUserForAuthIdentity(authUser, {
     role: selectedRole,
     discordIdentity,
@@ -116,6 +143,7 @@ export async function POST(req: Request) {
   const admin = createSupabaseAdminClient();
   await admin.auth.admin.updateUserById(authUser.id, {
     user_metadata: { role: selectedRole },
+    app_metadata: { user_role: selectedRole },
   });
 
   const user = claimedUser ?? await prisma.user.create({
@@ -201,6 +229,17 @@ export async function POST(req: Request) {
         ...(portfolioVideoUrl ? { portfolioVideoUrl } : {}),
       },
     });
+  }
+
+  try {
+    await recordAccessSignals({
+      supabaseId: authUser.id,
+      userId: user.id,
+      source: "onboarding",
+      observations: assessment.observations,
+    });
+  } catch (recordError) {
+    console.error("[onboarding/complete] Access signal write failed", recordError);
   }
 
   const firstClipStatus = buildFirstClipOnboardingStatus({

@@ -8,6 +8,9 @@ import {
   extractDiscordIdentity,
   isAuthIdentityConflict,
 } from "@/lib/auth-identity";
+import { assessBanEvasion } from "@/lib/ban-evasion/enforcement";
+import { getIdentitySignalsForSupabaseUser } from "@/lib/ban-evasion/identity-signals";
+import { recordAccessSignals } from "@/lib/ban-evasion/store";
 
 export async function GET(request: Request) {
   const { searchParams, origin } = new URL(request.url);
@@ -32,6 +35,39 @@ export async function GET(request: Request) {
   const discordIdentity = extractDiscordIdentity(user);
   const nextUrl = new URL(next, origin);
   const clickId = nextUrl.searchParams.get("click");
+  const identity = await getIdentitySignalsForSupabaseUser(user.id);
+  const identitySignals = [
+    ...identity.signals,
+    ...(discordIdentity
+      ? [{ type: "DISCORD" as const, value: discordIdentity.id }]
+      : []),
+  ];
+  const assessment = await assessBanEvasion({
+    request,
+    subjectRole: identity.role ?? "creator",
+    supabaseId: user.id,
+    identitySignals,
+  });
+
+  if (assessment.decision !== "ALLOW") {
+    await supabase.auth.signOut({ scope: "global" });
+    return NextResponse.redirect(
+      `${origin}/sign-in?auth_error=access_denied`,
+    );
+  }
+
+  if (identity.role === "creator" || identity.role === null) {
+    try {
+      await recordAccessSignals({
+        supabaseId: user.id,
+        userId: identity.userId,
+        source: "oauth",
+        observations: assessment.observations,
+      });
+    } catch (recordError) {
+      console.error("[auth/callback] Access signal write failed", recordError);
+    }
+  }
 
   if (clickId) {
     await prisma.campaignReferralAttribution.updateMany({

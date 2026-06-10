@@ -6,6 +6,7 @@ import { useTranslations } from "next-intl";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import { Logo } from "@/components/shared/logo";
 import Link from "next/link";
+import { TurnstileChallenge } from "@/components/auth/turnstile-challenge";
 
 export function ConfirmForm() {
   const router = useRouter();
@@ -13,6 +14,7 @@ export function ConfirmForm() {
   const t = useTranslations("auth.confirm");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [challengeSiteKey, setChallengeSiteKey] = useState<string | null>(null);
 
   const ticket = searchParams.get("ticket");
 
@@ -29,7 +31,7 @@ export function ConfirmForm() {
     return query ? `/onboarding?${query}` : "/onboarding";
   }
 
-  async function handleConfirm() {
+  async function handleConfirm(turnstileToken?: string) {
     if (!ticket) return;
     setLoading(true);
     setError(null);
@@ -37,13 +39,20 @@ export function ConfirmForm() {
     const res = await fetch("/api/auth/redeem-ticket", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ ticketId: ticket }),
+      body: JSON.stringify({ ticketId: ticket, turnstileToken }),
     });
 
-    const data = await res.json();
+    const data = await res.json().catch(() => null);
+
+    if (res.status === 428 && data?.challengeRequired && data?.siteKey) {
+      setChallengeSiteKey(data.siteKey);
+      setLoading(false);
+      return;
+    }
 
     if (!res.ok) {
-      setError(data.error || t("failed"));
+      setChallengeSiteKey(null);
+      setError(data?.error || t("failed"));
       setLoading(false);
       return;
     }
@@ -86,8 +95,18 @@ export function ConfirmForm() {
                 </p>
               )}
 
+              {challengeSiteKey && (
+                <div className="mb-4">
+                  <TurnstileChallenge
+                    siteKey={challengeSiteKey}
+                    onToken={(token) => void handleConfirm(token)}
+                    onError={() => setError(t("failed"))}
+                  />
+                </div>
+              )}
+
               <button
-                onClick={handleConfirm}
+                onClick={() => void handleConfirm()}
                 disabled={loading}
                 className="w-full py-2.5 rounded-lg text-sm font-semibold text-white transition-opacity disabled:opacity-50"
                 style={{ background: "var(--accent)" }}

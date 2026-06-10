@@ -1,4 +1,5 @@
 import { createServerClient } from "@supabase/ssr";
+import { randomUUID } from "node:crypto";
 import { NextResponse, type NextRequest } from "next/server";
 import {
   getLocaleFromHost,
@@ -7,6 +8,14 @@ import {
   LOCALE_COOKIE_NAME,
   type Locale,
 } from "@/i18n/routing";
+import { assessBanEvasion } from "@/lib/ban-evasion/enforcement";
+import { recordAccessSignals } from "@/lib/ban-evasion/store";
+import {
+  BAN_DEVICE_COOKIE,
+  BAN_DEVICE_COOKIE_MAX_AGE,
+  createDeviceCookieValue,
+  readDeviceCookieValue,
+} from "@/lib/ban-evasion/signals";
 
 const PUBLIC_ROUTES = [
   "/sign-in",
@@ -46,6 +55,38 @@ function persistLocaleCookie(response: NextResponse, locale: Locale, cookieLocal
   return response;
 }
 
+function persistDeviceCookie(response: NextResponse, request: NextRequest) {
+  const secret = process.env.BAN_SIGNAL_HASH_SECRET;
+  if (!secret) return response;
+
+  const existing = request.cookies.get(BAN_DEVICE_COOKIE)?.value;
+  const deviceId = readDeviceCookieValue(existing, secret) ?? randomUUID();
+  response.cookies.set(
+    BAN_DEVICE_COOKIE,
+    createDeviceCookieValue(deviceId, secret),
+    {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
+      maxAge: BAN_DEVICE_COOKIE_MAX_AGE,
+      path: "/",
+    },
+  );
+  return response;
+}
+
+function finalizeResponse(
+  response: NextResponse,
+  request: NextRequest,
+  locale: Locale,
+  cookieLocale: string | undefined,
+) {
+  return persistDeviceCookie(
+    persistLocaleCookie(response, locale, cookieLocale),
+    request,
+  );
+}
+
 function createLocalizedNextResponse(headers: Headers, locale: Locale) {
   return applyLocaleHeaders(NextResponse.next({ request: { headers } }), locale);
 }
@@ -70,13 +111,7 @@ export async function proxy(request: NextRequest) {
   requestHeaders.set("x-locale", locale);
   requestHeaders.set("x-host", host);
 
-  if (pathname.startsWith("/api/")) {
-    return persistLocaleCookie(
-      createLocalizedNextResponse(requestHeaders, locale),
-      locale,
-      cookieLocale
-    );
-  }
+  const isApiRoute = pathname.startsWith("/api/");
 
   let supabaseResponse = createLocalizedNextResponse(requestHeaders, locale);
 
@@ -105,19 +140,104 @@ export async function proxy(request: NextRequest) {
 
   const { data } = await supabase.auth.getClaims();
   const claims = data?.claims ?? null;
+  const supabaseId = typeof claims?.sub === "string" ? claims.sub : null;
+  const appMetadata =
+    claims?.app_metadata && typeof claims.app_metadata === "object"
+      ? (claims.app_metadata as Record<string, unknown>)
+      : null;
+  const isCreator = appMetadata?.user_role === "creator";
+
+  if (
+    supabaseId &&
+    isCreator &&
+    (!isPublicRoute(pathname) || isApiRoute)
+  ) {
+    const assessment = await assessBanEvasion({
+      request,
+      subjectRole: "creator",
+      supabaseId,
+    });
+    if (assessment.decision !== "ALLOW") {
+      if (isApiRoute) {
+        if (assessment.decision === "CHALLENGE") {
+          return finalizeResponse(
+            NextResponse.json(
+              {
+                error: "Additional verification required.",
+                challengeRequired: true,
+                siteKey:
+                  process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY ?? "",
+              },
+              { status: 428 },
+            ),
+            request,
+            locale,
+            cookieLocale,
+          );
+        }
+        return finalizeResponse(
+          NextResponse.json(
+            { error: "Access unavailable." },
+            { status: 403 },
+          ),
+          request,
+          locale,
+          cookieLocale,
+        );
+      }
+
+      const signInUrl = request.nextUrl.clone();
+      signInUrl.pathname = "/sign-in";
+      signInUrl.search = "";
+      signInUrl.searchParams.set(
+        "auth_error",
+        assessment.decision === "CHALLENGE"
+          ? "verification_required"
+          : "access_denied",
+      );
+      return finalizeResponse(
+        applyLocaleHeaders(NextResponse.redirect(signInUrl), locale),
+        request,
+        locale,
+        cookieLocale,
+      );
+    }
+
+    if (!isApiRoute && assessment.observations.length > 0) {
+      try {
+        await recordAccessSignals({
+          supabaseId,
+          source: "session",
+          observations: assessment.observations,
+        });
+      } catch (error) {
+        console.error("[proxy] Failed to refresh access signals", error);
+      }
+    }
+  }
+
+  if (isApiRoute) {
+    return finalizeResponse(
+      supabaseResponse,
+      request,
+      locale,
+      cookieLocale,
+    );
+  }
 
   if (!claims && !isPublicRoute(pathname) && pathname !== "/") {
     const signInUrl = request.nextUrl.clone();
     signInUrl.pathname = "/sign-in";
     signInUrl.searchParams.set("redirect_url", pathname);
-    return persistLocaleCookie(
+    return finalizeResponse(
       applyLocaleHeaders(NextResponse.redirect(signInUrl), locale),
+      request,
       locale,
-      cookieLocale
+      cookieLocale,
     );
   }
 
-  return persistLocaleCookie(supabaseResponse, locale, cookieLocale);
+  return finalizeResponse(supabaseResponse, request, locale, cookieLocale);
 }
 
 export const config = {

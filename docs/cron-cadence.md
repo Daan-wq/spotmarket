@@ -18,6 +18,7 @@ The handler code is identical either way — the route handlers (`/api/cron/*`) 
 | `recompute-scores` | `0 3 * * *` | daily | Vercel |
 | `notification-dispatch` | `20 0 * * *` (daily, fallback only) | every 15 min | Supabase pg_cron |
 | `process-bio-checks` | `25 0 * * *` | daily fallback for unfinished post-response checks | Vercel |
+| `prune-ban-signals` | `40 4 * * *` | daily, deletes expired 90-day security observations | Vercel |
 
 ## When you upgrade to Vercel Pro
 
