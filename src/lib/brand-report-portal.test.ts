@@ -52,6 +52,14 @@ function liveData(): CampaignReportLiveData {
     },
     performance: {
       approvedViews: 190000,
+      currentViews: 190000,
+      targetViews: 180000,
+      targetViewsSource: "budget_cpm",
+      paidEligibleViews: 180000,
+      overdeliveryViews: 25000,
+      overdeliveryPercent: 0.14,
+      deliveryProgress: 1.13,
+      cpmPerThousand: 10,
       goalCompletion: 1.13,
       budgetUsed: 2500,
       budgetUsedPercent: 1,
@@ -109,6 +117,7 @@ function liveData(): CampaignReportLiveData {
       creatorId: "creator-1",
       creator: "Internal Creator Name",
       submissions: 2,
+      approvedSubmissions: 2,
       views: 100000,
       earnedAmount: 1000,
       flagged: 1,
@@ -160,21 +169,20 @@ function liveData(): CampaignReportLiveData {
       sectionSettings: {
         cover: true,
         executiveSummary: true,
-        campaignSetup: true,
-        performance: true,
-        financialOverview: true,
-        platformBreakdown: true,
-        topContent: true,
-        contentInsights: true,
-        creatorPerformance: true,
-        audience: true,
-        communityActivation: false,
-        quality: false,
-        keyLearnings: true,
+        campaignAtAGlance: true,
+        campaignPerformance: true,
+        contentPerformance: true,
+        platformPerformance: true,
+        creatorContribution: true,
+        audienceReach: true,
+        budgetValue: true,
+        qualityAssurance: true,
         nextCampaign: true,
         appendix: false,
       },
       editorialContent: {
+        templateBlocks: {},
+        contentPatternTags: [],
         campaignType: "Launch",
         financialNote: "",
         contentInsights: [],
@@ -185,6 +193,7 @@ function liveData(): CampaignReportLiveData {
         keyLearnings: [],
         nextCampaignPlan: [],
         appendixNote: "",
+        coverImageUrl: null,
       },
     },
   };
@@ -270,13 +279,28 @@ describe("brand report portal helpers", () => {
     expect(sanitized.campaign).not.toHaveProperty("adminMargin");
     expect(sanitized.performance).not.toHaveProperty("statusCounts");
     expect(sanitized).not.toHaveProperty("referral");
-    expect(sanitized).not.toHaveProperty("quality");
-    expect(sanitized).not.toHaveProperty("creators");
+    expect(sanitized.quality).toEqual({
+      status: "needs_attention",
+      reviewedClips: 5,
+      excludedClips: 1,
+      excludedViews: 15000,
+    });
+    expect(sanitized.quality).not.toHaveProperty("signalCounts");
+    expect(sanitized.creators[0]).toEqual({
+      creator: "Internal Creator Name",
+      submissions: 2,
+      approvedSubmissions: 2,
+      views: 100000,
+      approvalRate: 1,
+      reliabilityStatus: "Aanbevolen",
+    });
+    expect(sanitized.creators[0]).not.toHaveProperty("earnedAmount");
     expect(sanitized).not.toHaveProperty("defaults");
     expect(sanitized.performance.overdeliveryViews).toBe(10000);
     expect(sanitized.performance.overdeliveryPercent).toBeCloseTo(10000 / 180000);
     expect(sanitized.topContent[0]).toEqual({
       id: "submission-1",
+      creator: "Internal Creator Name",
       platform: "TikTok",
       postUrl: "https://tiktok.com/@creator/video/1",
       thumbnailUrl: "https://example.com/thumb.jpg",

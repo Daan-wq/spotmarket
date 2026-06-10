@@ -2,9 +2,8 @@
 
 import {
   BarChart3,
-  CalendarDays,
+  ChevronDown,
   CheckCircle2,
-  Eye,
   ExternalLink,
   FileText,
   Plus,
@@ -12,22 +11,32 @@ import {
   RefreshCw,
   Save,
   Search,
+  ShieldCheck,
   SlidersHorizontal,
   Sparkles,
+  Target,
+  TrendingUp,
   Users,
+  Wallet,
 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
+import React, { createContext, useContext, useMemo, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Tabs } from "@/components/ui/tabs";
 import { formatCurrency, formatDate, formatNumber } from "@/lib/admin/agency-format";
 import {
+  formatAudienceCountryLabel,
+  formatAudienceShare,
+  reportQualityStatusLabel,
+  resolveCampaignReportToken,
+  type ReportQualityStatus,
+} from "@/lib/admin/campaign-report-display";
+import {
   CAMPAIGN_REPORT_SECTION_KEYS,
+  DEFAULT_AUDIENCE_INSIGHT_TEMPLATE,
   DEFAULT_CAMPAIGN_REPORT_SECTIONS,
   createEmptyEditorialContent,
-  normalizeEditorialContent,
   normalizeSectionSettings,
   normalizeTextList,
   type CampaignReportEditorial,
@@ -38,7 +47,6 @@ import {
 } from "@/lib/admin/campaign-report-shared";
 import { cn } from "@/lib/cn";
 import type { CampaignReportLiveData } from "@/lib/admin/campaign-reporting";
-import { CampaignReportView } from "./campaign-report-view";
 
 export interface BrandOption {
   id: string;
@@ -65,7 +73,6 @@ export interface ReportFilters {
   q: string;
   dateFrom: string;
   dateTo: string;
-  tab: ReportStudioTab;
 }
 
 export interface ReportHistoryItem {
@@ -103,27 +110,42 @@ interface CampaignReportStudioProps {
   filters: ReportFilters;
 }
 
-export type ReportStudioTab = "edit" | "report";
+interface ReportInlineEditors {
+  setTitle: (value: string) => void;
+  updateTemplateBlock: (key: string, value: string) => void;
+  updateContentPatternTags: (value: string[]) => void;
+}
+
+interface TokenPreviewContextValue {
+  liveData: CampaignReportLiveData;
+  status: CampaignReportStatusValue;
+  periodStart: string;
+  periodEnd: string;
+  showValues: boolean;
+}
+
+interface ReportCopyContextValue {
+  blocks: Record<string, string>;
+  editors?: ReportInlineEditors;
+}
+
+const TokenPreviewContext = createContext<TokenPreviewContextValue | null>(null);
+const ReportCopyContext = createContext<ReportCopyContextValue | null>(null);
 
 const SECTION_LABELS: Record<CampaignReportSectionKey, string> = {
   cover: "Omslag",
   executiveSummary: "Samenvatting",
-  campaignSetup: "Campagne-inrichting",
-  performance: "Prestatieoverzicht",
-  financialOverview: "Financieel overzicht",
-  platformBreakdown: "Platformverdeling",
-  topContent: "Topcontent",
-  contentInsights: "Contentinzichten",
-  creatorPerformance: "Creatorprestaties",
-  audience: "Publiek en bereikskwaliteit",
-  communityActivation: "Communityactivatie",
-  quality: "Kwaliteit en compliance",
-  keyLearnings: "Belangrijkste learnings",
-  nextCampaign: "Aanbevelingen voor volgende campagne",
+  campaignAtAGlance: "Campagne in het kort",
+  campaignPerformance: "Campagneprestatie",
+  contentPerformance: "Contentprestaties",
+  platformPerformance: "Platformprestaties",
+  creatorContribution: "Creatorbijdrage",
+  audienceReach: "Publiek en bereik",
+  budgetValue: "Budget en waarde",
+  qualityAssurance: "Kwaliteitscontrole",
+  nextCampaign: "Volgende campagne",
   appendix: "Appendix",
 };
-
-const EDITABLE_SECTION_KEYS = CAMPAIGN_REPORT_SECTION_KEYS.filter((sectionKey) => sectionKey !== "quality");
 
 const STATUS_TABS: Array<{ label: string; value: ReportFilters["status"] }> = [
   { label: "Alles", value: "ALL" },
@@ -162,61 +184,77 @@ export function CampaignReportStudio({
   initialEditorial,
   filters,
 }: CampaignReportStudioProps) {
-  const router = useRouter();
   const selectedCampaignId = liveData?.campaign.id ?? selectedReport?.campaignId ?? filters.campaignId ?? campaigns[0]?.id ?? "";
   const selectedCampaign = campaigns.find((campaign) => campaign.id === selectedCampaignId) ?? null;
   const baseEditorial = initialEditorial ?? liveData?.defaults ?? createEmptyEditorial(selectedCampaign?.name ?? "Campagne");
+  const initialPeriodStart = dateInputValue(selectedReport?.periodStart ?? liveData?.period.start ?? liveData?.campaign.startsAt ?? null);
+  const initialPeriodEnd = dateInputValue(selectedReport?.periodEnd ?? liveData?.period.end ?? liveData?.campaign.deadline ?? null);
+  const editorKey = [
+    selectedReport?.id ?? "new",
+    selectedReport?.updatedAt ?? "",
+    liveData?.campaign.id ?? selectedCampaignId,
+    initialPeriodStart,
+    initialPeriodEnd,
+  ].join(":");
+
+  return (
+    <CampaignReportStudioEditor
+      key={editorKey}
+      brands={brands}
+      campaigns={campaigns}
+      reports={reports}
+      selectedReport={selectedReport}
+      liveData={liveData}
+      filters={filters}
+      selectedCampaignId={selectedCampaignId}
+      baseEditorial={baseEditorial}
+      initialPeriodStart={initialPeriodStart}
+      initialPeriodEnd={initialPeriodEnd}
+    />
+  );
+}
+
+function CampaignReportStudioEditor({
+  brands,
+  campaigns,
+  reports,
+  selectedReport,
+  liveData,
+  filters,
+  selectedCampaignId,
+  baseEditorial,
+  initialPeriodStart,
+  initialPeriodEnd,
+}: Omit<CampaignReportStudioProps, "initialEditorial"> & {
+  selectedCampaignId: string;
+  baseEditorial: CampaignReportEditorial;
+  initialPeriodStart: string;
+  initialPeriodEnd: string;
+}) {
+  const router = useRouter();
+  const selectedCampaign = campaigns.find((campaign) => campaign.id === selectedCampaignId) ?? null;
   const selectedBrand = selectedReport?.brand ?? selectedCampaign?.brand ?? null;
 
   const [title, setTitle] = useState(baseEditorial.title);
-  const [executiveSummary, setExecutiveSummary] = useState(baseEditorial.executiveSummary);
-  const [keyTakeaways, setKeyTakeaways] = useState(baseEditorial.keyTakeaways);
-  const [learnings, setLearnings] = useState(baseEditorial.learnings);
-  const [nextCampaignRecommendations, setNextCampaignRecommendations] = useState(baseEditorial.nextCampaignRecommendations);
-  const [editorialContent, setEditorialContent] = useState<CampaignReportEditorialContent>(
-    normalizeEditorialContent(baseEditorial.editorialContent),
-  );
+  const [keyTakeaways, setKeyTakeaways] = useState(() => normalizeTextList(baseEditorial.keyTakeaways));
+  const [learnings, setLearnings] = useState(() => normalizeTextList(baseEditorial.learnings));
+  const [nextCampaignRecommendations, setNextCampaignRecommendations] = useState(() => normalizeTextList(baseEditorial.nextCampaignRecommendations));
   const [sectionSettings, setSectionSettings] = useState<CampaignReportSectionSettings>(
-    normalizeSectionSettings(baseEditorial.sectionSettings),
+    () => normalizeSectionSettings(baseEditorial.sectionSettings),
   );
-  const [periodStart, setPeriodStart] = useState(dateInputValue(selectedReport?.periodStart ?? liveData?.period.start ?? liveData?.campaign.startsAt ?? null));
-  const [periodEnd, setPeriodEnd] = useState(dateInputValue(selectedReport?.periodEnd ?? liveData?.period.end ?? liveData?.campaign.deadline ?? null));
+  const [editorialContent, setEditorialContent] = useState<CampaignReportEditorialContent>(() => ({
+    ...baseEditorial.editorialContent,
+    templateBlocks: {
+      ...defaultTemplateBlocks(baseEditorial, Boolean(selectedReport)),
+      ...baseEditorial.editorialContent.templateBlocks,
+    },
+  }));
+  const [periodStart, setPeriodStart] = useState(initialPeriodStart);
+  const [periodEnd, setPeriodEnd] = useState(initialPeriodEnd);
+  const [showTokenValues, setShowTokenValues] = useState(true);
   const [savingMode, setSavingMode] = useState<"draft" | "final" | null>(null);
   const [sharingMode, setSharingMode] = useState<"show" | "hide" | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<ReportStudioTab>(filters.tab);
-  const [printWhenReportTabIsReady, setPrintWhenReportTabIsReady] = useState(false);
-
-  useEffect(() => {
-    const next = initialEditorial ?? liveData?.defaults ?? createEmptyEditorial(selectedCampaign?.name ?? "Campagne");
-    // Intentionally reset the editor when the selected report/campaign changes.
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    setTitle(next.title);
-    setExecutiveSummary(next.executiveSummary);
-    setKeyTakeaways(normalizeTextList(next.keyTakeaways));
-    setLearnings(normalizeTextList(next.learnings));
-    setNextCampaignRecommendations(normalizeTextList(next.nextCampaignRecommendations));
-    setEditorialContent(normalizeEditorialContent(next.editorialContent));
-    setSectionSettings(normalizeSectionSettings(next.sectionSettings));
-    setPeriodStart(dateInputValue(selectedReport?.periodStart ?? liveData?.period.start ?? liveData?.campaign.startsAt ?? null));
-    setPeriodEnd(dateInputValue(selectedReport?.periodEnd ?? liveData?.period.end ?? liveData?.campaign.deadline ?? null));
-    setNotice(null);
-  }, [initialEditorial, liveData?.campaign.id, selectedCampaign?.name, selectedReport?.id, selectedReport?.periodEnd, selectedReport?.periodStart]);
-
-  useEffect(() => {
-    // Keep the tab state aligned with URL filters after navigation.
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    setActiveTab(filters.tab);
-  }, [filters.tab]);
-
-  useEffect(() => {
-    if (!printWhenReportTabIsReady || activeTab !== "report") return;
-    const timeout = window.setTimeout(() => {
-      window.print();
-      setPrintWhenReportTabIsReady(false);
-    }, 120);
-    return () => window.clearTimeout(timeout);
-  }, [activeTab, printWhenReportTabIsReady]);
 
   const historyCounts = useMemo(() => {
     return reports.reduce(
@@ -233,32 +271,15 @@ export function CampaignReportStudio({
   function buildHref(overrides: Partial<ReportFilters> & { reportId?: string | null; campaignId?: string | null }) {
     const next = { ...filters, ...overrides };
     const params = new URLSearchParams();
-    const nextReportId = overrides.reportId !== undefined ? overrides.reportId : selectedReport?.id ?? null;
-    const nextCampaignId = overrides.campaignId !== undefined ? overrides.campaignId : next.campaignId || selectedCampaignId;
-    if (nextReportId) params.set("reportId", nextReportId);
-    if (nextCampaignId) params.set("campaignId", nextCampaignId);
+    if (overrides.reportId) params.set("reportId", overrides.reportId);
+    if (next.campaignId) params.set("campaignId", next.campaignId);
     if (next.brandId) params.set("brandId", next.brandId);
     if (next.status !== "ALL") params.set("status", next.status);
     if (next.q) params.set("q", next.q);
     if (next.dateFrom) params.set("dateFrom", next.dateFrom);
     if (next.dateTo) params.set("dateTo", next.dateTo);
-    if (next.tab !== "edit") params.set("tab", next.tab);
     const query = params.toString();
     return query ? `/admin/reports?${query}` : "/admin/reports";
-  }
-
-  function switchTab(tab: ReportStudioTab) {
-    setActiveTab(tab);
-    router.replace(buildHref({ tab }), { scroll: false });
-  }
-
-  function printReport() {
-    if (activeTab === "report") {
-      window.print();
-      return;
-    }
-    setPrintWhenReportTabIsReady(true);
-    switchTab("report");
   }
 
   async function saveReport(nextStatus?: CampaignReportStatusValue) {
@@ -271,12 +292,10 @@ export function CampaignReportStudio({
       status: nextStatus ?? selectedReport?.status ?? "DRAFT",
       periodStart: periodStart || null,
       periodEnd: periodEnd || null,
-      executiveSummary,
+      executiveSummary: renderTemplateForLegacy(editorialContent.templateBlocks["summary.body"] ?? baseEditorial.executiveSummary),
       keyTakeaways,
-      learnings: editorialContent.keyLearnings.length > 0 ? editorialContent.keyLearnings : learnings,
-      nextCampaignRecommendations: editorialContent.nextCampaignPlan.length > 0
-        ? editorialContent.nextCampaignPlan
-        : nextCampaignRecommendations,
+      learnings,
+      nextCampaignRecommendations,
       sectionSettings,
       editorialContent,
     };
@@ -307,7 +326,7 @@ export function CampaignReportStudio({
 
     setNotice(nextStatus === "FINAL" ? "Definitief rapport opgeslagen." : "Concept opgeslagen.");
     if (!selectedReport && payload.report?.id) {
-      router.replace(buildHref({ reportId: payload.report.id, campaignId: liveData.campaign.id, tab: activeTab }));
+      router.replace(buildHref({ reportId: payload.report.id, campaignId: liveData.campaign.id }));
     }
     router.refresh();
   }
@@ -334,7 +353,29 @@ export function CampaignReportStudio({
   }
 
   function selectCampaign(campaignId: string) {
-    router.push(buildHref({ campaignId, reportId: null, tab: "edit" }));
+    router.push(buildHref({ campaignId, reportId: null }));
+  }
+
+  function updateTemplateBlock(key: string, value: string) {
+    setEditorialContent((current) => ({
+      ...current,
+      templateBlocks: {
+        ...current.templateBlocks,
+        [key]: value,
+      },
+    }));
+  }
+
+  function updateContentPatternTags(value: string[]) {
+    setEditorialContent((current) => ({
+      ...current,
+      contentPatternTags: value,
+    }));
+  }
+
+  function printReport() {
+    setShowTokenValues(true);
+    window.setTimeout(() => window.print(), 50);
   }
 
   return (
@@ -370,7 +411,7 @@ export function CampaignReportStudio({
               ))}
             </select>
           </label>
-          <Button type="button" variant="outline" className="rounded-lg" onClick={() => router.push(buildHref({ campaignId: selectedCampaignId, reportId: null, tab: "edit" }))}>
+          <Button type="button" variant="outline" className="rounded-lg" onClick={() => router.push(buildHref({ campaignId: selectedCampaignId, reportId: null }))}>
             <Plus className="h-4 w-4" />
             Nieuw
           </Button>
@@ -408,6 +449,7 @@ export function CampaignReportStudio({
           {selectedReport?.visibleToBrand ? (
             <Link
               href="/brand"
+              prefetch={false}
               className="inline-flex h-11 items-center justify-center gap-2 rounded-lg px-3 text-sm font-semibold text-neutral-600 hover:bg-neutral-100 hover:text-neutral-950"
             >
               <ExternalLink className="h-4 w-4" />
@@ -421,74 +463,77 @@ export function CampaignReportStudio({
         </div>
       </header>
 
-      <div className="report-studio-chrome flex items-center justify-between gap-3">
-        <Tabs
-          items={[
-            { key: "edit", label: "Bewerken" },
-            { key: "report", label: "Rapport" },
-          ]}
-          value={activeTab}
-          onChange={(key) => switchTab(key as ReportStudioTab)}
-          size="md"
+      {selectedBrand ? (
+        <section className="report-studio-chrome rounded-lg border border-neutral-200 bg-white px-4 py-3">
+          <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+            <div>
+              <div className="flex flex-wrap items-center gap-2">
+                <Badge variant={selectedBrand.portalEnabled ? "verified" : "pending"}>
+                  {selectedBrand.portalEnabled ? "/brand toegang aangemaakt" : "/brand toegang ontbreekt"}
+                </Badge>
+                <span className="text-sm font-semibold text-neutral-950">{selectedBrand.name}</span>
+              </div>
+              <p className="mt-1 text-sm text-neutral-500">
+                {selectedBrand.portalEnabled
+                  ? "Je kunt een definitief rapport zichtbaar maken op /brand."
+                  : "Maak eerst /brand toegang aan en nodig een contact uit voordat je een rapport publiceert."}
+              </p>
+            </div>
+            <Link
+              href={`/admin/client-access?brandId=${selectedBrand.id}`}
+              prefetch={false}
+              className="inline-flex h-10 items-center justify-center gap-2 rounded-lg border border-neutral-200 px-3 text-sm font-semibold text-neutral-700 hover:border-neutral-300 hover:text-neutral-950"
+            >
+              <ShieldCheck className="h-4 w-4" />
+              Beheer /brand toegang
+            </Link>
+          </div>
+        </section>
+      ) : null}
+
+      <section className="report-studio-chrome">
+        <HistoryPanel
+          reports={reports}
+          brands={brands}
+          campaigns={campaigns}
+          filters={filters}
+          selectedReportId={selectedReport?.id ?? null}
+          historyCounts={historyCounts}
+          buildHref={buildHref}
         />
-      </div>
+      </section>
 
-      {activeTab === "edit" ? (
-        <div className="grid gap-5 xl:grid-cols-[18rem_minmax(0,46rem)]">
-          <aside className="report-studio-chrome space-y-4">
-            <HistoryPanel
-              reports={reports}
-              brands={brands}
-              campaigns={campaigns}
-              filters={filters}
-              selectedReportId={selectedReport?.id ?? null}
-              historyCounts={historyCounts}
-              buildHref={buildHref}
-            />
-          </aside>
+      <ReportMetaControls
+        periodStart={periodStart}
+        setPeriodStart={setPeriodStart}
+        periodEnd={periodEnd}
+        setPeriodEnd={setPeriodEnd}
+        sectionSettings={sectionSettings}
+        setSectionSettings={setSectionSettings}
+        showTokenValues={showTokenValues}
+        setShowTokenValues={setShowTokenValues}
+      />
 
-          <section className="report-studio-chrome space-y-4">
-            <EditorPanel
-              title={title}
-              setTitle={setTitle}
-              executiveSummary={executiveSummary}
-              setExecutiveSummary={setExecutiveSummary}
-              keyTakeaways={keyTakeaways}
-              setKeyTakeaways={setKeyTakeaways}
-              learnings={learnings}
-              setLearnings={setLearnings}
-              nextCampaignRecommendations={nextCampaignRecommendations}
-              setNextCampaignRecommendations={setNextCampaignRecommendations}
-              editorialContent={editorialContent}
-              setEditorialContent={setEditorialContent}
-              periodStart={periodStart}
-              setPeriodStart={setPeriodStart}
-              periodEnd={periodEnd}
-              setPeriodEnd={setPeriodEnd}
-              sectionSettings={sectionSettings}
-              setSectionSettings={setSectionSettings}
-              liveData={liveData}
-            />
-          </section>
-        </div>
-      ) : (
-        <main className="min-w-0">
-          <CampaignReportView
-            liveData={liveData}
-            title={title}
-            executiveSummary={executiveSummary}
-            keyTakeaways={keyTakeaways}
-            learnings={learnings}
-            recommendations={nextCampaignRecommendations}
-            editorialContent={editorialContent}
-            sectionSettings={sectionSettings}
-            status={selectedReport?.status ?? "DRAFT"}
-            periodStart={periodStart}
-            periodEnd={periodEnd}
-            widthMode="full"
-          />
-        </main>
-      )}
+      <main className="report-studio-preview min-w-0">
+        <ReportPreview
+          liveData={liveData}
+          title={title}
+          keyTakeaways={keyTakeaways}
+          learnings={learnings}
+          recommendations={nextCampaignRecommendations}
+          editorialContent={editorialContent}
+          sectionSettings={sectionSettings}
+          status={selectedReport?.status ?? "DRAFT"}
+          periodStart={periodStart}
+          periodEnd={periodEnd}
+          showTokenValues={showTokenValues}
+          editors={{
+            setTitle,
+            updateTemplateBlock,
+            updateContentPatternTags,
+          }}
+        />
+      </main>
     </div>
   );
 }
@@ -511,31 +556,41 @@ function HistoryPanel({
   buildHref: (overrides: Partial<ReportFilters> & { reportId?: string | null; campaignId?: string | null }) => string;
 }) {
   return (
-    <div className="space-y-4 rounded-lg border border-neutral-200 bg-white p-4">
-      <div className="flex items-center justify-between gap-3">
+    <details className="group rounded-lg border border-neutral-200 bg-white">
+      <summary className="flex cursor-pointer list-none items-center justify-between gap-4 px-4 py-4 transition hover:bg-neutral-50 [&::-webkit-details-marker]:hidden">
         <div>
           <h2 className="text-sm font-semibold text-neutral-950">Rapporthistorie</h2>
-          <p className="mt-1 text-xs text-neutral-500">Totaal: {historyCounts.all}</p>
+          <p className="mt-1 text-xs text-neutral-500">
+            Totaal: {historyCounts.all} / Concept: {historyCounts.draft} / Definitief: {historyCounts.final}
+          </p>
         </div>
-        <FileText className="h-4 w-4 text-neutral-400" />
+        <div className="flex items-center gap-2 text-xs font-semibold text-neutral-500">
+          <span className="hidden sm:inline group-open:hidden">Openen</span>
+          <span className="hidden sm:group-open:inline">Sluiten</span>
+          <ChevronDown className="h-4 w-4 transition group-open:rotate-180" />
+        </div>
+      </summary>
+
+      <div className="border-t border-neutral-100 px-4 pb-4 pt-4">
+        <div className="flex justify-end">
+        <div className="grid w-full grid-cols-3 gap-1 rounded-lg bg-neutral-100 p-1 sm:w-auto sm:min-w-[260px]">
+          {STATUS_TABS.map((tab) => (
+            <Link
+              key={tab.value}
+              href={buildHref({ status: tab.value })}
+              prefetch={false}
+              className={cn(
+                "rounded-md px-3 py-2 text-center text-xs font-semibold text-neutral-500 transition",
+                filters.status === tab.value && "bg-white text-neutral-950 shadow-sm",
+              )}
+            >
+              {tab.label}
+            </Link>
+          ))}
+        </div>
       </div>
 
-      <div className="grid grid-cols-3 gap-1 rounded-lg bg-neutral-100 p-1">
-        {STATUS_TABS.map((tab) => (
-          <Link
-            key={tab.value}
-            href={buildHref({ status: tab.value })}
-            className={cn(
-              "rounded-md px-2 py-1.5 text-center text-xs font-semibold text-neutral-500 transition",
-              filters.status === tab.value && "bg-white text-neutral-950 shadow-sm",
-            )}
-          >
-            {tab.label}
-          </Link>
-        ))}
-      </div>
-
-      <form action="/admin/reports" className="space-y-3">
+      <form action="/admin/reports" className="mt-4 grid gap-3 lg:grid-cols-[minmax(220px,1.2fr)_minmax(160px,0.8fr)_minmax(180px,0.9fr)_minmax(140px,0.65fr)_minmax(140px,0.65fr)_auto]">
         <label className="relative block">
           <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-neutral-400" />
           <input
@@ -565,254 +620,171 @@ function HistoryPanel({
         </select>
 
         <input type="hidden" name="status" value={filters.status === "ALL" ? "" : filters.status} />
-        <input type="hidden" name="tab" value={filters.tab} />
-        <div className="grid grid-cols-2 gap-2">
-          <input name="dateFrom" type="date" defaultValue={filters.dateFrom} className="h-10 min-w-0 rounded-lg border border-neutral-200 bg-white px-3 text-xs outline-none focus:border-neutral-400" />
-          <input name="dateTo" type="date" defaultValue={filters.dateTo} className="h-10 min-w-0 rounded-lg border border-neutral-200 bg-white px-3 text-xs outline-none focus:border-neutral-400" />
-        </div>
-        <Button type="submit" variant="outline" size="sm" className="w-full rounded-lg">
+        <input name="dateFrom" type="date" defaultValue={filters.dateFrom} className="h-10 min-w-0 rounded-lg border border-neutral-200 bg-white px-3 text-xs outline-none focus:border-neutral-400" />
+        <input name="dateTo" type="date" defaultValue={filters.dateTo} className="h-10 min-w-0 rounded-lg border border-neutral-200 bg-white px-3 text-xs outline-none focus:border-neutral-400" />
+        <Button type="submit" variant="outline" size="sm" className="h-10 rounded-lg px-4">
           <SlidersHorizontal className="h-4 w-4" />
           Filteren
         </Button>
       </form>
 
-      <div className="space-y-2">
+      <div className="mt-4">
+        <div className="mb-2 flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.14em] text-neutral-400">
+          <FileText className="h-4 w-4" />
+          Opgeslagen rapporten
+        </div>
         {reports.length === 0 ? (
-          <div className="rounded-lg border border-dashed border-neutral-200 px-3 py-8 text-center">
+          <div className="rounded-lg border border-dashed border-neutral-200 px-4 py-5 text-center">
             <p className="text-sm font-medium text-neutral-950">Geen rapporten</p>
             <p className="mt-1 text-xs leading-5 text-neutral-500">Nieuwe concepten verschijnen hier na het opslaan.</p>
           </div>
         ) : (
-          reports.map((report) => (
-            <Link
-              key={report.id}
-              href={buildHref({ reportId: report.id, campaignId: report.campaignId })}
-              className={cn(
-                "block rounded-lg border border-neutral-200 bg-white p-3 transition hover:border-neutral-300 hover:bg-neutral-50",
-                selectedReportId === report.id && "border-neutral-900 bg-neutral-50",
-              )}
-            >
-              <div className="flex items-start justify-between gap-2">
-                <p className="line-clamp-2 text-sm font-semibold leading-5 text-neutral-950">{report.title}</p>
-                <Badge variant={report.status === "FINAL" ? "verified" : "pending"}>{reportStatusLabel(report.status)}</Badge>
-              </div>
-              <p className="mt-2 text-xs text-neutral-500">{report.brand?.name ?? "Geen merk"} / {report.campaign?.name ?? "Campagne"}</p>
-              <p className="mt-1 text-xs text-neutral-400">{formatDate(report.updatedAt, "nl")}</p>
-            </Link>
-          ))
+          <div className="grid gap-2 md:grid-cols-2 xl:grid-cols-4">
+            {reports.map((report) => (
+              <Link
+                key={report.id}
+                href={buildHref({ reportId: report.id, campaignId: report.campaignId })}
+                prefetch={false}
+                className={cn(
+                  "block rounded-lg border border-neutral-200 bg-white p-3 transition hover:border-neutral-300 hover:bg-neutral-50",
+                  selectedReportId === report.id && "border-neutral-900 bg-neutral-50",
+                )}
+              >
+                <div className="flex items-start justify-between gap-2">
+                  <p className="line-clamp-2 text-sm font-semibold leading-5 text-neutral-950">{report.title}</p>
+                  <Badge variant={report.status === "FINAL" ? "verified" : "pending"}>{reportStatusLabel(report.status)}</Badge>
+                </div>
+                <p className="mt-2 truncate text-xs text-neutral-500">{report.brand?.name ?? "Geen merk"} / {report.campaign?.name ?? "Campagne"}</p>
+                <p className="mt-1 text-xs text-neutral-400">{formatDate(report.updatedAt, "nl")}</p>
+              </Link>
+            ))}
+          </div>
         )}
       </div>
-    </div>
+      </div>
+    </details>
   );
 }
 
-function EditorPanel({
-  title,
-  setTitle,
-  executiveSummary,
-  setExecutiveSummary,
-  keyTakeaways,
-  setKeyTakeaways,
-  learnings,
-  setLearnings,
-  nextCampaignRecommendations,
-  setNextCampaignRecommendations,
-  editorialContent,
-  setEditorialContent,
+function ReportMetaControls({
   periodStart,
   setPeriodStart,
   periodEnd,
   setPeriodEnd,
   sectionSettings,
   setSectionSettings,
-  liveData,
+  showTokenValues,
+  setShowTokenValues,
 }: {
-  title: string;
-  setTitle: (value: string) => void;
-  executiveSummary: string;
-  setExecutiveSummary: (value: string) => void;
-  keyTakeaways: string[];
-  setKeyTakeaways: (value: string[]) => void;
-  learnings: string[];
-  setLearnings: (value: string[]) => void;
-  nextCampaignRecommendations: string[];
-  setNextCampaignRecommendations: (value: string[]) => void;
-  editorialContent: CampaignReportEditorialContent;
-  setEditorialContent: (value: CampaignReportEditorialContent) => void;
   periodStart: string;
   setPeriodStart: (value: string) => void;
   periodEnd: string;
   setPeriodEnd: (value: string) => void;
   sectionSettings: CampaignReportSectionSettings;
   setSectionSettings: (value: CampaignReportSectionSettings) => void;
-  liveData: CampaignReportLiveData | null;
+  showTokenValues: boolean;
+  setShowTokenValues: (value: boolean) => void;
 }) {
-  const updateEditorial = <K extends keyof CampaignReportEditorialContent>(
-    key: K,
-    value: CampaignReportEditorialContent[K],
-  ) => {
-    setEditorialContent({ ...editorialContent, [key]: value });
-  };
-  const topContentRows = liveData?.topContent.slice(0, 5) ?? [];
-  const platformRows = liveData?.platformBreakdown ?? [];
-
   return (
-    <div className="space-y-4 rounded-lg border border-neutral-200 bg-white p-4">
-      <div className="flex items-center justify-between gap-3">
+    <details className="report-studio-chrome group rounded-lg border border-neutral-200 bg-white">
+      <summary className="flex cursor-pointer list-none items-center justify-between gap-4 px-4 py-4 transition hover:bg-neutral-50 [&::-webkit-details-marker]:hidden">
         <div>
-          <h2 className="text-sm font-semibold text-neutral-950">Rapporteditor</h2>
-          <p className="mt-1 text-xs text-neutral-500">{liveData ? liveData.campaign.brandName : "Geen campagne geselecteerd"}</p>
+          <h2 className="text-sm font-semibold text-neutral-950">Rapportinstellingen</h2>
+          <p className="mt-1 text-xs leading-5 text-neutral-500">Periode, variabelenweergave en zichtbare secties.</p>
         </div>
-        <Sparkles className="h-4 w-4 text-neutral-400" />
-      </div>
-
-      <EditorSection title="Rapportinstellingen">
-        <Field label="Titel">
-          <input value={title} onChange={(event) => setTitle(event.target.value)} className="report-input h-10" />
-        </Field>
-        <Field label="Campagnetype">
-          <input value={editorialContent.campaignType} onChange={(event) => updateEditorial("campaignType", event.target.value)} className="report-input h-10" placeholder="Awareness, lancering, traffic..." />
-        </Field>
-        <div className="grid grid-cols-2 gap-3">
-          <Field label="Start periode">
-            <input type="date" value={periodStart} onChange={(event) => setPeriodStart(event.target.value)} className="report-input h-10" />
-          </Field>
-          <Field label="Einde periode">
-            <input type="date" value={periodEnd} onChange={(event) => setPeriodEnd(event.target.value)} className="report-input h-10" />
-          </Field>
+        <div className="flex items-center gap-2 text-xs font-semibold text-neutral-500">
+          <span className="hidden sm:inline group-open:hidden">Openen</span>
+          <span className="hidden sm:group-open:inline">Sluiten</span>
+          <ChevronDown className="h-4 w-4 transition group-open:rotate-180" />
         </div>
-      </EditorSection>
+      </summary>
 
-      <EditorSection title="Samenvatting">
-        <Field label="Samenvatting">
-          <textarea value={executiveSummary} onChange={(event) => setExecutiveSummary(event.target.value)} rows={7} className="report-input resize-y leading-6" />
-        </Field>
-        <Field label="Belangrijkste inzichten">
-          <textarea value={keyTakeaways.join("\n")} onChange={(event) => setKeyTakeaways(textAreaToList(event.target.value))} rows={5} className="report-input resize-y leading-6" />
-        </Field>
-      </EditorSection>
-
-      <EditorSection title="Financieel overzicht">
-        <Field label="Financiele notitie">
-          <textarea value={editorialContent.financialNote} onChange={(event) => updateEditorial("financialNote", event.target.value)} rows={4} className="report-input resize-y leading-6" />
-        </Field>
-      </EditorSection>
-
-      <EditorSection title="Contentinzichten">
-        <Field label="Contentinzichten">
-          <textarea value={editorialContent.contentInsights.join("\n")} onChange={(event) => updateEditorial("contentInsights", textAreaToList(event.target.value))} rows={5} className="report-input resize-y leading-6" />
-        </Field>
-        {topContentRows.length > 0 ? (
-          <div className="space-y-3">
-            {topContentRows.map((clip) => (
-              <Field key={clip.id} label={`${clip.platform} / ${clip.creator}`}>
-                <textarea
-                  value={editorialContent.topContentNotes[clip.id] ?? ""}
-                  onChange={(event) => updateEditorial("topContentNotes", { ...editorialContent.topContentNotes, [clip.id]: event.target.value })}
-                  rows={3}
-                  className="report-input resize-y leading-6"
-                />
-              </Field>
-            ))}
+      <div className="grid gap-4 border-t border-neutral-100 px-4 pb-4 pt-4 xl:grid-cols-[18rem_minmax(0,1fr)]">
+        <div>
+          <div className="mt-3 grid grid-cols-2 gap-2">
+            <label>
+              <span className="mb-1 block text-[11px] font-semibold uppercase tracking-[0.14em] text-neutral-400">Start</span>
+              <input type="date" value={periodStart} onChange={(event) => setPeriodStart(event.target.value)} className="h-10 w-full rounded-lg border border-neutral-200 bg-white px-3 text-xs outline-none focus:border-neutral-400" />
+            </label>
+            <label>
+              <span className="mb-1 block text-[11px] font-semibold uppercase tracking-[0.14em] text-neutral-400">Einde</span>
+              <input type="date" value={periodEnd} onChange={(event) => setPeriodEnd(event.target.value)} className="h-10 w-full rounded-lg border border-neutral-200 bg-white px-3 text-xs outline-none focus:border-neutral-400" />
+            </label>
           </div>
-        ) : null}
-      </EditorSection>
-
-      <EditorSection title="Platform- en creator-aanbevelingen">
-        {platformRows.length > 0 ? (
-          <div className="space-y-3">
-            {platformRows.map((platform) => (
-              <Field key={platform.platform} label={`${platform.platform} aanbeveling`}>
-                <textarea
-                  value={editorialContent.platformRecommendations[platform.platform] ?? ""}
-                  onChange={(event) => updateEditorial("platformRecommendations", { ...editorialContent.platformRecommendations, [platform.platform]: event.target.value })}
-                  rows={3}
-                  className="report-input resize-y leading-6"
-                />
-              </Field>
-            ))}
-          </div>
-        ) : null}
-        <Field label="Aanbevolen creatorpool">
-          <textarea value={editorialContent.creatorRecommendations.join("\n")} onChange={(event) => updateEditorial("creatorRecommendations", textAreaToList(event.target.value))} rows={5} className="report-input resize-y leading-6" />
-        </Field>
-      </EditorSection>
-
-      <EditorSection title="Learnings en volgend plan">
-        <Field label="Belangrijkste learnings">
-          <textarea
-            value={editorialContent.keyLearnings.join("\n")}
-            onChange={(event) => {
-              const next = textAreaToList(event.target.value);
-              updateEditorial("keyLearnings", next);
-              setLearnings(next);
-            }}
-            rows={5}
-            className="report-input resize-y leading-6"
-          />
-        </Field>
-        <Field label="Volgende campagneplan">
-          <textarea
-            value={editorialContent.nextCampaignPlan.join("\n")}
-            onChange={(event) => {
-              const next = textAreaToList(event.target.value);
-              updateEditorial("nextCampaignPlan", next);
-              setNextCampaignRecommendations(next);
-            }}
-            rows={5}
-            className="report-input resize-y leading-6"
-          />
-        </Field>
-        <Field label="Appendixnotitie">
-          <textarea value={editorialContent.appendixNote} onChange={(event) => updateEditorial("appendixNote", event.target.value)} rows={3} className="report-input resize-y leading-6" />
-        </Field>
-      </EditorSection>
-
-      <div>
-        <div className="mb-2 flex items-center justify-between">
-          <p className="text-xs font-semibold uppercase tracking-[0.14em] text-neutral-400">Secties</p>
-          <Eye className="h-4 w-4 text-neutral-400" />
+          <label className="mt-3 flex cursor-pointer items-center justify-between gap-3 rounded-lg border border-neutral-200 px-3 py-2">
+            <span>
+              <span className="block text-xs font-semibold text-neutral-950">{showTokenValues ? "Live voorbeeld" : "Variabelen"}</span>
+              <span className="block text-[11px] leading-4 text-neutral-500">
+                {showTokenValues ? "Toont het klantbeeld met actuele waarden." : "Toont bewerkbare copy met variabelen."}
+              </span>
+            </span>
+            <input
+              type="checkbox"
+              checked={showTokenValues}
+              onChange={(event) => setShowTokenValues(event.target.checked)}
+              className="h-4 w-4 accent-neutral-950"
+            />
+          </label>
         </div>
-        <div className="space-y-1.5">
-          {EDITABLE_SECTION_KEYS.map((sectionKey) => (
-            <label key={sectionKey} className="flex items-center justify-between gap-3 rounded-lg border border-neutral-200 px-3 py-2 text-sm">
-              <span className="font-medium text-neutral-700">{SECTION_LABELS[sectionKey]}</span>
+
+        <div>
+          <div className="mb-2 flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.14em] text-neutral-400">
+            <SlidersHorizontal className="h-4 w-4" />
+            Secties
+          </div>
+          <div className="flex flex-wrap gap-2">
+          {CAMPAIGN_REPORT_SECTION_KEYS.map((sectionKey) => (
+            <label
+              key={sectionKey}
+              className={cn(
+                "inline-flex cursor-pointer items-center gap-2 rounded-full border px-3 py-2 text-xs font-semibold transition",
+                sectionSettings[sectionKey]
+                  ? "border-neutral-950 bg-neutral-950 text-white"
+                  : "border-neutral-200 bg-white text-neutral-500 hover:border-neutral-300",
+              )}
+            >
               <input
                 type="checkbox"
                 checked={sectionSettings[sectionKey]}
                 onChange={(event) => setSectionSettings({ ...sectionSettings, [sectionKey]: event.target.checked })}
-                className="h-4 w-4 accent-neutral-950"
+                className="sr-only"
               />
+              {SECTION_LABELS[sectionKey]}
             </label>
           ))}
+          </div>
         </div>
       </div>
-    </div>
+    </details>
   );
 }
 
 function ReportPreview({
   liveData,
   title,
-  executiveSummary,
   keyTakeaways,
   learnings,
   recommendations,
+  editorialContent,
   sectionSettings,
   status,
   periodStart,
   periodEnd,
+  showTokenValues,
+  editors,
 }: {
   liveData: CampaignReportLiveData | null;
   title: string;
-  executiveSummary: string;
   keyTakeaways: string[];
   learnings: string[];
   recommendations: string[];
+  editorialContent: CampaignReportEditorialContent;
   sectionSettings: CampaignReportSectionSettings;
   status: CampaignReportStatusValue;
   periodStart: string;
   periodEnd: string;
+  showTokenValues: boolean;
+  editors?: ReportInlineEditors;
 }) {
   if (!liveData) {
     return (
@@ -825,164 +797,1138 @@ function ReportPreview({
   }
 
   const enabled = (sectionKey: CampaignReportSectionKey) => sectionSettings[sectionKey];
-  const reportPeriod = formatPeriod(periodStart || liveData.period.start, periodEnd || liveData.period.end);
-  const metricCards = [
-    { label: "Goedgekeurde views", value: formatNumber(liveData.performance.approvedViews, "nl"), detail: percentOrDash(liveData.performance.goalCompletion, "van doel") },
-    { label: "Budget gebruikt", value: formatCurrency(liveData.performance.budgetUsed, "EUR", "nl"), detail: percentOrDash(liveData.performance.budgetUsedPercent, "verbruikt") },
-    { label: "Goedgekeurde clips", value: formatNumber(liveData.performance.approvedClips, "nl"), detail: `${formatNumber(liveData.performance.totalSubmissions, "nl")} inzendingen` },
-    { label: "CPM", value: liveData.financial.effectiveCpm == null ? "-" : formatCurrency(liveData.financial.effectiveCpm, "EUR", "nl"), detail: "per 1.000 goedgekeurde views" },
-    { label: "Overdelivery", value: formatNumber(liveData.financial.overdeliveryViews, "nl"), detail: overdeliveryDetail(liveData.financial.overdeliveryRate) },
-  ];
+  const blocks = editorialContent.templateBlocks;
+  const topPlatform = liveData.platformBreakdown[0] ?? null;
+  const topContent = liveData.topContent.filter((row) => row.views > 0).slice(0, 6);
+  const topCreators = liveData.creators.filter((row) => row.views > 0).slice(0, 8);
+  const showAudience = liveData.audience.sampleCount > 0;
+  const paidViews = liveData.performance.targetViews
+    ? Math.min(liveData.performance.currentViews, liveData.performance.targetViews)
+    : liveData.performance.paidEligibleViews;
+  const progressPercent = liveData.performance.deliveryProgress == null
+    ? null
+    : Math.round(liveData.performance.deliveryProgress * 100);
+  const qualityStatus = trafficQualityStatus(liveData);
+  const summaryLine = liveData.performance.overdeliveryViews > 0
+    ? "De campagne heeft het afgesproken viewdoel ruim overtroffen, met extra bereik zonder extra mediabudget."
+    : "De campagneprestaties worden afgezet tegen het afgesproken viewdoel en de beschikbare live performance.";
 
   return (
-    <div className="report-print-root">
-      <div className="report-print-scroll space-y-5 overflow-hidden">
-        {enabled("cover") ? (
-          <ReportPage className="flex min-h-[840px] flex-col justify-between bg-neutral-950 text-white">
-            <div>
-              <div className="flex items-center justify-between gap-6">
-                <p className="text-xs font-semibold uppercase tracking-[0.24em] text-neutral-300">Campagnerapport</p>
-                <Badge variant={status === "FINAL" ? "verified" : "pending"}>{reportStatusLabel(status)}</Badge>
+    <TokenPreviewContext.Provider value={{ liveData, status, periodStart, periodEnd, showValues: showTokenValues }}>
+      <ReportCopyContext.Provider value={{ blocks, editors }}>
+        <div className="report-print-root rounded-xl bg-[#efede8] px-3 py-5 sm:px-6" style={{ fontFamily: "var(--font-report), var(--font-sans)" }}>
+          <div className="report-print-scroll mx-auto w-full max-w-[1480px] space-y-5">
+          {enabled("cover") ? (
+            <ReportSection className="flex min-h-[500px] items-center bg-white p-8 text-neutral-950 sm:p-12 lg:p-16">
+              <div className="max-w-5xl">
+                <ReportText
+                  keyName="cover.kicker"
+                  fallback="Campagne prestatierapport"
+                  className="mb-8 text-xs font-semibold uppercase tracking-[0.22em] text-neutral-400"
+                />
+                <EditablePlainText
+                  value={title}
+                  onChange={editors?.setTitle}
+                  placeholder="Campagnerapport"
+                  className="text-6xl font-black leading-[0.98] tracking-normal text-neutral-950 md:text-8xl"
+                />
               </div>
-              <h2 className="mt-20 max-w-2xl text-5xl font-semibold leading-tight tracking-normal">{title}</h2>
-            </div>
-            <div className="grid gap-6 border-t border-white/20 pt-8 md:grid-cols-3">
-              <CoverFact label="Merk" value={liveData.campaign.brandName} />
-              <CoverFact label="Campagne" value={liveData.campaign.name} />
-              <CoverFact label="Periode" value={reportPeriod} />
-            </div>
-          </ReportPage>
-        ) : null}
+            </ReportSection>
+          ) : null}
 
-        {enabled("executiveSummary") ? (
-          <ReportPage>
-            <ReportHeading icon={<FileText className="h-5 w-5" />} kicker={liveData.campaign.brandName} title="Samenvatting" />
-            <p className="mt-6 max-w-3xl text-lg leading-8 text-neutral-700">{executiveSummary}</p>
-            <div className="mt-8 grid gap-3 md:grid-cols-2">
-              {keyTakeaways.map((takeaway, index) => (
-                <NumberedItem key={`${takeaway}-${index}`} index={index + 1} text={takeaway} />
-              ))}
-            </div>
-          </ReportPage>
-        ) : null}
-
-        {enabled("campaignSetup") ? (
-          <ReportPage>
-            <ReportHeading icon={<CalendarDays className="h-5 w-5" />} kicker={reportPeriod} title="Campagne-inrichting" />
-            <div className="mt-7 grid gap-4 md:grid-cols-2">
-              <SetupRow label="Platforms" value={liveData.campaign.platforms.join(", ") || "-"} />
-              <SetupRow label="Doelviews" value={formatGoalViews(liveData.campaign.goalViews, liveData.campaign.goalViewsSource)} />
-              <SetupRow label="Budget" value={formatCurrency(liveData.campaign.totalBudget, "EUR", "nl")} />
-              <SetupRow label="Business CPM" value={formatCurrency(liveData.campaign.businessCpm, "EUR", "nl")} />
-              <SetupRow label="Min. volgers" value={formatNumber(liveData.campaign.target.minFollowers, "nl")} />
-              <SetupRow label="Doelland" value={liveData.campaign.target.country ?? "-"} />
-            </div>
-            <div className="mt-6 grid gap-4 md:grid-cols-2">
-              <TextBlock title="Vereisten" text={liveData.campaign.requirements || "-"} />
-              <TextBlock title="Contentrichtlijnen" text={liveData.campaign.contentGuidelines || "-"} />
-            </div>
-            <div className="mt-6 flex flex-wrap gap-2">
-              {liveData.campaign.requiredHashtags.length > 0
-                ? liveData.campaign.requiredHashtags.map((tag) => <span key={tag} className="rounded-full bg-neutral-100 px-3 py-1 text-xs font-semibold text-neutral-700">{tag}</span>)
-                : <span className="text-sm text-neutral-500">Geen verplichte hashtags</span>}
-            </div>
-          </ReportPage>
-        ) : null}
-
-        {enabled("performance") ? (
-          <ReportPage>
-            <ReportHeading icon={<BarChart3 className="h-5 w-5" />} kicker="Live dashboarddata" title="Prestatieoverzicht" />
-            <div className="mt-7 grid gap-3 md:grid-cols-4">
-              {metricCards.map((card) => (
-                <div key={card.label} className="rounded-lg border border-neutral-200 p-4">
-                  <p className="text-xs font-semibold uppercase tracking-[0.12em] text-neutral-400">{card.label}</p>
-                  <p className="mt-3 text-2xl font-semibold tracking-normal text-neutral-950">{card.value}</p>
-                  <p className="mt-1 text-xs text-neutral-500">{card.detail}</p>
+          {enabled("executiveSummary") ? (
+            <ReportSection>
+              <SectionHeader copyKey="summary" kicker="Samenvatting" title="Resultaat in een oogopslag" icon={<FileText className="h-5 w-5" />} />
+              <div className="grid gap-8 lg:grid-cols-[minmax(0,1.15fr)_minmax(320px,0.85fr)]">
+                <div>
+                  <ReportText
+                    keyName={progressPercent == null ? "summary.heroHeadline.noGoal" : "summary.heroHeadline"}
+                    fallback={progressPercent == null ? "Campagneprestatie" : "{{performance.deliveryProgress}} van doel"}
+                    className="text-5xl font-semibold leading-none tracking-normal text-neutral-950 md:text-7xl"
+                  />
+                  <ReportText
+                    keyName={liveData.performance.overdeliveryViews > 0 ? "summary.subline.overdelivery" : "summary.subline.default"}
+                    fallback={summaryLine}
+                    className="mt-4 max-w-3xl text-xl leading-8 text-neutral-700"
+                  />
+                  <CopyBlock
+                    value={blocks["summary.body"] ?? liveData.defaults.executiveSummary}
+                    onChange={(value) => editors?.updateTemplateBlock("summary.body", value)}
+                    className="mt-8 max-w-4xl text-lg leading-8 text-neutral-800"
+                  />
                 </div>
-              ))}
-            </div>
-            <TimelineChart rows={liveData.timeline} />
-            <StatusGrid statusCounts={liveData.performance.statusCounts} />
-          </ReportPage>
-        ) : null}
-
-        {enabled("platformBreakdown") ? (
-          <ReportPage>
-            <ReportHeading icon={<BarChart3 className="h-5 w-5" />} kicker="Kanaallevering" title="Platformverdeling" />
-            <div className="mt-7 space-y-3">
-              {liveData.platformBreakdown.length === 0 ? <EmptyPreviewLine text="Nog geen goedgekeurde platformdata." /> : null}
-              <BreakdownRows rows={liveData.platformBreakdown} />
-            </div>
-          </ReportPage>
-        ) : null}
-
-        {enabled("topContent") ? (
-          <ReportPage>
-            <ReportHeading icon={<Sparkles className="h-5 w-5" />} kicker="Beste clips" title="Topcontent" />
-            <TopContentTable rows={liveData.topContent.slice(0, 8)} />
-          </ReportPage>
-        ) : null}
-
-        {enabled("creatorPerformance") ? (
-          <ReportPage>
-            <ReportHeading icon={<Users className="h-5 w-5" />} kicker={`${liveData.performance.uniqueCreators} unieke creators`} title="Creatorprestaties" />
-            <CreatorTable rows={liveData.creators.slice(0, 10)} />
-            <ReferralSummary data={liveData} />
-          </ReportPage>
-        ) : null}
-
-        {enabled("audience") ? (
-          <ReportPage>
-            <ReportHeading icon={<Users className="h-5 w-5" />} kicker={`${liveData.audience.sampleCount} publieksmetingen`} title="Publiek en bereikskwaliteit" />
-            <div className="mt-7 grid gap-6 md:grid-cols-3">
-              <Distribution title="Toplanden" rows={liveData.audience.topCountries.map((row) => ({ label: row.code, value: row.share }))} suffix="%" />
-              <Distribution title="Leeftijdsgroepen" rows={objectRows(liveData.audience.ageBuckets)} suffix="%" />
-              <Distribution title="Genderverdeling" rows={objectRows(liveData.audience.genderSplit)} suffix="%" />
-            </div>
-          </ReportPage>
-        ) : null}
-
-        {enabled("nextCampaign") ? (
-          <ReportPage>
-            <ReportHeading icon={<RefreshCw className="h-5 w-5" />} kicker="Volgende campagne" title="Aanbeveling voor volgende campagne" />
-            <div className="mt-7 grid gap-6 md:grid-cols-2">
-              <div>
-                <h3 className="text-sm font-semibold text-neutral-950">Learnings</h3>
-                <BulletList items={learnings} />
+                <div className="grid gap-3">
+                  <HeroMetric keyName="summary.metric.totalViews" label="Totale views" value={formatNumber(liveData.performance.currentViews, "nl")} />
+                  <HeroMetric keyName="summary.metric.targetViews" label="Doelviews" value={liveData.performance.targetViews ? formatNumber(liveData.performance.targetViews, "nl") : "-"} />
+                  <HeroMetric keyName="summary.metric.extraReach" label="Extra bereik" value={formatNumber(liveData.performance.overdeliveryViews, "nl")} accent={liveData.performance.overdeliveryViews > 0} />
+                  <HeroMetric keyName="summary.metric.effectiveCpm" label="Effectieve CPM" value={formatCurrency(liveData.performance.costPerThousandViews ?? 0, "EUR", "nl")} />
+                  <HeroMetric keyName="summary.metric.approvedClips" label="Goedgekeurde clips" value={formatNumber(liveData.performance.approvedClips, "nl")} />
+                </div>
               </div>
-              <div>
-                <h3 className="text-sm font-semibold text-neutral-950">Aanbevelingen</h3>
-                <BulletList items={recommendations} />
+              <InsightLine>
+                <ReportText
+                  keyName="summary.conclusion"
+                  fallback="Dit vertaalt de campagneprestatie naar concreet extra bereik, budgetwaarde en richting voor de volgende campagne."
+                />
+              </InsightLine>
+            </ReportSection>
+          ) : null}
+
+          {enabled("campaignAtAGlance") ? (
+            <ReportSection>
+              <SectionHeader copyKey="glance" kicker="Campagne in het kort" title="Doel, bereik en overdelivery" icon={<Target className="h-5 w-5" />} />
+              <DeliveryProgress data={liveData} />
+              <div className="mt-8 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+                <StatTile keyName="glance.metric.paidViews" label="Betaalde views" value={formatNumber(paidViews, "nl")} helper="Gemaximeerd op het afgesproken doel" />
+                <StatTile keyName="glance.metric.extraReach" label="Extra bereik" value={formatNumber(liveData.performance.overdeliveryViews, "nl")} helper="Views boven doel zonder extra budget" />
+                <StatTile keyName="glance.metric.budgetUsed" label="Budget gebruikt" value={formatCurrency(liveData.performance.budgetUsed, "EUR", "nl")} helper="{{performance.budgetUsedPercent}}" />
+                <StatTile keyName="glance.metric.agreedCpm" label="Afgesproken CPM" value={formatCurrency(liveData.performance.cpmPerThousand ?? 0, "EUR", "nl")} helper="Per 1.000 views" />
               </div>
-            </div>
-          </ReportPage>
+              <InsightLine>
+                <ReportText
+                  keyName="glance.statement"
+                  fallback="Extra bereik boven het afgesproken doel wordt zichtbaar als gratis bonus voor de klant."
+                />
+              </InsightLine>
+            </ReportSection>
+          ) : null}
+
+          {enabled("campaignPerformance") ? (
+            <ReportSection>
+              <SectionHeader copyKey="performance" kicker="Campagneprestatie" title="Groei van de campagne" icon={<TrendingUp className="h-5 w-5" />} />
+              <CumulativeViewsChart rows={liveData.timeline} targetViews={liveData.performance.targetViews} currentViews={liveData.performance.currentViews} />
+              <div className="mt-8 grid gap-4 md:grid-cols-3">
+                <StatTile keyName="performance.metric.submissions" label="Inzendingen" value={formatNumber(liveData.performance.totalSubmissions, "nl")} helper="Alle statussen" />
+                <StatTile keyName="performance.metric.approvalRate" label="Goedkeuringspercentage" value={formatPercent(liveData.performance.approvalRate)} helper="Goedgekeurd na review" />
+                <StatTile keyName="performance.metric.activeCreators" label="Actieve creators" value={formatNumber(liveData.performance.activeCreators, "nl")} helper="Creators met inzendingen" />
+              </div>
+              <InsightLine>
+                <ReportText
+                  keyName="performance.insight"
+                  fallback="De cumulatieve viewlijn laat zien wanneer de campagne tractie kreeg en welke momenten performance versnelden."
+                />
+              </InsightLine>
+            </ReportSection>
+          ) : null}
+
+          {enabled("contentPerformance") && topContent.length > 0 ? (
+            <ReportSection>
+              <SectionHeader copyKey="content" kicker="Contentprestaties" title="Topclips en winnende patronen" icon={<Sparkles className="h-5 w-5" />} />
+              <TopContentWall rows={topContent} blocks={blocks} editors={editors} />
+              <div className="mt-8 rounded-xl bg-neutral-950 p-6 text-white">
+                <ReportText
+                  keyName="content.patterns.title"
+                  fallback="Analyse van contentpatronen"
+                  className="text-sm font-semibold text-neutral-300"
+                />
+                <EditableTags
+                  tags={editorialContent.contentPatternTags}
+                  onChange={editors?.updateContentPatternTags}
+                />
+              </div>
+              <InsightLine>
+                <ReportText
+                  keyName="content.insight"
+                  fallback="De best presterende clips combineren een snelle hook, duidelijke merkplaatsing en een editstijl die natuurlijk voelt voor het platform."
+                />
+              </InsightLine>
+            </ReportSection>
+          ) : null}
+
+          {enabled("platformPerformance") && liveData.platformBreakdown.length > 0 ? (
+            <ReportSection>
+              <SectionHeader copyKey="platform" kicker="Platformprestaties" title="Kanaalvergelijking" icon={<BarChart3 className="h-5 w-5" />} />
+              <PlatformPerformanceRows rows={liveData.platformBreakdown} />
+              <InsightLine>
+                <ReportText
+                  keyName="platform.insight"
+                  fallback="{{platformBreakdown[0].platform}} leverde het grootste deel van het bereik en verdient extra focus in de volgende campagne."
+                />
+              </InsightLine>
+            </ReportSection>
+          ) : null}
+
+          {enabled("creatorContribution") && topCreators.length > 0 ? (
+            <ReportSection>
+              <SectionHeader copyKey="creator" kicker="Creatorbijdrage" title="Bijdrage van creators" icon={<Users className="h-5 w-5" />} />
+              <CreatorContribution rows={topCreators} />
+              <InsightLine>
+                <ReportText
+                  keyName="creator.insight"
+                  fallback="Heractiveer creators die hoge views combineren met consistente kwaliteit en duidelijke merkfit."
+                />
+              </InsightLine>
+            </ReportSection>
+          ) : null}
+
+          {enabled("audienceReach") && showAudience ? (
+            <ReportSection>
+              <SectionHeader copyKey="audience" kicker="Publiek en bereik" title="Bereikt publiek" icon={<Users className="h-5 w-5" />} />
+              <AudienceSnapshot data={liveData.audience} />
+              <InsightLine>
+                <ReportText
+                  keyName="audience.insight"
+                  fallback={DEFAULT_AUDIENCE_INSIGHT_TEMPLATE}
+                />
+              </InsightLine>
+            </ReportSection>
+          ) : null}
+
+          {enabled("budgetValue") ? (
+            <ReportSection>
+              <SectionHeader copyKey="budget" kicker="Budget en waarde" title="Betaald bereik versus extra bereik" icon={<Wallet className="h-5 w-5" />} />
+              <BudgetValueVisual data={liveData} />
+              <InsightLine>
+                <ReportText
+                  keyName="budget.insight"
+                  fallback="Betaalde views zijn gemaximeerd op het afgesproken doel. Extra views boven dit doel worden gerapporteerd als extra bereik zonder extra kosten."
+                />
+              </InsightLine>
+            </ReportSection>
+          ) : null}
+
+          {enabled("qualityAssurance") ? (
+            <ReportSection>
+              <SectionHeader copyKey="quality" kicker="Kwaliteitscontrole" title="Validatie van prestaties" icon={<ShieldCheck className="h-5 w-5" />} />
+              <QualityAssurance status={qualityStatus} data={liveData} />
+              <InsightLine>
+                <ReportText
+                  keyName="quality.insight"
+                  fallback="Alle clips en views zijn gecontroleerd op campagnevoorwaarden, dubbele activiteit en verkeerskwaliteit. Alleen geldige prestaties zijn meegenomen in de goedgekeurde resultaten."
+                />
+              </InsightLine>
+            </ReportSection>
+          ) : null}
+
+          {enabled("nextCampaign") ? (
+            <ReportSection>
+              <SectionHeader copyKey="next" kicker="Aanbevelingen voor volgende campagne" title="Concreet plan voor de volgende ronde" icon={<RefreshCw className="h-5 w-5" />} />
+              <ReportText
+                keyName="next.plan"
+                fallback="Voor de volgende campagne adviseren we om de best presterende creators opnieuw te activeren, de winnende hooks expliciet in de briefing te zetten en budget te sturen naar de kanalen met de laagste effectieve CPM."
+                className="max-w-5xl text-xl leading-9 text-neutral-800"
+              />
+              <div className="mt-8 grid gap-3 md:grid-cols-2">
+                {[...new Set([...recommendations, ...learnings])].slice(0, 6).map((item, index) => (
+                  <div key={`${item}-${index}`} className="rounded-xl border border-neutral-200 bg-white p-5 text-sm leading-6 text-neutral-700">
+                    <ReportText keyName={`next.card.${index}`} fallback={item} />
+                  </div>
+                ))}
+              </div>
+            </ReportSection>
+          ) : null}
+
+          {enabled("appendix") ? (
+            <ReportSection>
+              <SectionHeader copyKey="appendix" kicker="Appendix" title="Definities en ruwe samenvatting" icon={<FileText className="h-5 w-5" />} />
+              <Appendix data={liveData} keyTakeaways={keyTakeaways} />
+            </ReportSection>
+          ) : null}
+          </div>
+        </div>
+      </ReportCopyContext.Provider>
+    </TokenPreviewContext.Provider>
+  );
+}
+
+function Token({ name }: { name: string }) {
+  const tokenContext = useContext(TokenPreviewContext);
+  const previewValue = resolveTokenLabel(name, tokenContext);
+
+  if (tokenContext?.showValues) {
+    return <span className="align-baseline">{previewValue ?? "geen waarde"}</span>;
+  }
+
+  return (
+    <span className="align-baseline">
+      {"{{"}{name}{"}}"}
+    </span>
+  );
+}
+
+function CopyBlock({
+  value,
+  onChange,
+  className,
+  placeholder = "Schrijf rapporttekst...",
+}: {
+  value: string;
+  onChange?: (value: string) => void;
+  className?: string;
+  placeholder?: string;
+}) {
+  if (onChange) {
+    return (
+      <EditableTemplateText
+        value={value}
+        onChange={onChange}
+        placeholder={placeholder}
+        className={className}
+      />
+    );
+  }
+  return (
+    <div key="live-preview" className={cn("whitespace-pre-wrap", className)}>
+      {renderTemplateText(value || placeholder)}
+    </div>
+  );
+}
+
+function ReportText({
+  keyName,
+  fallback,
+  className,
+  placeholder,
+}: {
+  keyName: string;
+  fallback: string;
+  className?: string;
+  placeholder?: string;
+}) {
+  const copyContext = useContext(ReportCopyContext);
+  return (
+    <CopyBlock
+      value={copyContext?.blocks[keyName] ?? fallback}
+      onChange={copyContext?.editors ? (value) => copyContext.editors?.updateTemplateBlock(keyName, value) : undefined}
+      className={className}
+      placeholder={placeholder ?? fallback}
+    />
+  );
+}
+
+function EditableTemplateText({
+  value,
+  onChange,
+  placeholder,
+  className,
+}: {
+  value: string;
+  onChange: (value: string) => void;
+  placeholder: string;
+  className?: string;
+}) {
+  const tokenContext = useContext(TokenPreviewContext);
+  const isEmpty = !value.trim();
+  const displayValue = isEmpty ? placeholder : value;
+
+  return (
+    <div
+      key={`${tokenContext?.showValues ? "live" : "template"}:${displayValue}`}
+      contentEditable
+      suppressContentEditableWarning
+      spellCheck
+      role="textbox"
+      tabIndex={0}
+      className={cn(
+        "min-h-[1.25em] cursor-text whitespace-pre-wrap rounded-sm outline-none transition focus:bg-neutral-950/[0.025]",
+        "selection:bg-neutral-950 selection:text-white",
+        isEmpty && "text-neutral-400",
+        className,
+      )}
+      onFocus={(event) => {
+        if (isEmpty) event.currentTarget.textContent = "";
+      }}
+      onBlur={(event) => {
+        const nextValue = serializeEditableTemplate(event.currentTarget);
+        onChange(nextValue);
+        if (!nextValue) event.currentTarget.textContent = placeholder;
+      }}
+    >
+      {renderEditableTemplateText(displayValue, tokenContext)}
+    </div>
+  );
+}
+
+function EditablePlainText({
+  value,
+  onChange,
+  placeholder,
+  className,
+}: {
+  value: string;
+  onChange?: (value: string) => void;
+  placeholder: string;
+  className?: string;
+}) {
+  if (!onChange) {
+    return <div className={cn("whitespace-pre-wrap", className)}>{value || placeholder}</div>;
+  }
+  return (
+    <div
+      contentEditable
+      suppressContentEditableWarning
+      spellCheck
+      role="textbox"
+      tabIndex={0}
+      className={cn(
+        "min-h-[1.25em] cursor-text whitespace-pre-wrap rounded-sm outline-none transition focus:bg-neutral-950/[0.025]",
+        "selection:bg-neutral-950 selection:text-white",
+        !value && "text-neutral-400",
+        className,
+      )}
+      onFocus={(event) => {
+        if (!value) event.currentTarget.textContent = "";
+      }}
+      onBlur={(event) => {
+        const nextValue = event.currentTarget.innerText.trim();
+        onChange(nextValue);
+        if (!nextValue) event.currentTarget.textContent = placeholder;
+      }}
+    >
+      {value || placeholder}
+    </div>
+  );
+}
+
+function renderTemplateText(value: string) {
+  const parts = value.split(/(\{\{[^}]+\}\})/g).filter(Boolean);
+  return parts.map((part, index) => {
+    const match = part.match(/^\{\{([^}]+)\}\}$/);
+    return match ? <Token key={`${part}-${index}`} name={match[1].trim()} /> : <React.Fragment key={`${part}-${index}`}>{part}</React.Fragment>;
+  });
+}
+
+function renderEditableTemplateText(value: string, tokenContext: TokenPreviewContextValue | null) {
+  const parts = value.split(/(\{\{[^}]+\}\})/g).filter(Boolean);
+  return parts.map((part, index) => {
+    const match = part.match(/^\{\{([^}]+)\}\}$/);
+    if (!match) return <React.Fragment key={`${part}-${index}`}>{part}</React.Fragment>;
+    const tokenName = match[1].trim();
+    return (
+      <span
+        key={`${part}-${index}`}
+        contentEditable={false}
+        data-report-token={tokenName}
+        className="align-baseline"
+      >
+        {resolveTokenLabel(tokenName, tokenContext)}
+      </span>
+    );
+  });
+}
+
+function resolveTokenLabel(name: string, tokenContext: TokenPreviewContextValue | null) {
+  if (tokenContext?.showValues) {
+    return formatTokenPreviewValue(name, resolveTokenPreviewValue(name, tokenContext));
+  }
+  return `{{${name}}}`;
+}
+
+function serializeEditableTemplate(element: HTMLElement) {
+  return Array.from(element.childNodes)
+    .map(serializeEditableTemplateNode)
+    .join("")
+    .replace(/\u00a0/g, " ")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+}
+
+function serializeEditableTemplateNode(node: ChildNode): string {
+  if (node.nodeType === Node.TEXT_NODE) return node.textContent ?? "";
+  if (node.nodeType !== Node.ELEMENT_NODE) return "";
+
+  const element = node as HTMLElement;
+  const token = element.dataset.reportToken;
+  if (token) return `{{${token}}}`;
+
+  const tagName = element.tagName.toLowerCase();
+  if (tagName === "br") return "\n";
+
+  const content = Array.from(element.childNodes).map(serializeEditableTemplateNode).join("");
+  if (["div", "p", "li"].includes(tagName)) return `${content}\n`;
+  return content;
+}
+
+function ReportSection({ children, className }: { children: React.ReactNode; className?: string }) {
+  return (
+    <section className={cn("report-print-page rounded-xl border border-neutral-200 bg-white p-6 shadow-sm sm:p-8 lg:p-10", className)}>
+      {children}
+    </section>
+  );
+}
+
+function SectionHeader({ copyKey, kicker, title, icon }: { copyKey: string; kicker: string; title: string; icon: React.ReactNode }) {
+  return (
+    <div className="mb-8 flex items-start justify-between gap-6 border-b border-neutral-200 pb-5">
+      <div>
+        <ReportText
+          keyName={`section.${copyKey}.kicker`}
+          fallback={kicker}
+          className="text-xs font-semibold text-neutral-400"
+        />
+        <ReportText
+          keyName={`section.${copyKey}.title`}
+          fallback={title}
+          className="mt-2 text-3xl font-semibold leading-tight tracking-normal text-neutral-950 md:text-4xl"
+        />
+      </div>
+      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-neutral-100 text-neutral-700">{icon}</div>
+    </div>
+  );
+}
+
+function HeroMetric({ keyName, label, value, accent = false }: { keyName: string; label: string; value: string; accent?: boolean }) {
+  return (
+    <div className={cn("rounded-xl border p-5", accent ? "border-neutral-950 bg-neutral-950 text-white" : "border-neutral-200 bg-white")}>
+      <ReportText
+        keyName={`${keyName}.label`}
+        fallback={label}
+        className={cn("text-sm font-medium", accent ? "text-neutral-300" : "text-neutral-500")}
+      />
+      <p className="mt-2 text-3xl font-semibold tabular-nums tracking-normal">{value}</p>
+    </div>
+  );
+}
+
+function StatTile({ keyName, label, value, helper }: { keyName: string; label: string; value: string; helper?: string }) {
+  return (
+    <div className="rounded-xl border border-neutral-200 bg-white p-5">
+      <ReportText keyName={`${keyName}.label`} fallback={label} className="text-sm font-medium text-neutral-500" />
+      <p className="mt-2 text-3xl font-semibold tabular-nums tracking-normal text-neutral-950">{value}</p>
+      {helper ? (
+        <ReportText
+          keyName={`${keyName}.helper`}
+          fallback={helper}
+          className="mt-2 text-sm leading-5 text-neutral-500"
+        />
+      ) : null}
+    </div>
+  );
+}
+
+function InsightLine({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="mt-8 border-l-4 border-neutral-950 bg-neutral-50 px-5 py-4 text-base leading-7 text-neutral-800">
+      {children}
+    </div>
+  );
+}
+
+function DeliveryProgress({ data }: { data: CampaignReportLiveData }) {
+  const target = data.performance.targetViews ?? 0;
+  const current = data.performance.currentViews;
+  const progress = target > 0 ? Math.min(100, (current / target) * 100) : 0;
+  const overdelivery = target > 0 ? Math.max(0, ((current - target) / target) * 100) : 0;
+  return (
+    <div className="rounded-2xl bg-neutral-950 p-6 text-white">
+      <div className="flex flex-wrap items-end justify-between gap-4">
+        <div>
+          <ReportText
+            keyName="glance.progress.currentLabel"
+            fallback="Voortgang naar doel"
+            className="text-sm font-medium text-neutral-400"
+          />
+          <p className="mt-2 text-4xl font-semibold tabular-nums tracking-normal">{formatNumber(current, "nl")}</p>
+        </div>
+        <div className="text-right">
+          <ReportText
+            keyName="glance.progress.targetLabel"
+            fallback="Doelviews"
+            className="text-sm text-neutral-400"
+          />
+          <p className="mt-1 text-xl font-semibold tabular-nums">{target ? formatNumber(target, "nl") : "-"}</p>
+        </div>
+      </div>
+      <div className="mt-8 h-4 overflow-hidden rounded-full bg-white/15">
+        <div className="h-full rounded-full bg-white" style={{ width: `${Math.max(2, progress)}%` }} />
+      </div>
+      <div className="mt-4 flex flex-wrap items-center justify-between gap-3 text-sm">
+        <ReportText
+          keyName="glance.progress.paidGoalLabel"
+          fallback="Betaald doel tot {{performance.targetViews}}"
+          className="text-neutral-300"
+        />
+        {data.performance.overdeliveryViews > 0 ? (
+          <span className="rounded-full bg-white px-3 py-1 font-semibold text-neutral-950">
+            +{formatNumber(data.performance.overdeliveryViews, "nl")}{" "}
+            <ReportText keyName="glance.progress.extraReachLabel" fallback="extra bereik" className="inline" />
+            {overdelivery > 0 ? ` / +${Math.round(overdelivery)}%` : ""}
+          </span>
         ) : null}
       </div>
     </div>
   );
 }
 
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
+function CumulativeViewsChart({
+  rows,
+  targetViews,
+  currentViews,
+}: {
+  rows: CampaignReportLiveData["timeline"];
+  targetViews: number | null;
+  currentViews: number;
+}) {
+  const cumulative = rows.reduce<Array<{ date: string; views: number }>>((acc, row) => {
+    const previous = acc.at(-1)?.views ?? 0;
+    acc.push({ date: row.date, views: previous + row.views });
+    return acc;
+  }, []);
+  const visible = cumulative.length > 0 ? cumulative : [{ date: "Vandaag", views: currentViews }];
+  const max = Math.max(1, targetViews ?? 0, currentViews, ...visible.map((row) => row.views));
   return (
-    <label className="block">
-      <span className="mb-1.5 block text-xs font-semibold uppercase tracking-[0.14em] text-neutral-400">{label}</span>
-      {children}
-    </label>
+    <div className="rounded-2xl border border-neutral-200 bg-white p-6">
+      <div className="flex h-64 items-end gap-2 border-b border-neutral-200 pb-4">
+        {visible.map((row, index) => (
+          <div key={`${row.date}-${index}`} className="group relative flex min-w-0 flex-1 items-end">
+            <div
+              className="w-full rounded-t bg-neutral-950 transition group-hover:bg-neutral-700"
+              style={{ height: `${Math.max(4, (row.views / max) * 230)}px` }}
+              title={`${formatDate(row.date, "nl")}: ${formatNumber(row.views, "nl")} cumulatieve views`}
+            />
+          </div>
+        ))}
+      </div>
+      <div className="mt-4 flex flex-wrap justify-between gap-3 text-sm text-neutral-500">
+        <div>
+          <ReportText
+            keyName="chart.cumulativeViews.pointsLabel"
+            fallback="{{timeline.length}} meetpunten"
+          />
+        </div>
+        <div>
+          <ReportText
+            keyName="chart.cumulativeViews.currentViewsLabel"
+            fallback="Huidige views: {{performance.currentViews}}"
+          />
+        </div>
+        {targetViews ? (
+          <div>
+            <ReportText
+              keyName="chart.cumulativeViews.targetViewsLabel"
+              fallback="Doelviews: {{performance.targetViews}}"
+            />
+          </div>
+        ) : null}
+      </div>
+    </div>
   );
 }
 
-function EditorSection({ title, children }: { title: string; children: React.ReactNode }) {
+function TopContentWall({
+  rows,
+  blocks,
+  editors,
+}: {
+  rows: CampaignReportLiveData["topContent"];
+  blocks: Record<string, string>;
+  editors?: ReportInlineEditors;
+}) {
   return (
-    <section className="space-y-3 rounded-lg border border-neutral-200 bg-neutral-50/60 p-3">
-      <h3 className="text-xs font-semibold uppercase tracking-[0.16em] text-neutral-500">{title}</h3>
-      {children}
-    </section>
+    <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+      {rows.map((row, index) => {
+        const noteKey = `topContent.${row.id}.note`;
+        return (
+          <article key={row.id} className="overflow-hidden rounded-2xl border border-neutral-200 bg-white">
+            <div className="aspect-video bg-neutral-100">
+              {row.thumbnailUrl ? (
+                <img src={row.thumbnailUrl} alt="" className="h-full w-full object-cover" />
+              ) : (
+                <div className="flex h-full items-center justify-center text-sm text-neutral-400">
+                  <ReportText keyName="content.card.noThumbnail" fallback="Geen thumbnail" />
+                </div>
+              )}
+            </div>
+            <div className="p-5">
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <p className="text-xs font-semibold text-neutral-400">#{index + 1} / {row.platform}</p>
+                  <h3 className="mt-1 text-lg font-semibold text-neutral-950">{row.creator}</h3>
+                </div>
+                <a href={row.postUrl} target="_blank" rel="noreferrer" className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-neutral-100 text-neutral-700 hover:bg-neutral-950 hover:text-white" aria-label="Bekijk video">
+                  <ExternalLink className="h-4 w-4" />
+                </a>
+              </div>
+              <div className="mt-5 grid grid-cols-2 gap-3 text-sm">
+                <div>
+                  <ReportText keyName="content.card.viewsLabel" fallback="Views" className="text-neutral-500" />
+                  <p className="mt-1 font-semibold tabular-nums text-neutral-950">{formatNumber(row.views, "nl")}</p>
+                </div>
+                <div>
+                  <ReportText keyName="content.card.engagementLabel" fallback="Engagement" className="text-neutral-500" />
+                  <p className="mt-1 font-semibold tabular-nums text-neutral-950">{formatNumber(row.engagement, "nl")}</p>
+                </div>
+              </div>
+              <CopyBlock
+                value={blocks[noteKey] ?? "Werkte door een snelle hook, duidelijke merkherkenning en een editstijl die natuurlijk voelt voor het platform."}
+                onChange={(value) => editors?.updateTemplateBlock(noteKey, value)}
+                className="mt-5 text-sm leading-6 text-neutral-700"
+              />
+            </div>
+          </article>
+        );
+      })}
+    </div>
+  );
+}
+
+function EditableTags({ tags, onChange }: { tags: string[]; onChange?: (value: string[]) => void }) {
+  const value = tags.length > 0 ? tags.join(", ") : "snelle hook, platform-native editstijl, merk zichtbaar in eerste 3 seconden";
+  return (
+    <EditablePlainText
+      value={value}
+      onChange={onChange ? (nextValue) => onChange(nextValue.split(",").map((item) => item.trim()).filter(Boolean).slice(0, 12)) : undefined}
+      placeholder="Voeg patronen toe, gescheiden door komma's"
+      className="mt-4 text-2xl font-semibold leading-9 text-white"
+    />
+  );
+}
+
+function PlatformPerformanceRows({ rows }: { rows: CampaignReportLiveData["platformBreakdown"] }) {
+  const max = Math.max(1, ...rows.map((row) => row.views));
+  return (
+    <div className="space-y-4">
+      {rows.map((row) => (
+        <div key={row.platform} className="rounded-2xl border border-neutral-200 bg-white p-5">
+          <div className="flex flex-wrap items-center justify-between gap-4">
+            <div>
+              <h3 className="text-xl font-semibold text-neutral-950">{row.platform}</h3>
+              <div className="mt-1 flex flex-wrap items-center gap-1 text-sm text-neutral-500">
+                <span>{row.clips}</span>
+                <ReportText keyName="platform.row.approvedClipsLabel" fallback="goedgekeurde clips" className="inline" />
+                <span>/</span>
+                <span>{formatPercent(row.engagementRate)}</span>
+                <ReportText keyName="platform.row.engagementRateLabel" fallback="engagementpercentage" className="inline" />
+              </div>
+            </div>
+            <div className="text-right">
+              <p className="text-2xl font-semibold tabular-nums text-neutral-950">{formatNumber(row.views, "nl")}</p>
+              <ReportText keyName="platform.row.viewsLabel" fallback="views" className="text-sm text-neutral-500" />
+            </div>
+          </div>
+          <div className="mt-5 h-3 rounded-full bg-neutral-100">
+            <div className="h-3 rounded-full bg-neutral-950" style={{ width: `${Math.max(3, (row.views / max) * 100)}%` }} />
+          </div>
+          <div className="mt-4 grid gap-3 text-sm md:grid-cols-3">
+            <span>
+              <ReportText keyName="platform.row.avgViewsPerClipLabel" fallback="Gem. views per clip:" className="inline" />{" "}
+              <strong>{formatNumber(row.averageViewsPerClip, "nl")}</strong>
+            </span>
+            <span>
+              <ReportText keyName="platform.row.effectiveCpmLabel" fallback="Effectieve CPM:" className="inline" />{" "}
+              <strong>{formatCurrency(row.effectiveCpm ?? 0, "EUR", "nl")}</strong>
+            </span>
+            <span>
+              <ReportText keyName="platform.row.engagementLabel" fallback="Engagement:" className="inline" />{" "}
+              <strong>{formatNumber(row.engagement, "nl")}</strong>
+            </span>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function CreatorContribution({ rows }: { rows: CampaignReportLiveData["creators"] }) {
+  const max = Math.max(1, ...rows.map((row) => row.views));
+  return (
+    <div className="space-y-3">
+      {rows.map((row) => (
+        <div key={row.creatorId} className="grid gap-3 rounded-xl border border-neutral-200 bg-white p-4 md:grid-cols-[220px_minmax(0,1fr)_160px] md:items-center">
+          <div>
+            <p className="font-semibold text-neutral-950">{row.creator}</p>
+            <div className="flex flex-wrap items-center gap-1 text-sm text-neutral-500">
+              <span>{row.approvedSubmissions}/{row.submissions}</span>
+              <ReportText keyName="creator.row.clipsApprovedLabel" fallback="clips goedgekeurd" className="inline" />
+            </div>
+          </div>
+          <div className="h-3 rounded-full bg-neutral-100">
+            <div className="h-3 rounded-full bg-neutral-950" style={{ width: `${Math.max(3, (row.views / max) * 100)}%` }} />
+          </div>
+          <div className="text-right">
+            <p className="font-semibold tabular-nums text-neutral-950">{formatNumber(row.views, "nl")}</p>
+            <div className="flex justify-end gap-1 text-sm text-neutral-500">
+              <span>{formatPercent(row.approvalRate)}</span>
+              <ReportText keyName="creator.row.approvalRateLabel" fallback="goedgekeurd" className="inline" />
+            </div>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function AudienceSnapshot({ data }: { data: CampaignReportLiveData["audience"] }) {
+  return (
+    <div className="grid gap-6 lg:grid-cols-3">
+      <Distribution
+        titleKey="audience.distribution.countries.title"
+        title="Top landen"
+        rows={data.topCountries.map((row) => ({ label: row.code, value: row.share }))}
+        formatLabel={formatAudienceCountryLabel}
+        formatValue={formatAudienceShare}
+      />
+      <Distribution titleKey="audience.distribution.age.title" title="Leeftijd" rows={objectRows(data.ageBuckets)} formatValue={formatAudienceShare} />
+      <Distribution titleKey="audience.distribution.gender.title" title="Gender" rows={objectRows(data.genderSplit)} formatValue={formatAudienceShare} />
+    </div>
+  );
+}
+
+function BudgetValueVisual({ data }: { data: CampaignReportLiveData }) {
+  const paidViews = data.performance.targetViews
+    ? Math.min(data.performance.currentViews, data.performance.targetViews)
+    : data.performance.paidEligibleViews;
+  return (
+    <div className="grid gap-4 lg:grid-cols-3">
+      <StatTile keyName="budget.metric.paidGoal" label="Betaald doel" value={data.performance.targetViews ? formatNumber(data.performance.targetViews, "nl") : "-"} helper="Afgesproken op basis van budget en CPM" />
+      <StatTile keyName="budget.metric.paidViews" label="Betaalde views" value={formatNumber(paidViews, "nl")} helper="Maximaal afgerekend tot doelbasis" />
+      <StatTile keyName="budget.metric.extraReach" label="Extra bereik" value={formatNumber(data.performance.overdeliveryViews, "nl")} helper="Niet extra doorbelast" />
+      <StatTile keyName="budget.metric.budget" label="Budget" value={formatCurrency(data.campaign.totalBudget, "EUR", "nl")} helper="Netto campagnebudget" />
+      <StatTile keyName="budget.metric.budgetUsed" label="Budget gebruikt" value={formatCurrency(data.performance.budgetUsed, "EUR", "nl")} helper="{{performance.budgetUsedPercent}}" />
+      <StatTile keyName="budget.metric.effectiveCpmTotal" label="Effectieve CPM totaal" value={formatCurrency(data.performance.costPerThousandViews ?? 0, "EUR", "nl")} helper="Gebaseerd op totale huidige views" />
+    </div>
+  );
+}
+
+function QualityAssurance({ status, data }: { status: ReportQualityStatus; data: CampaignReportLiveData }) {
+  const variant = status === "needs_attention" ? "border-amber-300 bg-amber-50" : status === "passed_with_exclusions" ? "border-neutral-300 bg-neutral-50" : "border-emerald-200 bg-emerald-50";
+  return (
+    <div className={cn("rounded-2xl border p-6", variant)}>
+      <div className="flex flex-wrap items-center justify-between gap-4">
+        <div>
+          <ReportText keyName="quality.status.label" fallback="Kwaliteitsstatus" className="text-sm font-medium text-neutral-600" />
+          <p className="mt-2 text-4xl font-semibold text-neutral-950">{reportQualityStatusLabel(status)}</p>
+        </div>
+        <ShieldCheck className="h-12 w-12 text-neutral-800" />
+      </div>
+      <div className="mt-6 grid gap-3 md:grid-cols-3">
+        <StatTile keyName="quality.metric.approvedPerformance" label="Goedgekeurde prestaties" value={formatNumber(data.performance.currentViews, "nl")} helper="Goedgekeurde views" />
+        <StatTile keyName="quality.metric.excludedActivity" label="Uitgesloten activiteit" value={formatNumber(data.quality.resolvedSignals, "nl")} helper="Niet meegenomen in goedgekeurde prestaties" />
+        <StatTile keyName="quality.metric.openIssues" label="Open aandachtspunten" value={formatNumber(data.quality.criticalSignals, "nl")} helper="Kritieke reviewstatus" />
+      </div>
+    </div>
+  );
+}
+
+function Appendix({ data, keyTakeaways }: { data: CampaignReportLiveData; keyTakeaways: string[] }) {
+  const rows = [
+    { labelKey: "appendix.totalViewsDefinition.label", label: "Definitie totale views", bodyKey: "appendix.totalViewsDefinition.body", value: "Alle live gemeten views op goedgekeurde clips." },
+    { labelKey: "appendix.paidViewsDefinition.label", label: "Definitie betaalde views", bodyKey: "appendix.paidViewsDefinition.body", value: "Views die afgerekend worden binnen het afgesproken doel en de campagnevoorwaarden." },
+    { labelKey: "appendix.extraReachDefinition.label", label: "Definitie extra bereik", bodyKey: "appendix.extraReachDefinition.body", value: "Views boven het afgesproken doel zonder extra budget." },
+    { labelKey: "appendix.targetSource.label", label: "Doelbron", value: data.performance.targetViewsSource },
+    { labelKey: "appendix.statusOverview.label", label: "Statusoverzicht", value: objectRows(data.performance.statusCounts).map((row) => `${adminEnumLabel(row.label)}: ${row.value}`).join(", ") },
+    { labelKey: "appendix.keyInsights.label", label: "Belangrijkste inzichten", value: keyTakeaways.join(" ") },
+  ].filter((row) => Boolean(row.value));
+  return (
+    <div className="overflow-hidden rounded-xl border border-neutral-200">
+      {rows.map((row) => (
+        <div key={row.labelKey} className="grid gap-3 border-b border-neutral-100 p-4 last:border-b-0 md:grid-cols-[220px_minmax(0,1fr)]">
+          <ReportText keyName={row.labelKey} fallback={row.label} className="text-sm font-semibold text-neutral-500" />
+          {row.bodyKey ? (
+            <ReportText keyName={row.bodyKey} fallback={row.value} className="text-sm leading-6 text-neutral-800" />
+          ) : (
+            <p className="text-sm leading-6 text-neutral-800">{row.value}</p>
+          )}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function EditableCopy({ children, className }: { children: React.ReactNode; className?: string }) {
+  return <span className={className}>{renderEditableCopy(children)}</span>;
+}
+
+function EditableText({ value }: { value: string }) {
+  const [text, setText] = useState(value);
+  return (
+    <span
+      contentEditable
+      suppressContentEditableWarning
+      spellCheck={false}
+      className="report-copy-edit rounded-sm outline-none transition focus:bg-amber-50 focus:ring-2 focus:ring-amber-200"
+      onBlur={(event) => setText(event.currentTarget.innerText)}
+    >
+      {text}
+    </span>
+  );
+}
+
+function renderEditableCopy(children: React.ReactNode): React.ReactNode {
+  return React.Children.map(children, (child) => {
+    if (typeof child === "string" || typeof child === "number") {
+      return <EditableText value={String(child)} />;
+    }
+    if (React.isValidElement<{ children?: React.ReactNode }>(child) && child.type === React.Fragment) {
+      return <>{renderEditableCopy(child.props.children)}</>;
+    }
+    return child;
+  });
+}
+
+function resolveTokenPreviewValue(name: string, context: TokenPreviewContextValue) {
+  const tokenSource = {
+    ...context.liveData,
+    report: { status: reportStatusLabel(context.status) },
+    period: {
+      start: context.periodStart || context.liveData.period.start,
+      end: context.periodEnd || context.liveData.period.end,
+    },
+    computed: {
+      trafficQualityStatus: trafficQualityStatus(context.liveData),
+    },
+  };
+
+  return resolveCampaignReportToken(name, tokenSource);
+}
+
+function formatTokenPreviewValue(name: string, value: unknown): string {
+  if (value == null || value === "") return "geen waarde";
+  if (typeof value === "number") return formatTokenNumber(name, value);
+  if (typeof value === "boolean") return value ? "true" : "false";
+  if (typeof value === "string") {
+    if (name.toLowerCase().includes("trafficqualitystatus")) {
+      return isReportQualityStatus(value) ? reportQualityStatusLabel(value) : value;
+    }
+    return truncateTokenValue(formatTokenString(value));
+  }
+  if (Array.isArray(value)) {
+    if (value.length === 0) return "lege lijst";
+    return truncateTokenValue(value.slice(0, 3).map(formatTokenArrayItem).join(", ") + (value.length > 3 ? ` +${value.length - 3}` : ""));
+  }
+  if (typeof value === "object") {
+    const entries = Object.entries(value as Record<string, unknown>).slice(0, 4);
+    if (entries.length === 0) return "{}";
+    return truncateTokenValue(entries.map(([key, entryValue]) => `${key}: ${formatTokenPreviewValue(key, entryValue)}`).join(", "));
+  }
+  return truncateTokenValue(String(value));
+}
+
+function formatTokenNumber(name: string, value: number) {
+  const lowerName = name.toLowerCase();
+  if (lowerName.includes("percent") || lowerName.includes("progress") || lowerName.includes("rate")) {
+    return formatPercent(value);
+  }
+  if (
+    lowerName.includes("budget") ||
+    lowerName.includes("cost") ||
+    lowerName.includes("cpm") ||
+    lowerName.includes("cpv") ||
+    lowerName.includes("cpa") ||
+    lowerName.includes("amount") ||
+    lowerName.includes("earned")
+  ) {
+    return formatCurrency(value, "EUR", "nl");
+  }
+  return formatNumber(value, "nl");
+}
+
+function formatTokenString(value: string) {
+  if (/^\d{4}-\d{2}-\d{2}/.test(value)) return formatDate(value, "nl");
+  return value;
+}
+
+function formatTokenArrayItem(value: unknown) {
+  if (value == null) return "geen waarde";
+  if (typeof value === "string") return formatTokenString(value);
+  if (typeof value === "number") return formatNumber(value, "nl");
+  if (typeof value === "object") {
+    const record = value as Record<string, unknown>;
+    if ("code" in record && "share" in record) return `${formatAudienceCountryLabel(String(record.code))}: ${formatAudienceShare(Number(record.share) || 0)}`;
+    if ("platform" in record && "views" in record) return `${record.platform}: ${formatNumber(Number(record.views) || 0, "nl")}`;
+    if ("creator" in record && "views" in record) return `${record.creator}: ${formatNumber(Number(record.views) || 0, "nl")}`;
+    return Object.entries(record).slice(0, 2).map(([key, item]) => `${key}: ${String(item)}`).join(", ");
+  }
+  return String(value);
+}
+
+function truncateTokenValue(value: string, maxLength = 96) {
+  return value.length > maxLength ? `${value.slice(0, maxLength - 1)}...` : value;
+}
+
+function trafficQualityStatus(data: CampaignReportLiveData): ReportQualityStatus {
+  if (data.quality.criticalSignals > 0) return "needs_attention";
+  if (data.quality.openSignals > 0 || data.quality.resolvedSignals > 0) return "passed_with_exclusions";
+  return "passed";
+}
+
+function isReportQualityStatus(value: string): value is ReportQualityStatus {
+  return value === "passed" || value === "passed_with_exclusions" || value === "needs_attention";
+}
+
+function EditableMarker({ name }: { name: string }) {
+  return (
+    <div className="mt-5 inline-flex items-center rounded-md border border-dashed border-neutral-300 bg-white px-2 py-1 font-mono text-xs font-semibold text-neutral-500">
+      [editable: {name}]
+    </div>
+  );
+}
+
+function CoverTokenFact({
+  label,
+  token,
+  tokens,
+  separator = "",
+}: {
+  label: string;
+  token?: string;
+  tokens?: string[];
+  separator?: string;
+}) {
+  return (
+    <div>
+      <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-neutral-600">
+        <EditableCopy>{label}</EditableCopy>
+      </p>
+      <p className="mt-2 flex flex-wrap items-center gap-1 text-sm font-semibold text-neutral-400">
+        {token ? <Token name={token} /> : null}
+        {tokens?.map((item, index) => (
+          <span key={item} className="inline-flex items-center gap-1">
+            {index > 0 ? <span>{separator}</span> : null}
+            <Token name={item} />
+          </span>
+        ))}
+      </p>
+    </div>
+  );
+}
+
+function TemplateParagraph({ children }: { children: React.ReactNode }) {
+  return (
+    <p className="mt-5 text-sm leading-7 text-neutral-700">
+      <EditableCopy>{children}</EditableCopy>
+    </p>
+  );
+}
+
+function TemplateOption({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <div className="mt-4 rounded-lg border border-dashed border-neutral-300 bg-neutral-50 p-4">
+      <p className="text-xs font-semibold uppercase tracking-[0.14em] text-neutral-500">
+        <EditableCopy>{title}</EditableCopy>
+      </p>
+      <p className="mt-2 text-sm leading-7 text-neutral-700">
+        <EditableCopy>{children}</EditableCopy>
+      </p>
+    </div>
+  );
+}
+
+function TemplateCallout({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <div className="mt-6 rounded-lg border border-neutral-200 bg-neutral-50 p-4">
+      <p className="text-xs font-semibold uppercase tracking-[0.14em] text-neutral-500">
+        <EditableCopy>{title}</EditableCopy>
+      </p>
+      <p className="mt-2 text-sm leading-7 text-neutral-700">
+        <EditableCopy>{children}</EditableCopy>
+      </p>
+    </div>
+  );
+}
+
+function TemplateKpiGrid({ items }: { items: Array<[string, string]> }) {
+  return (
+    <div className="mt-7 grid gap-3 md:grid-cols-2">
+      {items.map(([label, token]) => (
+        <div key={label} className="rounded-lg border border-neutral-200 p-4">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-neutral-400">
+            <EditableCopy>{label}</EditableCopy>
+          </p>
+          <p className="mt-3">
+            <Token name={token} />
+          </p>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function TemplateVariableGrid({ rows }: { rows: Array<[string, ...string[]]> }) {
+  return (
+    <div className="mt-6 grid gap-3 md:grid-cols-2">
+      {rows.map(([label, ...tokens]) => (
+        <div key={label} className="rounded-lg border border-neutral-200 p-4">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-neutral-400">
+            <EditableCopy>{label}</EditableCopy>
+          </p>
+          <div className="mt-3 flex flex-wrap items-center gap-1.5">
+            {tokens.map((token, index) => (
+              <span key={`${label}-${token}`} className="inline-flex items-center gap-1">
+                {index > 0 ? <span className="text-xs text-neutral-400">-</span> : null}
+                <Token name={token} />
+              </span>
+            ))}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function TemplateRepeat({ title, source, children }: { title: string; source: string; children: React.ReactNode }) {
+  return (
+    <div className="mt-6 rounded-lg border border-neutral-200 p-4">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <p className="text-xs font-semibold uppercase tracking-[0.14em] text-neutral-500">
+          <EditableCopy>{title}</EditableCopy>
+        </p>
+        <span className="rounded-full bg-neutral-100 px-2 py-1 font-mono text-[11px] font-semibold text-neutral-500">[repeat: {source}]</span>
+      </div>
+      <div className="mt-3">{children}</div>
+    </div>
+  );
+}
+
+function TemplateBullets({ items }: { items: React.ReactNode[] }) {
+  return (
+    <ul className="mt-5 space-y-3">
+      {items.map((item, index) => (
+        <li key={index} className="rounded-lg border border-neutral-200 p-4 text-sm leading-7 text-neutral-700">
+          <EditableCopy>{item}</EditableCopy>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+function InlineEditable({
+  value,
+  onChange,
+  placeholder,
+  className,
+  dark = false,
+}: {
+  value: string;
+  onChange?: (value: string) => void;
+  placeholder: string;
+  className?: string;
+  dark?: boolean;
+}) {
+  if (!onChange) {
+    return <div className={cn("whitespace-pre-line", className)}>{value || placeholder}</div>;
+  }
+
+  return (
+    <div
+      contentEditable
+      suppressContentEditableWarning
+      spellCheck={false}
+      role="textbox"
+      tabIndex={0}
+      className={cn(
+        "report-inline-edit -mx-2 -my-1 min-h-[1.5em] whitespace-pre-wrap rounded-md border border-transparent px-2 py-1 outline-none transition focus:border-neutral-200 focus:bg-white focus:ring-4 focus:ring-neutral-950/5",
+        dark && "focus:border-white/20 focus:bg-white/5 focus:ring-white/10",
+        className,
+        !value && "text-neutral-400",
+      )}
+      onFocus={(event) => {
+        if (!value) event.currentTarget.textContent = "";
+      }}
+      onBlur={(event) => {
+        const nextValue = event.currentTarget.innerText.trim();
+        onChange(nextValue);
+        if (!nextValue) event.currentTarget.textContent = placeholder;
+      }}
+    >
+      {value || placeholder}
+    </div>
   );
 }
 
 function ReportPage({ children, className }: { children: React.ReactNode; className?: string }) {
   return (
-    <article className={cn("report-print-page mx-auto min-h-[840px] w-full max-w-[820px] rounded-lg border border-neutral-200 bg-white p-8 shadow-sm", className)}>
+    <article className={cn("report-print-page group/report mx-auto min-h-[297mm] w-full max-w-[210mm] rounded-none border border-neutral-300 bg-white px-[28mm] py-[18mm] shadow-sm", className)}>
       {children}
     </article>
   );
@@ -992,8 +1938,12 @@ function ReportHeading({ icon, kicker, title }: { icon: React.ReactNode; kicker:
   return (
     <div className="flex items-start justify-between gap-6 border-b border-neutral-200 pb-5">
       <div>
-        <p className="text-xs font-semibold uppercase tracking-[0.18em] text-neutral-400">{kicker}</p>
-        <h2 className="mt-2 text-3xl font-semibold leading-tight tracking-normal text-neutral-950">{title}</h2>
+        <p className="text-xs font-semibold uppercase tracking-[0.18em] text-neutral-400">
+          <EditableCopy>{kicker}</EditableCopy>
+        </p>
+        <h2 className="mt-2 text-3xl font-semibold leading-tight tracking-normal text-neutral-950">
+          <EditableCopy>{title}</EditableCopy>
+        </h2>
       </div>
       <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-neutral-100 text-neutral-700">{icon}</div>
     </div>
@@ -1003,17 +1953,17 @@ function ReportHeading({ icon, kicker, title }: { icon: React.ReactNode; kicker:
 function CoverFact({ label, value }: { label: string; value: string }) {
   return (
     <div>
-      <p className="text-xs font-semibold uppercase tracking-[0.16em] text-neutral-400">{label}</p>
-      <p className="mt-2 text-lg font-semibold text-white">{value}</p>
+      <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-neutral-600">{label}</p>
+      <p className="mt-2 text-sm font-semibold text-neutral-400">{value}</p>
     </div>
   );
 }
 
-function NumberedItem({ index, text }: { index: number; text: string }) {
+function NumberedItem({ index, text, onChange }: { index: number; text: string; onChange?: (value: string) => void }) {
   return (
     <div className="flex gap-3 rounded-lg border border-neutral-200 p-4">
       <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-neutral-950 text-xs font-semibold text-white">{index}</span>
-      <p className="text-sm leading-6 text-neutral-700">{text}</p>
+      <InlineEditable value={text} onChange={onChange} placeholder="Nieuw inzicht" className="w-full text-sm leading-6 text-neutral-700" />
     </div>
   );
 }
@@ -1049,11 +1999,10 @@ function TimelineChart({ rows }: { rows: CampaignReportLiveData["timeline"] }) {
       {visible.length === 0 ? (
         <EmptyPreviewLine text="Geen metricsnapshots in deze periode." />
       ) : (
-        <div className="flex h-44 items-end gap-1">
+        <div className="flex h-36 items-end gap-1">
           {visible.map((row) => (
-            <div key={row.date} className="flex min-w-0 flex-1 flex-col items-center justify-end gap-1">
-              <span className="w-full truncate text-center text-[10px] font-semibold tabular-nums text-neutral-700">{formatNumber(row.views, "nl")}</span>
-              <div className="w-full rounded-t bg-neutral-900" style={{ height: `${Math.max(6, (row.views / max) * 112)}px` }} title={`${row.date}: ${formatNumber(row.views, "nl")} views`} />
+            <div key={row.date} className="flex min-w-0 flex-1 flex-col items-center gap-2">
+              <div className="w-full rounded-t bg-neutral-900" style={{ height: `${Math.max(6, (row.views / max) * 128)}px` }} title={`${row.date}: ${formatNumber(row.views, "nl")} views`} />
               <span className="w-full truncate text-center text-[10px] text-neutral-400">{new Date(row.date).getDate()}</span>
             </div>
           ))}
@@ -1175,18 +2124,32 @@ function ReferralSummary({ data }: { data: CampaignReportLiveData }) {
   );
 }
 
-function Distribution({ title, rows, suffix = "" }: { title: string; rows: Array<{ label: string; value: number }>; suffix?: string }) {
+function Distribution({
+  titleKey,
+  title,
+  rows,
+  formatLabel = adminEnumLabel,
+  formatValue = (value) => formatNumber(value, "nl"),
+}: {
+  titleKey: string;
+  title: string;
+  rows: Array<{ label: string; value: number }>;
+  formatLabel?: (value: string) => string;
+  formatValue?: (value: number) => string;
+}) {
   const max = Math.max(1, ...rows.map((row) => row.value));
   return (
     <div className="rounded-lg border border-neutral-200 p-4">
-      <h3 className="text-sm font-semibold text-neutral-950">{title}</h3>
+      <ReportText keyName={titleKey} fallback={title} className="text-sm font-semibold text-neutral-950" />
       <div className="mt-4 space-y-3">
-        {rows.length === 0 ? <p className="text-sm text-neutral-500">Geen data</p> : null}
+        {rows.length === 0 ? (
+          <ReportText keyName={`${titleKey}.empty`} fallback="Geen data" className="text-sm text-neutral-500" />
+        ) : null}
         {rows.map((row) => (
           <div key={row.label}>
             <div className="mb-1 flex items-center justify-between gap-3 text-xs">
-              <span className="font-medium text-neutral-700">{adminEnumLabel(row.label)}</span>
-              <span className="text-neutral-500">{formatNumber(row.value, "nl")}{suffix}</span>
+              <span className="font-medium text-neutral-700">{formatLabel(row.label)}</span>
+              <span className="text-neutral-500">{formatValue(row.value)}</span>
             </div>
             <div className="h-2 rounded-full bg-neutral-100">
               <div className="h-2 rounded-full bg-neutral-950" style={{ width: `${Math.max(3, (row.value / max) * 100)}%` }} />
@@ -1198,16 +2161,56 @@ function Distribution({ title, rows, suffix = "" }: { title: string; rows: Array
   );
 }
 
-function BulletList({ items }: { items: string[] }) {
-  if (items.length === 0) return <p className="mt-3 text-sm text-neutral-500">Geen items.</p>;
+function QualityMetric({ label, value }: { label: string; value: number }) {
   return (
-    <ul className="mt-4 space-y-3">
-      {items.map((item, index) => (
-        <li key={`${item}-${index}`} className="rounded-lg border border-neutral-200 p-4 text-sm leading-6 text-neutral-700">
-          {item}
-        </li>
-      ))}
-    </ul>
+    <div className="rounded-lg border border-neutral-200 p-5">
+      <p className="text-xs font-semibold uppercase tracking-[0.12em] text-neutral-400">{label}</p>
+      <p className="mt-3 text-3xl font-semibold text-neutral-950">{formatNumber(value, "nl")}</p>
+    </div>
+  );
+}
+
+function BulletList({
+  items,
+  onItemChange,
+  onAdd,
+  addLabel,
+}: {
+  items: string[];
+  onItemChange?: (index: number, value: string) => void;
+  onAdd?: () => void;
+  addLabel?: string;
+}) {
+  if (items.length === 0) {
+    return (
+      <div className="mt-3">
+        <p className="text-sm text-neutral-500">Geen items.</p>
+        {onAdd ? (
+          <Button type="button" variant="outline" size="sm" className="report-inline-control mt-3 rounded-lg opacity-0 transition focus:opacity-100 group-hover/report:opacity-100" onClick={onAdd}>
+            <Plus className="h-4 w-4" />
+            {addLabel ?? "Item toevoegen"}
+          </Button>
+        ) : null}
+      </div>
+    );
+  }
+
+  return (
+    <>
+      <ul className="mt-4 space-y-3">
+        {items.map((item, index) => (
+          <li key={index} className="rounded-lg border border-neutral-200 p-4">
+            <InlineEditable value={item} onChange={onItemChange ? (value) => onItemChange(index, value) : undefined} placeholder="Nieuw item" className="text-sm leading-6 text-neutral-700" />
+          </li>
+        ))}
+      </ul>
+      {onAdd ? (
+        <Button type="button" variant="outline" size="sm" className="report-inline-control mt-3 rounded-lg opacity-0 transition focus:opacity-100 group-hover/report:opacity-100" onClick={onAdd}>
+          <Plus className="h-4 w-4" />
+          {addLabel ?? "Item toevoegen"}
+        </Button>
+      ) : null}
+    </>
   );
 }
 
@@ -1227,19 +2230,137 @@ function createEmptyEditorial(campaignName: string): CampaignReportEditorial {
   };
 }
 
+function defaultTemplateBlocks(
+  editorial: CampaignReportEditorial,
+  preserveLegacySummary: boolean,
+): Record<string, string> {
+  return {
+    "cover.kicker": "Campagne prestatierapport",
+    "section.summary.kicker": "Samenvatting",
+    "section.summary.title": "Resultaat in een oogopslag",
+    "summary.heroHeadline": "{{performance.deliveryProgress}} van doel",
+    "summary.heroHeadline.noGoal": "Campagneprestatie",
+    "summary.subline.overdelivery": "De campagne heeft het afgesproken viewdoel ruim overtroffen, met extra bereik zonder extra mediabudget.",
+    "summary.subline.default": "De campagneprestaties worden afgezet tegen het afgesproken viewdoel en de beschikbare live performance.",
+    "summary.body": preserveLegacySummary && editorial.executiveSummary
+      ? editorial.executiveSummary
+      : "De campagne heeft {{performance.currentViews}} totale views gegenereerd met {{performance.approvedClips}} goedgekeurde clips. Het afgesproken doel was {{performance.targetViews}} views. Extra bereik boven het doel wordt gerapporteerd als bonus zonder extra budget.",
+    "summary.metric.totalViews.label": "Totale views",
+    "summary.metric.targetViews.label": "Doelviews",
+    "summary.metric.extraReach.label": "Extra bereik",
+    "summary.metric.effectiveCpm.label": "Effectieve CPM",
+    "summary.metric.approvedClips.label": "Goedgekeurde clips",
+    "summary.conclusion": "Dit betekent dat de campagneperformance direct te koppelen is aan bereik, budgetwaarde en concrete learnings voor de volgende ronde.",
+    "section.glance.kicker": "Campagne in het kort",
+    "section.glance.title": "Doel, bereik en overdelivery",
+    "glance.progress.currentLabel": "Voortgang naar doel",
+    "glance.progress.targetLabel": "Doelviews",
+    "glance.progress.paidGoalLabel": "Betaald doel tot {{performance.targetViews}}",
+    "glance.progress.extraReachLabel": "extra bereik",
+    "glance.metric.paidViews.label": "Betaalde views",
+    "glance.metric.paidViews.helper": "Gemaximeerd op het afgesproken doel",
+    "glance.metric.extraReach.label": "Extra bereik",
+    "glance.metric.extraReach.helper": "Views boven doel zonder extra budget",
+    "glance.metric.budgetUsed.label": "Budget gebruikt",
+    "glance.metric.budgetUsed.helper": "{{performance.budgetUsedPercent}}",
+    "glance.metric.agreedCpm.label": "Afgesproken CPM",
+    "glance.metric.agreedCpm.helper": "Per 1.000 views",
+    "glance.statement": "Extra bereik boven het afgesproken doel wordt zichtbaar als gratis bonus voor de klant.",
+    "section.performance.kicker": "Campagneprestatie",
+    "section.performance.title": "Groei van de campagne",
+    "chart.cumulativeViews.pointsLabel": "{{timeline.length}} meetpunten",
+    "chart.cumulativeViews.currentViewsLabel": "Huidige views: {{performance.currentViews}}",
+    "chart.cumulativeViews.targetViewsLabel": "Doelviews: {{performance.targetViews}}",
+    "performance.metric.submissions.label": "Inzendingen",
+    "performance.metric.submissions.helper": "Alle statussen",
+    "performance.metric.approvalRate.label": "Goedkeuringspercentage",
+    "performance.metric.approvalRate.helper": "Goedgekeurd na review",
+    "performance.metric.activeCreators.label": "Actieve creators",
+    "performance.metric.activeCreators.helper": "Creators met inzendingen",
+    "performance.insight": "De cumulatieve viewlijn laat zien wanneer de campagne tractie kreeg en welke momenten performance versnelden.",
+    "section.content.kicker": "Contentprestaties",
+    "section.content.title": "Topclips en winnende patronen",
+    "content.patterns.title": "Analyse van contentpatronen",
+    "content.card.noThumbnail": "Geen thumbnail",
+    "content.card.viewsLabel": "Views",
+    "content.card.engagementLabel": "Engagement",
+    "content.insight": "De best presterende clips combineren een snelle hook, duidelijke merkplaatsing en een editstijl die natuurlijk voelt voor het platform.",
+    "section.platform.kicker": "Platformprestaties",
+    "section.platform.title": "Kanaalvergelijking",
+    "platform.row.approvedClipsLabel": "goedgekeurde clips",
+    "platform.row.engagementRateLabel": "engagementpercentage",
+    "platform.row.viewsLabel": "views",
+    "platform.row.avgViewsPerClipLabel": "Gem. views per clip:",
+    "platform.row.effectiveCpmLabel": "Effectieve CPM:",
+    "platform.row.engagementLabel": "Engagement:",
+    "platform.insight": "{{platformBreakdown[0].platform}} leverde het grootste deel van het bereik en verdient extra focus in de volgende campagne.",
+    "section.creator.kicker": "Creatorbijdrage",
+    "section.creator.title": "Bijdrage van creators",
+    "creator.row.clipsApprovedLabel": "clips goedgekeurd",
+    "creator.row.approvalRateLabel": "goedgekeurd",
+    "creator.insight": "Heractiveer creators die hoge views combineren met consistente kwaliteit en duidelijke merkfit.",
+    "section.audience.kicker": "Publiek en bereik",
+    "section.audience.title": "Bereikt publiek",
+    "audience.distribution.countries.title": "Top landen",
+    "audience.distribution.countries.title.empty": "Geen data",
+    "audience.distribution.age.title": "Leeftijd",
+    "audience.distribution.age.title.empty": "Geen data",
+    "audience.distribution.gender.title": "Gender",
+    "audience.distribution.gender.title.empty": "Geen data",
+    "audience.insight": DEFAULT_AUDIENCE_INSIGHT_TEMPLATE,
+    "section.budget.kicker": "Budget en waarde",
+    "section.budget.title": "Betaald bereik versus extra bereik",
+    "budget.metric.paidGoal.label": "Betaald doel",
+    "budget.metric.paidGoal.helper": "Afgesproken op basis van budget en CPM",
+    "budget.metric.paidViews.label": "Betaalde views",
+    "budget.metric.paidViews.helper": "Maximaal afgerekend tot doelbasis",
+    "budget.metric.extraReach.label": "Extra bereik",
+    "budget.metric.extraReach.helper": "Niet extra doorbelast",
+    "budget.metric.budget.label": "Budget",
+    "budget.metric.budget.helper": "Netto campagnebudget",
+    "budget.metric.budgetUsed.label": "Budget gebruikt",
+    "budget.metric.budgetUsed.helper": "{{performance.budgetUsedPercent}}",
+    "budget.metric.effectiveCpmTotal.label": "Effectieve CPM totaal",
+    "budget.metric.effectiveCpmTotal.helper": "Gebaseerd op totale huidige views",
+    "budget.insight": "Betaalde views zijn gemaximeerd op het afgesproken doel. Extra views boven dit doel worden gerapporteerd als extra bereik zonder extra kosten.",
+    "section.quality.kicker": "Kwaliteitscontrole",
+    "section.quality.title": "Validatie van prestaties",
+    "quality.status.label": "Kwaliteitsstatus",
+    "quality.metric.approvedPerformance.label": "Goedgekeurde prestaties",
+    "quality.metric.approvedPerformance.helper": "Goedgekeurde views",
+    "quality.metric.excludedActivity.label": "Uitgesloten activiteit",
+    "quality.metric.excludedActivity.helper": "Niet meegenomen in goedgekeurde prestaties",
+    "quality.metric.openIssues.label": "Open aandachtspunten",
+    "quality.metric.openIssues.helper": "Kritieke reviewstatus",
+    "quality.insight": "Alle clips en views zijn gecontroleerd op campagnevoorwaarden, dubbele activiteit en verkeerskwaliteit. Alleen geldige prestaties zijn meegenomen in de goedgekeurde resultaten.",
+    "section.next.kicker": "Aanbevelingen voor volgende campagne",
+    "section.next.title": "Concreet plan voor de volgende ronde",
+    "next.plan": editorial.nextCampaignRecommendations[0] || "Voor de volgende campagne adviseren we om de best presterende creators opnieuw te activeren, winnende hooks expliciet in de briefing te zetten en budget te sturen naar kanalen met de laagste effectieve CPM.",
+    "section.appendix.kicker": "Appendix",
+    "section.appendix.title": "Definities en ruwe samenvatting",
+    "appendix.totalViewsDefinition.label": "Definitie totale views",
+    "appendix.totalViewsDefinition.body": "Alle live gemeten views op goedgekeurde clips.",
+    "appendix.paidViewsDefinition.label": "Definitie betaalde views",
+    "appendix.paidViewsDefinition.body": "Views die afgerekend worden binnen het afgesproken doel en de campagnevoorwaarden.",
+    "appendix.extraReachDefinition.label": "Definitie extra bereik",
+    "appendix.extraReachDefinition.body": "Views boven het afgesproken doel zonder extra budget.",
+    "appendix.targetSource.label": "Doelbron",
+    "appendix.statusOverview.label": "Statusoverzicht",
+    "appendix.keyInsights.label": "Belangrijkste inzichten",
+  };
+}
+
+function renderTemplateForLegacy(value: string) {
+  return value.replace(/\{\{([^}]+)\}\}/g, (_, token: string) => `{${String(token).trim()}}`);
+}
+
 function dateInputValue(value: string | null | undefined) {
   if (!value) return "";
   return value.slice(0, 10);
 }
 
-function textAreaToList(value: string) {
-  return value.split("\n").map((line) => line.trim()).filter(Boolean).slice(0, 12);
-}
-function formatPeriod(start: string | null | undefined, end: string | null | undefined) {
-  if (!start && !end) return "-";
-  if (!start) return `Tot ${formatDate(end, "nl")}`;
-  if (!end) return `Vanaf ${formatDate(start, "nl")}`;
-  return `${formatDate(start, "nl")} - ${formatDate(end, "nl")}`;
+function replaceTextListItem(items: string[], index: number, value: string) {
+  return items.map((item, itemIndex) => (itemIndex === index ? value.trim() : item)).filter(Boolean).slice(0, 12);
 }
 
 function formatPercent(value: number | null | undefined) {
@@ -1250,17 +2371,6 @@ function formatPercent(value: number | null | undefined) {
 function percentOrDash(value: number | null | undefined, label: string) {
   if (value == null) return "-";
   return `${formatPercent(value)} ${label}`;
-}
-
-function overdeliveryDetail(value: number | null | undefined) {
-  if (value == null || value <= 0) return "boven betaalde viewbasis";
-  return `${formatPercent(value)} boven betaalde viewbasis`;
-}
-
-function formatGoalViews(value: number | null | undefined, source: CampaignReportLiveData["campaign"]["goalViewsSource"]) {
-  if (!value) return "-";
-  const suffix = source === "budget_cpm" ? " (berekend)" : "";
-  return `${formatNumber(value, "nl")}${suffix}`;
 }
 
 function reportStatusLabel(status: CampaignReportStatusValue) {

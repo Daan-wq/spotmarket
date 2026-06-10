@@ -277,7 +277,7 @@ describe("normalizeSectionSettings", () => {
   it("keeps unknown input safe and preserves known booleans", () => {
     const settings = normalizeSectionSettings({ audience: false, unknown: false });
 
-    expect(settings.audience).toBe(false);
+    expect(settings.audienceReach).toBe(false);
     expect(settings.cover).toBe(true);
     expect("unknown" in settings).toBe(false);
   });
