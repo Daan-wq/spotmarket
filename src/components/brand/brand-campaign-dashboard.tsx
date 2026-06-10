@@ -16,7 +16,6 @@ import {
   audienceBarWidth,
   formatAudienceCountryLabel,
   formatAudienceShare,
-  reportQualityStatusLabel,
 } from "@/lib/admin/campaign-report-display";
 import type { BrandCampaignDashboardData } from "@/lib/brand-report-portal";
 import { BrandViewsChart } from "./brand-views-chart";
@@ -341,17 +340,12 @@ export function BrandCampaignDashboard({
         </div>
 
         <div className="border-t border-neutral-200 py-10 lg:border-l lg:border-t-0 lg:py-12 lg:pl-12">
-          <SectionHeading eyebrow="Validatie" title="Kwaliteitscontrole" />
-          <div className="mt-7 flex items-start justify-between gap-5 border-t-2 border-neutral-950 py-5">
-            <div>
-              <p className="text-sm text-neutral-500">Kwaliteitsstatus</p>
-              <p className="mt-2 text-2xl font-semibold tracking-[-0.03em] text-neutral-950">
-                {reportQualityStatusLabel(data.quality.status)}
-              </p>
-            </div>
-            <ShieldCheck className="h-8 w-8 text-neutral-950" />
-          </div>
-          <div className="grid grid-cols-3 border-t border-neutral-200">
+          <SectionHeading
+            eyebrow="Validatie"
+            title="Kwaliteitscontrole"
+            icon={<ShieldCheck className="h-7 w-7 text-neutral-950" />}
+          />
+          <div className="mt-7 grid grid-cols-3 border-t-2 border-neutral-950">
             <QualityMetric label="Gecontroleerde clips" value={data.quality.reviewedClips} icon={<Users className="h-4 w-4" />} />
             <QualityMetric label="Uitgesloten clips" value={data.quality.excludedClips} icon={<CircleOff className="h-4 w-4" />} />
             <QualityMetric label="Uitgesloten views" value={data.quality.excludedViews} icon={<ShieldCheck className="h-4 w-4" />} />
@@ -451,18 +445,20 @@ function SectionHeading({
   eyebrow,
   title,
   detail,
+  icon,
 }: {
   eyebrow: string;
   title: string;
   detail?: string;
+  icon?: React.ReactNode;
 }) {
   return (
-    <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+    <div className="flex items-end justify-between gap-4">
       <div>
         <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-neutral-400">{eyebrow}</p>
         <h2 className="mt-2 text-2xl font-semibold tracking-[-0.025em] text-neutral-950">{title}</h2>
       </div>
-      {detail ? <p className="text-sm text-neutral-500">{detail}</p> : null}
+      {icon ?? (detail ? <p className="text-sm text-neutral-500">{detail}</p> : null)}
     </div>
   );
 }
@@ -550,7 +546,7 @@ function QualityMetric({
   icon: React.ReactNode;
 }) {
   return (
-    <div className="border-r border-neutral-200 py-5 last:border-r-0">
+    <div className="py-5">
       <div className="flex items-center gap-2 text-neutral-500">
         {icon}
         <p className="text-xs">{label}</p>

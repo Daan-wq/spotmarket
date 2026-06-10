@@ -155,6 +155,7 @@ describe("BrandCampaignDashboard", () => {
     expect(html).toContain("Publiek en bereik");
     expect(html).toContain("Budget en waarde");
     expect(html).toContain("Kwaliteitscontrole");
+    expect(html).not.toContain("Kwaliteitsstatus");
     expect(html).toContain("Sterke match");
     expect(html).toContain("Nederland");
     expect(html).not.toContain("Duitsland");
