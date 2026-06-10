@@ -7,11 +7,18 @@ const routeMocks = vi.hoisted(() => ({
   userUpdate: vi.fn(),
   attributionUpdateMany: vi.fn(),
   joinDiscordGuildWithOAuthToken: vi.fn(),
+  signOut: vi.fn(),
+  getIdentitySignals: vi.fn(),
+  assessBanEvasion: vi.fn(),
+  recordAccessSignals: vi.fn(),
 }));
 
 vi.mock("@/lib/supabase/server", () => ({
   createSupabaseServerClient: vi.fn(async () => ({
-    auth: { exchangeCodeForSession: routeMocks.exchangeCodeForSession },
+    auth: {
+      exchangeCodeForSession: routeMocks.exchangeCodeForSession,
+      signOut: routeMocks.signOut,
+    },
   })),
 }));
 
@@ -29,6 +36,18 @@ vi.mock("@/lib/prisma", () => ({
 
 vi.mock("@/lib/discord-campaign-roles", () => ({
   joinDiscordGuildWithOAuthToken: routeMocks.joinDiscordGuildWithOAuthToken,
+}));
+
+vi.mock("@/lib/ban-evasion/identity-signals", () => ({
+  getIdentitySignalsForSupabaseUser: routeMocks.getIdentitySignals,
+}));
+
+vi.mock("@/lib/ban-evasion/enforcement", () => ({
+  assessBanEvasion: routeMocks.assessBanEvasion,
+}));
+
+vi.mock("@/lib/ban-evasion/store", () => ({
+  recordAccessSignals: routeMocks.recordAccessSignals,
 }));
 
 function dbUser(overrides: Record<string, unknown> = {}) {
@@ -65,6 +84,26 @@ describe("GET /auth/callback", () => {
     routeMocks.userUpdate.mockResolvedValue(dbUser({ supabaseId: "new-supabase", discordUsername: "New Name" }));
     routeMocks.attributionUpdateMany.mockResolvedValue({ count: 1 });
     routeMocks.joinDiscordGuildWithOAuthToken.mockResolvedValue({ ok: true });
+    routeMocks.signOut.mockResolvedValue({ error: null });
+    routeMocks.getIdentitySignals.mockResolvedValue({
+      userId: "user-1",
+      role: "creator",
+      signals: [],
+    });
+    routeMocks.assessBanEvasion.mockResolvedValue({
+      decision: "ALLOW",
+      observedDecision: "ALLOW",
+      reasonCode: "NO_MATCH",
+      matches: [],
+      observations: [
+        {
+          type: "DEVICE",
+          valueHash: "v1:device",
+          maskedValue: "devi...1234",
+        },
+      ],
+    });
+    routeMocks.recordAccessSignals.mockResolvedValue(undefined);
   });
 
   it("claims a stale Discord user during OAuth login", async () => {
@@ -88,5 +127,34 @@ describe("GET /auth/callback", () => {
         }),
       }),
     );
+    expect(routeMocks.assessBanEvasion).toHaveBeenCalledWith(
+      expect.objectContaining({
+        subjectRole: "creator",
+        supabaseId: "new-supabase",
+        identitySignals: [{ type: "DISCORD", value: "discord-1" }],
+      }),
+    );
+  });
+
+  it("signs out and returns a generic denial for a matched OAuth identity", async () => {
+    routeMocks.assessBanEvasion.mockResolvedValue({
+      decision: "BLOCK",
+      observedDecision: "BLOCK",
+      reasonCode: "STRONG_INDICATOR",
+      matches: [{ id: "private-indicator" }],
+      observations: [],
+    });
+
+    const response = await GET(
+      new Request(
+        "https://app.test/auth/callback?code=abc&next=/creator/campaigns",
+      ),
+    );
+
+    expect(routeMocks.signOut).toHaveBeenCalledWith({ scope: "global" });
+    expect(response.headers.get("location")).toBe(
+      "https://app.test/sign-in?auth_error=access_denied",
+    );
+    expect(routeMocks.joinDiscordGuildWithOAuthToken).not.toHaveBeenCalled();
   });
 });

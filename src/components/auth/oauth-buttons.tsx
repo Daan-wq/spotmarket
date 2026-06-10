@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useTranslations } from "next-intl";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import { safeRedirectPath } from "@/lib/safe-redirect";
+import { TurnstileChallenge } from "@/components/auth/turnstile-challenge";
 
 function GoogleIcon() {
   return (
@@ -33,10 +34,40 @@ type OAuthProvider = "google" | "discord";
 
 export function OAuthButtons({ mode, providers = ["google", "discord"] }: OAuthButtonsProps) {
   const [loading, setLoading] = useState<OAuthProvider | null>(null);
+  const [challenge, setChallenge] = useState<{
+    provider: OAuthProvider;
+    siteKey: string;
+  } | null>(null);
+  const [error, setError] = useState<string | null>(null);
   const t = useTranslations("auth.oauth");
 
-  async function handleOAuth(provider: OAuthProvider) {
+  async function handleOAuth(provider: OAuthProvider, turnstileToken?: string) {
     setLoading(provider);
+    setError(null);
+
+    const preflight = await fetch("/api/auth/preflight", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ turnstileToken }),
+    });
+    const preflightData = await preflight.json().catch(() => null);
+    if (
+      preflight.status === 428 &&
+      preflightData?.challengeRequired &&
+      preflightData?.siteKey
+    ) {
+      setChallenge({ provider, siteKey: preflightData.siteKey });
+      setLoading(null);
+      return;
+    }
+    if (!preflight.ok) {
+      setChallenge(null);
+      setError(preflightData?.error || "Access unavailable.");
+      setLoading(null);
+      return;
+    }
+
+    setChallenge(null);
     const supabase = createSupabaseBrowserClient();
     const params = new URLSearchParams(window.location.search);
     const ref = params.get("ref");
@@ -102,6 +133,25 @@ export function OAuthButtons({ mode, providers = ["google", "discord"] }: OAuthB
             ? t("redirecting")
             : t(mode === "signin" ? "signInWith" : "signUpWith", { provider: "Discord" })}
         </button>
+      )}
+      {challenge && (
+        <TurnstileChallenge
+          siteKey={challenge.siteKey}
+          onToken={(token) => void handleOAuth(challenge.provider, token)}
+          onError={() => setError("Security verification failed.")}
+        />
+      )}
+      {error && (
+        <p
+          className="rounded-lg border px-3 py-2 text-sm"
+          style={{
+            color: "#fecaca",
+            background: "rgba(239,68,68,0.14)",
+            borderColor: "rgba(239,68,68,0.24)",
+          }}
+        >
+          {error}
+        </p>
       )}
     </div>
   );

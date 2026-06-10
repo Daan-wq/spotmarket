@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { OAuthButtons, OAuthDivider } from "@/components/auth/oauth-buttons";
-import { createSupabaseBrowserClient } from "@/lib/supabase/client";
+import { TurnstileChallenge } from "@/components/auth/turnstile-challenge";
 import { safeRedirectPath } from "@/lib/safe-redirect";
 
 function EyeIcon({ open }: { open: boolean }) {
@@ -39,6 +39,7 @@ export function SignInForm() {
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [showOtherMethods, setShowOtherMethods] = useState(false);
+  const [challengeSiteKey, setChallengeSiteKey] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(
     authError === "callback_failed"
       ? t("callbackFailed")
@@ -51,22 +52,37 @@ export function SignInForm() {
   );
   const [loading, setLoading] = useState(false);
 
-  async function handleSignIn(e: React.FormEvent) {
-    e.preventDefault();
+  async function submitSignIn(turnstileToken?: string) {
     setError(null);
     setLoading(true);
 
-    const supabase = createSupabaseBrowserClient();
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    const response = await fetch("/api/auth/signin", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email, password, turnstileToken }),
+    });
+    const data = await response.json().catch(() => null);
 
-    if (error) {
-      setError(error.message);
+    if (response.status === 428 && data?.challengeRequired && data?.siteKey) {
+      setChallengeSiteKey(data.siteKey);
+      setLoading(false);
+      return;
+    }
+    if (!response.ok) {
+      setChallengeSiteKey(null);
+      setError(data?.error || t("callbackFailed"));
       setLoading(false);
       return;
     }
 
+    setChallengeSiteKey(null);
     router.push(redirectUrl);
     router.refresh();
+  }
+
+  async function handleSignIn(e: React.FormEvent) {
+    e.preventDefault();
+    await submitSignIn();
   }
 
   async function handleForgotPassword(e: React.FormEvent) {
@@ -143,6 +159,14 @@ export function SignInForm() {
               <p className="rounded-[18px] border border-[#fecaca] bg-[#fff1f2] px-4 py-3 text-sm font-medium leading-6 text-[#be123c]" aria-live="assertive">
                 {error}
               </p>
+            )}
+
+            {challengeSiteKey && (
+              <TurnstileChallenge
+                siteKey={challengeSiteKey}
+                onToken={(token) => void submitSignIn(token)}
+                onError={() => setError(t("callbackFailed"))}
+              />
             )}
 
             <button

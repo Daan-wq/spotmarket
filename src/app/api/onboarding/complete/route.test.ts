@@ -14,6 +14,8 @@ const routeMocks = vi.hoisted(() => ({
   attributionFindFirst: vi.fn(),
   attributionUpdate: vi.fn(),
   attributionUpdateMany: vi.fn(),
+  assessBanEvasion: vi.fn(),
+  recordAccessSignals: vi.fn(),
 }));
 
 vi.mock("@/lib/supabase/server", () => ({
@@ -51,6 +53,14 @@ vi.mock("@/lib/prisma", () => ({
       updateMany: routeMocks.attributionUpdateMany,
     },
   },
+}));
+
+vi.mock("@/lib/ban-evasion/enforcement", () => ({
+  assessBanEvasion: routeMocks.assessBanEvasion,
+}));
+
+vi.mock("@/lib/ban-evasion/store", () => ({
+  recordAccessSignals: routeMocks.recordAccessSignals,
 }));
 
 function request(body: unknown) {
@@ -112,6 +122,20 @@ describe("POST /api/onboarding/complete", () => {
     routeMocks.attributionUpdate.mockResolvedValue({});
     routeMocks.attributionUpdateMany.mockResolvedValue({ count: 1 });
     routeMocks.updateSupabaseUser.mockResolvedValue({});
+    routeMocks.assessBanEvasion.mockResolvedValue({
+      decision: "ALLOW",
+      observedDecision: "ALLOW",
+      reasonCode: "NO_MATCH",
+      matches: [],
+      observations: [
+        {
+          type: "DEVICE",
+          valueHash: "v1:device",
+          maskedValue: "devi...1234",
+        },
+      ],
+    });
+    routeMocks.recordAccessSignals.mockResolvedValue(undefined);
   });
 
   it("attaches campaign attribution without setting cash referredBy", async () => {
@@ -247,5 +271,26 @@ describe("POST /api/onboarding/complete", () => {
       error: "Dit Discord-account is al gekoppeld aan een ander ClipProfit-account.",
     });
     expect(routeMocks.userCreate).not.toHaveBeenCalled();
+  });
+
+  it("blocks onboarding before creating a duplicate creator identity", async () => {
+    routeMocks.assessBanEvasion.mockResolvedValue({
+      decision: "BLOCK",
+      observedDecision: "BLOCK",
+      reasonCode: "STRONG_INDICATOR",
+      matches: [{ id: "private-indicator" }],
+      observations: [],
+    });
+
+    const response = await POST(
+      request({ displayName: "Blocked Clipper", role: "creator" }),
+    );
+
+    expect(response.status).toBe(403);
+    await expect(response.json()).resolves.toEqual({
+      error: "Access unavailable.",
+    });
+    expect(routeMocks.userCreate).not.toHaveBeenCalled();
+    expect(routeMocks.profileCreate).not.toHaveBeenCalled();
   });
 });

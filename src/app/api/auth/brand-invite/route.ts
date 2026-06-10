@@ -54,6 +54,7 @@ export async function POST(req: Request) {
 
   await admin.auth.admin.updateUserById(supabaseUser.id, {
     user_metadata: { role: "brand", name },
+    app_metadata: { user_role: "brand" },
   });
 
   await prisma.brandContact.update({
@@ -109,6 +110,7 @@ async function ensureSupabaseBrandUser(
     password,
     email_confirm: true,
     user_metadata: { role: "brand" },
+    app_metadata: { user_role: "brand" },
   });
 
   if (!created.error && created.data.user) return created.data.user;
@@ -124,6 +126,7 @@ async function ensureSupabaseBrandUser(
     password,
     email_confirm: true,
     user_metadata: { role: "brand" },
+    app_metadata: { user_role: "brand" },
   });
   if (updated.error || !updated.data.user) {
     throw new Error(updated.error?.message || "Failed to update brand user.");

@@ -3,9 +3,12 @@ import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { assessBanEvasion } from "@/lib/ban-evasion/enforcement";
+import { recordAccessSignals } from "@/lib/ban-evasion/store";
 
 const redeemSchema = z.object({
   ticketId: z.string().min(1),
+  turnstileToken: z.string().max(4096).optional(),
 });
 
 export async function POST(request: Request) {
@@ -41,12 +44,6 @@ export async function POST(request: Request) {
     );
   }
 
-  // Mark ticket as used
-  await prisma.signupTicket.update({
-    where: { id: ticketId },
-    data: { usedAt: new Date() },
-  });
-
   const admin = createSupabaseAdminClient();
 
   // Confirm the user's email
@@ -60,6 +57,33 @@ export async function POST(request: Request) {
       { status: 404 }
     );
   }
+
+  const assessment = await assessBanEvasion({
+    request,
+    subjectRole: "creator",
+    supabaseId: user.id,
+    turnstileToken: parsed.data.turnstileToken,
+  });
+  if (assessment.decision === "BLOCK") {
+    return NextResponse.json(
+      { error: "Access unavailable." },
+      { status: 403 },
+    );
+  }
+  if (assessment.decision === "CHALLENGE") {
+    return NextResponse.json(
+      {
+        challengeRequired: true,
+        siteKey: process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY ?? "",
+      },
+      { status: 428 },
+    );
+  }
+
+  await prisma.signupTicket.update({
+    where: { id: ticketId },
+    data: { usedAt: new Date() },
+  });
 
   // Confirm email
   await admin.auth.admin.updateUserById(user.id, { email_confirm: true });
@@ -91,6 +115,16 @@ export async function POST(request: Request) {
       { error: "Failed to establish session." },
       { status: 500 }
     );
+  }
+
+  try {
+    await recordAccessSignals({
+      supabaseId: user.id,
+      source: "signin",
+      observations: assessment.observations,
+    });
+  } catch (recordError) {
+    console.error("[redeem-ticket] Access signal write failed", recordError);
   }
 
   // Store tokens on the ticket so the original sign-up tab can poll and auto-login

@@ -6,6 +6,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
 import posthog from "posthog-js";
 import { OAuthButtons, OAuthDivider } from "@/components/auth/oauth-buttons";
+import { TurnstileChallenge } from "@/components/auth/turnstile-challenge";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 
 export function SignUpForm() {
@@ -20,6 +21,7 @@ export function SignUpForm() {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [showOtherMethods, setShowOtherMethods] = useState(false);
+  const [challengeSiteKey, setChallengeSiteKey] = useState<string | null>(null);
   const [emailSent, setEmailSent] = useState(false);
   const [ticketId, setTicketId] = useState<string | null>(null);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -70,8 +72,7 @@ export function SignUpForm() {
     };
   }, [ticketId, router]);
 
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
+  async function submitSignup(turnstileToken?: string) {
     setError(null);
 
     if (password !== confirmPassword) {
@@ -94,12 +95,20 @@ export function SignUpForm() {
         ref: ref || undefined,
         campaign: campaign || undefined,
         click: click || undefined,
+        turnstileToken,
       }),
     });
 
-    const data = await res.json();
+    const data = await res.json().catch(() => null);
+
+    if (res.status === 428 && data?.challengeRequired && data?.siteKey) {
+      setChallengeSiteKey(data.siteKey);
+      setLoading(false);
+      return;
+    }
 
     if (!res.ok) {
+      setChallengeSiteKey(null);
       setError(data.error || t("fallbackError"));
       setLoading(false);
       return;
@@ -111,6 +120,11 @@ export function SignUpForm() {
     });
     setTicketId(data.ticketId);
     setEmailSent(true);
+  }
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    await submitSignup();
   }
 
   const inputClass = "w-full px-3 py-2.5 rounded-lg text-sm outline-none transition-all text-zinc-50 placeholder:text-zinc-500";
@@ -207,6 +221,14 @@ export function SignUpForm() {
               <p className="rounded-lg px-3 py-2 text-sm" style={{ color: "#fecaca", background: "rgba(239,68,68,0.14)", border: "1px solid rgba(239,68,68,0.24)" }}>
                 {error}
               </p>
+            )}
+
+            {challengeSiteKey && (
+              <TurnstileChallenge
+                siteKey={challengeSiteKey}
+                onToken={(token) => void submitSignup(token)}
+                onError={() => setError(t("fallbackError"))}
+              />
             )}
 
             <button

@@ -44,6 +44,11 @@ model User {
   lessonProgress               LessonProgress[]
   quizAttempts                 QuizAttempt[]
   badges                       UserBadge[]
+  accountBans                  AccountBan[]                  @relation("BannedUser")
+  accountBansCreated           AccountBan[]                  @relation("BanCreatedBy")
+  accountBansLifted            AccountBan[]                  @relation("BanLiftedBy")
+  accessSignals                AccessSignal[]
+  banIndicatorsCreated         BanIndicator[]                @relation("BanIndicatorCreatedBy")
 
   @@index([supabaseId])
   @@index([role])
@@ -54,6 +59,110 @@ enum UserRole {
   admin
   creator
   brand
+}
+
+enum BanSignalType {
+  IP
+  DEVICE
+  DISCORD
+  INSTAGRAM
+  TIKTOK
+  YOUTUBE
+  FACEBOOK
+  PAYOUT
+}
+
+enum BanIndicatorStrength {
+  WEAK
+  STRONG
+}
+
+enum BanIndicatorMode {
+  LAYERED
+  HARD
+}
+
+enum EnforcementDecision {
+  ALLOW
+  CHALLENGE
+  BLOCK
+}
+
+model AccountBan {
+  id             String             @id @default(cuid())
+  userId         String
+  user           User               @relation("BannedUser", fields: [userId], references: [id], onDelete: Cascade)
+  reason         String
+  internalNote   String?
+  bannedByUserId String
+  bannedBy       User               @relation("BanCreatedBy", fields: [bannedByUserId], references: [id], onDelete: Restrict)
+  bannedAt       DateTime           @default(now())
+  liftedAt       DateTime?
+  liftedByUserId String?
+  liftedBy       User?              @relation("BanLiftedBy", fields: [liftedByUserId], references: [id], onDelete: SetNull)
+  liftReason     String?
+  indicators     BanIndicator[]
+  events         EnforcementEvent[]
+
+  @@index([userId, liftedAt])
+  @@index([bannedAt])
+}
+
+model AccessSignal {
+  id               String        @id @default(cuid())
+  userId           String?
+  user             User?         @relation(fields: [userId], references: [id], onDelete: SetNull)
+  supabaseId       String
+  type             BanSignalType
+  valueHash        String
+  maskedValue      String
+  metadata         Json?
+  signupObservedAt DateTime?
+  firstSeenAt      DateTime      @default(now())
+  lastSeenAt       DateTime      @default(now())
+  expiresAt        DateTime
+
+  @@unique([supabaseId, type, valueHash])
+  @@index([userId, lastSeenAt])
+  @@index([type, valueHash, expiresAt])
+  @@index([type, valueHash, signupObservedAt])
+  @@index([expiresAt])
+}
+
+model BanIndicator {
+  id              String               @id @default(cuid())
+  accountBanId    String
+  accountBan      AccountBan           @relation(fields: [accountBanId], references: [id], onDelete: Cascade)
+  type            BanSignalType
+  valueHash       String
+  maskedValue     String
+  strength        BanIndicatorStrength
+  mode            BanIndicatorMode     @default(LAYERED)
+  reason          String?
+  createdByUserId String
+  createdBy       User                 @relation("BanIndicatorCreatedBy", fields: [createdByUserId], references: [id], onDelete: Restrict)
+  createdAt       DateTime             @default(now())
+  deactivatedAt   DateTime?
+
+  @@index([type, valueHash, deactivatedAt])
+  @@index([accountBanId, deactivatedAt])
+}
+
+model EnforcementEvent {
+  id                  String              @id @default(cuid())
+  accountBanId        String?
+  accountBan          AccountBan?         @relation(fields: [accountBanId], references: [id], onDelete: SetNull)
+  subjectHash         String?
+  decision            EnforcementDecision
+  observedDecision    EnforcementDecision
+  reasonCode          String
+  matchedIndicatorIds String[]
+  metadata            Json?
+  createdAt           DateTime            @default(now())
+
+  @@index([accountBanId, createdAt])
+  @@index([decision, createdAt])
+  @@index([createdAt])
 }
 
 model CreatorProfile {
@@ -86,18 +195,18 @@ model CreatorProfile {
   createdAt           DateTime @default(now())
   updatedAt           DateTime @updatedAt
 
-  igConnections            CreatorIgConnection[]
-  fbConnections            CreatorFbConnection[]
-  ytConnections            CreatorYtConnection[]
-  ttConnections            CreatorTikTokConnection[]
-  applications             CampaignApplication[]
-  payouts                  Payout[]
-  balanceAdjustments       CreatorBalanceAdjustment[]
-  campaignBonuses          CreatorCampaignBonus[]
-  operationalProfile       ClipperOperationalProfile?
-  approvedCandidateRecords ClipperCandidate[]         @relation("ApprovedCandidateProfile")
-  productionAssignments    ProductionAssignment[]
-  payoutRunItems           PayoutRunItem[]
+  igConnections             CreatorIgConnection[]
+  fbConnections             CreatorFbConnection[]
+  ytConnections             CreatorYtConnection[]
+  ttConnections             CreatorTikTokConnection[]
+  applications              CampaignApplication[]
+  payouts                   Payout[]
+  balanceAdjustments        CreatorBalanceAdjustment[]
+  campaignBonuses           CreatorCampaignBonus[]
+  operationalProfile        ClipperOperationalProfile?
+  approvedCandidateRecords  ClipperCandidate[]         @relation("ApprovedCandidateProfile")
+  productionAssignments     ProductionAssignment[]
+  payoutRunItems            PayoutRunItem[]
   connectionHealthIncidents ConnectionHealthIncident[]
 
   @@index([primaryGeo])
@@ -593,8 +702,8 @@ model Campaign {
 
   // Instant claim
   maxSlots         Int?
-  claimedSlots     Int     @default(0)
-  requiresApproval Boolean @default(false)
+  claimedSlots     Int      @default(0)
+  requiresApproval Boolean  @default(false)
   bioKeywords      String[] @default([])
 
   // Brief fields
@@ -841,23 +950,23 @@ model CampaignSubmission {
   productionAssignmentId String?               @unique
   productionAssignment   ProductionAssignment? @relation(fields: [productionAssignmentId], references: [id])
 
-  postUrl            String
-  normalizedPlatform String?
-  platformVideoId    String?
-  videoUrl           String?
-  screenshotUrl      String?
-  thumbnailUrl       String?
-  mediaType          String?
-  claimedViews       Int              @default(0)
-  brandMessage       String?          @db.Text
-  viewCount          Int?
-  likeCount          Int?
-  commentCount       Int?
-  shareCount         Int?
-  baselineViews      Int?
-  eligibleViews      Int?
-  status             SubmissionStatus @default(PENDING)
-  bioCheckStatus        BioCheckStatus @default(NOT_REQUIRED)
+  postUrl               String
+  normalizedPlatform    String?
+  platformVideoId       String?
+  videoUrl              String?
+  screenshotUrl         String?
+  thumbnailUrl          String?
+  mediaType             String?
+  claimedViews          Int              @default(0)
+  brandMessage          String?          @db.Text
+  viewCount             Int?
+  likeCount             Int?
+  commentCount          Int?
+  shareCount            Int?
+  baselineViews         Int?
+  eligibleViews         Int?
+  status                SubmissionStatus @default(PENDING)
+  bioCheckStatus        BioCheckStatus   @default(NOT_REQUIRED)
   bioCheckFailureReason String?
   bioCheckedAt          DateTime?
 
@@ -1393,23 +1502,23 @@ model Notification {
 }
 
 model ConnectionHealthIncident {
-  id                String                           @id @default(cuid())
-  creatorProfileId  String
-  creatorProfile    CreatorProfile                   @relation(fields: [creatorProfileId], references: [id], onDelete: Cascade)
-  connectionType    ConnectionType
-  connectionId      String
-  connectionLabel   String
-  issueType         ConnectionHealthIssueType
-  providerCode      String?
-  providerSubcode   String?
-  providerType      String?
-  providerMessage   String?                          @db.Text
-  activeKey         String?                          @unique
-  openedAt          DateTime                         @default(now())
-  lastDetectedAt    DateTime                         @default(now())
-  resolvedAt        DateTime?
-  resolutionReason  ConnectionHealthResolutionReason?
-  dismissals        ConnectionHealthDismissal[]
+  id               String                            @id @default(cuid())
+  creatorProfileId String
+  creatorProfile   CreatorProfile                    @relation(fields: [creatorProfileId], references: [id], onDelete: Cascade)
+  connectionType   ConnectionType
+  connectionId     String
+  connectionLabel  String
+  issueType        ConnectionHealthIssueType
+  providerCode     String?
+  providerSubcode  String?
+  providerType     String?
+  providerMessage  String?                           @db.Text
+  activeKey        String?                           @unique
+  openedAt         DateTime                          @default(now())
+  lastDetectedAt   DateTime                          @default(now())
+  resolvedAt       DateTime?
+  resolutionReason ConnectionHealthResolutionReason?
+  dismissals       ConnectionHealthDismissal[]
 
   @@index([creatorProfileId, resolvedAt])
   @@index([connectionType, connectionId])

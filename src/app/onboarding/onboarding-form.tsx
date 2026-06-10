@@ -7,6 +7,7 @@ import { useTranslations } from "next-intl";
 import posthog from "posthog-js";
 import { StepIndicator } from "@/components/onboarding/step-indicator";
 import type { FirstClipStep } from "@/lib/first-clip-onboarding";
+import { TurnstileChallenge } from "@/components/auth/turnstile-challenge";
 
 const NICHES = ["Memes", "Sport", "Gaming", "Lifestyle", "Finance", "Tech", "Other"] as const;
 
@@ -55,6 +56,7 @@ export function OnboardingForm() {
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [challengeSiteKey, setChallengeSiteKey] = useState<string | null>(null);
   const [completionNextHref, setCompletionNextHref] = useState("/api/auth/discord?return_to=%2Fcreator%2Fcampaigns%3FfirstClip%3D1");
   const [completionNextStep, setCompletionNextStep] = useState<FirstClipStep>("discord");
 
@@ -73,7 +75,7 @@ export function OnboardingForm() {
     return true;
   }
 
-  async function handleSubmit() {
+  async function handleSubmit(turnstileToken?: string) {
     setLoading(true);
     setError(null);
     try {
@@ -97,12 +99,19 @@ export function OnboardingForm() {
           niches,
           attributionSource: attribution || undefined,
           experienceLevel: form.experienceLevel || undefined,
+          turnstileToken,
         }),
       });
-      const data = await res.json();
-      if (!res.ok) {
-        throw new Error(data.error ?? t("submitFailed"));
+      const data = await res.json().catch(() => null);
+      if (res.status === 428 && data?.challengeRequired && data?.siteKey) {
+        setChallengeSiteKey(data.siteKey);
+        return;
       }
+      if (!res.ok) {
+        setChallengeSiteKey(null);
+        throw new Error(data?.error ?? t("submitFailed"));
+      }
+      setChallengeSiteKey(null);
       if (typeof data.firstClipNextHref === "string") {
         setCompletionNextHref(data.firstClipNextHref);
       }
@@ -128,7 +137,7 @@ export function OnboardingForm() {
 
   function handleNext() {
     if (step === FORM_STEPS) {
-      handleSubmit();
+      void handleSubmit();
     } else {
       setStep(step + 1);
     }
@@ -320,6 +329,16 @@ export function OnboardingForm() {
         <p className="text-sm px-3 py-2 rounded-lg mt-4" style={{ color: "var(--error)", background: "var(--error-bg)" }}>
           {error}
         </p>
+      )}
+
+      {challengeSiteKey && step < TOTAL_STEPS && (
+        <div className="mt-4">
+          <TurnstileChallenge
+            siteKey={challengeSiteKey}
+            onToken={(token) => void handleSubmit(token)}
+            onError={() => setError(t("submitFailed"))}
+          />
+        </div>
       )}
 
       {/* Navigation — hidden on the completion step (it has its own CTAs) */}
