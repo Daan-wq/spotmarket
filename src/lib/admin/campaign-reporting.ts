@@ -278,6 +278,7 @@ export interface CampaignReportLiveData {
   };
   audience: {
     sampleCount: number;
+    platformsLabel: string;
     ageBuckets: Record<string, number>;
     genderSplit: Record<string, number>;
     topCountries: Array<{ code: string; share: number }>;
@@ -314,7 +315,7 @@ export function buildCampaignReportLiveData(input: CampaignReportBuildInput): Ca
   const topContent = buildTopContent(submissions);
   const creators = buildCreatorLeaderboard(submissions);
   const quality = buildQualitySummary(submissions);
-  const audience = buildAudienceSummary(input.audienceSnapshots, input.campaign);
+  const audience = buildAudienceSummary(input.audienceSnapshots, input.campaign, input.submissions);
   const periodStartForPacing = input.periodStart ?? input.campaign.startsAt ?? firstSubmissionDate(submissions);
   const pacingStatus = buildPacingStatus({
     goalCompletion: goalViews && goalViews > 0 ? approvedViews / goalViews : null,
@@ -536,13 +537,14 @@ export async function getCampaignReportLiveData({
 
   if (!campaign) return null;
 
-  const profileIds = Array.from(new Set(
+  const instagramConnectionIds = Array.from(new Set(
     campaign.campaignSubmissions
-      .map((submission) => submission.creator.creatorProfile?.id)
+      .filter((submission) => submission.status === "APPROVED" && submission.sourceConnectionType === "IG")
+      .map((submission) => submission.sourceConnectionId)
       .filter((id): id is string => Boolean(id)),
   ));
 
-  const audienceSnapshots = profileIds.length > 0 ? await loadAudienceSnapshots(profileIds) : [];
+  const audienceSnapshots = await loadInstagramAudienceSnapshots(instagramConnectionIds);
   const earnedByInvitedCreator = new Map<string, number>();
   for (const submission of campaign.campaignSubmissions) {
     if (submission.status !== "APPROVED") continue;
@@ -865,31 +867,30 @@ function buildQualitySummary(submissions: CampaignReportSubmissionInput[]) {
   };
 }
 
-function buildAudienceSummary(snapshots: CampaignReportAudienceSnapshotInput[], campaign: CampaignReportCampaignInput) {
-  const latest = latestAudienceSnapshots(snapshots);
-  const ageBuckets: Record<string, number> = {};
-  const genderSplit: Record<string, number> = {};
-  const countryTotals: Record<string, number> = {};
-
-  for (const snapshot of latest) {
-    for (const [bucket, value] of Object.entries(snapshot.ageBuckets ?? {})) {
-      ageBuckets[bucket] = (ageBuckets[bucket] ?? 0) + (Number(value) || 0);
-    }
-    for (const [bucket, value] of Object.entries(snapshot.genderSplit ?? {})) {
-      genderSplit[bucket] = (genderSplit[bucket] ?? 0) + (Number(value) || 0);
-    }
-    for (const country of snapshot.topCountries ?? []) {
-      countryTotals[country.code] = (countryTotals[country.code] ?? 0) + (Number(country.share) || 0);
-    }
-  }
+function buildAudienceSummary(
+  snapshots: CampaignReportAudienceSnapshotInput[],
+  campaign: CampaignReportCampaignInput,
+  submissions: CampaignReportSubmissionInput[],
+) {
+  const usedInstagramConnectionIds = new Set(
+    submissions
+      .filter((submission) => submission.status === "APPROVED" && submission.sourceConnectionType === "IG")
+      .map((submission) => submission.sourceConnectionId)
+      .filter((id): id is string => Boolean(id)),
+  );
+  const latest = latestInstagramAudienceSnapshots(snapshots, usedInstagramConnectionIds);
+  const ageBuckets = averageAudienceRecord(latest, (snapshot) => snapshot.ageBuckets);
+  const genderSplit = averageAudienceRecord(latest, (snapshot) => snapshot.genderSplit);
+  const countryTotals = averageAudienceCountries(latest);
 
   return {
     sampleCount: latest.length,
+    platformsLabel: latest.length > 0 ? "Instagram" : "",
     ageBuckets,
     genderSplit,
     topCountries: Object.entries(countryTotals)
       .sort((a, b) => b[1] - a[1])
-      .slice(0, 8)
+      .slice(0, 5)
       .map(([code, share]) => ({ code, share })),
     fitStatus: audienceFitStatus({
       sampleCount: latest.length,
@@ -1034,11 +1035,13 @@ function audienceFitStatus({
   const scores: number[] = [];
   if (campaign.targetCountry && campaign.targetCountryPercent != null) {
     const targetShare = topCountries[campaign.targetCountry.toUpperCase()] ?? topCountries[campaign.targetCountry] ?? 0;
-    scores.push(targetShare / Math.max(1, campaign.targetCountryPercent));
+    const targetCountryShare = audienceShareFraction(campaign.targetCountryPercent);
+    if (targetCountryShare > 0) scores.push(targetShare / targetCountryShare);
   }
   if (campaign.targetMalePercent != null) {
     const maleShare = genderSplit.male ?? genderSplit.MALE ?? 0;
-    scores.push(1 - Math.abs(maleShare - campaign.targetMalePercent) / 100);
+    const targetMaleShare = audienceShareFraction(campaign.targetMalePercent);
+    scores.push(1 - Math.abs(maleShare - targetMaleShare));
   }
   if (scores.length === 0) return "Onvoldoende data";
   const average = scores.reduce((sum, score) => sum + score, 0) / scores.length;
@@ -1047,42 +1050,77 @@ function audienceFitStatus({
   return "Verbetering nodig";
 }
 
-function latestAudienceSnapshots(snapshots: CampaignReportAudienceSnapshotInput[]) {
-  const sorted = [...snapshots].sort((a, b) => toDate(b.capturedAt).getTime() - toDate(a.capturedAt).getTime());
-  const seen = new Set<string>();
-  const latest: CampaignReportAudienceSnapshotInput[] = [];
-  for (const snapshot of sorted) {
-    const key = `${snapshot.connectionType}:${snapshot.connectionId}:${snapshot.kind ?? "FOLLOWER"}`;
-    if (seen.has(key)) continue;
-    seen.add(key);
-    latest.push(snapshot);
+function latestInstagramAudienceSnapshots(
+  snapshots: CampaignReportAudienceSnapshotInput[],
+  usedConnectionIds: Set<string>,
+) {
+  const grouped = new Map<string, CampaignReportAudienceSnapshotInput[]>();
+  for (const snapshot of snapshots) {
+    if (snapshot.connectionType !== "IG" || !usedConnectionIds.has(snapshot.connectionId)) continue;
+    const rows = grouped.get(snapshot.connectionId) ?? [];
+    rows.push(snapshot);
+    grouped.set(snapshot.connectionId, rows);
   }
-  return latest;
+
+  return Array.from(grouped.values()).flatMap((rows) => {
+    const sorted = [...rows].sort((a, b) => toDate(b.capturedAt).getTime() - toDate(a.capturedAt).getTime());
+    const follower = sorted.find((snapshot) => (snapshot.kind ?? "FOLLOWER") === "FOLLOWER");
+    return follower ? [follower] : sorted.slice(0, 1);
+  });
 }
 
-async function loadAudienceSnapshots(profileIds: string[]): Promise<CampaignReportAudienceSnapshotInput[]> {
-  const [ig, tt, yt, fb] = await Promise.all([
-    prisma.creatorIgConnection.findMany({ where: { creatorProfileId: { in: profileIds }, isVerified: true }, select: { id: true } }),
-    prisma.creatorTikTokConnection.findMany({ where: { creatorProfileId: { in: profileIds }, isVerified: true }, select: { id: true } }),
-    prisma.creatorYtConnection.findMany({ where: { creatorProfileId: { in: profileIds }, isVerified: true }, select: { id: true } }),
-    prisma.creatorFbConnection.findMany({ where: { creatorProfileId: { in: profileIds }, isVerified: true }, select: { id: true } }),
-  ]);
+function averageAudienceRecord(
+  snapshots: CampaignReportAudienceSnapshotInput[],
+  select: (snapshot: CampaignReportAudienceSnapshotInput) => Record<string, number> | null | undefined,
+) {
+  const available = snapshots
+    .map(select)
+    .filter((row): row is Record<string, number> => Boolean(row && Object.keys(row).length > 0));
+  if (available.length === 0) return {};
 
-  const filters = [
-    { connectionType: "IG", ids: ig.map((row) => row.id) },
-    { connectionType: "TT", ids: tt.map((row) => row.id) },
-    { connectionType: "YT", ids: yt.map((row) => row.id) },
-    { connectionType: "FB", ids: fb.map((row) => row.id) },
-  ].filter((filter) => filter.ids.length > 0);
+  const totals: Record<string, number> = {};
+  for (const row of available) {
+    for (const [key, value] of Object.entries(row)) {
+      totals[key] = (totals[key] ?? 0) + audienceShareFraction(value);
+    }
+  }
+  return Object.fromEntries(
+    Object.entries(totals).map(([key, total]) => [key, roundAudienceShare(total / available.length)]),
+  );
+}
 
-  if (filters.length === 0) return [];
+function averageAudienceCountries(snapshots: CampaignReportAudienceSnapshotInput[]) {
+  const available = snapshots.filter((snapshot) => (snapshot.topCountries?.length ?? 0) > 0);
+  if (available.length === 0) return {};
 
+  const totals: Record<string, number> = {};
+  for (const snapshot of available) {
+    for (const country of snapshot.topCountries ?? []) {
+      const code = country.code.trim().toUpperCase();
+      if (!code) continue;
+      totals[code] = (totals[code] ?? 0) + audienceShareFraction(country.share);
+    }
+  }
+  return Object.fromEntries(
+    Object.entries(totals).map(([code, total]) => [code, roundAudienceShare(total / available.length)]),
+  );
+}
+
+function audienceShareFraction(value: number) {
+  const numeric = Math.max(0, Number(value) || 0);
+  return numeric > 1 ? numeric / 100 : numeric;
+}
+
+function roundAudienceShare(value: number) {
+  return Number(value.toFixed(8));
+}
+
+async function loadInstagramAudienceSnapshots(connectionIds: string[]): Promise<CampaignReportAudienceSnapshotInput[]> {
+  if (connectionIds.length === 0) return [];
   const rows = await prisma.audienceSnapshot.findMany({
     where: {
-      OR: filters.map((filter) => ({
-        connectionType: filter.connectionType as "IG" | "TT" | "YT" | "FB",
-        connectionId: { in: filter.ids },
-      })),
+      connectionType: "IG",
+      connectionId: { in: connectionIds },
     },
     orderBy: { capturedAt: "desc" },
     take: 500,

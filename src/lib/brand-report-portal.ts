@@ -191,6 +191,7 @@ export function sanitizeBrandCampaignDashboardData(
     })),
     audience: {
       sampleCount: data.audience.sampleCount,
+      platformsLabel: data.audience.platformsLabel,
       ageBuckets: data.audience.ageBuckets,
       genderSplit: data.audience.genderSplit,
       topCountries: data.audience.topCountries,
@@ -283,6 +284,7 @@ export function sanitizeBrandReportLiveData(data: CampaignReportLiveData) {
     quality: brandQualityProjection(data),
     audience: {
       sampleCount: data.audience.sampleCount,
+      platformsLabel: data.audience.platformsLabel,
       ageBuckets: data.audience.ageBuckets,
       genderSplit: data.audience.genderSplit,
       topCountries: data.audience.topCountries,

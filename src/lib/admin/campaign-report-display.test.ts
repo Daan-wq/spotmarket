@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  audienceBarWidth,
   formatAudienceCountryLabel,
   formatAudienceShare,
   renderCampaignReportTemplate,
@@ -48,6 +49,12 @@ describe("campaign report display helpers", () => {
     expect(formatAudienceShare(0.8)).toBe("80,00%");
     expect(formatAudienceShare(0.02562)).toBe("2,56%");
     expect(formatAudienceShare(2.562)).toBe("2,56%");
+  });
+
+  it("uses the displayed audience percentage as the bar width", () => {
+    expect(audienceBarWidth(0.9448)).toBe(94.48);
+    expect(audienceBarWidth(0.0481)).toBe(4.81);
+    expect(audienceBarWidth(94.48)).toBe(94.48);
   });
 
   it("uses Dutch brand-safe quality status labels", () => {
