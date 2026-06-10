@@ -3,27 +3,36 @@
 import Link from "next/link";
 import { Clapperboard, FileText, LayoutDashboard } from "lucide-react";
 import { usePathname } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import { Logo } from "@/components/shared/logo";
+import { buildBrandPortalHref } from "@/lib/brand-report-portal";
 
 interface BrandSidebarProps {
   email: string;
   brandNames: string[];
   isAdminPreview: boolean;
+  defaultCampaignId: string | null;
 }
 
-export function BrandSidebar({ email, brandNames, isAdminPreview }: BrandSidebarProps) {
+export function BrandSidebar({ email, brandNames, isAdminPreview, defaultCampaignId }: BrandSidebarProps) {
   const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const campaignId = searchParams.get("campaignId") ?? defaultCampaignId;
   const primaryBrand = isAdminPreview ? "Admin preview" : brandNames[0] ?? "Brand";
   const navigation = [
     { href: "/brand", label: "Dashboard", icon: LayoutDashboard, active: pathname === "/brand" },
     { href: "/brand/content", label: "Content", icon: Clapperboard, active: pathname.startsWith("/brand/content") },
-    { href: "/brand/reports", label: "Rapporten", icon: FileText, active: pathname.startsWith("/brand/reports") },
+    { href: "/brand/reports", label: "Rapportages", icon: FileText, active: pathname.startsWith("/brand/reports") },
   ];
 
   return (
     <aside className="fixed left-8 top-0 hidden h-screen w-56 flex-col py-10 lg:flex">
       <div className="mb-8">
-        <Link href="/brand" aria-label="ClipProfit Brands" className="block">
+        <Link
+          href={campaignId ? buildBrandPortalHref("/brand", campaignId) : "/brand"}
+          aria-label="ClipProfit Brands"
+          className="block"
+        >
           <Logo variant="light" size="fill" />
         </Link>
         <p className="mt-1 text-xs text-neutral-500">Brands</p>
@@ -35,7 +44,7 @@ export function BrandSidebar({ email, brandNames, isAdminPreview }: BrandSidebar
           return (
             <Link
               key={item.href}
-              href={item.href}
+              href={campaignId ? buildBrandPortalHref(item.href, campaignId) : item.href}
               className={`flex h-11 items-center gap-3 rounded-xl px-4 text-sm font-medium transition ${
                 item.active
                   ? "bg-neutral-200 text-neutral-950"

@@ -3,12 +3,6 @@ import { ExternalLink, Play } from "lucide-react";
 import { formatDate, formatNumber } from "@/lib/admin/agency-format";
 import type { BrandContentSort } from "@/lib/brand-content";
 
-interface CampaignOption {
-  id: string;
-  name: string;
-  status: "active" | "completed";
-}
-
 interface ContentItem {
   id: string;
   platform: string;
@@ -21,7 +15,6 @@ interface ContentItem {
 }
 
 interface BrandContentGridProps {
-  campaigns: CampaignOption[];
   selectedCampaignId: string;
   items: ContentItem[];
   total: number;
@@ -32,7 +25,6 @@ interface BrandContentGridProps {
 }
 
 export function BrandContentGrid({
-  campaigns,
   selectedCampaignId,
   items,
   total,
@@ -51,16 +43,8 @@ export function BrandContentGrid({
         </p>
       </header>
 
-      <form action="/brand/content" method="get" className="grid gap-3 rounded-2xl border border-neutral-200 bg-neutral-50 p-4 md:grid-cols-[1.4fr_1fr_1fr_auto] md:items-end">
-        <FilterField label="Campagne">
-          <select name="campaignId" defaultValue={selectedCampaignId} className={selectClassName}>
-            {campaigns.map((campaign) => (
-              <option key={campaign.id} value={campaign.id}>
-                {campaign.name} · {campaign.status === "active" ? "Actief" : "Afgerond"}
-              </option>
-            ))}
-          </select>
-        </FilterField>
+      <form action="/brand/content" method="get" className="grid gap-3 rounded-2xl border border-neutral-200 bg-neutral-50 p-4 md:grid-cols-[1fr_1fr_auto] md:items-end">
+        <input type="hidden" name="campaignId" value={selectedCampaignId} />
         <FilterField label="Platform">
           <select name="platform" defaultValue={platform} className={selectClassName}>
             <option value="all">Alle platforms</option>

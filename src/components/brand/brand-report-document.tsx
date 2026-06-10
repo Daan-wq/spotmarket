@@ -1,6 +1,5 @@
-import Link from "next/link";
 import type { ReactNode } from "react";
-import { ArrowLeft, BarChart3, ExternalLink, FileText, ShieldCheck, Sparkles, Target, Users, Wallet } from "lucide-react";
+import { BarChart3, ExternalLink, FileText, ShieldCheck, Sparkles, Target, Users, Wallet } from "lucide-react";
 import { formatCurrency, formatNumber } from "@/lib/admin/agency-format";
 import { normalizeTextList, type CampaignReportEditorial } from "@/lib/admin/campaign-report-shared";
 import {
@@ -10,7 +9,6 @@ import {
   reportQualityStatusLabel,
 } from "@/lib/admin/campaign-report-display";
 import type { BrandReportLiveData } from "@/lib/brand-report-portal";
-import { BrandReportActions } from "./brand-report-actions";
 
 interface BrandReportDocumentProps {
   report: {
@@ -42,18 +40,9 @@ export function BrandReportDocument({ report, data, editorial }: BrandReportDocu
     : data.performance.paidEligibleViews;
 
   return (
-    <div className="space-y-5">
-      <div className="report-studio-chrome flex flex-wrap items-center justify-between gap-3">
-        <Link href="/brand" className="inline-flex items-center gap-2 text-sm font-semibold text-neutral-500 hover:text-neutral-950">
-          <ArrowLeft className="h-4 w-4" />
-          Terug naar rapporten
-        </Link>
-        <BrandReportActions />
-      </div>
-
-      <article className="report-print-root rounded-xl bg-[#efede8] px-3 py-5 sm:px-6" style={{ fontFamily: "var(--font-report), var(--font-sans)" }}>
-        <div className="mx-auto w-full max-w-[1480px] space-y-5">
-          {sections.cover ? <ReportSection className="flex min-h-[500px] items-center bg-white p-8 text-neutral-950 sm:p-12 lg:p-16">
+      <article className="report-print-root bg-[#efede8] px-0 py-5 sm:px-6" style={{ fontFamily: "var(--font-report), var(--font-sans)" }}>
+        <div className="mx-auto w-full max-w-[210mm] space-y-5">
+          {sections.cover ? <ReportSection className="flex items-center bg-white text-neutral-950">
             <div className="w-full">
               <p className="text-xs font-semibold uppercase tracking-[0.22em] text-neutral-400">
                 {copy("cover.kicker", "Campagne prestatierapport")}
@@ -264,12 +253,15 @@ export function BrandReportDocument({ report, data, editorial }: BrandReportDocu
           </ReportSection> : null}
         </div>
       </article>
-    </div>
   );
 }
 
 function ReportSection({ children, className = "" }: { children: ReactNode; className?: string }) {
-  return <section className={`rounded-lg bg-[#fbfcfc] p-6 text-neutral-950 shadow-sm sm:p-8 ${className}`}>{children}</section>;
+  return (
+    <section className={`report-print-page mx-auto min-h-[297mm] w-full max-w-[210mm] bg-white p-6 text-neutral-950 shadow-[0_12px_35px_rgba(0,0,0,0.08)] sm:p-[18mm] ${className}`}>
+      {children}
+    </section>
+  );
 }
 
 function SectionHeader({ kicker, title, icon }: { kicker: string; title: string; icon: ReactNode }) {

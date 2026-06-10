@@ -2,7 +2,6 @@ import type { Prisma } from "@prisma/client";
 import { LayoutDashboard } from "lucide-react";
 import {
   BrandCampaignDashboard,
-  type BrandPortalCampaignOption,
 } from "@/components/brand/brand-campaign-dashboard";
 import { EmptyState } from "@/components/ui/empty-state";
 import { getCampaignReportLiveData } from "@/lib/admin/campaign-reporting";
@@ -77,17 +76,10 @@ export default async function BrandPortalPage({ searchParams }: PageProps) {
     );
   }
 
-  const campaignOptions: BrandPortalCampaignOption[] = campaigns.map((campaign) => ({
-    id: campaign.id,
-    name: campaign.name,
-    status: campaign.status as BrandPortalCampaignOption["status"],
-    brandName: campaign.brand?.name ?? "Brand",
-  }));
-
   return (
     <BrandCampaignDashboard
-      campaigns={campaignOptions}
       selectedCampaignId={selectedCampaign.id}
+      selectedCampaignStatus={selectedCampaign.status as "active" | "completed"}
       data={sanitizeBrandCampaignDashboardData(liveData, selectedCampaign.events)}
     />
   );

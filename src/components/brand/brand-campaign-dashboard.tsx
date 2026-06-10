@@ -2,50 +2,52 @@ import Link from "next/link";
 import {
   ArrowRight,
   CalendarDays,
-  ChevronDown,
+  CircleOff,
   ExternalLink,
   Info,
   Play,
+  ShieldCheck,
   Target,
+  Users,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { formatCurrency, formatDate, formatNumber } from "@/lib/admin/agency-format";
+import {
+  formatAudienceCountryLabel,
+  formatAudienceShare,
+  reportQualityStatusLabel,
+} from "@/lib/admin/campaign-report-display";
 import type { BrandCampaignDashboardData } from "@/lib/brand-report-portal";
 import { BrandViewsChart } from "./brand-views-chart";
 
-export interface BrandPortalCampaignOption {
-  id: string;
-  name: string;
-  status: "active" | "completed";
-  brandName: string;
-}
-
 interface BrandCampaignDashboardProps {
-  campaigns: BrandPortalCampaignOption[];
   selectedCampaignId: string;
+  selectedCampaignStatus: "active" | "completed";
   data: BrandCampaignDashboardData;
 }
 
 export function BrandCampaignDashboard({
-  campaigns,
   selectedCampaignId,
+  selectedCampaignStatus,
   data,
 }: BrandCampaignDashboardProps) {
-  const selectedCampaign = campaigns.find((campaign) => campaign.id === selectedCampaignId) ?? campaigns[0];
   const targetViews = data.performance.targetViews;
   const progress = data.performance.deliveryProgress
     ?? (targetViews && targetViews > 0 ? data.performance.currentViews / targetViews : null);
   const goalMeter = buildGoalMeterState(progress, targetViews);
+  const paidViews = targetViews
+    ? Math.min(data.performance.currentViews, targetViews)
+    : data.performance.currentViews;
 
   return (
     <div>
-      <header className="flex flex-col gap-6 border-b border-neutral-200 pb-8 lg:flex-row lg:items-end lg:justify-between">
+      <header className="border-b border-neutral-200 pb-8 pt-10">
         <div className="max-w-3xl">
           <div className="flex flex-wrap items-center gap-2">
             <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-neutral-400">
               {data.campaign.brandName}
             </p>
-            <StatusBadge status={selectedCampaign.status} />
+            <StatusBadge status={selectedCampaignStatus} />
           </div>
           <h1 className="mt-3 text-[clamp(2.25rem,6vw,4.75rem)] font-semibold leading-[0.98] tracking-[-0.045em] text-neutral-950">
             {data.campaign.name}
@@ -58,8 +60,6 @@ export function BrandCampaignDashboard({
             <span>Bijgewerkt {formatDate(data.generatedAt, "nl")}</span>
           </div>
         </div>
-
-        <CampaignPicker campaigns={campaigns} selectedCampaignId={selectedCampaignId} />
       </header>
 
       <section className="grid gap-10 border-b border-neutral-200 py-10 lg:grid-cols-[minmax(0,1.45fr)_minmax(300px,0.55fr)] lg:gap-14 lg:py-14">
@@ -226,6 +226,7 @@ export function BrandCampaignDashboard({
                   </div>
                   <div className="min-w-0">
                     <p className="truncate text-sm font-semibold text-neutral-950">{video.platform}</p>
+                    <p className="mt-1 truncate text-xs font-medium text-neutral-700">{video.creator}</p>
                     <p className="mt-1 text-xs text-neutral-500">
                       {formatNumber(video.engagement, "nl")} engagement
                     </p>
@@ -257,6 +258,101 @@ export function BrandCampaignDashboard({
               </p>
             </div>
           )}
+        </div>
+      </section>
+
+      {data.creators.length > 0 ? (
+        <section className="border-t border-neutral-200 py-10 lg:py-12">
+          <SectionHeading
+            eyebrow="Creators"
+            title="Creatorbijdrage"
+            detail={`${formatNumber(data.creators.length, "nl")} actieve bijdragers`}
+          />
+          <div className="mt-7 border-t-2 border-neutral-950">
+            {data.creators.map((creator, index) => (
+              <CreatorContributionRow
+                key={`${creator.creator}-${index}`}
+                creator={creator}
+                maxViews={Math.max(1, ...data.creators.map((row) => row.views))}
+              />
+            ))}
+          </div>
+        </section>
+      ) : null}
+
+      {data.audience.sampleCount > 0 ? (
+        <section className="border-t border-neutral-200 py-10 lg:py-12">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+            <SectionHeading eyebrow="Doelgroep" title="Publiek en bereik" />
+            <div className="flex items-center gap-3 text-sm">
+              <span className="text-neutral-500">{formatNumber(data.audience.sampleCount, "nl")} accounts</span>
+              <Badge variant="neutral">{data.audience.fitStatus}</Badge>
+            </div>
+          </div>
+          <div className="mt-7 grid gap-8 lg:grid-cols-3">
+            <DashboardDistribution
+              title="Toplanden"
+              rows={data.audience.topCountries.map((row) => ({
+                label: formatAudienceCountryLabel(row.code),
+                value: row.share,
+              }))}
+            />
+            <DashboardDistribution
+              title="Leeftijd"
+              rows={Object.entries(data.audience.ageBuckets).map(([label, value]) => ({ label, value }))}
+            />
+            <DashboardDistribution
+              title="Gender"
+              rows={Object.entries(data.audience.genderSplit).map(([label, value]) => ({ label, value }))}
+            />
+          </div>
+        </section>
+      ) : null}
+
+      <section className="grid border-t border-neutral-200 lg:grid-cols-2">
+        <div className="py-10 lg:pr-12 lg:py-12">
+          <SectionHeading eyebrow="Financieel" title="Budget en waarde" />
+          <div className="mt-7 border-t-2 border-neutral-950">
+            <LedgerRow
+              label="Betaalde views"
+              value={formatNumber(paidViews, "nl")}
+              detail="Binnen de afgesproken doelbasis"
+            />
+            <LedgerRow
+              label="Totaal bereik"
+              value={formatNumber(data.performance.currentViews, "nl")}
+              detail="Alle goedgekeurde live views"
+            />
+            <LedgerRow
+              label="Extra bereik"
+              value={formatNumber(data.performance.overdeliveryViews, "nl")}
+              detail="Zonder extra mediabudget"
+              accent={data.performance.overdeliveryViews > 0}
+            />
+            <LedgerRow
+              label="Effectieve CPM"
+              value={formatNullableCurrency(data.performance.effectiveCpm)}
+              detail={`Afgesproken CPM ${formatCurrency(data.performance.businessCpm, "EUR", "nl")}`}
+            />
+          </div>
+        </div>
+
+        <div className="border-t border-neutral-200 py-10 lg:border-l lg:border-t-0 lg:py-12 lg:pl-12">
+          <SectionHeading eyebrow="Validatie" title="Kwaliteitscontrole" />
+          <div className="mt-7 flex items-start justify-between gap-5 border-t-2 border-neutral-950 py-5">
+            <div>
+              <p className="text-sm text-neutral-500">Kwaliteitsstatus</p>
+              <p className="mt-2 text-2xl font-semibold tracking-[-0.03em] text-neutral-950">
+                {reportQualityStatusLabel(data.quality.status)}
+              </p>
+            </div>
+            <ShieldCheck className="h-8 w-8 text-neutral-950" />
+          </div>
+          <div className="grid grid-cols-3 border-t border-neutral-200">
+            <QualityMetric label="Gecontroleerde clips" value={data.quality.reviewedClips} icon={<Users className="h-4 w-4" />} />
+            <QualityMetric label="Uitgesloten clips" value={data.quality.excludedClips} icon={<CircleOff className="h-4 w-4" />} />
+            <QualityMetric label="Uitgesloten views" value={data.quality.excludedViews} icon={<ShieldCheck className="h-4 w-4" />} />
+          </div>
         </div>
       </section>
     </div>
@@ -377,50 +473,88 @@ function PlatformValue({ label, value }: { label: string; value: string }) {
   );
 }
 
-function CampaignPicker({
-  campaigns,
-  selectedCampaignId,
-}: {
-  campaigns: BrandPortalCampaignOption[];
-  selectedCampaignId: string;
-}) {
-  const selected = campaigns.find((campaign) => campaign.id === selectedCampaignId) ?? campaigns[0];
-
-  return (
-    <details className="group relative w-full lg:w-80">
-      <summary className="flex h-14 cursor-pointer list-none items-center justify-between rounded-2xl border border-neutral-200 bg-white px-4 transition hover:border-neutral-400 [&::-webkit-details-marker]:hidden">
-        <div className="min-w-0">
-          <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-neutral-400">Campagne</p>
-          <p className="truncate text-sm font-semibold text-neutral-950">{selected.name}</p>
-        </div>
-        <ChevronDown className="h-4 w-4 shrink-0 text-neutral-500 transition group-open:rotate-180" />
-      </summary>
-      <div className="absolute right-0 z-30 mt-2 w-full overflow-hidden rounded-2xl border border-neutral-200 bg-white p-2 shadow-[0_20px_50px_rgba(0,0,0,0.12)]">
-        {campaigns.map((campaign) => (
-          <Link
-            key={campaign.id}
-            href={`/brand?campaignId=${encodeURIComponent(campaign.id)}`}
-            className={`flex items-center justify-between gap-3 rounded-xl px-3 py-3 transition hover:bg-neutral-100 ${
-              campaign.id === selectedCampaignId ? "bg-neutral-100" : ""
-            }`}
-          >
-            <span className="min-w-0">
-              <span className="block truncate text-sm font-semibold text-neutral-950">{campaign.name}</span>
-              <span className="mt-0.5 block truncate text-xs text-neutral-500">{campaign.brandName}</span>
-            </span>
-            <StatusBadge status={campaign.status} />
-          </Link>
-        ))}
-      </div>
-    </details>
-  );
-}
-
-function StatusBadge({ status }: { status: BrandPortalCampaignOption["status"] }) {
+function StatusBadge({ status }: { status: "active" | "completed" }) {
   return (
     <Badge variant={status === "active" ? "verified" : "neutral"}>
       {status === "active" ? "Actief" : "Afgerond"}
     </Badge>
+  );
+}
+
+function CreatorContributionRow({
+  creator,
+  maxViews,
+}: {
+  creator: BrandCampaignDashboardData["creators"][number];
+  maxViews: number;
+}) {
+  const width = Math.max(3, (creator.views / maxViews) * 100);
+  return (
+    <div className="grid gap-3 border-b border-neutral-200 py-4 sm:grid-cols-[minmax(150px,0.75fr)_minmax(180px,1.25fr)_auto] sm:items-center">
+      <div className="min-w-0">
+        <p className="truncate text-sm font-semibold text-neutral-950">{creator.creator}</p>
+        <p className="mt-1 text-xs text-neutral-500">
+          {creator.approvedSubmissions}/{creator.submissions} clips goedgekeurd
+        </p>
+      </div>
+      <div className="h-2 overflow-hidden bg-neutral-100">
+        <div className="h-full bg-neutral-950 transition-[width] duration-500" style={{ width: `${width}%` }} />
+      </div>
+      <div className="text-left sm:text-right">
+        <p className="text-sm font-semibold tabular-nums text-neutral-950">{formatNumber(creator.views, "nl")} views</p>
+        <p className="mt-1 text-xs text-neutral-500">
+          {formatPercent(creator.approvalRate)} goedgekeurd - {creator.reliabilityStatus}
+        </p>
+      </div>
+    </div>
+  );
+}
+
+function DashboardDistribution({
+  title,
+  rows,
+}: {
+  title: string;
+  rows: Array<{ label: string; value: number }>;
+}) {
+  const max = Math.max(1, ...rows.map((row) => row.value));
+  return (
+    <div>
+      <p className="border-b-2 border-neutral-950 pb-3 text-sm font-semibold text-neutral-950">{title}</p>
+      <div className="mt-4 space-y-4">
+        {rows.map((row) => (
+          <div key={row.label}>
+            <div className="mb-1.5 flex items-center justify-between gap-4 text-xs">
+              <span className="font-medium text-neutral-700">{row.label}</span>
+              <span className="tabular-nums text-neutral-500">{formatAudienceShare(row.value)}</span>
+            </div>
+            <div className="h-1.5 overflow-hidden bg-neutral-100">
+              <div className="h-full bg-neutral-950" style={{ width: `${Math.max(2, (row.value / max) * 100)}%` }} />
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function QualityMetric({
+  label,
+  value,
+  icon,
+}: {
+  label: string;
+  value: number;
+  icon: React.ReactNode;
+}) {
+  return (
+    <div className="border-r border-neutral-200 py-5 last:border-r-0">
+      <div className="flex items-center gap-2 text-neutral-500">
+        {icon}
+        <p className="text-xs">{label}</p>
+      </div>
+      <p className="mt-3 text-3xl font-semibold tabular-nums text-neutral-950">{formatNumber(value, "nl")}</p>
+    </div>
   );
 }
 
