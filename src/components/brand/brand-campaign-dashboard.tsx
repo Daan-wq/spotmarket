@@ -13,6 +13,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { formatCurrency, formatDate, formatNumber } from "@/lib/admin/agency-format";
 import {
+  audienceBarWidth,
   formatAudienceCountryLabel,
   formatAudienceShare,
   reportQualityStatusLabel,
@@ -285,14 +286,16 @@ export function BrandCampaignDashboard({
           <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
             <SectionHeading eyebrow="Doelgroep" title="Publiek en bereik" />
             <div className="flex items-center gap-3 text-sm">
-              <span className="text-neutral-500">{formatNumber(data.audience.sampleCount, "nl")} accounts</span>
+              <span className="text-neutral-500">
+                {formatNumber(data.audience.sampleCount, "nl")} {data.audience.platformsLabel || "Instagram"}-accounts
+              </span>
               <Badge variant="neutral">{data.audience.fitStatus}</Badge>
             </div>
           </div>
           <div className="mt-7 grid gap-8 lg:grid-cols-3">
             <DashboardDistribution
               title="Toplanden"
-              rows={data.audience.topCountries.map((row) => ({
+              rows={data.audience.topCountries.slice(0, 5).map((row) => ({
                 label: formatAudienceCountryLabel(row.code),
                 value: row.share,
               }))}
@@ -517,7 +520,6 @@ function DashboardDistribution({
   title: string;
   rows: Array<{ label: string; value: number }>;
 }) {
-  const max = Math.max(1, ...rows.map((row) => row.value));
   return (
     <div>
       <p className="border-b-2 border-neutral-950 pb-3 text-sm font-semibold text-neutral-950">{title}</p>
@@ -529,7 +531,7 @@ function DashboardDistribution({
               <span className="tabular-nums text-neutral-500">{formatAudienceShare(row.value)}</span>
             </div>
             <div className="h-1.5 overflow-hidden bg-neutral-100">
-              <div className="h-full bg-neutral-950" style={{ width: `${Math.max(2, (row.value / max) * 100)}%` }} />
+              <div className="h-full bg-neutral-950" style={{ width: `${audienceBarWidth(row.value)}%` }} />
             </div>
           </div>
         ))}

@@ -40,6 +40,12 @@ export function formatAudienceShare(value: number, locale = "nl-NL"): string {
   }).format(percentage)}%`;
 }
 
+export function audienceBarWidth(value: number): number {
+  const numeric = Math.max(0, Number(value) || 0);
+  const percentage = numeric > 1 ? numeric : numeric * 100;
+  return Number(Math.min(100, percentage).toFixed(2));
+}
+
 export function reportQualityStatusLabel(status: ReportQualityStatus): string {
   switch (status) {
     case "needs_attention":

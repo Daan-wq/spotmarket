@@ -176,9 +176,9 @@ describe("buildCampaignReportLiveData", () => {
     expect(report.quality.trafficQualityStatus).toBe("Goedgekeurd met uitsluitingen");
     expect(report.quality.excludedClips).toBe(2);
     expect(report.quality.excludedViews).toBe(130_000);
-    expect(report.audience.sampleCount).toBe(1);
-    expect(report.audience.ageBuckets["18-24"]).toBe(60);
-    expect(report.audience.fitStatus).toBe("Sterke match");
+    expect(report.audience.sampleCount).toBe(0);
+    expect(report.audience.ageBuckets).toEqual({});
+    expect(report.audience.fitStatus).toBe("Onvoldoende data");
     expect(report.creators[0]).toMatchObject({
       creator: "Alice",
       approvalRate: 0.5,
@@ -235,6 +235,134 @@ describe("buildCampaignReportLiveData", () => {
     expect(report.financial.overdeliveryValue).toBe(120);
     expect(report.financial.overdeliveryExplanation).toContain("extra views");
     expect(report.defaults.keyTakeaways.some((takeaway) => takeaway.includes("overdelivery"))).toBe(true);
+  });
+
+  it("averages demographics from Instagram accounts used by campaign clips only", () => {
+    const report = buildCampaignReportLiveData({
+      campaign,
+      generatedAt: new Date("2026-05-10T00:00:00.000Z"),
+      submissions: [
+        {
+          id: "ig-sub-1",
+          creatorId: "creator-1",
+          creatorLabel: "Alice",
+          postUrl: "https://instagram.com/reel/1",
+          normalizedPlatform: "INSTAGRAM",
+          sourcePlatform: "INSTAGRAM",
+          sourceConnectionType: "IG",
+          sourceConnectionId: "ig-1",
+          status: "APPROVED",
+          createdAt: new Date("2026-05-02T00:00:00.000Z"),
+          metricSnapshots: [],
+          signals: [],
+          qcReviews: [],
+        },
+        {
+          id: "ig-sub-2",
+          creatorId: "creator-2",
+          creatorLabel: "Bob",
+          postUrl: "https://instagram.com/reel/2",
+          normalizedPlatform: "INSTAGRAM",
+          sourcePlatform: "INSTAGRAM",
+          sourceConnectionType: "IG",
+          sourceConnectionId: "ig-2",
+          status: "APPROVED",
+          createdAt: new Date("2026-05-03T00:00:00.000Z"),
+          metricSnapshots: [],
+          signals: [],
+          qcReviews: [],
+        },
+        {
+          id: "tt-sub-1",
+          creatorId: "creator-3",
+          creatorLabel: "Charlie",
+          postUrl: "https://tiktok.com/@charlie/video/1",
+          normalizedPlatform: "TIKTOK",
+          sourcePlatform: "TIKTOK",
+          sourceConnectionType: "TT",
+          sourceConnectionId: "tt-1",
+          status: "APPROVED",
+          createdAt: new Date("2026-05-04T00:00:00.000Z"),
+          metricSnapshots: [],
+          signals: [],
+          qcReviews: [],
+        },
+      ],
+      attributions: [],
+      audienceSnapshots: [
+        {
+          connectionType: "IG",
+          connectionId: "ig-1",
+          kind: "FOLLOWER",
+          capturedAt: new Date("2026-05-01T00:00:00.000Z"),
+          ageBuckets: { "18-24": 0.2, "25-34": 0.8 },
+          genderSplit: { male: 0.2, female: 0.8 },
+          topCountries: [{ code: "NL", share: 0.2 }],
+        },
+        {
+          connectionType: "IG",
+          connectionId: "ig-1",
+          kind: "FOLLOWER",
+          capturedAt: new Date("2026-05-09T00:00:00.000Z"),
+          ageBuckets: { "18-24": 0.6, "25-34": 0.4 },
+          genderSplit: { male: 0.3, female: 0.7 },
+          topCountries: [
+            { code: "NL", share: 0.8 },
+            { code: "IN", share: 0.1 },
+            { code: "BE", share: 0.05 },
+          ],
+        },
+        {
+          connectionType: "IG",
+          connectionId: "ig-2",
+          kind: "FOLLOWER",
+          capturedAt: new Date("2026-05-08T00:00:00.000Z"),
+          ageBuckets: { "18-24": 0.4, "25-34": 0.6 },
+          genderSplit: { male: 0.5, female: 0.5 },
+          topCountries: [
+            { code: "NL", share: 0.6 },
+            { code: "IN", share: 0.2 },
+            { code: "US", share: 0.1 },
+          ],
+        },
+        {
+          connectionType: "TT",
+          connectionId: "tt-1",
+          kind: "FOLLOWER",
+          capturedAt: new Date("2026-05-09T00:00:00.000Z"),
+          ageBuckets: { "18-24": 0.99 },
+          genderSplit: { male: 0.99, female: 0.01 },
+          topCountries: [{ code: "IN", share: 0.99 }],
+        },
+        {
+          connectionType: "IG",
+          connectionId: "ig-not-used",
+          kind: "FOLLOWER",
+          capturedAt: new Date("2026-05-09T00:00:00.000Z"),
+          ageBuckets: { "18-24": 0.99 },
+          genderSplit: { male: 0.99, female: 0.01 },
+          topCountries: [{ code: "IN", share: 0.99 }],
+        },
+      ],
+    });
+
+    expect(report.audience.sampleCount).toBe(2);
+    expect(report.audience.platformsLabel).toBe("Instagram");
+    expect(report.audience.ageBuckets).toEqual({
+      "18-24": 0.5,
+      "25-34": 0.5,
+    });
+    expect(report.audience.genderSplit).toEqual({
+      male: 0.4,
+      female: 0.6,
+    });
+    expect(report.audience.topCountries).toEqual([
+      { code: "NL", share: 0.7 },
+      { code: "IN", share: 0.15 },
+      { code: "US", share: 0.05 },
+      { code: "BE", share: 0.025 },
+    ]);
+    expect(report.audience.fitStatus).toBe("Sterke match");
   });
 
   it("calculates a fixed goal view target from budget and business CPM when no manual target exists", () => {

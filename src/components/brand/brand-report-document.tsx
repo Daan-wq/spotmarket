@@ -3,6 +3,7 @@ import { BarChart3, ExternalLink, FileText, ShieldCheck, Sparkles, Target, Users
 import { formatCurrency, formatNumber } from "@/lib/admin/agency-format";
 import { normalizeTextList, type CampaignReportEditorial } from "@/lib/admin/campaign-report-shared";
 import {
+  audienceBarWidth,
   formatAudienceCountryLabel,
   formatAudienceShare,
   renderCampaignReportTemplate,
@@ -198,7 +199,7 @@ export function BrandReportDocument({ report, data, editorial }: BrandReportDocu
             <ReportSection>
               <SectionHeader kicker={copy("section.audience.kicker", "Publiek en bereik")} title={copy("section.audience.title", "Bereikt publiek")} icon={<Users className="h-5 w-5" />} />
               <div className="grid gap-4 lg:grid-cols-3">
-                <Distribution title={copy("audience.distribution.countries.title", "Top landen")} rows={data.audience.topCountries.map((row) => ({ label: formatAudienceCountryLabel(row.code), value: row.share }))} />
+                <Distribution title={copy("audience.distribution.countries.title", "Top landen")} rows={data.audience.topCountries.slice(0, 5).map((row) => ({ label: formatAudienceCountryLabel(row.code), value: row.share }))} />
                 <Distribution title={copy("audience.distribution.age.title", "Leeftijd")} rows={Object.entries(data.audience.ageBuckets).map(([label, value]) => ({ label, value }))} />
                 <Distribution title={copy("audience.distribution.gender.title", "Gender")} rows={Object.entries(data.audience.genderSplit).map(([label, value]) => ({ label, value }))} />
               </div>
@@ -392,7 +393,6 @@ function DefinitionRow({ label, body }: { label: string; body: string }) {
 }
 
 function Distribution({ title, rows }: { title: string; rows: Array<{ label: string; value: number }> }) {
-  const max = Math.max(1, ...rows.map((row) => row.value));
   return (
     <div className="rounded-lg border border-neutral-200 bg-white p-4">
       <p className="font-semibold text-neutral-950">{title}</p>
@@ -403,7 +403,9 @@ function Distribution({ title, rows }: { title: string; rows: Array<{ label: str
               <span className="font-medium text-neutral-700">{row.label}</span>
               <span className="text-neutral-500">{formatAudienceShare(row.value)}</span>
             </div>
-            <Progress value={row.value} max={max} />
+            <div className="h-1.5 overflow-hidden bg-neutral-100">
+              <div className="h-full bg-neutral-950" style={{ width: `${audienceBarWidth(row.value)}%` }} />
+            </div>
           </div>
         ))}
       </div>

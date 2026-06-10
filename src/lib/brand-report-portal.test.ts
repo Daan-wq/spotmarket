@@ -157,6 +157,7 @@ function liveData(): CampaignReportLiveData {
     },
     audience: {
       sampleCount: 2,
+      platformsLabel: "Instagram",
       ageBuckets: { "18-24": 55 },
       genderSplit: { female: 65 },
       topCountries: [{ code: "NL", share: 80 }],
@@ -466,6 +467,7 @@ describe("brand report portal helpers", () => {
       }],
       audience: {
         sampleCount: 2,
+        platformsLabel: "Instagram",
         ageBuckets: { "18-24": 55 },
         genderSplit: { female: 65 },
         topCountries: [{ code: "NL", share: 80 }],
