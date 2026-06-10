@@ -1,7 +1,9 @@
 import { describe, expect, it } from "vitest";
 import {
+  buildBrandPausePeriods,
   buildBrandTimeline,
   buildBrandMilestones,
+  calculateBrandForecast,
   calculateBrandGoalDelivery,
   calculateExpectedGoalDate,
   buildBrandPortalCampaignWhere,
@@ -359,11 +361,19 @@ describe("brand report portal helpers", () => {
         totalEngagement: 8200,
         engagementRate: 8200 / 190000,
         expectedGoalDate: "2026-06-01",
+        forecast: {
+          status: "reached",
+          expectedGoalDate: "2026-06-01",
+          averageViewsPerActiveDay: 95000,
+          activeDays: 2,
+          excludedPauseDays: 0,
+        },
       },
       timeline: [
         { date: "2026-05-01", views: 1000, cumulativeViews: 1000 },
         { date: "2026-05-02", views: 2500, cumulativeViews: 3500 },
       ],
+      pausePeriods: [],
       milestones: [
         { type: "STARTED", date: "2026-05-01", label: "Campagne gestart" },
         { type: "PLANNED_END", date: "2026-05-31", label: "Geplande einddatum" },
@@ -461,6 +471,112 @@ describe("brand report portal helpers", () => {
       goalViews: 200000,
       timeline: [{ date: "2026-05-10", views: 100000 }],
     })).toBe("2026-05-20");
+  });
+
+  it("builds closed, multiple, and open pause periods from chronological campaign events", () => {
+    expect(buildBrandPausePeriods([
+      { type: "RESUMED", occurredAt: new Date("2026-05-05T00:00:00.000Z") },
+      { type: "PAUSED", occurredAt: new Date("2026-05-10T09:00:00.000Z") },
+      { type: "PAUSED", occurredAt: new Date("2026-05-11T09:00:00.000Z") },
+      { type: "RESUMED", occurredAt: new Date("2026-05-12T09:00:00.000Z") },
+      { type: "PAUSED", occurredAt: new Date("2026-05-20T09:00:00.000Z") },
+    ])).toEqual([
+      { startDate: "2026-05-10", endDate: "2026-05-12" },
+      { startDate: "2026-05-20", endDate: null },
+    ]);
+  });
+
+  it("excludes pause days from the forecast divisor while retaining all approved views", () => {
+    expect(calculateBrandForecast({
+      startsAt: "2026-05-01T10:00:00.000Z",
+      generatedAt: "2026-05-10T12:00:00.000Z",
+      approvedViews: 100000,
+      goalViews: 200000,
+      timeline: [{ date: "2026-05-10", views: 100000 }],
+      pausePeriods: [{ startDate: "2026-05-03", endDate: "2026-05-06" }],
+    })).toEqual({
+      status: "active",
+      expectedGoalDate: "2026-05-17",
+      averageViewsPerActiveDay: 100000 / 7,
+      activeDays: 7,
+      excludedPauseDays: 3,
+    });
+
+    expect(calculateExpectedGoalDate({
+      startsAt: "2026-05-01T10:00:00.000Z",
+      generatedAt: "2026-05-10T12:00:00.000Z",
+      approvedViews: 100000,
+      goalViews: 200000,
+      timeline: [{ date: "2026-05-10", views: 100000 }],
+      pausePeriods: [{ startDate: "2026-05-03", endDate: "2026-05-06" }],
+    })).toBe("2026-05-17");
+  });
+
+  it("excludes 24 May through 5 June from the Bram's Fruit forecast", () => {
+    expect(calculateBrandForecast({
+      startsAt: "2026-05-21T00:00:00.000Z",
+      generatedAt: "2026-06-10T12:00:00.000Z",
+      approvedViews: 876894,
+      goalViews: 2625000,
+      timeline: [{ date: "2026-06-09", views: 10000 }],
+      pausePeriods: [{ startDate: "2026-05-24", endDate: "2026-06-06" }],
+    })).toEqual({
+      status: "active",
+      expectedGoalDate: "2026-06-23",
+      averageViewsPerActiveDay: 876894 / 7,
+      activeDays: 7,
+      excludedPauseDays: 13,
+    });
+  });
+
+  it("suppresses the date during an open pause and handles reached or unavailable forecasts", () => {
+    expect(calculateBrandForecast({
+      startsAt: "2026-05-01T00:00:00.000Z",
+      generatedAt: "2026-05-10T12:00:00.000Z",
+      approvedViews: 100000,
+      goalViews: 200000,
+      timeline: [{ date: "2026-05-10", views: 100000 }],
+      pausePeriods: [{ startDate: "2026-05-08", endDate: null }],
+    })).toEqual({
+      status: "paused",
+      expectedGoalDate: null,
+      averageViewsPerActiveDay: 100000 / 7,
+      activeDays: 7,
+      excludedPauseDays: 3,
+    });
+
+    expect(calculateBrandForecast({
+      startsAt: "2026-05-01T00:00:00.000Z",
+      generatedAt: "2026-05-02T12:00:00.000Z",
+      approvedViews: 110000,
+      goalViews: 100000,
+      timeline: [
+        { date: "2026-05-01", views: 60000 },
+        { date: "2026-05-02", views: 50000 },
+      ],
+      pausePeriods: [],
+    })).toEqual({
+      status: "reached",
+      expectedGoalDate: "2026-05-02",
+      averageViewsPerActiveDay: 55000,
+      activeDays: 2,
+      excludedPauseDays: 0,
+    });
+
+    expect(calculateBrandForecast({
+      startsAt: "2026-05-01T00:00:00.000Z",
+      generatedAt: "2026-05-02T12:00:00.000Z",
+      approvedViews: 1000,
+      goalViews: 100000,
+      timeline: [{ date: "2026-05-02", views: 1000 }],
+      pausePeriods: [{ startDate: "2026-05-01", endDate: null }],
+    })).toEqual({
+      status: "paused",
+      expectedGoalDate: null,
+      averageViewsPerActiveDay: null,
+      activeDays: 0,
+      excludedPauseDays: 2,
+    });
   });
 
   it("returns the reached date and handles missing or unusable forecast inputs", () => {

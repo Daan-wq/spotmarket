@@ -82,10 +82,11 @@ export function BrandCampaignDashboard({
             <div className="mt-8 inline-flex flex-wrap items-baseline gap-x-3 gap-y-1 border-t border-neutral-950 pt-3">
               <span className="text-xs text-neutral-500">Verwachte doeldatum</span>
               <strong className="text-xl font-semibold tracking-[-0.025em] text-neutral-950">
-                {data.performance.expectedGoalDate
-                  ? formatDate(data.performance.expectedGoalDate, "nl")
-                  : "–"}
+                {formatForecastDate(data)}
               </strong>
+              <p className="basis-full text-xs leading-5 text-neutral-500">
+                {formatForecastDetail(data)}
+              </p>
             </div>
           </div>
         </div>
@@ -141,7 +142,11 @@ export function BrandCampaignDashboard({
           detail="Alleen goedgekeurde campagneprestaties"
         />
         <div className="mt-7">
-          <BrandViewsChart data={data.timeline} milestones={data.milestones} />
+          <BrandViewsChart
+            data={data.timeline}
+            milestones={data.milestones}
+            pausePeriods={data.pausePeriods}
+          />
         </div>
       </section>
 
@@ -438,4 +443,25 @@ function formatNullableCurrency(value: number | null) {
 
 function formatNullableNumber(value: number | null) {
   return value == null ? "–" : formatNumber(Math.round(value), "nl");
+}
+
+function formatForecastDate(data: BrandCampaignDashboardData) {
+  return data.performance.forecast.expectedGoalDate
+    ? formatDate(data.performance.forecast.expectedGoalDate, "nl")
+    : "–";
+}
+
+function formatForecastDetail(data: BrandCampaignDashboardData) {
+  const forecast = data.performance.forecast;
+  if (forecast.status === "paused") {
+    return "Forecast hervat zodra de campagne actief is";
+  }
+  if (forecast.averageViewsPerActiveDay == null) {
+    return "Onvoldoende meetdata voor een betrouwbare forecast";
+  }
+
+  const pauseLabel = forecast.excludedPauseDays === 1
+    ? "1 pauzedag uitgesloten"
+    : `${formatNumber(forecast.excludedPauseDays, "nl")} pauzedagen uitgesloten`;
+  return `${formatNumber(Math.round(forecast.averageViewsPerActiveDay), "nl")} views per actieve dag · ${pauseLabel}`;
 }

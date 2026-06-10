@@ -7,7 +7,9 @@ import {
 import type { BrandCampaignDashboardData } from "@/lib/brand-report-portal";
 
 vi.mock("./brand-views-chart", () => ({
-  BrandViewsChart: () => <div data-testid="brand-views-chart">chart</div>,
+  BrandViewsChart: ({ pausePeriods }: { pausePeriods: unknown[] }) => (
+    <div data-testid="brand-views-chart" data-pause-count={pausePeriods.length}>chart</div>
+  ),
 }));
 
 const data: BrandCampaignDashboardData = {
@@ -42,8 +44,16 @@ const data: BrandCampaignDashboardData = {
     totalEngagement: 14500,
     engagementRate: 0.0446,
     expectedGoalDate: "2026-06-14",
+    forecast: {
+      status: "active",
+      expectedGoalDate: "2026-06-14",
+      averageViewsPerActiveDay: 40625,
+      activeDays: 8,
+      excludedPauseDays: 1,
+    },
   },
   timeline: [{ date: "2026-06-08", views: 45000, cumulativeViews: 325000 }],
+  pausePeriods: [{ startDate: "2026-06-05", endDate: "2026-06-06" }],
   milestones: [
     { type: "STARTED", date: "2026-06-01", label: "Campagne gestart" },
     { type: "PLANNED_END", date: "2026-07-01", label: "Geplande einddatum" },
@@ -119,6 +129,9 @@ describe("BrandCampaignDashboard", () => {
     expect(html).toContain("Afgesproken CPM");
     expect(html).toContain("Effectieve CPM");
     expect(html).toContain("Verwachte doeldatum");
+    expect(html).toContain("40.625 views per actieve dag");
+    expect(html).toContain("1 pauzedag uitgesloten");
+    expect(html).toContain('data-pause-count="1"');
     expect(html).toContain("Postende accounts");
     expect(html).toContain("Clips ingezonden");
     expect(html).toContain("Platformoverzicht");
@@ -141,5 +154,30 @@ describe("BrandCampaignDashboard", () => {
 
     expect(html).toContain("Nog geen platformdata beschikbaar.");
     expect(html).toContain("Nog geen goedgekeurde topcontent");
+  });
+
+  it("suppresses the forecast date while the campaign is paused", () => {
+    const pausedData: BrandCampaignDashboardData = {
+      ...data,
+      performance: {
+        ...data.performance,
+        expectedGoalDate: null,
+        forecast: {
+          ...data.performance.forecast,
+          status: "paused",
+          expectedGoalDate: null,
+        },
+      },
+    };
+
+    const html = renderToStaticMarkup(
+      <BrandCampaignDashboard
+        campaigns={campaigns}
+        selectedCampaignId="campaign-active"
+        data={pausedData}
+      />,
+    );
+
+    expect(html).toContain("Forecast hervat zodra de campagne actief is");
   });
 });

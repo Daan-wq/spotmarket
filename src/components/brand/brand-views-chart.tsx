@@ -4,6 +4,7 @@ import {
   Area,
   AreaChart,
   CartesianGrid,
+  ReferenceArea,
   ReferenceLine,
   ResponsiveContainer,
   Tooltip,
@@ -11,7 +12,10 @@ import {
   YAxis,
 } from "recharts";
 import { formatNumber } from "@/lib/admin/agency-format";
-import type { BrandCampaignMilestone } from "@/lib/brand-report-portal";
+import type {
+  BrandCampaignMilestone,
+  BrandPausePeriod,
+} from "@/lib/brand-report-portal";
 
 interface ChartPoint {
   date: string;
@@ -22,9 +26,10 @@ interface ChartPoint {
 interface BrandViewsChartProps {
   data: Array<{ date: string; views: number; cumulativeViews: number }>;
   milestones: BrandCampaignMilestone[];
+  pausePeriods: BrandPausePeriod[];
 }
 
-export function BrandViewsChart({ data, milestones }: BrandViewsChartProps) {
+export function BrandViewsChart({ data, milestones, pausePeriods }: BrandViewsChartProps) {
   if (data.length === 0) {
     return (
       <div className="flex h-64 items-center justify-center rounded-2xl border border-dashed border-neutral-200 bg-neutral-50 px-6 text-center">
@@ -35,7 +40,8 @@ export function BrandViewsChart({ data, milestones }: BrandViewsChartProps) {
     );
   }
 
-  const chartData = buildChartSeries(data, milestones);
+  const chartData = buildChartSeries(data, milestones, pausePeriods);
+  const pauseAreas = buildChartPauseAreas(pausePeriods, chartData);
 
   return (
     <div>
@@ -52,6 +58,16 @@ export function BrandViewsChart({ data, milestones }: BrandViewsChartProps) {
                 <stop offset="0%" stopColor="#171717" stopOpacity={0.2} />
                 <stop offset="100%" stopColor="#171717" stopOpacity={0} />
               </linearGradient>
+              <pattern
+                id="brandPauseHatch"
+                width="8"
+                height="8"
+                patternUnits="userSpaceOnUse"
+                patternTransform="rotate(45)"
+              >
+                <rect width="8" height="8" fill="#f5f5f5" fillOpacity={0.78} />
+                <line x1="0" y1="0" x2="0" y2="8" stroke="#d4d4d4" strokeWidth="2" />
+              </pattern>
             </defs>
             <CartesianGrid stroke="#e5e5e5" strokeDasharray="3 5" vertical={false} />
             <XAxis
@@ -71,17 +87,13 @@ export function BrandViewsChart({ data, milestones }: BrandViewsChartProps) {
             />
             <Tooltip
               cursor={{ stroke: "#a3a3a3", strokeDasharray: "4 4" }}
-              content={<BrandChartTooltip milestones={milestones} />}
+              content={(
+                <BrandChartTooltip
+                  milestones={milestones}
+                  pausePeriods={pausePeriods}
+                />
+              )}
             />
-            {milestones.map((milestone, index) => (
-              <ReferenceLine
-                key={`${milestone.type}-${milestone.date}-${index}`}
-                x={milestone.date}
-                stroke={milestone.type === "GOAL_REACHED" ? "#047857" : "#a3a3a3"}
-                strokeDasharray={milestone.type === "GOAL_REACHED" ? "0" : "4 4"}
-                strokeWidth={milestone.type === "GOAL_REACHED" ? 2 : 1}
-              />
-            ))}
             <Area
               connectNulls={false}
               dataKey="views"
@@ -91,6 +103,34 @@ export function BrandViewsChart({ data, milestones }: BrandViewsChartProps) {
               strokeWidth={2.5}
               type="monotone"
             />
+            {pauseAreas.map((period) => (
+              <ReferenceArea
+                key={`${period.startDate}-${period.endDate}`}
+                x1={period.startDate}
+                x2={period.endDate}
+                fill="url(#brandPauseHatch)"
+                fillOpacity={1}
+                stroke="#a3a3a3"
+                strokeDasharray="3 3"
+                strokeOpacity={0.45}
+                label={{
+                  value: "Pauze",
+                  position: "insideTop",
+                  fill: "#525252",
+                  fontSize: 11,
+                  fontWeight: 600,
+                }}
+              />
+            ))}
+            {milestones.map((milestone, index) => (
+              <ReferenceLine
+                key={`${milestone.type}-${milestone.date}-${index}`}
+                x={milestone.date}
+                stroke={milestone.type === "GOAL_REACHED" ? "#047857" : "#a3a3a3"}
+                strokeDasharray={milestone.type === "GOAL_REACHED" ? "0" : "4 4"}
+                strokeWidth={milestone.type === "GOAL_REACHED" ? 2 : 1}
+              />
+            ))}
           </AreaChart>
         </ResponsiveContainer>
       </div>
@@ -117,11 +157,13 @@ function BrandChartTooltip({
   payload,
   label,
   milestones,
+  pausePeriods,
 }: {
   active?: boolean;
   payload?: Array<{ payload?: ChartPoint }>;
   label?: string;
   milestones: BrandCampaignMilestone[];
+  pausePeriods: BrandPausePeriod[];
 }) {
   if (!active || !label) return null;
   const point = payload?.[0]?.payload;
@@ -130,6 +172,7 @@ function BrandChartTooltip({
     views: point?.views ?? null,
     cumulativeViews: point?.cumulativeViews ?? 0,
     milestones,
+    pausePeriods,
   });
 
   return (
@@ -139,6 +182,11 @@ function BrandChartTooltip({
         <p>Views die dag: <span className="font-semibold text-white">{content.dailyViewsLabel}</span></p>
         <p>Totaal tot die dag: <span className="font-semibold text-white">{content.cumulativeViewsLabel}</span></p>
       </div>
+      {content.pauseLabel ? (
+        <p className="mt-2 rounded-md bg-white/10 px-2 py-1.5 text-neutral-200">
+          {content.pauseLabel}
+        </p>
+      ) : null}
       {content.milestoneLabels.length > 0 ? (
         <div className="mt-2 border-t border-white/15 pt-2 text-neutral-200">
           {content.milestoneLabels.map((milestone) => <p key={milestone}>{milestone}</p>)}
@@ -153,11 +201,13 @@ export function buildBrandChartTooltipContent({
   views,
   cumulativeViews,
   milestones,
+  pausePeriods = [],
 }: {
   date: string;
   views: number | null;
   cumulativeViews: number;
   milestones: BrandCampaignMilestone[];
+  pausePeriods?: BrandPausePeriod[];
 }) {
   return {
     dateLabel: formatLongDate(date),
@@ -166,14 +216,24 @@ export function buildBrandChartTooltipContent({
     milestoneLabels: milestones
       .filter((milestone) => milestone.date === date)
       .map((milestone) => milestone.label),
+    pauseLabel: pausePeriods.some((period) => isDateInPausePeriod(date, period))
+      ? "Campagne gepauzeerd"
+      : null,
   };
 }
 
 function buildChartSeries(
   data: Array<{ date: string; views: number; cumulativeViews: number }>,
   milestones: BrandCampaignMilestone[],
+  pausePeriods: BrandPausePeriod[],
 ): ChartPoint[] {
-  const dates = new Set([...data.map((row) => row.date), ...milestones.map((row) => row.date)]);
+  const dates = new Set([
+    ...data.map((row) => row.date),
+    ...milestones.map((row) => row.date),
+    ...pausePeriods.flatMap((period) => (
+      period.endDate ? [period.startDate, period.endDate] : [period.startDate]
+    )),
+  ]);
   const rowsByDate = new Map(data.map((row) => [row.date, row]));
   const sortedDates = [...dates].sort();
   let cumulativeViews = 0;
@@ -187,6 +247,30 @@ function buildChartSeries(
       cumulativeViews,
     };
   });
+}
+
+export function buildChartPauseAreas(
+  pausePeriods: BrandPausePeriod[],
+  data: Array<{
+    date: string;
+    views?: number | null;
+    cumulativeViews?: number;
+  }>,
+) {
+  const firstDate = data.at(0)?.date;
+  const lastDate = data.at(-1)?.date;
+  if (!firstDate || !lastDate) return [];
+
+  return pausePeriods.flatMap((period) => {
+    const startDate = period.startDate < firstDate ? firstDate : period.startDate;
+    const periodEnd = period.endDate ?? lastDate;
+    const endDate = periodEnd > lastDate ? lastDate : periodEnd;
+    return endDate >= startDate ? [{ startDate, endDate }] : [];
+  });
+}
+
+function isDateInPausePeriod(date: string, period: BrandPausePeriod) {
+  return date >= period.startDate && (period.endDate == null || date < period.endDate);
 }
 
 function formatChartDate(value: string) {

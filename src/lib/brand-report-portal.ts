@@ -47,6 +47,8 @@ export function buildBrandVisibleReportWhere(brandIds: string[]): Prisma.Campaig
 export type BrandReportLiveData = ReturnType<typeof sanitizeBrandReportLiveData>;
 export type BrandCampaignDashboardData = ReturnType<typeof sanitizeBrandCampaignDashboardData>;
 export type BrandCampaignMilestone = ReturnType<typeof buildBrandMilestones>[number];
+export type BrandPausePeriod = ReturnType<typeof buildBrandPausePeriods>[number];
+export type BrandForecast = ReturnType<typeof calculateBrandForecast>;
 
 export function sanitizeBrandCampaignDashboardData(
   data: CampaignReportLiveData,
@@ -62,6 +64,15 @@ export function sanitizeBrandCampaignDashboardData(
   );
 
   const timeline = buildBrandTimeline(data.timeline);
+  const pausePeriods = buildBrandPausePeriods(events);
+  const forecast = calculateBrandForecast({
+    startsAt: data.campaign.startsAt,
+    generatedAt: data.generatedAt,
+    approvedViews: data.performance.approvedViews,
+    goalViews: data.campaign.goalViews,
+    timeline: data.timeline,
+    pausePeriods,
+  });
 
   return {
     generatedAt: data.generatedAt,
@@ -97,15 +108,11 @@ export function sanitizeBrandCampaignDashboardData(
       engagementRate: data.performance.approvedViews > 0
         ? totalEngagement / data.performance.approvedViews
         : null,
-      expectedGoalDate: calculateExpectedGoalDate({
-        startsAt: data.campaign.startsAt,
-        generatedAt: data.generatedAt,
-        approvedViews: data.performance.approvedViews,
-        goalViews: data.campaign.goalViews,
-        timeline: data.timeline,
-      }),
+      expectedGoalDate: forecast.expectedGoalDate,
+      forecast,
     },
     timeline,
+    pausePeriods,
     milestones: buildBrandMilestones({
       startsAt: data.campaign.startsAt,
       deadline: data.campaign.deadline,
@@ -251,6 +258,41 @@ type StoredCampaignEvent = {
   occurredAt: Date | string;
 };
 
+export function buildBrandPausePeriods(events: StoredCampaignEvent[]) {
+  const periods: Array<{ startDate: string; endDate: string | null }> = [];
+  const sortedEvents = [...events]
+    .map((event) => ({
+      ...event,
+      date: formatDateValue(event.occurredAt),
+      time: new Date(event.occurredAt).getTime(),
+    }))
+    .filter(
+      (event): event is typeof event & { date: string } =>
+        event.date !== null && Number.isFinite(event.time),
+    )
+    .sort((a, b) => a.time - b.time);
+  let openStart: string | null = null;
+
+  for (const event of sortedEvents) {
+    if (event.type === "PAUSED" && !openStart) {
+      openStart = event.date;
+      continue;
+    }
+    if ((event.type === "RESUMED" || event.type === "COMPLETED") && openStart) {
+      if (event.date > openStart) {
+        periods.push({ startDate: openStart, endDate: event.date });
+      }
+      openStart = null;
+    }
+  }
+
+  if (openStart) {
+    periods.push({ startDate: openStart, endDate: null });
+  }
+
+  return periods;
+}
+
 interface BrandMilestoneInput {
   startsAt: string | null;
   deadline: string;
@@ -337,40 +379,119 @@ interface BrandForecastInput {
   approvedViews: number;
   goalViews: number | null;
   timeline: Array<{ date: string; views: number }>;
+  pausePeriods?: Array<{ startDate: string; endDate: string | null }>;
 }
 
-export function calculateExpectedGoalDate({
+export function calculateBrandForecast({
   startsAt,
   generatedAt,
   approvedViews,
   goalViews,
   timeline,
+  pausePeriods = [],
 }: BrandForecastInput) {
-  if (!startsAt || !goalViews || goalViews <= 0 || approvedViews <= 0) return null;
+  const unavailable = {
+    status: "unavailable" as const,
+    expectedGoalDate: null,
+    averageViewsPerActiveDay: null,
+    activeDays: 0,
+    excludedPauseDays: 0,
+  };
+  if (!startsAt || !goalViews || goalViews <= 0 || approvedViews <= 0) return unavailable;
 
   const chartData = buildBrandTimeline(timeline);
-  const reachedPoint = chartData.find((row) => row.cumulativeViews >= goalViews);
-  if (reachedPoint) return reachedPoint.date;
-  if (approvedViews >= goalViews) {
-    const generatedDate = startOfUtcDay(generatedAt);
-    return generatedDate ? formatUtcDate(generatedDate) : null;
-  }
-
   const latestTimelineDate = chartData.at(-1)?.date;
   const measurementDate = startOfUtcDay(latestTimelineDate ?? generatedAt);
   const campaignStart = startOfUtcDay(startsAt);
-  if (!measurementDate || !campaignStart || measurementDate < campaignStart) return null;
+  if (!measurementDate || !campaignStart || measurementDate < campaignStart) return unavailable;
 
   const elapsedDays = Math.floor(
     (measurementDate.getTime() - campaignStart.getTime()) / 86_400_000,
   ) + 1;
-  const averageViewsPerDay = approvedViews / Math.max(1, elapsedDays);
-  if (!Number.isFinite(averageViewsPerDay) || averageViewsPerDay <= 0) return null;
+  const excludedPauseDays = countPausedCalendarDays(
+    campaignStart,
+    measurementDate,
+    pausePeriods,
+  );
+  const activeDays = Math.max(0, elapsedDays - excludedPauseDays);
+  const averageViewsPerActiveDay = activeDays > 0 ? approvedViews / activeDays : null;
+  const base = {
+    averageViewsPerActiveDay,
+    activeDays,
+    excludedPauseDays,
+  };
 
-  const remainingDays = Math.ceil((goalViews - approvedViews) / averageViewsPerDay);
+  const reachedPoint = chartData.find((row) => row.cumulativeViews >= goalViews);
+  if (reachedPoint || approvedViews >= goalViews) {
+    const generatedDate = startOfUtcDay(generatedAt);
+    return {
+      status: "reached" as const,
+      expectedGoalDate: reachedPoint?.date
+        ?? (generatedDate ? formatUtcDate(generatedDate) : formatUtcDate(measurementDate)),
+      ...base,
+    };
+  }
+
+  if (isForecastCurrentlyPaused(pausePeriods, generatedAt)) {
+    return {
+      status: "paused" as const,
+      expectedGoalDate: null,
+      ...base,
+    };
+  }
+
+  if (!averageViewsPerActiveDay || !Number.isFinite(averageViewsPerActiveDay)) {
+    return { ...unavailable, ...base };
+  }
+
+  const remainingDays = Math.ceil((goalViews - approvedViews) / averageViewsPerActiveDay);
   const expectedDate = new Date(measurementDate);
   expectedDate.setUTCDate(expectedDate.getUTCDate() + remainingDays);
-  return formatUtcDate(expectedDate);
+  return {
+    status: "active" as const,
+    expectedGoalDate: formatUtcDate(expectedDate),
+    ...base,
+  };
+}
+
+export function calculateExpectedGoalDate(input: BrandForecastInput) {
+  return calculateBrandForecast(input).expectedGoalDate;
+}
+
+function countPausedCalendarDays(
+  campaignStart: Date,
+  measurementDate: Date,
+  pausePeriods: Array<{ startDate: string; endDate: string | null }>,
+) {
+  let pausedDays = 0;
+  for (
+    let day = new Date(campaignStart);
+    day <= measurementDate;
+    day.setUTCDate(day.getUTCDate() + 1)
+  ) {
+    const date = formatUtcDate(day);
+    if (pausePeriods.some((period) => isDateInPausePeriod(date, period))) {
+      pausedDays += 1;
+    }
+  }
+  return pausedDays;
+}
+
+function isForecastCurrentlyPaused(
+  pausePeriods: Array<{ startDate: string; endDate: string | null }>,
+  generatedAt: string,
+) {
+  const generatedDate = startOfUtcDay(generatedAt);
+  if (!generatedDate) return false;
+  const date = formatUtcDate(generatedDate);
+  return pausePeriods.some((period) => period.endDate == null && date >= period.startDate);
+}
+
+function isDateInPausePeriod(
+  date: string,
+  period: { startDate: string; endDate: string | null },
+) {
+  return date >= period.startDate && (period.endDate == null || date < period.endDate);
 }
 
 function startOfUtcDay(value: string) {
