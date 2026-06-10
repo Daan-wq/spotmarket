@@ -176,6 +176,8 @@ export function sanitizeBrandReportLiveData(data: CampaignReportLiveData) {
       currentViews: data.performance.approvedViews,
       targetViews: data.campaign.goalViews,
       targetViewsSource: data.campaign.goalViewsSource,
+      paidEligibleViews: data.financial.approvedPayableViews,
+      costPerThousandViews: data.performance.costPerThousandViews,
       ...goalDelivery,
       deliveryProgress: data.performance.goalCompletion,
       goalCompletion: data.performance.goalCompletion,
@@ -206,12 +208,31 @@ export function sanitizeBrandReportLiveData(data: CampaignReportLiveData) {
       .filter((row) => row.status === "APPROVED")
       .map((row) => ({
       id: row.id,
+      creator: row.creator,
       platform: row.platform,
       postUrl: row.postUrl,
       thumbnailUrl: row.thumbnailUrl,
       views: row.views,
       engagement: row.engagement,
     })),
+    creators: data.creators.map((row) => ({
+      creator: row.creator,
+      submissions: row.submissions,
+      approvedSubmissions: row.approvedSubmissions,
+      views: row.views,
+      approvalRate: row.approvalRate,
+      reliabilityStatus: row.reliabilityStatus,
+    })),
+    quality: {
+      status: data.quality.criticalSignals > 0
+        ? "needs_attention" as const
+        : data.quality.openSignals > 0 || data.quality.resolvedSignals > 0 || data.quality.excludedClips > 0
+          ? "passed_with_exclusions" as const
+          : "passed" as const,
+      reviewedClips: data.performance.approvedClips + data.quality.excludedClips,
+      excludedClips: data.quality.excludedClips,
+      excludedViews: data.quality.excludedViews,
+    },
     audience: {
       sampleCount: data.audience.sampleCount,
       ageBuckets: data.audience.ageBuckets,

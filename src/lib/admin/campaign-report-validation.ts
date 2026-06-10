@@ -1,9 +1,8 @@
 import { z } from "zod";
 import { optionalIsoDate } from "@/lib/admin/agency-api";
 import {
-  CAMPAIGN_REPORT_SECTION_KEYS,
-  DEFAULT_CAMPAIGN_REPORT_SECTIONS,
   normalizeEditorialContent,
+  normalizeSectionSettings,
   type CampaignReportEditorialContent,
   type CampaignReportSectionSettings,
 } from "@/lib/admin/campaign-report-shared";
@@ -14,11 +13,7 @@ const rawSectionSettings = z.record(z.string(), z.boolean());
 const rawEditorialContent = z.record(z.string(), z.unknown());
 
 function normalizeCampaignReportSectionSettings(value?: Record<string, boolean>): CampaignReportSectionSettings {
-  const input = value ?? {};
-  return CAMPAIGN_REPORT_SECTION_KEYS.reduce((acc, key) => {
-    acc[key] = typeof input[key] === "boolean" ? input[key] : DEFAULT_CAMPAIGN_REPORT_SECTIONS[key];
-    return acc;
-  }, {} as CampaignReportSectionSettings);
+  return normalizeSectionSettings(value);
 }
 
 const sectionSettingsSchema = rawSectionSettings

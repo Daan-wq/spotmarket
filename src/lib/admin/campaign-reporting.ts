@@ -189,6 +189,14 @@ export interface CampaignReportLiveData {
   };
   performance: {
     approvedViews: number;
+    currentViews: number;
+    targetViews: number | null;
+    targetViewsSource: CampaignReportGoalViewsSource;
+    paidEligibleViews: number;
+    overdeliveryViews: number;
+    overdeliveryPercent: number | null;
+    deliveryProgress: number | null;
+    cpmPerThousand: number | null;
     goalCompletion: number | null;
     budgetUsed: number;
     budgetUsedPercent: number | null;
@@ -246,6 +254,7 @@ export interface CampaignReportLiveData {
     creatorId: string;
     creator: string;
     submissions: number;
+    approvedSubmissions: number;
     views: number;
     earnedAmount: number;
     flagged: number;
@@ -376,6 +385,14 @@ export function buildCampaignReportLiveData(input: CampaignReportBuildInput): Ca
     },
     performance: {
       approvedViews,
+      currentViews: approvedViews,
+      targetViews: goalViews,
+      targetViewsSource: goalViewsSource,
+      paidEligibleViews: financial.approvedPayableViews,
+      overdeliveryViews: financial.overdeliveryViews,
+      overdeliveryPercent: financial.overdeliveryRate,
+      deliveryProgress: goalViews && goalViews > 0 ? approvedViews / goalViews : null,
+      cpmPerThousand: creatorCpv > 0 ? creatorCpv * 1000 : null,
       goalCompletion: goalViews && goalViews > 0 ? approvedViews / goalViews : null,
       budgetUsed,
       budgetUsedPercent: totalBudget > 0 ? budgetUsed / totalBudget : null,
@@ -612,7 +629,6 @@ function generateDefaultEditorial(data: Omit<CampaignReportLiveData, "defaults">
   const topPlatform = data.platformBreakdown[0];
   const topClip = data.topContent[0];
   const recommendedCreators = data.creators.filter((creator) => creator.recommendedForNextCampaign).slice(0, 8);
-  const hasCommunityData = data.referral.totalClicks > 0 || data.referral.inviteCount > 0 || data.referral.activeClipperCount > 0;
   const goalText = data.performance.goalCompletion == null
     ? "zonder vast viewdoel"
     : `${formatPercent(data.performance.goalCompletion)} van het viewdoel`;
@@ -671,6 +687,8 @@ function generateDefaultEditorial(data: Omit<CampaignReportLiveData, "defaults">
     ? recommendedCreators.map((creator) => `Activeer ${creator.creator} opnieuw: ${formatNumber(creator.views)} goedgekeurde views, ${formatPercent(creator.approvalRate ?? 0)} goedkeuringspercentage.`)
     : ["Activeer creators opnieuw zodra er goedgekeurde delivery, schone kwaliteitsreview en sterke brand fit beschikbaar zijn."];
   const editorialContent: CampaignReportEditorialContent = {
+    templateBlocks: {},
+    contentPatternTags: [],
     campaignType: data.campaign.contentType || "Awareness",
     financialNote: `Budget is alleen besteed aan goedgekeurde views. De huidige effectieve CPM is ${cpmText}. ${data.financial.unusedBudgetExplanation} ${data.financial.overdeliveryExplanation}`,
     contentInsights,
@@ -686,6 +704,7 @@ function generateDefaultEditorial(data: Omit<CampaignReportLiveData, "defaults">
     keyLearnings: learnings,
     nextCampaignPlan: nextCampaignRecommendations,
     appendixNote: "De appendix is gereserveerd voor ruwe operationele data wanneer een klant om onderbouwing vraagt.",
+    coverImageUrl: null,
   };
 
   return {
@@ -694,7 +713,7 @@ function generateDefaultEditorial(data: Omit<CampaignReportLiveData, "defaults">
     keyTakeaways,
     learnings,
     nextCampaignRecommendations,
-    sectionSettings: { ...DEFAULT_CAMPAIGN_REPORT_SECTIONS, communityActivation: hasCommunityData },
+    sectionSettings: { ...DEFAULT_CAMPAIGN_REPORT_SECTIONS },
     editorialContent,
   };
 }
@@ -805,6 +824,7 @@ function buildCreatorLeaderboard(submissions: CampaignReportSubmissionInput[]) {
         creatorId: row.creatorId,
         creator: row.creator,
         submissions: row.submissions,
+        approvedSubmissions: row.approvedSubmissions,
         views: row.views,
         earnedAmount: row.earnedAmount,
         flagged: row.flagged,
