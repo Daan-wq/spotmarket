@@ -89,6 +89,7 @@ export default async function BrandReportsPage({ searchParams }: PageProps) {
     campaignId: report.campaignId,
     periodStart: report.periodStart,
     periodEnd: report.periodEnd,
+    dataScope: "brand",
   });
 
   if (!liveData) {
@@ -138,7 +139,7 @@ export default async function BrandReportsPage({ searchParams }: PageProps) {
               </button>
             </form>
           ) : null}
-          <BrandReportActions />
+          <BrandReportActions reportId={report.id} />
         </div>
       </header>
 

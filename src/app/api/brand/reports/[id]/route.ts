@@ -36,6 +36,7 @@ export async function GET(_req: Request, { params }: RouteContext) {
       campaignId: report.campaignId,
       periodStart: report.periodStart,
       periodEnd: report.periodEnd,
+      dataScope: "brand",
     });
     if (!liveData) return NextResponse.json({ error: "Campaign not found" }, { status: 404 });
 

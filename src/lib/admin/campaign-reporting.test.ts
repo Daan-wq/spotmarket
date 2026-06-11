@@ -29,6 +29,133 @@ const campaign = {
 };
 
 describe("buildCampaignReportLiveData", () => {
+  const scopedSubmissions = [
+    {
+      id: "tt-approved",
+      creatorId: "creator-tiktok",
+      creatorLabel: "TikTok creator",
+      postUrl: "https://tiktok.com/@creator/video/1",
+      normalizedPlatform: "TIKTOK",
+      sourcePlatform: "TIKTOK",
+      sourceConnectionType: "TT",
+      sourceConnectionId: "tt-1",
+      status: "APPROVED",
+      createdAt: new Date("2026-05-02T00:00:00.000Z"),
+      eligibleViews: 100_000,
+      viewCount: 100_000,
+      earnedAmount: 80,
+      metricSnapshots: [],
+      signals: [],
+      qcReviews: [],
+    },
+    {
+      id: "ig-approved-by-mistake",
+      creatorId: "creator-instagram",
+      creatorLabel: "Instagram creator",
+      postUrl: "https://instagram.com/reel/1",
+      normalizedPlatform: "INSTAGRAM",
+      sourcePlatform: "INSTAGRAM",
+      sourceConnectionType: "IG",
+      sourceConnectionId: "ig-1",
+      status: "APPROVED",
+      createdAt: new Date("2026-05-03T00:00:00.000Z"),
+      eligibleViews: 50_000,
+      viewCount: 50_000,
+      earnedAmount: 40,
+      metricSnapshots: [],
+      signals: [],
+      qcReviews: [],
+    },
+    {
+      id: "unknown-rejected",
+      creatorId: "creator-unknown",
+      creatorLabel: "Unknown creator",
+      postUrl: "https://example.com/post/1",
+      normalizedPlatform: "UNSUPPORTED_NETWORK",
+      sourcePlatform: "UNSUPPORTED_NETWORK",
+      status: "REJECTED",
+      createdAt: new Date("2026-05-04T00:00:00.000Z"),
+      claimedViews: 25_000,
+      earnedAmount: 0,
+      metricSnapshots: [],
+      signals: [],
+      qcReviews: [],
+    },
+  ];
+  const scopedAudienceSnapshots = [
+    {
+      connectionType: "IG",
+      connectionId: "ig-1",
+      kind: "FOLLOWER",
+      capturedAt: new Date("2026-05-04T00:00:00.000Z"),
+      ageBuckets: { "18-24": 0.6, "25-34": 0.4 },
+      genderSplit: { male: 0.4, female: 0.6 },
+      topCountries: [{ code: "NL", share: 0.8 }],
+    },
+  ];
+
+  it("uses only allowed campaign platforms for brand-scoped metrics", () => {
+    const report = buildCampaignReportLiveData({
+      campaign: { ...campaign, platforms: ["TIKTOK"] },
+      dataScope: "brand",
+      submissions: scopedSubmissions,
+      audienceSnapshots: scopedAudienceSnapshots,
+      attributions: [],
+    });
+
+    expect(report.performance.approvedViews).toBe(100_000);
+    expect(report.performance.totalSubmissions).toBe(1);
+    expect(report.performance.budgetUsed).toBe(80);
+    expect(report.platformBreakdown.map((row) => row.platform)).toEqual(["TikTok"]);
+    expect(report.topContent.map((clip) => clip.id)).toEqual(["tt-approved"]);
+    expect(report.creators.map((creator) => creator.creatorId)).toEqual(["creator-tiktok"]);
+    expect(report.quality.excludedClips).toBe(0);
+    expect(report.audience.sampleCount).toBe(0);
+  });
+
+  it("keeps out-of-scope submissions available in internal scope", () => {
+    const report = buildCampaignReportLiveData({
+      campaign: { ...campaign, platforms: ["TIKTOK"] },
+      dataScope: "internal",
+      submissions: scopedSubmissions,
+      audienceSnapshots: scopedAudienceSnapshots,
+      attributions: [],
+    });
+
+    expect(report.performance.approvedViews).toBe(150_000);
+    expect(report.performance.totalSubmissions).toBe(3);
+    expect(report.platformBreakdown.map((row) => row.platform)).toEqual(["TikTok", "Instagram"]);
+    expect(report.audience.sampleCount).toBe(1);
+  });
+
+  it("keeps all submissions for legacy campaigns without configured platforms", () => {
+    const report = buildCampaignReportLiveData({
+      campaign: { ...campaign, platforms: [] },
+      dataScope: "brand",
+      submissions: scopedSubmissions,
+      audienceSnapshots: scopedAudienceSnapshots,
+      attributions: [],
+    });
+
+    expect(report.performance.totalSubmissions).toBe(3);
+    expect(report.performance.approvedViews).toBe(150_000);
+    expect(report.platformBreakdown.map((row) => row.platform)).toEqual(["TikTok", "Instagram"]);
+  });
+
+  it("includes Instagram audience only when Instagram is an allowed campaign platform", () => {
+    const report = buildCampaignReportLiveData({
+      campaign: { ...campaign, platforms: ["TIKTOK", "INSTAGRAM"] },
+      dataScope: "brand",
+      submissions: scopedSubmissions,
+      audienceSnapshots: scopedAudienceSnapshots,
+      attributions: [],
+    });
+
+    expect(report.audience.sampleCount).toBe(1);
+    expect(report.audience.platformsLabel).toBe("Instagram");
+    expect(report.audience.ageBuckets).toEqual({ "18-24": 0.6, "25-34": 0.4 });
+  });
+
   it("calculates campaign delivery, platform breakdown, quality, and fallback top content", () => {
     const report = buildCampaignReportLiveData({
       campaign,

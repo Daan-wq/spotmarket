@@ -174,6 +174,7 @@ describe("POST /api/admin/campaign-reports", () => {
       campaignId: "campaign-1",
       periodStart: undefined,
       periodEnd: undefined,
+      dataScope: "brand",
     });
     expect(routeMocks.campaignReportCreate).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -222,6 +223,7 @@ describe("GET /api/admin/campaign-reports/[id]", () => {
       campaignId: "campaign-1",
       periodStart: report.periodStart,
       periodEnd: report.periodEnd,
+      dataScope: "brand",
     });
     await expect(response.json()).resolves.toEqual({
       report: expect.objectContaining({ id: "report-1" }),
@@ -273,6 +275,7 @@ describe("PATCH /api/admin/campaign-reports/[id]", () => {
       campaignId: "campaign-1",
       periodStart: report.periodStart,
       periodEnd: report.periodEnd,
+      dataScope: "brand",
     });
     expect(routeMocks.auditLogCreate).toHaveBeenCalledWith(
       expect.objectContaining({

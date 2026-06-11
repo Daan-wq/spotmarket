@@ -6,11 +6,65 @@ import { BrandReportActions } from "./brand-report-actions";
 import { BrandReportDocument } from "./brand-report-document";
 
 const data = {
+  generatedAt: "2026-06-10T00:00:00.000Z",
+  period: { start: null, end: null },
   campaign: {
+    id: "campaign-1",
+    brandId: "brand-1",
     brandName: "Bram's Fruit",
     name: "Fruit campagne",
+    platforms: ["TikTok"],
+    totalBudget: 1000,
+    businessCpm: 0.8,
   },
-  performance: {},
+  performance: {
+    currentViews: 2_000_000,
+    targetViews: 1_250_000,
+    paidEligibleViews: 1_250_000,
+    overdeliveryViews: 750_000,
+    deliveryProgress: 1.6,
+    budgetUsed: 1000,
+    budgetUsedPercent: 1,
+    budgetRemaining: 0,
+    businessCpm: 0.8,
+    effectiveCpm: 0.5,
+    approvedClips: 7,
+    uniquePages: 4,
+    totalEngagement: 200_000,
+  },
+  timeline: [],
+  platformBreakdown: [{
+    platform: "TikTok",
+    views: 2_000_000,
+    clips: 7,
+    engagement: 200_000,
+    engagementRate: 0.1,
+    effectiveCpm: 0.5,
+  }],
+  topContent: Array.from({ length: 7 }, (_, index) => ({
+    id: `clip-${index}`,
+    creator: `Creator ${index}`,
+    platform: "TikTok",
+    postUrl: `https://tiktok.com/video/${index}`,
+    thumbnailUrl: null,
+    views: 100_000 - index * 1000,
+    engagement: 10_000,
+  })),
+  creators: [],
+  quality: {
+    status: "passed_with_exclusions",
+    reviewedClips: 8,
+    excludedClips: 1,
+    excludedViews: 2500,
+  },
+  audience: {
+    sampleCount: 0,
+    platformsLabel: "Instagram",
+    ageBuckets: {},
+    genderSplit: {},
+    topCountries: [],
+    fitStatus: "Onvoldoende data",
+  },
 } as unknown as BrandReportLiveData;
 
 describe("BrandReportDocument", () => {
@@ -58,8 +112,66 @@ describe("BrandReportDocument", () => {
   });
 
   it("labels the browser print action as a PDF download", () => {
-    const html = renderToStaticMarkup(<BrandReportActions />);
+    const html = renderToStaticMarkup(<BrandReportActions reportId="report-1" />);
     expect(html).toContain("PDF downloaden");
+    expect(html).toContain("/api/brand/reports/report-1/pdf");
+  });
+
+  it("uses compact top-content rows, paired CPM values, and dashboard quality metrics", () => {
+    const html = renderToStaticMarkup(
+      <BrandReportDocument
+        report={{
+          title: "Fruit campagne eindrapport",
+          updatedAt: "2026-06-10T00:00:00.000Z",
+          brandVisibleAt: "2026-06-10T00:00:00.000Z",
+          executiveSummary: "Sterke campagne.",
+          keyTakeaways: [],
+          learnings: [],
+          nextCampaignRecommendations: [],
+        }}
+        data={data}
+        editorial={{
+          title: "Fruit campagne eindrapport",
+          executiveSummary: "Sterke campagne.",
+          keyTakeaways: [],
+          learnings: [],
+          nextCampaignRecommendations: [],
+          sectionSettings: {
+            ...DEFAULT_CAMPAIGN_REPORT_SECTIONS,
+            cover: false,
+            executiveSummary: false,
+            campaignAtAGlance: true,
+            campaignPerformance: false,
+            contentPerformance: true,
+            platformPerformance: true,
+            creatorContribution: false,
+            audienceReach: false,
+            budgetValue: true,
+            qualityAssurance: true,
+            nextCampaign: false,
+            appendix: false,
+          },
+          editorialContent: {
+            ...createEmptyEditorialContent(),
+            contentPatternTags: ["Snelle hook"],
+            contentInsights: ["Dubbel contentinzicht"],
+          },
+        }}
+      />,
+    );
+
+    expect(html.match(/data-report-content-row=/g)).toHaveLength(6);
+    expect(html).toContain("Afgesproken CPM");
+    expect(html).toContain("Effectieve CPM");
+    expect(html).toContain("De effectieve CPM laat zien wat je werkelijk betaalt");
+    expect(html).toContain("Gecontroleerde clips");
+    expect(html).toContain("Uitgesloten clips");
+    expect(html).toContain("Uitgesloten views");
+    expect(html).not.toContain("Effectieve CPM totaal");
+    expect(html).not.toContain("Kwaliteitsstatus");
+    expect(html).not.toContain("Open aandachtspunten");
+    expect(html).not.toContain("Snelle hook");
+    expect(html).not.toContain("Dubbel contentinzicht");
   });
 
   it("shows a clear empty state when no brand-visible countries are available", () => {
@@ -76,6 +188,7 @@ describe("BrandReportDocument", () => {
         }}
         data={{
           ...data,
+          campaign: { ...data.campaign, platforms: ["Instagram"] },
           audience: {
             sampleCount: 1,
             platformsLabel: "Instagram",
@@ -130,6 +243,7 @@ describe("BrandReportDocument", () => {
         }}
         data={{
           ...data,
+          campaign: { ...data.campaign, platforms: ["Instagram"] },
           audience: {
             sampleCount: 1,
             platformsLabel: "Instagram",

@@ -241,7 +241,6 @@ summary {
   .report-print-page {
     width: 100% !important;
     max-width: none !important;
-    min-height: 273mm !important;
     margin: 0 !important;
     border: 0 !important;
     border-radius: 0 !important;

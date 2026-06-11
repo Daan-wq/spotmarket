@@ -19,6 +19,7 @@ import {
   sortAudienceAgeRows,
   sortAudienceGenderRows,
 } from "@/lib/admin/campaign-report-display";
+import { CPM_EXPLANATION } from "@/lib/brand-report-document-model";
 import type { BrandCampaignDashboardData } from "@/lib/brand-report-portal";
 import { BrandViewsChart } from "./brand-views-chart";
 
@@ -108,10 +109,9 @@ export function BrandCampaignDashboard({
                 : `${formatPercent(Math.max(0, 1 - data.performance.budgetUsedPercent))} beschikbaar`
             }
           />
-          <LedgerRow
-            label="Effectieve CPM"
-            value={formatNullableCurrency(data.performance.effectiveCpm)}
-            detail={`Afgesproken CPM ${formatCurrency(data.performance.businessCpm, "EUR", "nl")}`}
+          <CpmLedgerRow
+            agreed={data.performance.businessCpm}
+            effective={data.performance.effectiveCpm}
           />
           <LedgerRow
             label="Over-delivery"
@@ -169,12 +169,16 @@ export function BrandCampaignDashboard({
                       {formatNumber(platform.clips, "nl")} clips · {formatPercent(platform.engagementRate)} engagement
                     </p>
                   </div>
-                  <div className="grid grid-cols-2 gap-x-6 text-right">
+                  <div className="grid grid-cols-3 gap-x-6 text-right">
                     <PlatformValue label="Views" value={formatNumber(platform.views, "nl")} />
+                    <PlatformValue label="Afgesproken CPM" value={formatCurrency(data.performance.businessCpm, "EUR", "nl")} />
                     <PlatformValue label="Effectieve CPM" value={formatNullableCurrency(platform.effectiveCpm)} />
                   </div>
                 </div>
               ))}
+              <p className="border-b border-neutral-200 py-4 text-xs leading-5 text-neutral-500">
+                {CPM_EXPLANATION}
+              </p>
             </div>
           ) : (
             <div className="mt-6 border-t-2 border-neutral-950 py-8 text-sm text-neutral-500">
@@ -334,10 +338,10 @@ export function BrandCampaignDashboard({
               detail="Zonder extra mediabudget"
               accent={data.performance.overdeliveryViews > 0}
             />
-            <LedgerRow
-              label="Effectieve CPM"
-              value={formatNullableCurrency(data.performance.effectiveCpm)}
-              detail={`Afgesproken CPM ${formatCurrency(data.performance.businessCpm, "EUR", "nl")}`}
+            <CpmLedgerRow
+              agreed={data.performance.businessCpm}
+              effective={data.performance.effectiveCpm}
+              showExplanation
             />
           </div>
         </div>
@@ -428,6 +432,38 @@ function LedgerRow({
         </p>
         <p className="mt-1 text-xs text-neutral-500">{detail}</p>
       </div>
+    </div>
+  );
+}
+
+function CpmLedgerRow({
+  agreed,
+  effective,
+  showExplanation = false,
+}: {
+  agreed: number;
+  effective: number | null;
+  showExplanation?: boolean;
+}) {
+  return (
+    <div className="border-b border-neutral-200 py-4">
+      <div className="grid grid-cols-2 gap-5">
+        <div>
+          <p className="text-sm text-neutral-500">Afgesproken CPM</p>
+          <p className="mt-1 text-2xl font-semibold tracking-[-0.03em] text-neutral-950">
+            {formatCurrency(agreed, "EUR", "nl")}
+          </p>
+        </div>
+        <div className="text-right">
+          <p className="text-sm text-neutral-500">Effectieve CPM</p>
+          <p className="mt-1 text-2xl font-semibold tracking-[-0.03em] text-neutral-950">
+            {formatNullableCurrency(effective)}
+          </p>
+        </div>
+      </div>
+      {showExplanation ? (
+        <p className="mt-3 text-xs leading-5 text-neutral-500">{CPM_EXPLANATION}</p>
+      ) : null}
     </div>
   );
 }

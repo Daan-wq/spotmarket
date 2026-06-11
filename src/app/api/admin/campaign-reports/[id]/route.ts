@@ -30,6 +30,7 @@ export async function GET(_req: Request, { params }: RouteContext) {
       campaignId: report.campaignId,
       periodStart: report.periodStart,
       periodEnd: report.periodEnd,
+      dataScope: "brand",
     });
 
     return NextResponse.json({ report: serialize(report), liveData });
@@ -113,6 +114,7 @@ export async function PATCH(req: Request, { params }: RouteContext) {
       campaignId: report.campaignId,
       periodStart: report.periodStart,
       periodEnd: report.periodEnd,
+      dataScope: "brand",
     });
 
     return NextResponse.json({ report: serialize(report), liveData });
