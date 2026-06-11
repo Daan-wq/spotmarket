@@ -9,5 +9,9 @@ export async function FirstClipCoach({ supabaseId }: { supabaseId: string }) {
   const status = await getFirstClipOnboardingStatus(header.id);
   if (status.nextStep === "done") return null;
 
-  return <FirstClipCoachClient status={status} storageScope={supabaseId} />;
+  const storageScope = status.testOverrideActive
+    ? `${supabaseId}:test-override`
+    : supabaseId;
+
+  return <FirstClipCoachClient status={status} storageScope={storageScope} />;
 }

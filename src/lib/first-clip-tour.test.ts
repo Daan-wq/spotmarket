@@ -20,6 +20,7 @@ const submitStatus: FirstClipOnboardingStatus = {
   accountConnected: true,
   hasJoinedCampaign: true,
   firstClipSubmitted: false,
+  testOverrideActive: false,
   joinedApplicationId: "application-1",
   nextStep: "submit_clip",
   nextHref: "/creator/applications/application-1/submit?firstClip=1",

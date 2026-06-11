@@ -13,6 +13,7 @@ export interface FirstClipOnboardingStatus {
   accountConnected: boolean;
   hasJoinedCampaign: boolean;
   firstClipSubmitted: boolean;
+  testOverrideActive: boolean;
   joinedApplicationId: string | null;
   nextStep: FirstClipStep;
   nextHref: string;
@@ -23,6 +24,7 @@ export interface FirstClipOnboardingStatusInput {
   accountConnected: boolean;
   joinedApplicationId: string | null;
   firstClipSubmitted: boolean;
+  testOverrideActive?: boolean;
 }
 
 export function shouldForceFirstClipOnboarding(
@@ -42,6 +44,7 @@ export function buildFirstClipOnboardingStatus({
   accountConnected,
   joinedApplicationId,
   firstClipSubmitted,
+  testOverrideActive = false,
 }: FirstClipOnboardingStatusInput): FirstClipOnboardingStatus {
   const hasJoinedCampaign = Boolean(joinedApplicationId);
 
@@ -51,6 +54,7 @@ export function buildFirstClipOnboardingStatus({
       accountConnected,
       hasJoinedCampaign,
       firstClipSubmitted,
+      testOverrideActive,
       joinedApplicationId,
       nextStep: "done",
       nextHref: "/creator/videos",
@@ -63,6 +67,7 @@ export function buildFirstClipOnboardingStatus({
       accountConnected,
       hasJoinedCampaign,
       firstClipSubmitted,
+      testOverrideActive,
       joinedApplicationId,
       nextStep: "discord",
       nextHref: `/api/auth/discord?return_to=${encodeURIComponent("/creator/campaigns?firstClip=1")}`,
@@ -75,6 +80,7 @@ export function buildFirstClipOnboardingStatus({
       accountConnected,
       hasJoinedCampaign,
       firstClipSubmitted,
+      testOverrideActive,
       joinedApplicationId,
       nextStep: "connect_account",
       nextHref: "/creator/connections?firstClip=1",
@@ -87,6 +93,7 @@ export function buildFirstClipOnboardingStatus({
       accountConnected,
       hasJoinedCampaign,
       firstClipSubmitted,
+      testOverrideActive,
       joinedApplicationId,
       nextStep: "join_campaign",
       nextHref: "/creator/campaigns?firstClip=1",
@@ -98,6 +105,7 @@ export function buildFirstClipOnboardingStatus({
     accountConnected,
     hasJoinedCampaign,
     firstClipSubmitted,
+    testOverrideActive,
     joinedApplicationId,
     nextStep: "submit_clip",
     nextHref: `/creator/applications/${joinedApplicationId}/submit?firstClip=1`,
@@ -154,12 +162,14 @@ export const getFirstClipOnboardingStatus = cache(
         }),
       ]);
 
+    const testOverrideActive = shouldForceFirstClipOnboarding(userId);
+
     return buildFirstClipOnboardingStatus({
       discordConnected: Boolean(user.discordId),
       accountConnected: igCount + fbCount + ytCount + ttCount > 0,
       joinedApplicationId: joinedApplication?.id ?? null,
-      firstClipSubmitted:
-        !shouldForceFirstClipOnboarding(userId) && firstClipCount > 0,
+      firstClipSubmitted: !testOverrideActive && firstClipCount > 0,
+      testOverrideActive,
     });
   },
 );

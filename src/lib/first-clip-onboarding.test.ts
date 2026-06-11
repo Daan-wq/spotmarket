@@ -65,6 +65,19 @@ describe("buildFirstClipOnboardingStatus", () => {
     expect(status.nextStep).toBe("done");
     expect(status.nextHref).toBe("/creator/videos");
   });
+
+  it("marks preview test overrides in the returned status", () => {
+    const status = buildFirstClipOnboardingStatus({
+      discordConnected: true,
+      accountConnected: true,
+      joinedApplicationId: "application-1",
+      firstClipSubmitted: false,
+      testOverrideActive: true,
+    });
+
+    expect(status.testOverrideActive).toBe(true);
+    expect(status.nextStep).toBe("submit_clip");
+  });
 });
 
 describe("shouldForceFirstClipOnboarding", () => {
