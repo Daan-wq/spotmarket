@@ -1,5 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { buildFirstClipOnboardingStatus } from "./first-clip-onboarding";
+import {
+  buildFirstClipOnboardingStatus,
+  shouldForceFirstClipOnboarding,
+} from "./first-clip-onboarding";
 
 describe("buildFirstClipOnboardingStatus", () => {
   it("starts creators without Discord at the Discord connection step", () => {
@@ -61,5 +64,21 @@ describe("buildFirstClipOnboardingStatus", () => {
 
     expect(status.nextStep).toBe("done");
     expect(status.nextHref).toBe("/creator/videos");
+  });
+});
+
+describe("shouldForceFirstClipOnboarding", () => {
+  it("does nothing without configured test users", () => {
+    expect(shouldForceFirstClipOnboarding("user-1", undefined)).toBe(false);
+    expect(shouldForceFirstClipOnboarding("user-1", "")).toBe(false);
+  });
+
+  it("matches a configured user id from a comma-separated list", () => {
+    expect(
+      shouldForceFirstClipOnboarding(
+        "user-2",
+        " user-1, user-2 ,user-3 ",
+      ),
+    ).toBe(true);
   });
 });

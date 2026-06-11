@@ -25,6 +25,18 @@ export interface FirstClipOnboardingStatusInput {
   firstClipSubmitted: boolean;
 }
 
+export function shouldForceFirstClipOnboarding(
+  userId: string,
+  configuredUserIds = process.env.FIRST_CLIP_ONBOARDING_TEST_USER_IDS,
+) {
+  if (!configuredUserIds) return false;
+  return configuredUserIds
+    .split(",")
+    .map((value) => value.trim())
+    .filter(Boolean)
+    .includes(userId);
+}
+
 export function buildFirstClipOnboardingStatus({
   discordConnected,
   accountConnected,
@@ -146,7 +158,8 @@ export const getFirstClipOnboardingStatus = cache(
       discordConnected: Boolean(user.discordId),
       accountConnected: igCount + fbCount + ytCount + ttCount > 0,
       joinedApplicationId: joinedApplication?.id ?? null,
-      firstClipSubmitted: firstClipCount > 0,
+      firstClipSubmitted:
+        !shouldForceFirstClipOnboarding(userId) && firstClipCount > 0,
     });
   },
 );
