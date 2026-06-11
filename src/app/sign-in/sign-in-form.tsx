@@ -1,13 +1,17 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { OAuthButtons, OAuthDivider } from "@/components/auth/oauth-buttons";
-import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import { safeRedirectPath } from "@/lib/safe-redirect";
-import { resolveSignInEmail } from "@/lib/sign-in-identifier";
+
+type PasswordSignInResponse = {
+  ok: boolean;
+  redirectUrl?: string;
+  error?: string;
+};
 
 function EyeIcon({ open }: { open: boolean }) {
   return open ? (
@@ -32,6 +36,9 @@ export function SignInForm() {
   const oauthT = useTranslations("auth.oauth");
   const commonT = useTranslations("common");
   const redirectUrl = safeRedirectPath(searchParams.get("redirect_url"), "/");
+  const brandFlow = redirectUrl.startsWith("/brand");
+  const sessionExpired = searchParams.get("session_expired") === "1";
+  const attemptIdRef = useRef<string | null>(null);
 
   const passwordReset = searchParams.get("reset") === "1";
   const authError = searchParams.get("auth_error");
@@ -39,44 +46,87 @@ export function SignInForm() {
   const [identifier, setIdentifier] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
-  const [showOtherMethods, setShowOtherMethods] = useState(false);
+  const [showOtherMethods, setShowOtherMethods] = useState(brandFlow);
   const [error, setError] = useState<string | null>(
-    authError === "callback_failed"
-      ? t("callbackFailed")
-      : authError === "recovery_failed"
-        ? t("recoveryFailed")
-        : authError
+    sessionExpired
+      ? "Je sessie was verlopen. Log opnieuw in met je gebruikersnaam en wachtwoord."
+      : authError === "network"
+        ? "Netwerkprobleem: de inlogservice is tijdelijk niet bereikbaar. Probeer het opnieuw."
+        : authError === "callback_failed"
+          ? t("callbackFailed")
+          : authError === "recovery_failed"
+            ? t("recoveryFailed")
+            : authError
   );
   const [success, setSuccess] = useState<string | null>(
     passwordReset ? t("passwordUpdated") : null
   );
   const [loading, setLoading] = useState(false);
 
+  function getAttemptId() {
+    if (!attemptIdRef.current) {
+      attemptIdRef.current = crypto.randomUUID();
+    }
+    return attemptIdRef.current;
+  }
+
+  function logClientEvent(event: "form_opened" | "network_error") {
+    void fetch("/api/auth/sign-in-events", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        event,
+        attemptId: getAttemptId(),
+        brandFlow,
+      }),
+      keepalive: true,
+    }).catch(() => undefined);
+  }
+
+  useEffect(() => {
+    logClientEvent("form_opened");
+  // This event belongs to the initial form view, not later UI state changes.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   async function handleSignIn(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
     setLoading(true);
 
-    let email: string;
     try {
-      email = resolveSignInEmail(identifier);
+      const response = await fetch("/api/auth/password-sign-in", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          identifier,
+          password,
+          redirectUrl,
+          attemptId: getAttemptId(),
+        }),
+      });
+      const data = (await response.json().catch(() => null)) as
+        | PasswordSignInResponse
+        | null;
+
+      if (!response.ok || !data?.ok) {
+        setError(
+          data?.error ??
+            "Inloggen is tijdelijk niet beschikbaar. Probeer het opnieuw.",
+        );
+        setLoading(false);
+        return;
+      }
+
+      router.replace(data.redirectUrl ?? redirectUrl);
+      router.refresh();
     } catch {
-      setError(t("invalidIdentifier"));
+      logClientEvent("network_error");
+      setError(
+        "Netwerkprobleem: ClipProfit is niet bereikbaar. Controleer je verbinding en probeer het opnieuw.",
+      );
       setLoading(false);
-      return;
     }
-
-    const supabase = createSupabaseBrowserClient();
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
-
-    if (error) {
-      setError(error.message);
-      setLoading(false);
-      return;
-    }
-
-    router.push(redirectUrl);
-    router.refresh();
   }
 
   async function handleForgotPassword(e: React.FormEvent) {
