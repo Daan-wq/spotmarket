@@ -20,8 +20,9 @@ Apply these rules to every deployment:
 - After changing a Vercel environment variable, create a new deployment.
   Existing deployments retain the environment snapshot from build time.
 - Before sharing a deployment, run
-  `npm run verify:preview -- https://<deployment>.vercel.app`. The root,
-  `/sign-in`, and `/brand` must all return a successful response or redirect.
+  `npm run verify:preview -- https://<deployment>.vercel.app`.
+  `/api/health` must confirm a real database query, while the root, `/sign-in`,
+  and `/brand` must return a successful response or redirect.
 - Treat the GitHub `Deployment smoke test` as required. A failed smoke test
   blocks acceptance of the preview.
 - For any preview HTTP 500, inspect the exact deployment with

@@ -1,4 +1,4 @@
-const DEFAULT_ROUTES = ["/", "/sign-in", "/brand"];
+const DEFAULT_ROUTES = ["/api/health", "/", "/sign-in", "/brand"];
 const MAX_ATTEMPTS = 5;
 const RETRY_DELAY_MS = 3_000;
 
