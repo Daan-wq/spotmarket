@@ -82,7 +82,7 @@ describe("BrandReportDocument", () => {
             ageBuckets: { "18-24": 0.7, "25-34": 0.3 },
             genderSplit: { vrouw: 0.6, man: 0.4 },
             topCountries: [],
-            fitStatus: "Beperkte match",
+            fitStatus: "Gedeeltelijke match",
           },
         }}
         editorial={{
