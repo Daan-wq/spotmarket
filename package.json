@@ -8,6 +8,7 @@
     "start": "next start",
     "lint": "eslint",
     "test": "vitest run",
+    "verify:preview": "node scripts/verify-preview-runtime.mjs",
     "deploy:testing": "vercel deploy",
     "deploy:prod": "node scripts/verify-production-deploy.mjs --local && vercel deploy --prod"
   },
