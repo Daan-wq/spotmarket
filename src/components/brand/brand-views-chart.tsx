@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import {
   Area,
   AreaChart,
@@ -22,6 +23,7 @@ interface ChartPoint {
   views: number | null;
   actualViews: number | null;
   cumulativeViews: number;
+  cumulativePlotViews: number | null;
 }
 
 interface BrandViewsChartProps {
@@ -31,7 +33,11 @@ interface BrandViewsChartProps {
   currentDate: string;
 }
 
+type ChartMode = "cumulative" | "daily";
+
 export function BrandViewsChart({ data, milestones, pausePeriods, currentDate }: BrandViewsChartProps) {
+  const [mode, setMode] = useState<ChartMode>("cumulative");
+
   if (data.length === 0) {
     return (
       <div className="flex h-64 items-center justify-center rounded-2xl border border-dashed border-neutral-200 bg-neutral-50 px-6 text-center">
@@ -47,6 +53,26 @@ export function BrandViewsChart({ data, milestones, pausePeriods, currentDate }:
 
   return (
     <div>
+      <div className="mb-4 flex justify-end">
+        <div
+          className="inline-flex border-b border-neutral-200"
+          role="group"
+          aria-label="Grafiekweergave"
+        >
+          <ChartModeButton
+            active={mode === "cumulative"}
+            onClick={() => setMode("cumulative")}
+          >
+            Cumulatief
+          </ChartModeButton>
+          <ChartModeButton
+            active={mode === "daily"}
+            onClick={() => setMode("daily")}
+          >
+            Per dag
+          </ChartModeButton>
+        </div>
+      </div>
       <div className="h-72 min-w-0">
         <ResponsiveContainer
           width="100%"
@@ -97,8 +123,8 @@ export function BrandViewsChart({ data, milestones, pausePeriods, currentDate }:
               )}
             />
             <Area
-              connectNulls={false}
-              dataKey="views"
+              connectNulls={mode === "cumulative"}
+              dataKey={mode === "cumulative" ? "cumulativePlotViews" : "views"}
               fill="url(#brandViewsFill)"
               fillOpacity={1}
               stroke="#171717"
@@ -151,6 +177,30 @@ export function BrandViewsChart({ data, milestones, pausePeriods, currentDate }:
         </div>
       ) : null}
     </div>
+  );
+}
+
+function ChartModeButton({
+  active,
+  children,
+  onClick,
+}: {
+  active: boolean;
+  children: string;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`relative px-3 py-2 text-xs font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neutral-950 focus-visible:ring-offset-2 ${
+        active ? "text-neutral-950" : "text-neutral-400 hover:text-neutral-700"
+      }`}
+      aria-pressed={active}
+    >
+      {children}
+      {active ? <span className="absolute inset-x-0 -bottom-px h-0.5 bg-neutral-950" /> : null}
+    </button>
   );
 }
 
@@ -239,6 +289,10 @@ export function buildChartSeries(
   ]);
   const rowsByDate = new Map(data.map((row) => [row.date, row]));
   const sortedDates = [...dates].sort();
+  const lastDataDate = data.reduce(
+    (latest, row) => row.date > latest ? row.date : latest,
+    "",
+  );
   let cumulativeViews = 0;
   let latestCompletedDayViews: number | null = null;
 
@@ -257,6 +311,7 @@ export function buildChartSeries(
       views,
       actualViews,
       cumulativeViews,
+      cumulativePlotViews: date <= lastDataDate ? cumulativeViews : null,
     };
   });
 }

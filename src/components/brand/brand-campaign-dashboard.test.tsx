@@ -159,10 +159,17 @@ describe("BrandCampaignDashboard", () => {
     expect(html).toContain("width:5%");
     expect(html.indexOf("18-24")).toBeLessThan(html.indexOf("25-34"));
     expect(html.indexOf("25-34")).toBeLessThan(html.indexOf("65+"));
-    expect(html.indexOf(">male<")).toBeLessThan(html.indexOf(">female<"));
-    expect(html.indexOf(">female<")).toBeLessThan(html.indexOf(">other<"));
+    expect(html.indexOf(">Man<")).toBeLessThan(html.indexOf(">Vrouw<"));
+    expect(html.indexOf(">Vrouw<")).toBeLessThan(html.indexOf(">Anders<"));
     expect(html).not.toContain("100% goedgekeurd - Aanbevolen");
     expect(html).toContain("last:border-b-0");
+    expect(html).toContain('aria-label="Uitleg over uitgesloten views"');
+    expect(html).toContain(
+      "Uitgesloten views zijn views die niet worden meegenomen in het betaalbare totaal.",
+    );
+    expect(html).toContain(
+      "Dit betekent niet automatisch dat deze views ongeldig of nep zijn; ze worden alleen niet uitbetaald.",
+    );
     expect(html).toContain("Over-delivery");
     expect(html).toContain("Reageer op deze video’s voor extra engagement en bereik via je eigen socials.");
     expect(html).toContain("https://example.com/clip-1");

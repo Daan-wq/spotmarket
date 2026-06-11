@@ -167,7 +167,7 @@ describe("BrandReportDocument", () => {
 
     expect(html.indexOf("18-24")).toBeLessThan(html.indexOf("25-34"));
     expect(html.indexOf("25-34")).toBeLessThan(html.indexOf("65+"));
-    expect(html.indexOf(">male<")).toBeLessThan(html.indexOf(">female<"));
-    expect(html.indexOf(">female<")).toBeLessThan(html.indexOf(">other<"));
+    expect(html.indexOf(">Man<")).toBeLessThan(html.indexOf(">Vrouw<"));
+    expect(html.indexOf(">Vrouw<")).toBeLessThan(html.indexOf(">Anders<"));
   });
 });

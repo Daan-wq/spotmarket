@@ -9,13 +9,17 @@ and prevent the incomplete current day from creating a misleading chart drop.
 
 1. Add shared audience display ordering:
    - age buckets in ascending age order, with `65+` last;
-   - gender in `male`, `female`, `other` order.
+   - gender in `male`, `female`, `other` order, displayed as `Man`, `Vrouw`,
+     and `Anders`.
 2. Apply the shared ordering to both the dashboard and printable brand report.
 3. Keep the actual current-day views for the tooltip, but plot the previous
    completed day's value until the current day is complete.
-4. Remove creator approval/reliability text and the audience fit-status badge
+4. Default the chart to cumulative views and retain daily views as a selectable
+   alternative.
+5. Add an accessible explanation tooltip to excluded views.
+6. Remove creator approval/reliability text and the audience fit-status badge
    from the dashboard.
-5. Remove the duplicate separator between Creator contribution and Audience by
+7. Remove the duplicate separator between Creator contribution and Audience by
    omitting the final creator-row border.
 
 ## Verification

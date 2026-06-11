@@ -55,7 +55,11 @@ export function sortAudienceAgeRows(values: Record<string, number>) {
 export function sortAudienceGenderRows(values: Record<string, number>) {
   return Object.entries(values)
     .map(([label, value]) => ({ label, value }))
-    .sort((a, b) => audienceGenderOrder(a.label) - audienceGenderOrder(b.label));
+    .sort((a, b) => audienceGenderOrder(a.label) - audienceGenderOrder(b.label))
+    .map((row) => ({
+      ...row,
+      label: audienceGenderLabel(row.label),
+    }));
 }
 
 export function reportQualityStatusLabel(status: ReportQualityStatus): string {
@@ -128,6 +132,14 @@ function audienceGenderOrder(label: string) {
   if (["female", "vrouw", "vrouwen"].includes(normalized)) return 1;
   if (["other", "anders", "overig"].includes(normalized)) return 2;
   return 3;
+}
+
+function audienceGenderLabel(label: string) {
+  const normalized = label.trim().toLowerCase();
+  if (["male", "man", "mannen"].includes(normalized)) return "Man";
+  if (["female", "vrouw", "vrouwen"].includes(normalized)) return "Vrouw";
+  if (["other", "anders", "overig"].includes(normalized)) return "Anders";
+  return label;
 }
 
 function normalizeResolvedToken(name: string, value: unknown) {

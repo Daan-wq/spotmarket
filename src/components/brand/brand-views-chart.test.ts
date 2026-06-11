@@ -1,5 +1,8 @@
 import { describe, expect, it } from "vitest";
+import { createElement } from "react";
+import { renderToStaticMarkup } from "react-dom/server";
 import {
+  BrandViewsChart,
   buildBrandChartTooltipContent,
   buildChartSeries,
   buildChartPauseAreas,
@@ -62,13 +65,30 @@ describe("brand views chart", () => {
         views: 120000,
         actualViews: 120000,
         cumulativeViews: 120000,
+        cumulativePlotViews: 120000,
       },
       {
         date: "2026-06-11",
         views: 120000,
         actualViews: 6592,
         cumulativeViews: 126592,
+        cumulativePlotViews: 126592,
       },
     ]);
+  });
+
+  it("defaults to cumulative views while keeping per-day views available", () => {
+    const html = renderToStaticMarkup(createElement(BrandViewsChart, {
+      data: [
+        { date: "2026-06-10", views: 120000, cumulativeViews: 120000 },
+        { date: "2026-06-11", views: 6592, cumulativeViews: 126592 },
+      ],
+      milestones: [],
+      pausePeriods: [],
+      currentDate: "2026-06-11",
+    }));
+
+    expect(html).toContain('aria-pressed="true">Cumulatief');
+    expect(html).toContain('aria-pressed="false">Per dag');
   });
 });

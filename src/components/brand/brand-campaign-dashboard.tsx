@@ -140,7 +140,7 @@ export function BrandCampaignDashboard({
       <section className="border-b border-neutral-200 py-10 lg:py-12">
         <SectionHeading
           eyebrow="Bereik"
-          title="Viewgroei per dag"
+          title="Viewgroei"
           detail="Alleen goedgekeurde campagneprestaties"
         />
         <div className="mt-7">
@@ -351,7 +351,12 @@ export function BrandCampaignDashboard({
           <div className="mt-7 grid grid-cols-3 border-t-2 border-neutral-950">
             <QualityMetric label="Gecontroleerde clips" value={data.quality.reviewedClips} icon={<Users className="h-4 w-4" />} />
             <QualityMetric label="Uitgesloten clips" value={data.quality.excludedClips} icon={<CircleOff className="h-4 w-4" />} />
-            <QualityMetric label="Uitgesloten views" value={data.quality.excludedViews} icon={<ShieldCheck className="h-4 w-4" />} />
+            <QualityMetric
+              label="Uitgesloten views"
+              value={data.quality.excludedViews}
+              icon={<ShieldCheck className="h-4 w-4" />}
+              description="Uitgesloten views zijn views die niet worden meegenomen in het betaalbare totaal. Ze komen niet in aanmerking voor vergoeding omdat ze niet voldoen aan de contentvoorwaarden, algemene voorwaarden of andere beoordelingscriteria. Dit betekent niet automatisch dat deze views ongeldig of nep zijn; ze worden alleen niet uitbetaald."
+            />
           </div>
         </div>
       </section>
@@ -546,16 +551,39 @@ function QualityMetric({
   label,
   value,
   icon,
+  description,
 }: {
   label: string;
   value: number;
   icon: React.ReactNode;
+  description?: string;
 }) {
+  const tooltipId = `quality-${label.toLowerCase().replace(/[^a-z0-9]+/g, "-")}-tooltip`;
+
   return (
     <div className="py-5">
       <div className="flex items-center gap-2 text-neutral-500">
         {icon}
         <p className="text-xs">{label}</p>
+        {description ? (
+          <span className="group relative inline-flex">
+            <button
+              type="button"
+              aria-label={`Uitleg over ${label.toLowerCase()}`}
+              aria-describedby={tooltipId}
+              className="inline-flex h-5 w-5 items-center justify-center rounded-full text-neutral-400 transition-colors hover:text-neutral-950 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neutral-950 focus-visible:ring-offset-2"
+            >
+              <Info className="h-3.5 w-3.5" aria-hidden="true" />
+            </button>
+            <span
+              id={tooltipId}
+              role="tooltip"
+              className="pointer-events-none absolute bottom-full right-0 z-20 mb-2 w-[min(20rem,calc(100vw-2rem))] rounded-xl bg-neutral-950 px-4 py-3 text-left text-xs font-normal leading-5 text-neutral-100 opacity-0 shadow-xl transition-opacity group-hover:opacity-100 group-focus-within:opacity-100"
+            >
+              {description}
+            </span>
+          </span>
+        ) : null}
       </div>
       <p className="mt-3 text-3xl font-semibold tabular-nums text-neutral-950">{formatNumber(value, "nl")}</p>
     </div>

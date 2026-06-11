@@ -77,9 +77,9 @@ describe("campaign report display helpers", () => {
       other: 0.1,
       male: 0.4,
     })).toEqual([
-      { label: "male", value: 0.4 },
-      { label: "female", value: 0.5 },
-      { label: "other", value: 0.1 },
+      { label: "Man", value: 0.4 },
+      { label: "Vrouw", value: 0.5 },
+      { label: "Anders", value: 0.1 },
     ]);
   });
 
