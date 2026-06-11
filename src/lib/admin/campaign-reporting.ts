@@ -312,7 +312,7 @@ export function buildCampaignReportLiveData(input: CampaignReportBuildInput): Ca
   const statusCounts = countBy(submissions, (submission) => submission.status);
   const uniqueCreators = new Set(submissions.map((submission) => submission.creatorId)).size;
   const uniquePages = countUniquePages(submissions);
-  const timeline = buildTimeline(submissions);
+  const timeline = buildTimeline(approved);
   const platformBreakdown = buildPlatformBreakdown(approved);
   const topContent = buildTopContent(submissions);
   const creators = buildCreatorLeaderboard(submissions);

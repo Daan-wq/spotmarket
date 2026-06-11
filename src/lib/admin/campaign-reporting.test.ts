@@ -134,6 +134,10 @@ describe("buildCampaignReportLiveData", () => {
     });
 
     expect(report.performance.approvedViews).toBe(400_000);
+    expect(report.timeline).toEqual([
+      { date: "2026-05-02", views: 100_000, likes: 5000, comments: 100, shares: 100 },
+      { date: "2026-05-03", views: 300_000, likes: 15_000, comments: 200, shares: 600 },
+    ]);
     expect(report.performance.goalCompletion).toBe(0.4);
     expect(report.performance.budgetUsed).toBe(320);
     expect(report.performance.budgetUsedPercent).toBe(0.32);
