@@ -36,6 +36,15 @@ const PLATFORM_LABELS: Record<string, string> = {
   OAUTH_FB: "Facebook",
 };
 
+const ASIAN_COUNTRY_CODES = new Set([
+  "AE", "AF", "AM", "AZ", "BD", "BH", "BN", "BT", "CN", "CY", "GE", "HK",
+  "ID", "IL", "IN", "IQ", "IR", "JO", "JP", "KG", "KH", "KP", "KR", "KW",
+  "KZ", "LA", "LB", "LK", "MM", "MN", "MO", "MV", "MY", "NP", "OM", "PH",
+  "PK", "PS", "QA", "SA", "SG", "SY", "TH", "TJ", "TL", "TM", "TR", "TW",
+  "UZ", "VN", "YE",
+]);
+const MAX_ASIAN_COUNTRY_SHARE = 0.1;
+
 export type CampaignReportGoalViewsSource = "manual" | "budget_cpm" | "missing";
 export type CampaignReportPacingStatus = "Voor op schema" | "Op schema" | "Achter op schema" | "Tijdschema ontbreekt";
 export type CampaignReportAudienceFitStatus = "Sterke match" | "Gedeeltelijke match" | "Verbetering nodig" | "Onvoldoende data";
@@ -1090,7 +1099,11 @@ function averageAudienceRecord(
 }
 
 function averageAudienceCountries(snapshots: CampaignReportAudienceSnapshotInput[]) {
-  const available = snapshots.filter((snapshot) => (snapshot.topCountries?.length ?? 0) > 0);
+  const available = snapshots.filter(
+    (snapshot) =>
+      (snapshot.topCountries?.length ?? 0) > 0 &&
+      asianAudienceShare(snapshot) <= MAX_ASIAN_COUNTRY_SHARE + 1e-8,
+  );
   if (available.length === 0) return {};
 
   const totals: Record<string, number> = {};
@@ -1104,6 +1117,15 @@ function averageAudienceCountries(snapshots: CampaignReportAudienceSnapshotInput
   return Object.fromEntries(
     Object.entries(totals).map(([code, total]) => [code, roundAudienceShare(total / available.length)]),
   );
+}
+
+function asianAudienceShare(snapshot: CampaignReportAudienceSnapshotInput) {
+  return (snapshot.topCountries ?? []).reduce((total, country) => {
+    const code = country.code.trim().toUpperCase();
+    return ASIAN_COUNTRY_CODES.has(code)
+      ? total + audienceShareFraction(country.share)
+      : total;
+  }, 0);
 }
 
 function audienceShareFraction(value: number) {

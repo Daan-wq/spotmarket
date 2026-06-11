@@ -237,7 +237,7 @@ describe("buildCampaignReportLiveData", () => {
     expect(report.defaults.keyTakeaways.some((takeaway) => takeaway.includes("overdelivery"))).toBe(true);
   });
 
-  it("averages demographics from Instagram accounts used by campaign clips only", () => {
+  it("excludes Instagram accounts above 10% Asian audience from countries only", () => {
     const report = buildCampaignReportLiveData({
       campaign,
       generatedAt: new Date("2026-05-10T00:00:00.000Z"),
@@ -321,7 +321,8 @@ describe("buildCampaignReportLiveData", () => {
           genderSplit: { male: 0.5, female: 0.5 },
           topCountries: [
             { code: "NL", share: 0.6 },
-            { code: "IN", share: 0.2 },
+            { code: "IN", share: 0.08 },
+            { code: "PK", share: 0.04 },
             { code: "US", share: 0.1 },
           ],
         },
@@ -357,10 +358,9 @@ describe("buildCampaignReportLiveData", () => {
       female: 0.6,
     });
     expect(report.audience.topCountries).toEqual([
-      { code: "NL", share: 0.7 },
-      { code: "IN", share: 0.15 },
-      { code: "US", share: 0.05 },
-      { code: "BE", share: 0.025 },
+      { code: "NL", share: 0.8 },
+      { code: "IN", share: 0.1 },
+      { code: "BE", share: 0.05 },
     ]);
     expect(report.audience.fitStatus).toBe("Sterke match");
   });
