@@ -40,6 +40,7 @@ export type CampaignReportGoalViewsSource = "manual" | "budget_cpm" | "missing";
 export type CampaignReportPacingStatus = "Voor op schema" | "Op schema" | "Achter op schema" | "Tijdschema ontbreekt";
 export type CampaignReportAudienceFitStatus = "Sterke match" | "Gedeeltelijke match" | "Verbetering nodig" | "Onvoldoende data";
 export type CampaignReportTrafficQualityStatus = "Goedgekeurd" | "Goedgekeurd met uitsluitingen" | "Aandacht nodig";
+export type CampaignReportDataScope = "internal" | "brand";
 
 export interface CampaignReportCampaignInput {
   id: string;
@@ -147,6 +148,7 @@ export interface CampaignReportBuildInput {
   submissions: CampaignReportSubmissionInput[];
   audienceSnapshots: CampaignReportAudienceSnapshotInput[];
   attributions: CampaignReportAttributionInput[];
+  dataScope?: CampaignReportDataScope;
   periodStart?: Date | string | null;
   periodEnd?: Date | string | null;
   generatedAt?: Date | string;
@@ -301,7 +303,11 @@ export function buildCampaignReportLiveData(input: CampaignReportBuildInput): Ca
     : goalViews
       ? "budget_cpm"
       : "missing";
-  const submissions = input.submissions;
+  const submissions = filterSubmissionsForDataScope(
+    input.submissions,
+    input.campaign.platforms,
+    input.dataScope ?? "internal",
+  );
   const approved = submissions.filter((submission) => submission.status === "APPROVED");
   const reviewed = submissions.filter((submission) => ["APPROVED", "REJECTED", "NEEDS_REVISION", "FLAGGED"].includes(submission.status));
   const approvedViews = approved.reduce((sum, submission) => sum + submissionViews(submission), 0);
@@ -315,7 +321,7 @@ export function buildCampaignReportLiveData(input: CampaignReportBuildInput): Ca
   const topContent = buildTopContent(submissions);
   const creators = buildCreatorLeaderboard(submissions);
   const quality = buildQualitySummary(submissions);
-  const audience = buildAudienceSummary(input.audienceSnapshots, input.campaign, input.submissions);
+  const audience = buildAudienceSummary(input.audienceSnapshots, input.campaign, submissions);
   const periodStartForPacing = input.periodStart ?? input.campaign.startsAt ?? firstSubmissionDate(submissions);
   const pacingStatus = buildPacingStatus({
     goalCompletion: goalViews && goalViews > 0 ? approvedViews / goalViews : null,
@@ -427,10 +433,12 @@ export async function getCampaignReportLiveData({
   campaignId,
   periodStart,
   periodEnd,
+  dataScope = "internal",
 }: {
   campaignId: string;
   periodStart?: Date | string | null;
   periodEnd?: Date | string | null;
+  dataScope?: CampaignReportDataScope;
 }): Promise<CampaignReportLiveData | null> {
   const metricWhere = {
     ...VALID_METRIC_SNAPSHOT_WHERE,
@@ -536,9 +544,14 @@ export async function getCampaignReportLiveData({
   });
 
   if (!campaign) return null;
+  const scopedSubmissions = filterSubmissionsForDataScope(
+    campaign.campaignSubmissions,
+    campaign.platforms.map(String),
+    dataScope,
+  );
 
   const instagramConnectionIds = Array.from(new Set(
-    campaign.campaignSubmissions
+    scopedSubmissions
       .filter((submission) => submission.status === "APPROVED" && submission.sourceConnectionType === "IG")
       .map((submission) => submission.sourceConnectionId)
       .filter((id): id is string => Boolean(id)),
@@ -546,7 +559,7 @@ export async function getCampaignReportLiveData({
 
   const audienceSnapshots = await loadInstagramAudienceSnapshots(instagramConnectionIds);
   const earnedByInvitedCreator = new Map<string, number>();
-  for (const submission of campaign.campaignSubmissions) {
+  for (const submission of scopedSubmissions) {
     if (submission.status !== "APPROVED") continue;
     earnedByInvitedCreator.set(
       submission.creatorId,
@@ -566,7 +579,7 @@ export async function getCampaignReportLiveData({
       minEngagementRate: toNumber(campaign.minEngagementRate),
       requiredHashtags: campaign.requiredHashtags,
     },
-    submissions: campaign.campaignSubmissions.map((submission) => ({
+    submissions: scopedSubmissions.map((submission) => ({
       id: submission.id,
       creatorId: submission.creatorId,
       creatorLabel:
@@ -604,6 +617,7 @@ export async function getCampaignReportLiveData({
       qcReviews: submission.qcReviews,
     })),
     audienceSnapshots,
+    dataScope,
     attributions: campaign.referralAttributions.map((attribution) => ({
       referrerId: attribution.referrerId,
       referrerLabel:
@@ -1173,12 +1187,34 @@ function submissionEngagement(submission: CampaignReportSubmissionInput) {
   );
 }
 
-function latestSnapshot(submission: CampaignReportSubmissionInput) {
+function latestSnapshot(submission: PlatformSubmissionInput) {
   if (submission.metricSnapshots.length === 0) return null;
   return [...submission.metricSnapshots].sort((a, b) => toDate(b.capturedAt).getTime() - toDate(a.capturedAt).getTime())[0];
 }
 
-function inferPlatform(submission: CampaignReportSubmissionInput) {
+type PlatformSubmissionInput = Pick<
+  CampaignReportSubmissionInput,
+  "normalizedPlatform" | "sourcePlatform" | "postUrl" | "metricSnapshots"
+>;
+
+function filterSubmissionsForDataScope<T extends PlatformSubmissionInput>(
+  submissions: T[],
+  campaignPlatforms: string[],
+  dataScope: CampaignReportDataScope,
+) {
+  if (dataScope === "internal" || campaignPlatforms.length === 0) {
+    return submissions;
+  }
+
+  const allowedPlatforms = new Set(campaignPlatforms.map(canonicalPlatform));
+  return submissions.filter((submission) => allowedPlatforms.has(canonicalPlatform(inferPlatform(submission))));
+}
+
+function canonicalPlatform(value: string | null | undefined) {
+  return platformLabel(value).replace(/\s+/g, "").toLowerCase();
+}
+
+function inferPlatform(submission: PlatformSubmissionInput) {
   return (
     platformLabelIfKnown(submission.normalizedPlatform) ??
     platformLabelIfKnown(submission.sourcePlatform) ??

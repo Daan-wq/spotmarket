@@ -64,5 +64,19 @@ export const campaignReportUpdateSchema = z.object({
   editorialContent: optionalEditorialContentSchema,
 });
 
+export const campaignReportPdfSchema = z.object({
+  campaignId: z.string().min(1),
+  title: z.string().trim().min(1).max(180),
+  periodStart: optionalIsoDate,
+  periodEnd: optionalIsoDate,
+  executiveSummary: z.string().trim().max(5000).default(""),
+  keyTakeaways: textList.default([]),
+  learnings: textList.default([]),
+  nextCampaignRecommendations: textList.default([]),
+  sectionSettings: sectionSettingsSchema,
+  editorialContent: optionalEditorialContentSchema,
+});
+
 export type CampaignReportCreateInput = z.infer<typeof campaignReportCreateSchema>;
 export type CampaignReportUpdateInput = z.infer<typeof campaignReportUpdateSchema>;
+export type CampaignReportPdfInput = z.infer<typeof campaignReportPdfSchema>;

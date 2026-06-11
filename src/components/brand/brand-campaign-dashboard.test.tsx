@@ -141,6 +141,7 @@ describe("BrandCampaignDashboard", () => {
     expect(html).toContain("Budget resterend");
     expect(html).toContain("Afgesproken CPM");
     expect(html).toContain("Effectieve CPM");
+    expect(html).toContain("De effectieve CPM laat zien wat je werkelijk betaalt");
     expect(html).toContain("Verwachte doeldatum");
     expect(html).toContain("40.625 views per actieve dag");
     expect(html).toContain("1 pauzedag uitgesloten");

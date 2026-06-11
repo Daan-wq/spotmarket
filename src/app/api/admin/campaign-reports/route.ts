@@ -53,6 +53,7 @@ export async function POST(req: Request) {
       campaignId: parsed.campaignId,
       periodStart: parsed.periodStart,
       periodEnd: parsed.periodEnd,
+      dataScope: "brand",
     });
 
     if (!liveData) {

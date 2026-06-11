@@ -64,6 +64,7 @@ export default async function BrandPortalPage({ searchParams }: PageProps) {
 
   const liveData = await getCampaignReportLiveData({
     campaignId: selectedCampaign.id,
+    dataScope: "brand",
   });
 
   if (!liveData) {

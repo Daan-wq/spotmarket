@@ -99,6 +99,7 @@ export default async function ReportsPage({ searchParams }: PageProps) {
         campaignId: selectedCampaignId,
         periodStart: selectedReport?.periodStart ?? null,
         periodEnd: selectedReport?.periodEnd ?? null,
+        dataScope: "brand",
       })
     : null;
 
