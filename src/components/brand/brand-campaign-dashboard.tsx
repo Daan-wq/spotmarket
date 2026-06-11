@@ -294,6 +294,7 @@ export function BrandCampaignDashboard({
           <div className="mt-7 grid gap-8 lg:grid-cols-3">
             <DashboardDistribution
               title="Toplanden"
+              emptyLabel="Geen landen beschikbaar"
               rows={data.audience.topCountries.slice(0, 5).map((row) => ({
                 label: formatAudienceCountryLabel(row.code),
                 value: row.share,
@@ -512,25 +513,31 @@ function CreatorContributionRow({
 function DashboardDistribution({
   title,
   rows,
+  emptyLabel,
 }: {
   title: string;
   rows: Array<{ label: string; value: number }>;
+  emptyLabel?: string;
 }) {
   return (
     <div>
       <p className="border-b-2 border-neutral-950 pb-3 text-sm font-semibold text-neutral-950">{title}</p>
       <div className="mt-4 space-y-4">
-        {rows.map((row) => (
-          <div key={row.label}>
-            <div className="mb-1.5 flex items-center justify-between gap-4 text-xs">
-              <span className="font-medium text-neutral-700">{row.label}</span>
-              <span className="tabular-nums text-neutral-500">{formatAudienceShare(row.value)}</span>
+        {rows.length === 0 && emptyLabel ? (
+          <p className="text-sm leading-6 text-neutral-500">{emptyLabel}</p>
+        ) : (
+          rows.map((row) => (
+            <div key={row.label}>
+              <div className="mb-1.5 flex items-center justify-between gap-4 text-xs">
+                <span className="font-medium text-neutral-700">{row.label}</span>
+                <span className="tabular-nums text-neutral-500">{formatAudienceShare(row.value)}</span>
+              </div>
+              <div className="h-1.5 overflow-hidden bg-neutral-100">
+                <div className="h-full bg-neutral-950" style={{ width: `${audienceBarWidth(row.value)}%` }} />
+              </div>
             </div>
-            <div className="h-1.5 overflow-hidden bg-neutral-100">
-              <div className="h-full bg-neutral-950" style={{ width: `${audienceBarWidth(row.value)}%` }} />
-            </div>
-          </div>
-        ))}
+          ))
+        )}
       </div>
     </div>
   );

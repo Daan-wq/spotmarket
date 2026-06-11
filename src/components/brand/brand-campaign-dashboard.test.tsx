@@ -95,12 +95,9 @@ const data: BrandCampaignDashboardData = {
     ageBuckets: { "18-24": 0.62, "25-34": 0.38 },
     genderSplit: { vrouw: 0.58, man: 0.42 },
     topCountries: [
-      { code: "IN", share: 0.9448 },
-      { code: "NL", share: 0.0481 },
-      { code: "BE", share: 0.004 },
-      { code: "US", share: 0.002 },
-      { code: "GB", share: 0.001 },
-      { code: "DE", share: 0.0005 },
+      { code: "NL", share: 0.7 },
+      { code: "US", share: 0.05 },
+      { code: "BE", share: 0.025 },
     ],
     fitStatus: "Sterke match",
   },
@@ -158,9 +155,8 @@ describe("BrandCampaignDashboard", () => {
     expect(html).not.toContain("Kwaliteitsstatus");
     expect(html).toContain("Sterke match");
     expect(html).toContain("Nederland");
-    expect(html).not.toContain("Duitsland");
-    expect(html).toContain("width:94.48%");
-    expect(html).toContain("width:4.81%");
+    expect(html).toContain("width:70%");
+    expect(html).toContain("width:5%");
     expect(html).toContain("Over-delivery");
     expect(html).toContain("Reageer op deze video’s voor extra engagement en bereik via je eigen socials.");
     expect(html).toContain("https://example.com/clip-1");
@@ -181,6 +177,26 @@ describe("BrandCampaignDashboard", () => {
 
     expect(html).toContain("Nog geen platformdata beschikbaar.");
     expect(html).toContain("Nog geen goedgekeurde topcontent");
+  });
+
+  it("shows a clear empty state when no brand-visible countries are available", () => {
+    const html = renderToStaticMarkup(
+      <BrandCampaignDashboard
+        selectedCampaignId="campaign-active"
+        selectedCampaignStatus="active"
+        data={{
+          ...data,
+          audience: {
+            ...data.audience,
+            topCountries: [],
+          },
+        }}
+      />,
+    );
+
+    expect(html).toContain("Geen landen beschikbaar");
+    expect(html).toContain("Leeftijd");
+    expect(html).toContain("Gender");
   });
 
   it("suppresses the forecast date while the campaign is paused", () => {

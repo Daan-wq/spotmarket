@@ -199,7 +199,11 @@ export function BrandReportDocument({ report, data, editorial }: BrandReportDocu
             <ReportSection>
               <SectionHeader kicker={copy("section.audience.kicker", "Publiek en bereik")} title={copy("section.audience.title", "Bereikt publiek")} icon={<Users className="h-5 w-5" />} />
               <div className="grid gap-4 lg:grid-cols-3">
-                <Distribution title={copy("audience.distribution.countries.title", "Top landen")} rows={data.audience.topCountries.slice(0, 5).map((row) => ({ label: formatAudienceCountryLabel(row.code), value: row.share }))} />
+                <Distribution
+                  title={copy("audience.distribution.countries.title", "Top landen")}
+                  emptyLabel={copy("audience.distribution.countries.empty", "Geen landen beschikbaar")}
+                  rows={data.audience.topCountries.slice(0, 5).map((row) => ({ label: formatAudienceCountryLabel(row.code), value: row.share }))}
+                />
                 <Distribution title={copy("audience.distribution.age.title", "Leeftijd")} rows={Object.entries(data.audience.ageBuckets).map(([label, value]) => ({ label, value }))} />
                 <Distribution title={copy("audience.distribution.gender.title", "Gender")} rows={Object.entries(data.audience.genderSplit).map(([label, value]) => ({ label, value }))} />
               </div>
@@ -392,22 +396,34 @@ function DefinitionRow({ label, body }: { label: string; body: string }) {
   );
 }
 
-function Distribution({ title, rows }: { title: string; rows: Array<{ label: string; value: number }> }) {
+function Distribution({
+  title,
+  rows,
+  emptyLabel,
+}: {
+  title: string;
+  rows: Array<{ label: string; value: number }>;
+  emptyLabel?: string;
+}) {
   return (
     <div className="rounded-lg border border-neutral-200 bg-white p-4">
       <p className="font-semibold text-neutral-950">{title}</p>
       <div className="mt-4 space-y-3">
-        {rows.map((row) => (
-          <div key={row.label}>
-            <div className="mb-1 flex items-center justify-between gap-3 text-xs">
-              <span className="font-medium text-neutral-700">{row.label}</span>
-              <span className="text-neutral-500">{formatAudienceShare(row.value)}</span>
+        {rows.length === 0 && emptyLabel ? (
+          <p className="text-sm leading-6 text-neutral-500">{emptyLabel}</p>
+        ) : (
+          rows.map((row) => (
+            <div key={row.label}>
+              <div className="mb-1 flex items-center justify-between gap-3 text-xs">
+                <span className="font-medium text-neutral-700">{row.label}</span>
+                <span className="text-neutral-500">{formatAudienceShare(row.value)}</span>
+              </div>
+              <div className="h-1.5 overflow-hidden bg-neutral-100">
+                <div className="h-full bg-neutral-950" style={{ width: `${audienceBarWidth(row.value)}%` }} />
+              </div>
             </div>
-            <div className="h-1.5 overflow-hidden bg-neutral-100">
-              <div className="h-full bg-neutral-950" style={{ width: `${audienceBarWidth(row.value)}%` }} />
-            </div>
-          </div>
-        ))}
+          ))
+        )}
       </div>
     </div>
   );

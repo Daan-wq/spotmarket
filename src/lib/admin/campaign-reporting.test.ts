@@ -241,7 +241,7 @@ describe("buildCampaignReportLiveData", () => {
     expect(report.defaults.keyTakeaways.some((takeaway) => takeaway.includes("overdelivery"))).toBe(true);
   });
 
-  it("excludes Instagram accounts above 10% Asian audience from countries only", () => {
+  it("excludes Asian countries while keeping non-Asian countries from every Instagram account", () => {
     const report = buildCampaignReportLiveData({
       campaign,
       generatedAt: new Date("2026-05-10T00:00:00.000Z"),
@@ -362,11 +362,61 @@ describe("buildCampaignReportLiveData", () => {
       female: 0.6,
     });
     expect(report.audience.topCountries).toEqual([
-      { code: "NL", share: 0.8 },
-      { code: "IN", share: 0.1 },
-      { code: "BE", share: 0.05 },
+      { code: "NL", share: 0.7 },
+      { code: "US", share: 0.05 },
+      { code: "BE", share: 0.025 },
     ]);
     expect(report.audience.fitStatus).toBe("Sterke match");
+  });
+
+  it("keeps age and gender demographics when every reported country is Asian", () => {
+    const report = buildCampaignReportLiveData({
+      campaign,
+      generatedAt: new Date("2026-05-10T00:00:00.000Z"),
+      submissions: [
+        {
+          id: "ig-sub-1",
+          creatorId: "creator-1",
+          creatorLabel: "Alice",
+          postUrl: "https://instagram.com/reel/1",
+          normalizedPlatform: "INSTAGRAM",
+          sourcePlatform: "INSTAGRAM",
+          sourceConnectionType: "IG",
+          sourceConnectionId: "ig-1",
+          status: "APPROVED",
+          createdAt: new Date("2026-05-02T00:00:00.000Z"),
+          metricSnapshots: [],
+          signals: [],
+          qcReviews: [],
+        },
+      ],
+      attributions: [],
+      audienceSnapshots: [
+        {
+          connectionType: "IG",
+          connectionId: "ig-1",
+          kind: "FOLLOWER",
+          capturedAt: new Date("2026-05-09T00:00:00.000Z"),
+          ageBuckets: { "18-24": 0.7, "25-34": 0.3 },
+          genderSplit: { male: 0.4, female: 0.6 },
+          topCountries: [
+            { code: "IN", share: 0.8 },
+            { code: "BD", share: 0.2 },
+          ],
+        },
+      ],
+    });
+
+    expect(report.audience.sampleCount).toBe(1);
+    expect(report.audience.ageBuckets).toEqual({
+      "18-24": 0.7,
+      "25-34": 0.3,
+    });
+    expect(report.audience.genderSplit).toEqual({
+      male: 0.4,
+      female: 0.6,
+    });
+    expect(report.audience.topCountries).toEqual([]);
   });
 
   it("calculates a fixed goal view target from budget and business CPM when no manual target exists", () => {
