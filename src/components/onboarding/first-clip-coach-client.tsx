@@ -4,7 +4,7 @@ import { useMemo, useState } from "react";
 import { usePathname, useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { BookOpen, CheckCircle2, Circle, HelpCircle, RefreshCw, Send } from "lucide-react";
-import { Drawer } from "@/components/ui/drawer";
+import { Dialog } from "@/components/ui/dialog";
 import type { FirstClipOnboardingStatus, FirstClipStep } from "@/lib/first-clip-onboarding";
 
 const STEP_ORDER: Exclude<FirstClipStep, "done">[] = [
@@ -34,7 +34,7 @@ export function FirstClipCoachClient({
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const shouldAutoOpen = searchParams.get("firstClip") === "1";
-  const [drawerOpen, setDrawerOpen] = useState(shouldAutoOpen);
+  const [dialogOpen, setDialogOpen] = useState(shouldAutoOpen);
 
   const steps = useMemo(
     () =>
@@ -71,7 +71,7 @@ export function FirstClipCoachClient({
           <div className="flex flex-wrap gap-2 md:justify-end">
             <button
               type="button"
-              onClick={() => setDrawerOpen(true)}
+              onClick={() => setDialogOpen(true)}
               className="inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-neutral-200 bg-white px-4 text-sm font-semibold text-neutral-700 transition hover:bg-neutral-100 hover:text-neutral-950"
             >
               <HelpCircle className="h-4 w-4" aria-hidden />
@@ -116,12 +116,12 @@ export function FirstClipCoachClient({
         </ol>
       </section>
 
-      <Drawer
-        open={drawerOpen}
-        onClose={() => setDrawerOpen(false)}
+      <Dialog
+        open={dialogOpen}
+        onClose={() => setDialogOpen(false)}
         title={t("drawer.title")}
         description={t("drawer.description")}
-        width="lg"
+        size="lg"
       >
         <div className="space-y-5">
           <div className="rounded-2xl border border-neutral-200 bg-neutral-50 p-4">
@@ -150,7 +150,7 @@ export function FirstClipCoachClient({
             </div>
           </div>
         </div>
-      </Drawer>
+      </Dialog>
     </>
   );
 }

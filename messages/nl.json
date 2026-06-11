@@ -812,17 +812,18 @@
         }
       },
       "details": [
-        "Lees de brief",
+        "Lees de instructies",
         "Maak en plaats je clip op je eigen kanaal",
-        "Gebruik verplichte hashtags",
-        "Kom terug naar ClipProfit, ververs je posts en klik Indienen"
+        "Gebruik verplichte hashtags en andere regels, anders wordt de clip afgekeurd.",
+        "Kom terug naar ClipProfit, klik op de campagne en klik Indienen.",
+        "Selecteer je clip, en start met verdienen!"
       ],
       "drawer": {
         "title": "Zo werkt je eerste clip",
-        "description": "ClipProfit meet de post die jij indient. De video zelf plaats je dus eerst op je eigen kanaal.",
-        "beforeTitle": "Voor je indient",
+        "description": "ClipProfit meet de clips die jij indient. De clips post je dus eerst op je eigen account.",
+        "beforeTitle": "Voordat je een clip maakt",
         "notFoundTitle": "Zie je je clip niet?",
-        "notFoundBody": "Controleer of je het juiste platform en account hebt geselecteerd. Staat je clip net live, wacht dan een paar minuten en klik opnieuw op Verversen."
+        "notFoundBody": "Controleer of je het juiste platform en account hebt geselecteerd. Staat je clip net live, wacht dan even en klik opnieuw op Refresh."
       },
       "submitHint": {
         "eyebrow": "Eerste clip",
