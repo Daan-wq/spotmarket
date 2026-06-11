@@ -13,7 +13,8 @@ Apply these rules to every deployment:
   Vercel Preview environment. A branch-scoped variable may override the global
   value, but must never be the only Preview configuration.
 - Never rely on local `.env` files during Vercel builds and never commit or log
-  environment values.
+  environment values. Keep `.env*` excluded in `.vercelignore` so CLI
+  deployments cannot upload local secrets.
 - Keep `node scripts/verify-production-deploy.mjs` in the Vercel build command.
   It intentionally blocks Preview and Production builds with missing, invalid,
   or local database URLs.
