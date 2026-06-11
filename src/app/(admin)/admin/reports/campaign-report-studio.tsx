@@ -46,7 +46,12 @@ import {
 } from "@/lib/admin/campaign-report-shared";
 import { cn } from "@/lib/cn";
 import type { CampaignReportLiveData } from "@/lib/admin/campaign-reporting";
-import { CPM_EXPLANATION } from "@/lib/brand-report-document-model";
+import {
+  CPM_EXPLANATION,
+  buildBrandReportDocumentModel,
+  type BrandReportDocumentModel,
+} from "@/lib/brand-report-document-model";
+import { sanitizeBrandReportLiveData } from "@/lib/brand-report-portal";
 
 export interface BrandOption {
   id: string;
@@ -834,13 +839,22 @@ function ReportPreview({
 
   const enabled = (sectionKey: CampaignReportSectionKey) => sectionSettings[sectionKey];
   const blocks = editorialContent.templateBlocks;
-  const topContent = liveData.topContent.filter((row) => row.views > 0).slice(0, 6);
+  const documentModel = buildBrandReportDocumentModel({
+    report: { title },
+    data: sanitizeBrandReportLiveData(liveData),
+    editorial: {
+      title,
+      executiveSummary: blocks["summary.body"] ?? liveData.defaults.executiveSummary,
+      keyTakeaways,
+      learnings,
+      nextCampaignRecommendations: recommendations,
+      sectionSettings,
+      editorialContent,
+    },
+  });
+  const topContent = documentModel.content?.rows.filter((row) => row.views > 0) ?? [];
   const topCreators = liveData.creators.filter((row) => row.views > 0).slice(0, 8);
-  const showAudience = liveData.audience.sampleCount > 0
-    && (
-      liveData.campaign.platforms.length === 0
-      || liveData.campaign.platforms.some((platform) => platform.toLowerCase().includes("instagram"))
-    );
+  const showAudience = Boolean(documentModel.audience);
   const paidViews = liveData.performance.targetViews
     ? Math.min(liveData.performance.currentViews, liveData.performance.targetViews)
     : liveData.performance.paidEligibleViews;
@@ -902,7 +916,7 @@ function ReportPreview({
                   <HeroMetric keyName="summary.metric.approvedClips" label="Goedgekeurde clips" value={formatNumber(liveData.performance.approvedClips, "nl")} />
                 </div>
               </div>
-              <CpmComparison data={liveData} />
+              <CpmComparison cpm={documentModel.cpm} />
               <InsightLine>
                 <ReportText
                   keyName="summary.conclusion"
@@ -921,7 +935,7 @@ function ReportPreview({
                 <StatTile keyName="glance.metric.extraReach" label="Extra bereik" value={formatNumber(liveData.performance.overdeliveryViews, "nl")} helper="Views boven doel zonder extra budget" />
                 <StatTile keyName="glance.metric.budgetUsed" label="Budget gebruikt" value={formatCurrency(liveData.performance.budgetUsed, "EUR", "nl")} helper="{{performance.budgetUsedPercent}}" />
               </div>
-              <CpmComparison data={liveData} />
+              <CpmComparison cpm={documentModel.cpm} />
               <InsightLine>
                 <ReportText
                   keyName="glance.statement"
@@ -952,7 +966,7 @@ function ReportPreview({
           {enabled("platformPerformance") && liveData.platformBreakdown.length > 0 ? (
             <ReportSection>
               <SectionHeader copyKey="platform" kicker="Platformprestaties" title="Kanaalvergelijking" icon={<BarChart3 className="h-5 w-5" />} />
-              <PlatformPerformanceRows rows={liveData.platformBreakdown} businessCpm={liveData.campaign.businessCpm} />
+              <PlatformPerformanceRows rows={liveData.platformBreakdown} businessCpm={documentModel.cpm.agreed} />
               <InsightLine>
                 <ReportText
                   keyName="platform.insight"
@@ -998,7 +1012,7 @@ function ReportPreview({
           {enabled("budgetValue") ? (
             <ReportSection>
               <SectionHeader copyKey="budget" kicker="Budget en waarde" title="Betaald bereik versus extra bereik" icon={<Wallet className="h-5 w-5" />} />
-              <BudgetValueVisual data={liveData} />
+              <BudgetValueVisual data={liveData} cpm={documentModel.cpm} />
               <InsightLine>
                 <ReportText
                   keyName="budget.insight"
@@ -1431,7 +1445,7 @@ function TopContentWall({
   blocks,
   editors,
 }: {
-  rows: CampaignReportLiveData["topContent"];
+  rows: NonNullable<BrandReportDocumentModel["content"]>["rows"];
   blocks: Record<string, string>;
   editors?: ReportInlineEditors;
 }) {
@@ -1572,7 +1586,13 @@ function AudienceSnapshot({ data }: { data: CampaignReportLiveData["audience"] }
   );
 }
 
-function BudgetValueVisual({ data }: { data: CampaignReportLiveData }) {
+function BudgetValueVisual({
+  data,
+  cpm,
+}: {
+  data: CampaignReportLiveData;
+  cpm: BrandReportDocumentModel["cpm"];
+}) {
   const paidViews = data.performance.targetViews
     ? Math.min(data.performance.currentViews, data.performance.targetViews)
     : data.performance.paidEligibleViews;
@@ -1585,32 +1605,32 @@ function BudgetValueVisual({ data }: { data: CampaignReportLiveData }) {
         <StatTile keyName="budget.metric.budget" label="Budget" value={formatCurrency(data.campaign.totalBudget, "EUR", "nl")} helper="Netto campagnebudget" />
         <StatTile keyName="budget.metric.budgetUsed" label="Budget gebruikt" value={formatCurrency(data.performance.budgetUsed, "EUR", "nl")} helper="{{performance.budgetUsedPercent}}" />
       </div>
-      <CpmComparison data={data} />
+      <CpmComparison cpm={cpm} />
     </div>
   );
 }
 
-function CpmComparison({ data }: { data: CampaignReportLiveData }) {
+function CpmComparison({ cpm }: { cpm: BrandReportDocumentModel["cpm"] }) {
   return (
     <div className="mt-5 rounded-xl bg-neutral-950 p-5 text-white">
       <div className="grid gap-4 sm:grid-cols-2">
         <div>
           <p className="text-sm text-neutral-400">Afgesproken CPM</p>
           <p className="mt-1 text-2xl font-semibold tabular-nums">
-            {formatCurrency(data.campaign.businessCpm, "EUR", "nl")}
+            {formatCurrency(cpm.agreed, "EUR", "nl")}
           </p>
         </div>
         <div className="sm:text-right">
           <p className="text-sm text-neutral-400">Effectieve CPM</p>
           <p className="mt-1 text-2xl font-semibold tabular-nums">
-            {data.financial.effectiveCpm == null
+            {cpm.effective == null
               ? "-"
-              : formatCurrency(data.financial.effectiveCpm, "EUR", "nl")}
+              : formatCurrency(cpm.effective, "EUR", "nl")}
           </p>
         </div>
       </div>
       <p className="mt-4 border-t border-white/15 pt-4 text-sm leading-6 text-neutral-300">
-        {CPM_EXPLANATION}
+        {cpm.explanation}
       </p>
     </div>
   );
