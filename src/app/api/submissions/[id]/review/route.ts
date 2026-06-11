@@ -43,6 +43,9 @@ const reviewSchema = z.object({
 
 const PAID_LOCKED_ERROR =
   "This approved submission is already paid or locked in a payout run. Use a financial adjustment workflow instead.";
+const REVIEW_CONFLICT_ERROR =
+  "The clip is being updated elsewhere. Please try again.";
+const SERIALIZABLE_TRANSACTION_ATTEMPTS = 3;
 
 export async function POST(
   req: NextRequest,
@@ -91,7 +94,7 @@ export async function POST(
 
     if (
       submission.status === "APPROVED" &&
-      (status === "REJECTED" || status === "APPROVED") &&
+      status === "REJECTED" &&
       (submission.settledAt || submission.payoutRunItems.length > 0)
     ) {
       return NextResponse.json({ error: PAID_LOCKED_ERROR }, { status: 409 });
@@ -119,11 +122,44 @@ export async function POST(
       eligibleViews = 0;
     }
 
-    const updated = await prisma.$transaction(async (tx) => {
-      const isFirstApproval = status === "APPROVED" && submission.status !== "APPROVED";
+    const updated = await retrySerializableTransaction(() => prisma.$transaction(async (tx) => {
+      const currentSubmission = await tx.campaignSubmission.findUnique({
+        where: { id },
+        select: {
+          status: true,
+          earnedAmount: true,
+          settledAt: true,
+          application: {
+            select: {
+              id: true,
+              earnedAmount: true,
+            },
+          },
+          payoutRunItems: { select: { id: true }, take: 1 },
+        },
+      });
+      if (!currentSubmission) {
+        throw new Error("Submission not found during review");
+      }
+      if (currentSubmission.status === status) {
+        return {
+          id,
+          status: currentSubmission.status,
+          earnedAmount: Number(currentSubmission.earnedAmount),
+        };
+      }
+      if (
+        currentSubmission.status === "APPROVED" &&
+        status === "REJECTED" &&
+        (currentSubmission.settledAt || currentSubmission.payoutRunItems.length > 0)
+      ) {
+        throw new PaidLockedSubmissionError();
+      }
+
+      const isFirstApproval = status === "APPROVED" && currentSubmission.status !== "APPROVED";
       const isApprovedRejection =
-        status === "REJECTED" && submission.status === "APPROVED";
-      const previousEarnedAmount = Number(submission.earnedAmount);
+        status === "REJECTED" && currentSubmission.status === "APPROVED";
+      const previousEarnedAmount = Number(currentSubmission.earnedAmount);
 
       const sub = await tx.campaignSubmission.update({
         where: { id },
@@ -175,25 +211,25 @@ export async function POST(
         });
       }
 
-      if (isFirstApproval && submission.application) {
+      if (isFirstApproval && currentSubmission.application) {
         await tx.campaignApplication.update({
-          where: { id: submission.application.id },
+          where: { id: currentSubmission.application.id },
           data: {
             earnedAmount: { increment: Math.round(finalEarnedAmount) },
           },
         });
       }
 
-      if (isApprovedRejection && submission.application) {
+      if (isApprovedRejection && currentSubmission.application) {
         const legacyApplicationEarnedAmountUpdate =
           legacyApplicationReversalUpdate(
-            submission.application.earnedAmount,
+            currentSubmission.application.earnedAmount,
             previousEarnedAmount,
           );
 
         if (legacyApplicationEarnedAmountUpdate) {
           await tx.campaignApplication.update({
-            where: { id: submission.application.id },
+            where: { id: currentSubmission.application.id },
             data: {
               earnedAmount: legacyApplicationEarnedAmountUpdate,
             },
@@ -235,7 +271,7 @@ export async function POST(
             metadata: {
               rejectionReason,
               rejectionNote,
-              previousStatus: submission.status,
+              previousStatus: currentSubmission.status,
               previousEarnedAmount,
               wasApproved: isApprovedRejection,
             },
@@ -244,7 +280,7 @@ export async function POST(
       }
 
       return { ...sub, earnedAmount: finalEarnedAmount };
-    }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
+    }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable }));
 
     return NextResponse.json({
       success: true,
@@ -252,11 +288,24 @@ export async function POST(
       status: updated.status,
     });
   } catch (err: unknown) {
-    console.error("[submissions review]", err);
     if (err instanceof z.ZodError) {
       return NextResponse.json({ error: "Invalid input", details: err.issues }, { status: 400 });
     }
+    if (err instanceof PaidLockedSubmissionError) {
+      return NextResponse.json({ error: PAID_LOCKED_ERROR }, { status: 409 });
+    }
+    if (isWriteConflict(err)) {
+      return NextResponse.json({ error: REVIEW_CONFLICT_ERROR }, { status: 409 });
+    }
+    console.error("[submissions review]", err);
     return NextResponse.json({ error: err instanceof Error ? err.message : "Internal error" }, { status: 500 });
+  }
+}
+
+class PaidLockedSubmissionError extends Error {
+  constructor() {
+    super(PAID_LOCKED_ERROR);
+    this.name = "PaidLockedSubmissionError";
   }
 }
 
@@ -291,4 +340,28 @@ function toFiniteNumber(value: number | string | { toString(): string } | null |
   if (value == null) return 0;
   const parsed = Number(value);
   return Number.isFinite(parsed) ? parsed : 0;
+}
+
+async function retrySerializableTransaction<T>(operation: () => Promise<T>): Promise<T> {
+  for (let attempt = 1; attempt <= SERIALIZABLE_TRANSACTION_ATTEMPTS; attempt += 1) {
+    try {
+      return await operation();
+    } catch (error) {
+      if (!isWriteConflict(error) || attempt === SERIALIZABLE_TRANSACTION_ATTEMPTS) {
+        throw error;
+      }
+      await new Promise((resolve) => setTimeout(resolve, attempt * 20));
+    }
+  }
+
+  throw new Error("Serializable transaction retry loop exhausted");
+}
+
+function isWriteConflict(error: unknown): error is { code: "P2034" } {
+  return Boolean(
+    error &&
+      typeof error === "object" &&
+      "code" in error &&
+      error.code === "P2034",
+  );
 }

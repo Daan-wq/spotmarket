@@ -11,7 +11,7 @@ const routeMocks = vi.hoisted(() => {
       deleteMany: vi.fn(),
       findFirst: vi.fn(),
     },
-    campaignSubmission: { update: vi.fn() },
+    campaignSubmission: { findUnique: vi.fn(), update: vi.fn() },
     campaignReferralAttribution: { updateMany: vi.fn() },
     campaignApplication: { update: vi.fn() },
     notification: { create: vi.fn() },
@@ -93,6 +93,9 @@ describe("POST /api/submissions/[id]/review", () => {
     vi.clearAllMocks();
     routeMocks.requireAuth.mockResolvedValue({ userId: "admin-supabase-1" });
     routeMocks.userFindUnique.mockResolvedValue({ id: "admin-user-1" });
+    routeMocks.transaction.mockImplementation(
+      async (callback) => callback(routeMocks.tx),
+    );
     routeMocks.tx.user.findUnique.mockResolvedValue({
       referredBy: null,
       createdAt: new Date("2026-01-01T00:00:00.000Z"),
@@ -101,6 +104,9 @@ describe("POST /api/submissions/[id]/review", () => {
     routeMocks.tx.referralPayout.findFirst.mockResolvedValue(null);
     routeMocks.tx.referralPayout.deleteMany.mockResolvedValue({ count: 0 });
     routeMocks.tx.campaign.findUnique.mockResolvedValue(null);
+    routeMocks.tx.campaignSubmission.findUnique.mockImplementation(
+      (...args) => routeMocks.submissionFindUnique(...args),
+    );
     routeMocks.tx.campaignSubmission.update.mockResolvedValue({
       id: "submission-1",
       status: "REJECTED",
@@ -311,6 +317,62 @@ describe("POST /api/submissions/[id]/review", () => {
         }),
       }),
     );
+  });
+
+  it("retries a serializable write conflict and completes the approval", async () => {
+    routeMocks.submissionFindUnique.mockResolvedValue(submission());
+    routeMocks.transaction
+      .mockRejectedValueOnce(
+        Object.assign(new Error("Transaction failed due to a write conflict"), {
+          code: "P2034",
+        }),
+      )
+      .mockImplementationOnce(async (callback) => callback(routeMocks.tx));
+
+    const response = await POST(
+      reviewRequest({ status: "APPROVED" }),
+      params,
+    );
+
+    expect(response.status).toBe(200);
+    expect(routeMocks.transaction).toHaveBeenCalledTimes(2);
+  });
+
+  it("does not repeat approval side effects when another request already approved the clip", async () => {
+    routeMocks.submissionFindUnique.mockResolvedValue(submission());
+    routeMocks.tx.campaignSubmission.findUnique.mockResolvedValue(
+      submission({ status: "APPROVED" }),
+    );
+
+    const response = await POST(
+      reviewRequest({ status: "APPROVED" }),
+      params,
+    );
+
+    expect(response.status).toBe(200);
+    expect(routeMocks.tx.campaignSubmission.update).not.toHaveBeenCalled();
+    expect(routeMocks.tx.campaignApplication.update).not.toHaveBeenCalled();
+    expect(routeMocks.tx.notification.create).not.toHaveBeenCalled();
+  });
+
+  it("returns a clean conflict response after serializable retries are exhausted", async () => {
+    routeMocks.submissionFindUnique.mockResolvedValue(submission());
+    routeMocks.transaction.mockRejectedValue(
+      Object.assign(new Error("Transaction failed due to a write conflict"), {
+        code: "P2034",
+      }),
+    );
+
+    const response = await POST(
+      reviewRequest({ status: "APPROVED" }),
+      params,
+    );
+
+    expect(response.status).toBe(409);
+    await expect(response.json()).resolves.toEqual({
+      error: "The clip is being updated elsewhere. Please try again.",
+    });
+    expect(routeMocks.transaction).toHaveBeenCalledTimes(3);
   });
 
   it("returns a minimal JSON response when the updated campaign contains BigInt goal views", async () => {
