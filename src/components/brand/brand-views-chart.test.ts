@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   buildBrandChartTooltipContent,
+  buildChartSeries,
   buildChartPauseAreas,
 } from "./brand-views-chart";
 
@@ -43,6 +44,31 @@ describe("brand views chart", () => {
     ])).toEqual([
       { startDate: "2026-05-24", endDate: "2026-06-06" },
       { startDate: "2026-06-09", endDate: "2026-06-10" },
+    ]);
+  });
+
+  it("holds the previous completed day on the line while preserving current-day tooltip views", () => {
+    expect(buildChartSeries(
+      [
+        { date: "2026-06-10", views: 120000, cumulativeViews: 120000 },
+        { date: "2026-06-11", views: 6592, cumulativeViews: 126592 },
+      ],
+      [],
+      [],
+      "2026-06-11",
+    )).toEqual([
+      {
+        date: "2026-06-10",
+        views: 120000,
+        actualViews: 120000,
+        cumulativeViews: 120000,
+      },
+      {
+        date: "2026-06-11",
+        views: 120000,
+        actualViews: 6592,
+        cumulativeViews: 126592,
+      },
     ]);
   });
 });

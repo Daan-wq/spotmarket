@@ -6,6 +6,8 @@ import {
   renderCampaignReportTemplate,
   reportQualityStatusLabel,
   resolveCampaignReportToken,
+  sortAudienceAgeRows,
+  sortAudienceGenderRows,
 } from "@/lib/admin/campaign-report-display";
 import {
   DEFAULT_AUDIENCE_INSIGHT_TEMPLATE,
@@ -55,6 +57,30 @@ describe("campaign report display helpers", () => {
     expect(audienceBarWidth(0.9448)).toBe(94.48);
     expect(audienceBarWidth(0.0481)).toBe(4.81);
     expect(audienceBarWidth(94.48)).toBe(94.48);
+  });
+
+  it("orders brand audience age and gender rows consistently", () => {
+    expect(sortAudienceAgeRows({
+      "65+": 0.1,
+      "35-44": 0.2,
+      "18-24": 0.4,
+      "25-34": 0.3,
+    })).toEqual([
+      { label: "18-24", value: 0.4 },
+      { label: "25-34", value: 0.3 },
+      { label: "35-44", value: 0.2 },
+      { label: "65+", value: 0.1 },
+    ]);
+
+    expect(sortAudienceGenderRows({
+      female: 0.5,
+      other: 0.1,
+      male: 0.4,
+    })).toEqual([
+      { label: "male", value: 0.4 },
+      { label: "female", value: 0.5 },
+      { label: "other", value: 0.1 },
+    ]);
   });
 
   it("uses Dutch brand-safe quality status labels", () => {

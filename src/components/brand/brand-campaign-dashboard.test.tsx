@@ -92,14 +92,14 @@ const data: BrandCampaignDashboardData = {
   audience: {
     sampleCount: 2,
     platformsLabel: "Instagram",
-    ageBuckets: { "18-24": 0.62, "25-34": 0.38 },
-    genderSplit: { vrouw: 0.58, man: 0.42 },
+    ageBuckets: { "65+": 0.1, "25-34": 0.3, "18-24": 0.6 },
+    genderSplit: { female: 0.5, other: 0.1, male: 0.4 },
     topCountries: [
       { code: "NL", share: 0.7 },
       { code: "US", share: 0.05 },
       { code: "BE", share: 0.025 },
     ],
-    fitStatus: "Sterke match",
+    fitStatus: "Onvoldoende data",
   },
   quality: {
     status: "passed" as const,
@@ -153,10 +153,16 @@ describe("BrandCampaignDashboard", () => {
     expect(html).toContain("Budget en waarde");
     expect(html).toContain("Kwaliteitscontrole");
     expect(html).not.toContain("Kwaliteitsstatus");
-    expect(html).toContain("Sterke match");
+    expect(html).not.toContain("Onvoldoende data");
     expect(html).toContain("Nederland");
     expect(html).toContain("width:70%");
     expect(html).toContain("width:5%");
+    expect(html.indexOf("18-24")).toBeLessThan(html.indexOf("25-34"));
+    expect(html.indexOf("25-34")).toBeLessThan(html.indexOf("65+"));
+    expect(html.indexOf(">male<")).toBeLessThan(html.indexOf(">female<"));
+    expect(html.indexOf(">female<")).toBeLessThan(html.indexOf(">other<"));
+    expect(html).not.toContain("100% goedgekeurd - Aanbevolen");
+    expect(html).toContain("last:border-b-0");
     expect(html).toContain("Over-delivery");
     expect(html).toContain("Reageer op deze video’s voor extra engagement en bereik via je eigen socials.");
     expect(html).toContain("https://example.com/clip-1");

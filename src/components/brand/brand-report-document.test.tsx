@@ -115,4 +115,59 @@ describe("BrandReportDocument", () => {
     expect(html).toContain("Leeftijd");
     expect(html).toContain("Gender");
   });
+
+  it("uses the requested age and gender order in the printable demographics", () => {
+    const html = renderToStaticMarkup(
+      <BrandReportDocument
+        report={{
+          title: "Fruit campagne eindrapport",
+          updatedAt: "2026-06-10T00:00:00.000Z",
+          brandVisibleAt: "2026-06-10T00:00:00.000Z",
+          executiveSummary: "",
+          keyTakeaways: [],
+          learnings: [],
+          nextCampaignRecommendations: [],
+        }}
+        data={{
+          ...data,
+          audience: {
+            sampleCount: 1,
+            platformsLabel: "Instagram",
+            ageBuckets: { "65+": 0.1, "25-34": 0.3, "18-24": 0.6 },
+            genderSplit: { female: 0.5, other: 0.1, male: 0.4 },
+            topCountries: [],
+            fitStatus: "Onvoldoende data",
+          },
+        }}
+        editorial={{
+          title: "Fruit campagne eindrapport",
+          executiveSummary: "",
+          keyTakeaways: [],
+          learnings: [],
+          nextCampaignRecommendations: [],
+          sectionSettings: {
+            ...DEFAULT_CAMPAIGN_REPORT_SECTIONS,
+            cover: false,
+            executiveSummary: false,
+            campaignAtAGlance: false,
+            campaignPerformance: false,
+            contentPerformance: false,
+            platformPerformance: false,
+            creatorContribution: false,
+            audienceReach: true,
+            budgetValue: false,
+            qualityAssurance: false,
+            nextCampaign: false,
+            appendix: false,
+          },
+          editorialContent: createEmptyEditorialContent(),
+        }}
+      />,
+    );
+
+    expect(html.indexOf("18-24")).toBeLessThan(html.indexOf("25-34"));
+    expect(html.indexOf("25-34")).toBeLessThan(html.indexOf("65+"));
+    expect(html.indexOf(">male<")).toBeLessThan(html.indexOf(">female<"));
+    expect(html.indexOf(">female<")).toBeLessThan(html.indexOf(">other<"));
+  });
 });

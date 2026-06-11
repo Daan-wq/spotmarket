@@ -16,6 +16,8 @@ import {
   audienceBarWidth,
   formatAudienceCountryLabel,
   formatAudienceShare,
+  sortAudienceAgeRows,
+  sortAudienceGenderRows,
 } from "@/lib/admin/campaign-report-display";
 import type { BrandCampaignDashboardData } from "@/lib/brand-report-portal";
 import { BrandViewsChart } from "./brand-views-chart";
@@ -146,6 +148,7 @@ export function BrandCampaignDashboard({
             data={data.timeline}
             milestones={data.milestones}
             pausePeriods={data.pausePeriods}
+            currentDate={data.generatedAt.slice(0, 10)}
           />
         </div>
       </section>
@@ -284,11 +287,10 @@ export function BrandCampaignDashboard({
         <section className="border-t border-neutral-200 py-10 lg:py-12">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
             <SectionHeading eyebrow="Doelgroep" title="Publiek en bereik" />
-            <div className="flex items-center gap-3 text-sm">
+            <div className="text-sm">
               <span className="text-neutral-500">
                 {formatNumber(data.audience.sampleCount, "nl")} {data.audience.platformsLabel || "Instagram"}-accounts
               </span>
-              <Badge variant="neutral">{data.audience.fitStatus}</Badge>
             </div>
           </div>
           <div className="mt-7 grid gap-8 lg:grid-cols-3">
@@ -302,11 +304,11 @@ export function BrandCampaignDashboard({
             />
             <DashboardDistribution
               title="Leeftijd"
-              rows={Object.entries(data.audience.ageBuckets).map(([label, value]) => ({ label, value }))}
+              rows={sortAudienceAgeRows(data.audience.ageBuckets)}
             />
             <DashboardDistribution
               title="Gender"
-              rows={Object.entries(data.audience.genderSplit).map(([label, value]) => ({ label, value }))}
+              rows={sortAudienceGenderRows(data.audience.genderSplit)}
             />
           </div>
         </section>
@@ -490,7 +492,7 @@ function CreatorContributionRow({
 }) {
   const width = Math.max(3, (creator.views / maxViews) * 100);
   return (
-    <div className="grid gap-3 border-b border-neutral-200 py-4 sm:grid-cols-[minmax(150px,0.75fr)_minmax(180px,1.25fr)_auto] sm:items-center">
+    <div className="grid gap-3 border-b border-neutral-200 py-4 last:border-b-0 sm:grid-cols-[minmax(150px,0.75fr)_minmax(180px,1.25fr)_auto] sm:items-center">
       <div className="min-w-0">
         <p className="truncate text-sm font-semibold text-neutral-950">{creator.creator}</p>
         <p className="mt-1 text-xs text-neutral-500">
@@ -502,9 +504,6 @@ function CreatorContributionRow({
       </div>
       <div className="text-left sm:text-right">
         <p className="text-sm font-semibold tabular-nums text-neutral-950">{formatNumber(creator.views, "nl")} views</p>
-        <p className="mt-1 text-xs text-neutral-500">
-          {formatPercent(creator.approvalRate)} goedgekeurd - {creator.reliabilityStatus}
-        </p>
       </div>
     </div>
   );

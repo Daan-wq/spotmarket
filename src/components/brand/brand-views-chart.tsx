@@ -20,6 +20,7 @@ import type {
 interface ChartPoint {
   date: string;
   views: number | null;
+  actualViews: number | null;
   cumulativeViews: number;
 }
 
@@ -27,9 +28,10 @@ interface BrandViewsChartProps {
   data: Array<{ date: string; views: number; cumulativeViews: number }>;
   milestones: BrandCampaignMilestone[];
   pausePeriods: BrandPausePeriod[];
+  currentDate: string;
 }
 
-export function BrandViewsChart({ data, milestones, pausePeriods }: BrandViewsChartProps) {
+export function BrandViewsChart({ data, milestones, pausePeriods, currentDate }: BrandViewsChartProps) {
   if (data.length === 0) {
     return (
       <div className="flex h-64 items-center justify-center rounded-2xl border border-dashed border-neutral-200 bg-neutral-50 px-6 text-center">
@@ -40,7 +42,7 @@ export function BrandViewsChart({ data, milestones, pausePeriods }: BrandViewsCh
     );
   }
 
-  const chartData = buildChartSeries(data, milestones, pausePeriods);
+  const chartData = buildChartSeries(data, milestones, pausePeriods, currentDate);
   const pauseAreas = buildChartPauseAreas(pausePeriods, chartData);
 
   return (
@@ -169,7 +171,7 @@ function BrandChartTooltip({
   const point = payload?.[0]?.payload;
   const content = buildBrandChartTooltipContent({
     date: String(label),
-    views: point?.views ?? null,
+    views: point?.actualViews ?? point?.views ?? null,
     cumulativeViews: point?.cumulativeViews ?? 0,
     milestones,
     pausePeriods,
@@ -222,10 +224,11 @@ export function buildBrandChartTooltipContent({
   };
 }
 
-function buildChartSeries(
+export function buildChartSeries(
   data: Array<{ date: string; views: number; cumulativeViews: number }>,
   milestones: BrandCampaignMilestone[],
   pausePeriods: BrandPausePeriod[],
+  currentDate?: string,
 ): ChartPoint[] {
   const dates = new Set([
     ...data.map((row) => row.date),
@@ -237,13 +240,22 @@ function buildChartSeries(
   const rowsByDate = new Map(data.map((row) => [row.date, row]));
   const sortedDates = [...dates].sort();
   let cumulativeViews = 0;
+  let latestCompletedDayViews: number | null = null;
 
   return sortedDates.map((date) => {
     const row = rowsByDate.get(date);
     if (row) cumulativeViews = row.cumulativeViews;
+    const actualViews = row?.views ?? null;
+    const views = date === currentDate && latestCompletedDayViews != null
+      ? latestCompletedDayViews
+      : actualViews;
+    if (actualViews != null && (!currentDate || date < currentDate)) {
+      latestCompletedDayViews = actualViews;
+    }
     return {
       date,
-      views: row?.views ?? null,
+      views,
+      actualViews,
       cumulativeViews,
     };
   });

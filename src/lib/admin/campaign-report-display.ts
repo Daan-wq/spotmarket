@@ -46,6 +46,18 @@ export function audienceBarWidth(value: number): number {
   return Number(Math.min(100, percentage).toFixed(2));
 }
 
+export function sortAudienceAgeRows(values: Record<string, number>) {
+  return Object.entries(values)
+    .map(([label, value]) => ({ label, value }))
+    .sort((a, b) => audienceAgeOrder(a.label) - audienceAgeOrder(b.label));
+}
+
+export function sortAudienceGenderRows(values: Record<string, number>) {
+  return Object.entries(values)
+    .map(([label, value]) => ({ label, value }))
+    .sort((a, b) => audienceGenderOrder(a.label) - audienceGenderOrder(b.label));
+}
+
 export function reportQualityStatusLabel(status: ReportQualityStatus): string {
   switch (status) {
     case "needs_attention":
@@ -101,6 +113,21 @@ export function formatCampaignReportToken(name: string, value: unknown, locale =
       .join(", ");
   }
   return String(value);
+}
+
+function audienceAgeOrder(label: string) {
+  const normalized = label.trim();
+  if (/^65\s*\+/.test(normalized)) return 65;
+  const startingAge = normalized.match(/\d+/)?.[0];
+  return startingAge ? Number(startingAge) : Number.MAX_SAFE_INTEGER;
+}
+
+function audienceGenderOrder(label: string) {
+  const normalized = label.trim().toLowerCase();
+  if (["male", "man", "mannen"].includes(normalized)) return 0;
+  if (["female", "vrouw", "vrouwen"].includes(normalized)) return 1;
+  if (["other", "anders", "overig"].includes(normalized)) return 2;
+  return 3;
 }
 
 function normalizeResolvedToken(name: string, value: unknown) {

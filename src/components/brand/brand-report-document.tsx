@@ -8,6 +8,8 @@ import {
   formatAudienceShare,
   renderCampaignReportTemplate,
   reportQualityStatusLabel,
+  sortAudienceAgeRows,
+  sortAudienceGenderRows,
 } from "@/lib/admin/campaign-report-display";
 import type { BrandReportLiveData } from "@/lib/brand-report-portal";
 
@@ -204,8 +206,8 @@ export function BrandReportDocument({ report, data, editorial }: BrandReportDocu
                   emptyLabel={copy("audience.distribution.countries.empty", "Geen landen beschikbaar")}
                   rows={data.audience.topCountries.slice(0, 5).map((row) => ({ label: formatAudienceCountryLabel(row.code), value: row.share }))}
                 />
-                <Distribution title={copy("audience.distribution.age.title", "Leeftijd")} rows={Object.entries(data.audience.ageBuckets).map(([label, value]) => ({ label, value }))} />
-                <Distribution title={copy("audience.distribution.gender.title", "Gender")} rows={Object.entries(data.audience.genderSplit).map(([label, value]) => ({ label, value }))} />
+                <Distribution title={copy("audience.distribution.age.title", "Leeftijd")} rows={sortAudienceAgeRows(data.audience.ageBuckets)} />
+                <Distribution title={copy("audience.distribution.gender.title", "Gender")} rows={sortAudienceGenderRows(data.audience.genderSplit)} />
               </div>
               <p className="mt-6 border-l-4 border-neutral-950 bg-neutral-50 px-5 py-4 text-sm leading-6 text-neutral-700">
                 {copy("audience.insight", "Demografische data is gebaseerd op beschikbare accountdata van {{audience.platformsLabel}}. De beschikbaarheid kan per platform en account verschillen.")}
