@@ -15,6 +15,11 @@ import type {
   VelocityWindow,
 } from "@/lib/contracts/metrics";
 import { metricAvailabilityValue } from "@/lib/contracts/metrics";
+import {
+  ASIAN_AUDIENCE_POINTS_PER_PERCENT,
+  calculateAsianAudienceRisk,
+  type AudienceCountryShare,
+} from "@/lib/metrics/audience-risk";
 import type {
   AntiBotEvidence,
   AntiBotPayload,
@@ -35,6 +40,7 @@ export interface ScorerInput {
   accountSnapshot?: {
     audienceCount?: number | null;
   } | null;
+  audienceCountries?: AudienceCountryShare[] | null;
   now?: Date;
 }
 
@@ -177,6 +183,7 @@ export function scoreVelocity(input: ScorerInput): ScorerOutput {
     lastViews,
     campaignVelocityP90: input.campaignBenchmark?.velocityP90 ?? null,
     accountAudienceCount: input.accountSnapshot?.audienceCount ?? null,
+    audienceCountries: input.audienceCountries ?? [],
     evaluatedAt: input.now ?? last.capturedAt,
   });
 
@@ -215,16 +222,34 @@ interface AntiBotInput {
   lastViews: number;
   campaignVelocityP90: number | null;
   accountAudienceCount: number | null;
+  audienceCountries: AudienceCountryShare[];
   evaluatedAt: Date;
 }
 
 function evaluateAntiBot(input: AntiBotInput): AntiBotPayload {
   const evidence: AntiBotEvidence[] = [];
+  const audienceRisk = calculateAsianAudienceRisk(input.audienceCountries);
+
+  if (audienceRisk.riskPoints > 0) {
+    evidence.push({
+      kind: "AUDIENCE_GEO",
+      label: "Audience is concentrated in Asian countries",
+      points: round(audienceRisk.riskPoints, 1),
+      metrics: {
+        asianAudiencePercent: round(audienceRisk.asianSharePercent, 1),
+        pointsPerPercent: ASIAN_AUDIENCE_POINTS_PER_PERCENT,
+        asianCountries: audienceRisk.countries.map((country) => country.code).join(", "),
+      },
+    });
+  }
 
   if (
     input.deltaViews < MIN_BOT_ALERT_DELTA_VIEWS ||
     input.lastViews < MIN_BOT_ALERT_TOTAL_VIEWS
   ) {
+    if (evidence.length > 0) {
+      return buildAntiBotPayload(evidence, input);
+    }
     return {
       reason: "Anti-bot risk 0/100: below minimum alert volume",
       riskScore: 0,
@@ -235,7 +260,7 @@ function evaluateAntiBot(input: AntiBotInput): AntiBotPayload {
       minimumAlertDeltaViews: MIN_BOT_ALERT_DELTA_VIEWS,
       minimumAlertTotalViews: MIN_BOT_ALERT_TOTAL_VIEWS,
       evaluatedAt: input.evaluatedAt.toISOString(),
-      version: "anti-bot-v3",
+      version: "anti-bot-v4",
     };
   }
 
@@ -338,15 +363,29 @@ function evaluateAntiBot(input: AntiBotInput): AntiBotPayload {
     }
   }
 
-  const adjustedEvidence = withEngagementRiskAdjustment(evidence, input.ratios.engagementRate);
+  return buildAntiBotPayload(
+    withEngagementRiskAdjustment(evidence, input.ratios.engagementRate),
+    input,
+  );
+}
+
+function buildAntiBotPayload(
+  evidence: AntiBotEvidence[],
+  input: Pick<AntiBotInput, "deltaViews" | "evaluatedAt">,
+): AntiBotPayload {
   const riskScore = Math.max(
     0,
-    Math.min(100, adjustedEvidence.reduce((sum, item) => sum + item.points, 0)),
+    Math.min(100, evidence.reduce((sum, item) => sum + item.points, 0)),
   );
-  const orderedEvidence = [...adjustedEvidence].sort((a, b) => b.points - a.points);
+  const orderedEvidence = [...evidence].sort((a, b) => b.points - a.points);
   const reasons = orderedEvidence.map((item) => item.label);
+  const hasAudienceGeoRisk = evidence.some((item) => item.kind === "AUDIENCE_GEO");
   const confidence: AntiBotPayload["confidence"] =
-    riskScore >= 70 && evidence.length >= 2 ? "HIGH" : riskScore >= 40 ? "MEDIUM" : "LOW";
+    riskScore >= 70 && (evidence.length >= 2 || hasAudienceGeoRisk)
+      ? "HIGH"
+      : riskScore >= 40
+        ? "MEDIUM"
+        : "LOW";
 
   return {
     reason:
@@ -361,7 +400,7 @@ function evaluateAntiBot(input: AntiBotInput): AntiBotPayload {
     minimumAlertDeltaViews: MIN_BOT_ALERT_DELTA_VIEWS,
     minimumAlertTotalViews: MIN_BOT_ALERT_TOTAL_VIEWS,
     evaluatedAt: input.evaluatedAt.toISOString(),
-    version: "anti-bot-v3",
+    version: "anti-bot-v4",
   };
 }
 
@@ -371,7 +410,10 @@ function withEngagementRiskAdjustment(
 ) {
   const rawRiskScore = Math.min(100, evidence.reduce((sum, item) => sum + item.points, 0));
   const hasDirectEngagementRisk = evidence.some(
-    (item) => item.kind === "ENGAGEMENT_COLLAPSE" || item.kind === "RATIO_ANOMALY",
+    (item) =>
+      item.kind === "ENGAGEMENT_COLLAPSE" ||
+      item.kind === "RATIO_ANOMALY" ||
+      item.kind === "AUDIENCE_GEO",
   );
   if (engagementRate != null && engagementRate >= 0.03 && !hasDirectEngagementRisk && rawRiskScore > 35) {
     return [

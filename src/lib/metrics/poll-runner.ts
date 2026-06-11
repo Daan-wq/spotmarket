@@ -22,6 +22,7 @@ import { syncAntiBotSignal } from "./anti-bot-signal";
 import { reconcileReferralPayoutForSubmission } from "@/lib/referral-reconciliation";
 import { VALID_METRIC_SNAPSHOT_WHERE } from "./valid-snapshots";
 import { recordAccountRefreshFailure } from "@/lib/social-account-refresh";
+import { parseAudienceCountries } from "./audience-risk";
 
 export type Tier = "hot" | "warm" | "cold";
 
@@ -146,7 +147,7 @@ export async function pollSubmissions(opts: RunOptions): Promise<PollResult> {
         });
         const recentAsc = [...recent].reverse();
 
-        const [campaignBenchmark, accountSnapshot] = await Promise.all([
+        const [campaignBenchmark, accountSnapshot, audienceSnapshot] = await Promise.all([
           prisma.campaignBenchmark.findFirst({
             where: { campaignId: sub.campaignId },
             orderBy: { computedAt: "desc" },
@@ -162,12 +163,24 @@ export async function pollSubmissions(opts: RunOptions): Promise<PollResult> {
                 select: { audienceCount: true },
               })
             : Promise.resolve(null),
+          fetched.connection
+            ? prisma.audienceSnapshot.findFirst({
+                where: {
+                  connectionType: fetched.connection.type,
+                  connectionId: fetched.connection.id,
+                  kind: "FOLLOWER",
+                },
+                orderBy: { capturedAt: "desc" },
+                select: { topCountries: true },
+              })
+            : Promise.resolve(null),
         ]);
 
         const scored = scoreVelocity({
           snapshots: recentAsc,
           campaignBenchmark,
           accountSnapshot,
+          audienceCountries: parseAudienceCountries(audienceSnapshot?.topCountries),
           now: snap.capturedAt,
         });
 

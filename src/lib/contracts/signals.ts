@@ -50,6 +50,7 @@ export type AntiBotEvidenceKind =
   | "ENGAGEMENT_COLLAPSE"
   | "RATIO_ANOMALY"
   | "ACCOUNT_PLAUSIBILITY"
+  | "AUDIENCE_GEO"
   | "HEALTHY_ENGAGEMENT";
 
 export interface AntiBotEvidence {
@@ -68,7 +69,7 @@ export interface AntiBotPayload extends SignalPayloadBase {
   minimumAlertDeltaViews?: number;
   minimumAlertTotalViews?: number;
   evaluatedAt: string;
-  version: "anti-bot-v1" | "anti-bot-v2" | "anti-bot-v3";
+  version: "anti-bot-v1" | "anti-bot-v2" | "anti-bot-v3" | "anti-bot-v4";
 }
 
 export type SignalPayload =

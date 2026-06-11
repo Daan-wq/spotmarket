@@ -98,6 +98,34 @@ describe("scoreVelocity", () => {
     expect(out.flags.some((f) => f.type === "BOT_SUSPECTED")).toBe(false);
   });
 
+  it("scores Asian audience risk independently of the minimum view-growth threshold", () => {
+    const out = scoreVelocity({
+      snapshots: [snap(1, 6600, 50, 1, 0), snap(0, 6737, 50, 1, 0)],
+      audienceCountries: [
+        { code: "IN", share: 0.9 },
+        { code: "NL", share: 0.1 },
+      ],
+    });
+
+    const antiBot = antiBotOf(out);
+    expect(antiBot?.riskScore).toBe(100);
+    expect(antiBot?.evidence).toContainEqual(
+      expect.objectContaining({ kind: "AUDIENCE_GEO", points: 360 }),
+    );
+    expect(out.flags).toContainEqual(
+      expect.objectContaining({ type: "BOT_SUSPECTED", severity: "CRITICAL" }),
+    );
+  });
+
+  it("keeps the existing low-volume behavior when audience data is unavailable", () => {
+    const out = scoreVelocity({
+      snapshots: [snap(1, 6600, 50, 1, 0), snap(0, 6737, 50, 1, 0)],
+    });
+
+    expect(antiBotOf(out)?.riskScore).toBe(0);
+    expect(out.flags.some((f) => f.type === "BOT_SUSPECTED")).toBe(false);
+  });
+
   it("allows account plausibility warnings once latest growth reaches 2000 views", () => {
     const out = scoreVelocity({
       snapshots: [snap(1, 4000, 80, 0, 0), snap(0, 6500, 100, 3, 0)],

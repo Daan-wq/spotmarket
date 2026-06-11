@@ -1,19 +1,26 @@
-import type { BioPlatform, ConnectionType, Prisma } from "@prisma/client";
-import Link from "next/link";
+import type { DemographicSource, Prisma } from "@prisma/client";
+import { Globe2 } from "lucide-react";
 import { notFound } from "next/navigation";
 import { SignalResolveButton } from "@/components/admin/signal-resolve-button";
 import { SignalViewGrowthChart } from "@/components/admin/signal-view-growth-chart";
 import { Badge } from "@/components/ui/badge";
-import { PageHeader, SectionHeader, StatCard } from "@/components/ui/page";
-import { formatDate, formatNumber, titleCaseEnum } from "@/lib/admin/agency-format";
+import { PageHeader, StatCard } from "@/components/ui/page";
+import { formatNumber, titleCaseEnum } from "@/lib/admin/agency-format";
 import { metricAvailabilityValue, type MetricAvailabilityKey } from "@/lib/contracts/metrics";
 import { AUTO_ANTIBOT_RESOLVED_BY } from "@/lib/metrics/anti-bot-signal";
+import {
+  ASIAN_AUDIENCE_POINTS_PER_PERCENT,
+  audienceSharePercent,
+  calculateAsianAudienceRisk,
+  isAsianCountry,
+  parseAudienceCountries,
+  type AudienceCountryShare,
+} from "@/lib/metrics/audience-risk";
 import {
   isValidMetricSnapshot,
   VALID_METRIC_SNAPSHOT_WHERE,
 } from "@/lib/metrics/valid-snapshots";
 import { prisma } from "@/lib/prisma";
-import { viewsPerHourFromLatestValidPair } from "@/lib/stats/view-growth-buckets";
 
 export const dynamic = "force-dynamic";
 
@@ -49,15 +56,6 @@ type EvidenceItem = {
   metrics: Record<string, number | string | null>;
 };
 
-type ComparisonRow = {
-  id: string;
-  postUrl: string;
-  createdAt: Date;
-  latestViews: number;
-  latestEngagements: number | null;
-  recentVelocity: number | null;
-};
-
 export default async function SignalDetailPage({ params }: PageProps) {
   const { signalId } = await params;
 
@@ -67,12 +65,6 @@ export default async function SignalDetailPage({ params }: PageProps) {
       submission: {
         include: {
           campaign: { select: { id: true, name: true } },
-          creator: {
-            select: {
-              email: true,
-              creatorProfile: { select: { id: true, displayName: true } },
-            },
-          },
           metricSnapshots: {
             where: VALID_METRIC_SNAPSHOT_WHERE,
             orderBy: { capturedAt: "desc" },
@@ -103,13 +95,28 @@ export default async function SignalDetailPage({ params }: PageProps) {
   if (!signal?.submission) return notFound();
 
   const submission = signal.submission;
+  const audienceSnapshot =
+    submission.sourceConnectionType && submission.sourceConnectionId
+      ? await prisma.audienceSnapshot.findFirst({
+          where: {
+            connectionType: submission.sourceConnectionType,
+            connectionId: submission.sourceConnectionId,
+            kind: "FOLLOWER",
+          },
+          orderBy: { capturedAt: "desc" },
+          select: {
+            capturedAt: true,
+            source: true,
+            topCountries: true,
+          },
+        })
+      : null;
   const snapshots = [...submission.metricSnapshots].reverse();
   const latest = latestSnapshot(snapshots.filter(isValidMetricSnapshot));
   const currentViews = latest ? Number(latest.viewCount) : (submission.viewCount ?? submission.claimedViews);
   const currentEngagements = latest
     ? snapshotEngagements(latest)
     : legacyEngagements(submission);
-  const currentVelocity = viewsPerHourFromLatestValidPair(snapshots);
   const chartSnapshots = snapshots.map((snapshot) => ({
     capturedAt: snapshot.capturedAt.toISOString(),
     viewCount: Number(snapshot.viewCount),
@@ -136,15 +143,7 @@ export default async function SignalDetailPage({ params }: PageProps) {
   const topReason = translateSignalText(
     getReasons(payload)[0] ?? getString(payload, "reason") ?? "Bekijk deze waarschuwing voordat je beslist.",
   );
-
-  const comparisonRows = await loadComparisonRows(submission);
-  const comparisonViews = comparisonRows.map((row) => row.latestViews).filter((value) => value > 0);
-  const comparisonVelocity = comparisonRows
-    .map((row) => row.recentVelocity)
-    .filter((value): value is number => value != null && value >= 0);
-  const medianViews = median(comparisonViews);
-  const medianVelocity = median(comparisonVelocity);
-  const creatorName = submission.creator.creatorProfile?.displayName ?? submission.creator.email;
+  const audienceCountries = parseAudienceCountries(audienceSnapshot?.topCountries);
 
   return (
     <div className="space-y-8">
@@ -176,13 +175,17 @@ export default async function SignalDetailPage({ params }: PageProps) {
         <SignalResolveButton signalId={signal.id} resolved={Boolean(signal.resolvedAt)} />
       </div>
 
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-5">
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
         <StatCard label="Risicoscore" value={riskScore == null ? "-" : `${riskScore}/100`} detail={confidence ? `${confidenceLabel(confidence)} vertrouwen` : "Geen vertrouwen opgeslagen"} tone={riskScore != null && riskScore >= 70 ? "danger" : "warning"} />
         <StatCard label="Totale views" value={formatNumber(currentViews)} detail="Laatste meting" />
         <StatCard label="Engagement" value={currentEngagements == null ? "Niet beschikbaar" : formatNumber(currentEngagements)} detail={formatRate(currentEngagements == null ? null : engagementRate(currentEngagements, currentViews))} />
-        <StatCard label="Recente snelheid" value={currentVelocity == null ? "-" : `${formatNumber(Math.round(currentVelocity))}/u`} detail="Tussen laatste twee metingen" />
-        <StatCard label="Accountmediaan" value={medianViews == null ? "-" : formatNumber(Math.round(medianViews))} detail="Vergelijkbare videos" />
       </div>
+
+      <AudienceRiskPanel
+        countries={audienceCountries}
+        capturedAt={audienceSnapshot?.capturedAt ?? null}
+        source={audienceSnapshot?.source ?? null}
+      />
 
       <section className="grid grid-cols-1 gap-5 xl:grid-cols-[minmax(0,1.4fr)_minmax(320px,0.8fr)]">
         <div className="rounded-2xl border border-neutral-200 bg-white p-5">
@@ -210,120 +213,114 @@ export default async function SignalDetailPage({ params }: PageProps) {
           </div>
         </div>
       </section>
-
-      <section>
-        <SectionHeader
-          title="Vergelijkbare videos"
-          description={`Dezelfde maker${submission.sourcePlatform ? `, hetzelfde platform (${titleCaseEnum(submission.sourcePlatform)})` : ""}. Gebruik dit om te beoordelen of de groei ongewoon is voor ${creatorName}.`}
-        />
-        <div className="overflow-hidden rounded-2xl border border-neutral-200 bg-white">
-          <div className="grid grid-cols-[1.3fr_0.7fr_0.7fr_0.7fr_0.7fr] gap-3 border-b border-neutral-100 bg-neutral-50 px-4 py-3 text-[11px] font-semibold uppercase tracking-[0.14em] text-neutral-500">
-            <span>Video</span>
-            <span className="text-right">Views</span>
-            <span className="text-right">Eng.</span>
-            <span className="text-right">Snelheid</span>
-            <span className="text-right">T.o.v. mediaan</span>
-          </div>
-          <ComparisonLine
-            label="Gemarkeerde video"
-            href={submission.postUrl}
-            views={currentViews}
-            engagements={currentEngagements}
-            velocity={currentVelocity}
-            medianViews={medianViews}
-            highlighted
-          />
-          {comparisonRows.length > 0 ? (
-            comparisonRows.map((row) => (
-              <ComparisonLine
-                key={row.id}
-                label={formatDate(row.createdAt, "nl")}
-                href={row.postUrl}
-                views={row.latestViews}
-                engagements={row.latestEngagements}
-                velocity={row.recentVelocity}
-                medianViews={medianViews}
-              />
-            ))
-          ) : (
-            <p className="px-4 py-6 text-sm text-neutral-500">Er zijn nog geen vergelijkbare gemeten videos beschikbaar.</p>
-          )}
-        </div>
-        <p className="mt-3 text-xs text-neutral-500">
-          Mediaansnelheid voor vergelijkbare videos: {medianVelocity == null ? "-" : `${formatNumber(Math.round(medianVelocity))}/u`}.
-        </p>
-      </section>
     </div>
   );
 }
 
-async function loadComparisonRows(submission: {
-  id: string;
-  creatorId: string;
-  sourcePlatform: BioPlatform | null;
-  sourceConnectionType: ConnectionType | null;
-  sourceConnectionId: string | null;
+function AudienceRiskPanel({
+  countries,
+  capturedAt,
+  source,
+}: {
+  countries: AudienceCountryShare[];
+  capturedAt: Date | null;
+  source: DemographicSource | null;
 }) {
-  const where: Prisma.CampaignSubmissionWhereInput = {
-    creatorId: submission.creatorId,
-    id: { not: submission.id },
-    metricSnapshots: { some: VALID_METRIC_SNAPSHOT_WHERE },
-  };
+  const rows = countries
+    .map((country) => ({
+      ...country,
+      sharePercent: audienceSharePercent(country.share),
+      asian: isAsianCountry(country.code),
+    }))
+    .filter((country) => country.sharePercent > 0)
+    .sort((a, b) => b.sharePercent - a.sharePercent);
+  const audienceRisk = calculateAsianAudienceRisk(countries);
 
-  if (submission.sourceConnectionType && submission.sourceConnectionId) {
-    where.sourceConnectionType = submission.sourceConnectionType;
-    where.sourceConnectionId = submission.sourceConnectionId;
-  } else if (submission.sourcePlatform) {
-    where.sourcePlatform = submission.sourcePlatform;
-  }
+  return (
+    <section className="overflow-hidden rounded-3xl border border-neutral-200 bg-[#fbfaf7] shadow-[0_18px_55px_-40px_rgba(23,23,23,0.45)]">
+      <div className="grid gap-6 border-b border-neutral-200 px-5 py-6 md:px-7 xl:grid-cols-[minmax(0,1fr)_320px] xl:items-center">
+        <div className="flex items-start gap-4">
+          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-neutral-950 text-white">
+            <Globe2 className="h-5 w-5" aria-hidden="true" />
+          </div>
+          <div>
+            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-orange-700">Page audience</p>
+            <h2 className="mt-2 text-xl font-semibold tracking-[-0.02em] text-neutral-950">Waar zitten de kijkers?</h2>
+            <p className="mt-2 max-w-2xl text-sm leading-6 text-neutral-600">
+              Landverdeling van het accountpubliek. Elk procentpunt uit een Aziatisch land voegt {ASIAN_AUDIENCE_POINTS_PER_PERCENT} punten toe aan de botrisicoscore.
+            </p>
+            {capturedAt ? (
+              <p className="mt-3 text-xs text-neutral-400">
+                Laatste audience-meting: {capturedAt.toLocaleDateString("nl-NL", { day: "numeric", month: "long", year: "numeric" })}
+                {source ? ` · ${audienceSourceLabel(source)}` : ""}
+              </p>
+            ) : null}
+          </div>
+        </div>
 
-  const rows = await prisma.campaignSubmission.findMany({
-    where,
-    orderBy: { createdAt: "desc" },
-    take: 12,
-    select: {
-      id: true,
-      postUrl: true,
-      createdAt: true,
-      viewCount: true,
-      claimedViews: true,
-      likeCount: true,
-      commentCount: true,
-      shareCount: true,
-      metricSnapshots: {
-        where: VALID_METRIC_SNAPSHOT_WHERE,
-        orderBy: { capturedAt: "desc" },
-        take: 2,
-        select: {
-          capturedAt: true,
-          viewCount: true,
-          likeCount: true,
-          commentCount: true,
-          shareCount: true,
-          saveCount: true,
-          metricAvailability: true,
-        },
-      },
-    },
-  });
+        <div className={`rounded-2xl p-5 ${audienceRisk.riskPoints > 0 ? "bg-neutral-950 text-white" : "border border-neutral-200 bg-white text-neutral-950"}`}>
+          <div className="flex items-center justify-between gap-4">
+            <span className={`text-[11px] font-semibold uppercase tracking-[0.16em] ${audienceRisk.riskPoints > 0 ? "text-orange-300" : "text-neutral-400"}`}>
+              Azië-impact
+            </span>
+            <span className={`rounded-full px-2.5 py-1 text-[11px] font-semibold ${audienceRisk.riskPoints > 0 ? "bg-orange-400/15 text-orange-200" : "bg-emerald-50 text-emerald-700"}`}>
+              {formatAudiencePercent(audienceRisk.asianSharePercent)} van audience
+            </span>
+          </div>
+          <p className="mt-4 text-3xl font-semibold tracking-[-0.04em]">
+            +{formatAudiencePoints(audienceRisk.riskPoints)} punten
+          </p>
+          <p className={`mt-2 text-xs leading-5 ${audienceRisk.riskPoints > 0 ? "text-neutral-400" : "text-neutral-500"}`}>
+            Wordt opgeteld bij de overige signalen. De totale risicoscore blijft begrensd op 100.
+          </p>
+        </div>
+      </div>
 
-  return rows.map((row): ComparisonRow => {
-    const ordered = [...row.metricSnapshots].reverse();
-    const latest = latestSnapshot(ordered);
-    const previous = ordered.length >= 2 ? ordered[ordered.length - 2] : null;
-    const latestViews = latest ? Number(latest.viewCount) : (row.viewCount ?? row.claimedViews);
-    const latestEngagements = latest
-      ? snapshotEngagements(latest)
-      : legacyEngagements(row);
-    return {
-      id: row.id,
-      postUrl: row.postUrl,
-      createdAt: row.createdAt,
-      latestViews,
-      latestEngagements,
-      recentVelocity: previous && latest ? viewsPerHour(previous, latest) : null,
-    };
-  });
+      {rows.length > 0 ? (
+        <div className="grid gap-x-8 gap-y-5 px-5 py-6 md:grid-cols-2 md:px-7">
+          {rows.map((country) => {
+            const countryRiskPoints = country.asian
+              ? country.sharePercent * ASIAN_AUDIENCE_POINTS_PER_PERCENT
+              : 0;
+            return (
+              <div key={country.code} className="min-w-0">
+                <div className="mb-2 flex items-center justify-between gap-3">
+                  <div className="flex min-w-0 items-center gap-2.5">
+                    <span className="flex h-7 min-w-9 items-center justify-center rounded-lg border border-neutral-200 bg-white px-2 text-[11px] font-bold tracking-[0.08em] text-neutral-700">
+                      {country.code}
+                    </span>
+                    <span className="truncate text-sm font-semibold text-neutral-900">{countryName(country.code)}</span>
+                    {country.asian ? (
+                      <span className="shrink-0 rounded-full bg-orange-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.1em] text-orange-800">
+                        Azië
+                      </span>
+                    ) : null}
+                  </div>
+                  <div className="shrink-0 text-right">
+                    <span className="text-sm font-semibold tabular-nums text-neutral-950">{formatAudiencePercent(country.sharePercent)}</span>
+                    {countryRiskPoints > 0 ? (
+                      <span className="ml-2 text-xs font-semibold tabular-nums text-orange-700">+{formatAudiencePoints(countryRiskPoints)} ptn</span>
+                    ) : null}
+                  </div>
+                </div>
+                <div className="h-2 overflow-hidden rounded-full bg-neutral-200">
+                  <div
+                    className={`h-full rounded-full ${country.asian ? "bg-orange-500" : "bg-neutral-900"}`}
+                    style={{ width: `${Math.min(100, country.sharePercent)}%` }}
+                  />
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      ) : (
+        <div className="px-5 py-10 text-center md:px-7">
+          <p className="text-sm font-semibold text-neutral-900">Geen audience-landen beschikbaar</p>
+          <p className="mt-2 text-sm text-neutral-500">Voor dit gekoppelde account is nog geen bruikbare landenverdeling opgeslagen.</p>
+        </div>
+      )}
+    </section>
+  );
 }
 
 function EvidenceCard({ item }: { item: EvidenceItem }) {
@@ -350,45 +347,8 @@ function EvidenceCard({ item }: { item: EvidenceItem }) {
   );
 }
 
-function ComparisonLine({
-  label,
-  href,
-  views,
-  engagements,
-  velocity,
-  medianViews,
-  highlighted = false,
-}: {
-  label: string;
-  href: string;
-  views: number;
-  engagements: number | null;
-  velocity: number | null;
-  medianViews: number | null;
-  highlighted?: boolean;
-}) {
-  const vsMedian = medianViews && medianViews > 0 ? views / medianViews : null;
-  return (
-    <div className={`grid grid-cols-[1.3fr_0.7fr_0.7fr_0.7fr_0.7fr] gap-3 border-b border-neutral-100 px-4 py-3 text-sm last:border-b-0 ${highlighted ? "bg-orange-50/60" : ""}`}>
-      <Link href={href} target="_blank" className="truncate font-semibold text-neutral-950 underline-offset-2 hover:underline">
-        {label}
-      </Link>
-      <span className="text-right font-semibold tabular-nums text-neutral-950">{formatNumber(views)}</span>
-      <span className="text-right tabular-nums text-neutral-600">{engagements == null ? "Niet beschikbaar" : formatNumber(engagements)}</span>
-      <span className="text-right tabular-nums text-neutral-600">{velocity == null ? "-" : `${formatNumber(Math.round(velocity))}/u`}</span>
-      <span className="text-right tabular-nums text-neutral-600">{vsMedian == null ? "-" : `${vsMedian.toFixed(1)}x`}</span>
-    </div>
-  );
-}
-
 function latestSnapshot<T>(snapshots: T[]): T | null {
   return snapshots.length > 0 ? snapshots[snapshots.length - 1] : null;
-}
-
-function viewsPerHour(previous: SnapshotPoint, latest: SnapshotPoint) {
-  const elapsedHours = (latest.capturedAt.getTime() - previous.capturedAt.getTime()) / (60 * 60 * 1000);
-  if (elapsedHours <= 0) return 0;
-  return Math.max(0, Number(latest.viewCount) - Number(previous.viewCount)) / elapsedHours;
 }
 
 function engagementRate(engagements: number, views: number) {
@@ -430,13 +390,6 @@ function legacyEngagements(row: {
   );
   if (values.length === 0) return null;
   return values.reduce((sum, value) => sum + value, 0);
-}
-
-function median(values: number[]) {
-  if (values.length === 0) return null;
-  const sorted = [...values].sort((a, b) => a - b);
-  const mid = Math.floor(sorted.length / 2);
-  return sorted.length % 2 === 0 ? (sorted[mid - 1] + sorted[mid]) / 2 : sorted[mid];
 }
 
 function asPayloadRecord(payload: Prisma.JsonValue): PayloadRecord | null {
@@ -493,6 +446,7 @@ function translateSignalText(value: string) {
     "Extreme view growth anomaly against submission history": "Extreme viewgroei ten opzichte van eerdere metingen",
     "Like ratio is unusually high for the view count": "Like-ratio is ongewoon hoog voor dit aantal views",
     "Good cumulative engagement lowers bot risk": "Gezonde engagement verlaagt het botrisico",
+    "Audience is concentrated in Asian countries": "Audience is sterk geconcentreerd in Aziatische landen",
     "low engagement on high view delta": "Lage engagement bij hoge viewgroei",
   };
   if (translations[value]) return translations[value];
@@ -526,6 +480,7 @@ function evidenceKindLabel(kind: string) {
     CAMPAIGN_BENCHMARK: "Campagnebenchmark",
     LIKE_RATIO: "Like-ratio",
     HEALTHY_ENGAGEMENT: "Gezonde engagement",
+    AUDIENCE_GEO: "Audience-landen",
   };
   return labels[kind] ?? titleCaseEnum(kind);
 }
@@ -548,6 +503,9 @@ function metricLabel(key: string) {
     likeRatio: "Like-ratio",
     audienceCount: "Accountgrootte",
     audienceMultiple: "Publieksfactor",
+    asianAudiencePercent: "Audience uit Azië",
+    pointsPerPercent: "Punten per procent",
+    asianCountries: "Aziatische landen",
   };
   return labels[key] ?? titleCaseEnum(key);
 }
@@ -560,5 +518,25 @@ function formatMetricValue(value: number | string | null) {
 
 function formatRate(value: number | null) {
   return value == null ? "Niet beschikbaar" : `${value.toLocaleString("nl-NL", { maximumFractionDigits: 2 })}% engagement`;
+}
+
+function formatAudiencePercent(value: number) {
+  return `${value.toLocaleString("nl-NL", { maximumFractionDigits: 1 })}%`;
+}
+
+function formatAudiencePoints(value: number) {
+  return value.toLocaleString("nl-NL", { maximumFractionDigits: 1 });
+}
+
+function countryName(code: string) {
+  try {
+    return new Intl.DisplayNames(["nl"], { type: "region" }).of(code) ?? code;
+  } catch {
+    return code;
+  }
+}
+
+function audienceSourceLabel(source: DemographicSource) {
+  return source === "PLATFORM_API" ? "platformdata" : "handmatig geverifieerd";
 }
 

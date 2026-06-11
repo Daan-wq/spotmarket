@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import type { AntiBotPayload, SignalSeverity } from "@/lib/contracts/signals";
 import { scoreVelocity } from "@/lib/velocity-scorer";
 import { VALID_METRIC_SNAPSHOT_WHERE } from "./valid-snapshots";
+import { parseAudienceCountries } from "./audience-risk";
 
 export const AUTO_ANTIBOT_RESOLVED_BY = "system:auto-antibot-recompute";
 
@@ -162,7 +163,7 @@ export async function recomputeOpenAntiBotSignals(
         continue;
       }
 
-      const [campaignBenchmark, accountSnapshot] = await Promise.all([
+      const [campaignBenchmark, accountSnapshot, audienceSnapshot] = await Promise.all([
         prisma.campaignBenchmark.findFirst({
           where: { campaignId: signal.submission.campaignId },
           orderBy: { computedAt: "desc" },
@@ -178,12 +179,24 @@ export async function recomputeOpenAntiBotSignals(
               select: { audienceCount: true },
             })
           : Promise.resolve(null),
+        signal.submission.sourceConnectionType && signal.submission.sourceConnectionId
+          ? prisma.audienceSnapshot.findFirst({
+              where: {
+                connectionType: signal.submission.sourceConnectionType,
+                connectionId: signal.submission.sourceConnectionId,
+                kind: "FOLLOWER",
+              },
+              orderBy: { capturedAt: "desc" },
+              select: { topCountries: true },
+            })
+          : Promise.resolve(null),
       ]);
 
       const scored = scoreVelocity({
         snapshots,
         campaignBenchmark,
         accountSnapshot,
+        audienceCountries: parseAudienceCountries(audienceSnapshot?.topCountries),
         now: snapshots[snapshots.length - 1].capturedAt,
       });
 

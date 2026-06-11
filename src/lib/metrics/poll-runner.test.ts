@@ -14,6 +14,7 @@ const findManyMetricSnapshotMock = vi.fn();
 const createMetricPollFailureMock = vi.fn();
 const findFirstCampaignBenchmarkMock = vi.fn();
 const findFirstPlatformAccountSnapshotMock = vi.fn();
+const findFirstAudienceSnapshotMock = vi.fn();
 const publishEventMock = vi.fn();
 const routeMetricMock = vi.fn();
 const fetchTikTokMetricsByVideoIdsMock = vi.fn();
@@ -67,6 +68,9 @@ vi.mock("@/lib/prisma", () => ({
     platformAccountSnapshot: {
       findFirst: (...args: unknown[]) => findFirstPlatformAccountSnapshotMock(...args),
     },
+    audienceSnapshot: {
+      findFirst: (...args: unknown[]) => findFirstAudienceSnapshotMock(...args),
+    },
   },
 }));
 
@@ -117,6 +121,7 @@ beforeEach(() => {
   createMetricPollFailureMock.mockReset();
   findFirstCampaignBenchmarkMock.mockReset();
   findFirstPlatformAccountSnapshotMock.mockReset();
+  findFirstAudienceSnapshotMock.mockReset().mockResolvedValue(null);
   publishEventMock.mockReset();
   routeMetricMock.mockReset();
   fetchTikTokMetricsByVideoIdsMock.mockReset();
@@ -296,10 +301,24 @@ describe("pollSubmissions earnings refresh", () => {
         shareCount: 5,
       },
     ]);
+    findFirstAudienceSnapshotMock.mockResolvedValueOnce({
+      topCountries: [
+        { code: "IN", share: 0.9 },
+        { code: "NL", share: 0.1 },
+      ],
+    });
 
     const result = await pollSubmissions({ tier: "hot", limit: 1 });
 
     expect(result.succeeded).toBe(1);
+    expect(scoreVelocityMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        audienceCountries: [
+          { code: "IN", share: 0.9 },
+          { code: "NL", share: 0.1 },
+        ],
+      }),
+    );
     expect(updateSubmissionMock).toHaveBeenCalledWith(
       expect.objectContaining({
         where: { id: "sub_1" },
@@ -481,6 +500,7 @@ describe("pollSubmissions earnings refresh", () => {
       snapshots,
       campaignBenchmark: { velocityP50: 1000, velocityP90: 3000 },
       accountSnapshot: { audienceCount: 750 },
+      audienceCountries: [],
       now: capturedAt,
     });
   });

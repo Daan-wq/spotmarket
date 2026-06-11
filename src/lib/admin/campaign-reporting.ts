@@ -3,10 +3,10 @@ import {
   DEFAULT_CAMPAIGN_REPORT_SECTIONS,
   type CampaignReportEditorial,
   type CampaignReportEditorialContent,
-  type CampaignReportSectionSettings,
 } from "@/lib/admin/campaign-report-shared";
 import { prisma } from "@/lib/prisma";
 import { VALID_METRIC_SNAPSHOT_WHERE } from "@/lib/metrics/valid-snapshots";
+import { isAsianCountry } from "@/lib/metrics/audience-risk";
 import { computeDayDeltas } from "@/lib/stats/trends";
 import { DEFAULT_LOCALE } from "@/i18n/routing";
 
@@ -36,13 +36,6 @@ const PLATFORM_LABELS: Record<string, string> = {
   OAUTH_FB: "Facebook",
 };
 
-const ASIAN_COUNTRY_CODES = new Set([
-  "AE", "AF", "AM", "AZ", "BD", "BH", "BN", "BT", "CN", "CY", "GE", "HK",
-  "ID", "IL", "IN", "IQ", "IR", "JO", "JP", "KG", "KH", "KP", "KR", "KW",
-  "KZ", "LA", "LB", "LK", "MM", "MN", "MO", "MV", "MY", "NP", "OM", "PH",
-  "PK", "PS", "QA", "SA", "SG", "SY", "TH", "TJ", "TL", "TM", "TR", "TW",
-  "UZ", "VN", "YE",
-]);
 const MAX_ASIAN_COUNTRY_SHARE = 0.1;
 
 export type CampaignReportGoalViewsSource = "manual" | "budget_cpm" | "missing";
@@ -1122,7 +1115,7 @@ function averageAudienceCountries(snapshots: CampaignReportAudienceSnapshotInput
 function asianAudienceShare(snapshot: CampaignReportAudienceSnapshotInput) {
   return (snapshot.topCountries ?? []).reduce((total, country) => {
     const code = country.code.trim().toUpperCase();
-    return ASIAN_COUNTRY_CODES.has(code)
+    return isAsianCountry(code)
       ? total + audienceShareFraction(country.share)
       : total;
   }, 0);
