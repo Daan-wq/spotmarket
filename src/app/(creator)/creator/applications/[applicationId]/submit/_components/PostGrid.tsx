@@ -9,13 +9,11 @@ interface Props {
   isLoading: boolean;
   selectedKeys: Set<string>;
   submittedKeys: Set<string>;
-  submittingKeys: Set<string>;
   requiredHashtags: string[];
   hasConnectedAccount: boolean;
   platform: "ig" | "tt" | "yt" | "fb";
   isSubmissionDisabled: boolean;
   onToggle: (post: NormalizedPost) => void;
-  onSubmitOne: (post: NormalizedPost) => void;
 }
 
 const PLATFORM_NAMES = { ig: "Instagram", tt: "TikTok", yt: "YouTube", fb: "Facebook" };
@@ -29,13 +27,11 @@ export default function PostGrid({
   isLoading,
   selectedKeys,
   submittedKeys,
-  submittingKeys,
   requiredHashtags,
   hasConnectedAccount,
   platform,
   isSubmissionDisabled,
   onToggle,
-  onSubmitOne,
 }: Props) {
   if (!hasConnectedAccount) {
     return (
@@ -78,7 +74,7 @@ export default function PostGrid({
           </svg>
           Loading {PLATFORM_NAMES[platform]} posts…
         </div>
-        <div className="grid grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
           {Array.from({ length: 10 }).map((_, i) => (
             <div
               key={i}
@@ -102,7 +98,7 @@ export default function PostGrid({
   }
 
   return (
-    <div className="grid grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
+    <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
       {posts.map((post) => {
         const eligible =
           requiredHashtags.length > 0 &&
@@ -117,11 +113,9 @@ export default function PostGrid({
               post={post}
               isSelected={selectedKeys.has(k)}
               isSubmitted={submittedKeys.has(k)}
-              isSubmittingOne={submittingKeys.has(k)}
               isEligible={eligible}
               isSubmissionDisabled={isSubmissionDisabled}
               onToggle={() => onToggle(post)}
-              onSubmitOne={() => onSubmitOne(post)}
             />
           </div>
         );

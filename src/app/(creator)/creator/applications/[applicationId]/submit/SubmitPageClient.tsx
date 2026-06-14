@@ -116,7 +116,6 @@ export default function SubmitPageClient({
   });
 
   const [selectedKeys, setSelectedKeys] = useState<Set<string>>(new Set());
-  const [submittingKeys, setSubmittingKeys] = useState<Set<string>>(new Set());
   // URLs known to be in the DB on initial page load (frozen). For these, URL
   // match marks the matching card(s) as submitted on first render.
   const initialSubmittedUrlSet = useMemo(
@@ -134,10 +133,7 @@ export default function SubmitPageClient({
   const [connectPromptPlatform, setConnectPromptPlatform] = useState<Platform | null>(null);
   const [showFirstClipTroubleshooting, setShowFirstClipTroubleshooting] = useState(false);
 
-  // Synchronous single-flight lock across submitOne + submitSelected. Two
-  // rapid clicks on different per-card Submit buttons (or per-card + bulk)
-  // would otherwise both pass the per-key submitting guard because
-  // setState is async, leading to two unintended submissions.
+  // Prevent duplicate bulk submissions from rapid repeated clicks.
   const submitInFlightRef = useRef(false);
 
   const submittedKeys = useMemo(() => {
@@ -350,53 +346,6 @@ export default function SubmitPageClient({
       else next.add(k);
       return next;
     });
-  };
-
-  const submitOne = async (post: NormalizedPost) => {
-    if (isClosedForSubmissions) return;
-    const k = keyOf(post);
-    if (submittedKeys.has(k)) return;
-    if (submitInFlightRef.current) return;
-    submitInFlightRef.current = true;
-    setError(null);
-    setSuccess(null);
-    setSubmittingKeys((prev) => new Set(prev).add(k));
-    try {
-      const res = await fetch("/api/submissions", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          applicationId,
-          postUrl: post.url,
-          thumbnailUrl: post.thumbnail ?? undefined,
-          mediaType: post.mediaType,
-          connectionId: activeConnectionId,
-          pickerMediaId: post.id,
-        }),
-      });
-      if (res.ok) {
-        setSessionSubmittedKeys((prev) => new Set(prev).add(k));
-        setSelectedKeys((prev) => {
-          if (!prev.has(k)) return prev;
-          const next = new Set(prev);
-          next.delete(k);
-          return next;
-        });
-        setSuccess("Clip submitted.");
-      } else {
-        const data = await res.json().catch(() => ({}));
-        setError(data.error || "Failed to submit");
-      }
-    } catch {
-      setError(t("submissionFailed"));
-    } finally {
-      setSubmittingKeys((prev) => {
-        const next = new Set(prev);
-        next.delete(k);
-        return next;
-      });
-      submitInFlightRef.current = false;
-    }
   };
 
   const submitSelected = async () => {
@@ -668,13 +617,11 @@ export default function SubmitPageClient({
             isLoading={isLoading}
             selectedKeys={selectedKeys}
             submittedKeys={submittedKeys}
-            submittingKeys={submittingKeys}
             requiredHashtags={campaign.requiredHashtags}
             hasConnectedAccount={activeConnections.length > 0}
             platform={activePlatform}
             isSubmissionDisabled={isClosedForSubmissions}
             onToggle={togglePost}
-            onSubmitOne={submitOne}
           />
 
           {!isLoading && activeConnections.length > 0 && currentPosts.length > 0 && (

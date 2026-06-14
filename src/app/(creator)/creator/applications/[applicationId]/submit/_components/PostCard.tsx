@@ -10,10 +10,8 @@ interface Props {
   isSelected: boolean;
   isSubmitted: boolean;
   isEligible: boolean;
-  isSubmittingOne: boolean;
   isSubmissionDisabled: boolean;
   onToggle: () => void;
-  onSubmitOne: () => void;
 }
 
 export default function PostCard({
@@ -21,42 +19,32 @@ export default function PostCard({
   isSelected,
   isSubmitted,
   isEligible,
-  isSubmittingOne,
   isSubmissionDisabled,
   onToggle,
-  onSubmitOne,
 }: Props) {
   const locale = useLocale();
   const t = useTranslations("creator.applications.submit");
   const sharedT = useTranslations("creator.shared");
-  const showHover = !isSubmitted && !isSelected;
   const disabled = isSubmitted || isSubmissionDisabled;
+  const postLabel = post.caption?.trim() || post.id;
 
   return (
     <div
-      role="button"
-      tabIndex={disabled ? -1 : 0}
-      aria-pressed={isSelected}
-      aria-disabled={disabled}
-      onClick={() => {
-        if (disabled) return;
-        onToggle();
-      }}
-      onKeyDown={(e) => {
-        if (disabled) return;
-        if (e.key === "Enter" || e.key === " ") {
-          e.preventDefault();
-          onToggle();
-        }
-      }}
-      className="group relative rounded-lg overflow-hidden transition-all"
+      className="group relative aspect-square overflow-hidden rounded-xl transition-all"
       style={{
-        aspectRatio: "1",
         border: isSelected ? "3px solid var(--primary)" : "2px solid var(--border)",
         opacity: disabled ? 0.5 : isSelected ? 1 : 0.95,
-        cursor: disabled ? "default" : "pointer",
       }}
     >
+      <button
+        type="button"
+        disabled={disabled}
+        aria-pressed={isSelected}
+        aria-label={`${isSelected ? t("deselectPost") : t("selectPost")}: ${postLabel}`}
+        onClick={onToggle}
+        className="absolute inset-0 z-10 cursor-pointer rounded-[inherit] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2 disabled:cursor-default"
+      />
+
       <ClipThumbnail
         thumbnailUrl={post.thumbnail}
         mediaType={post.mediaType}
@@ -66,7 +54,7 @@ export default function PostCard({
 
       {isEligible && (
         <div
-          className="absolute top-1.5 left-1.5 w-5 h-5 rounded-full flex items-center justify-center z-10"
+          className="absolute top-1.5 left-1.5 z-30 flex h-5 w-5 items-center justify-center rounded-full"
           style={{ background: "#22c55e" }}
           title={t("containsRequiredHashtags")}
         >
@@ -78,7 +66,7 @@ export default function PostCard({
 
       {isSubmitted && (
         <div
-          className="absolute inset-0 flex items-center justify-center z-10"
+          className="absolute inset-0 z-40 flex items-center justify-center"
           style={{ background: "rgba(0,0,0,0.45)" }}
         >
           <span
@@ -92,7 +80,7 @@ export default function PostCard({
 
       {isSelected && !isSubmitted && (
         <div
-          className="absolute top-1.5 right-1.5 w-6 h-6 rounded-full flex items-center justify-center z-10"
+          className="absolute top-1.5 right-1.5 z-30 flex h-6 w-6 items-center justify-center rounded-full"
           style={{ background: "var(--primary)" }}
         >
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
@@ -101,11 +89,11 @@ export default function PostCard({
         </div>
       )}
 
-      {showHover && (
+      {!isSubmitted && (
         <div
-          className="absolute inset-0 z-20 flex flex-col items-center justify-center gap-3 p-3 bg-black/60 opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity pointer-events-none group-hover:pointer-events-auto group-focus-within:pointer-events-auto text-white"
+          className="pointer-events-none absolute inset-0 z-20 flex flex-col items-center justify-end gap-2.5 bg-gradient-to-t from-black/80 via-black/30 to-transparent p-2.5 text-white opacity-100 transition-opacity sm:justify-center sm:gap-3 sm:bg-black/60 sm:p-3 sm:opacity-0 sm:group-hover:opacity-100 sm:group-focus-within:opacity-100"
         >
-          <div className="flex items-center gap-4 text-sm font-semibold">
+          <div className="flex items-center gap-3 text-xs font-semibold sm:gap-4 sm:text-sm">
             <span className="flex items-center gap-1">
               <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
                 <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" />
@@ -120,14 +108,43 @@ export default function PostCard({
             </span>
           </div>
 
-          <div className="flex gap-2">
+          <div className="flex w-full max-w-[9.5rem] flex-col gap-2">
+            <span
+              aria-hidden
+              className="flex min-h-10 w-full items-center justify-center gap-1.5 rounded-lg px-3 py-2 text-xs font-semibold"
+              style={{
+                background: isSubmissionDisabled
+                  ? "#e5e5e5"
+                  : isSelected
+                    ? "#fff"
+                    : "var(--primary)",
+                color: isSubmissionDisabled
+                  ? "var(--text-muted)"
+                  : isSelected
+                    ? "var(--primary)"
+                    : "#fff",
+              }}
+            >
+              {isSelected ? (
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <polyline points="20 6 9 17 4 12" />
+                </svg>
+              ) : (
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <line x1="22" y1="2" x2="11" y2="13" />
+                  <polygon points="22 2 15 22 11 13 2 9 22 2" />
+                </svg>
+              )}
+              {isSelected ? t("selected") : t("submit")}
+            </span>
+
             <a
               href={post.url}
               target="_blank"
               rel="noopener noreferrer"
               onClick={(e) => e.stopPropagation()}
               onKeyDown={(e) => e.stopPropagation()}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors"
+              className="pointer-events-auto flex min-h-10 w-full items-center justify-center gap-1.5 rounded-lg px-3 py-2 text-xs font-semibold transition-colors hover:bg-white/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
               style={{ background: "rgba(255,255,255,0.2)", color: "#fff" }}
             >
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
@@ -137,27 +154,6 @@ export default function PostCard({
               </svg>
               {sharedT("actions.open")}
             </a>
-            <button
-              type="button"
-              disabled={isSubmittingOne || isSubmissionDisabled}
-              onClick={(e) => {
-                e.stopPropagation();
-                if (isSubmittingOne || isSubmissionDisabled) return;
-                onSubmitOne();
-              }}
-              onKeyDown={(e) => e.stopPropagation()}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-100"
-              style={{
-                background: isSubmissionDisabled ? "#e5e5e5" : "var(--primary)",
-                color: isSubmissionDisabled ? "var(--text-muted)" : "#fff",
-              }}
-            >
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-                <line x1="22" y1="2" x2="11" y2="13" />
-                <polygon points="22 2 15 22 11 13 2 9 22 2" />
-              </svg>
-              {isSubmittingOne ? t("submitting") : t("submit")}
-            </button>
           </div>
         </div>
       )}
