@@ -32,7 +32,10 @@ export function ConnectPlatformDialog({ children }: { children: ReactNode }) {
       {open ? (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/35 px-4 py-6" role="dialog" aria-modal="true" aria-labelledby="connect-platform-title">
           <button className="absolute inset-0 cursor-default" type="button" aria-label={sharedT("actions.close")} onClick={() => setOpen(false)} />
-          <div className="relative w-full max-w-2xl rounded-2xl border border-neutral-200 bg-white p-5 shadow-2xl">
+          <div
+            className="relative w-full max-w-2xl rounded-2xl border border-neutral-200 bg-white p-5 shadow-2xl"
+            data-first-clip-tour-action-surface
+          >
             <div className="mb-5 flex items-start justify-between gap-4">
               <div>
                 <h2 id="connect-platform-title" className="text-lg font-semibold tracking-normal text-neutral-950">{t("title")}</h2>

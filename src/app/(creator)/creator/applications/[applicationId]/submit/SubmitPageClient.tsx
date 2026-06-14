@@ -569,6 +569,7 @@ export default function SubmitPageClient({
           <div
             className="relative w-full max-w-sm rounded-lg border p-5 shadow-xl"
             style={{ background: "var(--bg-card)", borderColor: "var(--border)" }}
+            data-first-clip-tour-action-surface
           >
             <div className="mb-5">
               <h2

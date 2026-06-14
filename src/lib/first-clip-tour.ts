@@ -65,6 +65,8 @@ const DEFAULT_STORAGE_STATE: FirstClipTourStorageState = {
 export const FIRST_CLIP_TOUR_STORAGE_VERSION = 2;
 export const FIRST_CLIP_TOUR_OPEN_MOBILE_MENU_EVENT =
   "clipprofit:first-clip-open-mobile-menu";
+export const FIRST_CLIP_TOUR_CLOSE_MOBILE_MENU_EVENT =
+  "clipprofit:first-clip-close-mobile-menu";
 
 export const FIRST_CLIP_TOUR_STEPS: readonly FirstClipTourStep[] = [
   {

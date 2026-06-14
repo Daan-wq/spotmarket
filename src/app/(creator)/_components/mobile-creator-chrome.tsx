@@ -7,7 +7,10 @@ import { useTranslations } from "next-intl";
 import { Menu, X } from "lucide-react";
 import { Logo } from "@/components/shared/logo";
 import { cn } from "@/lib/cn";
-import { FIRST_CLIP_TOUR_OPEN_MOBILE_MENU_EVENT } from "@/lib/first-clip-tour";
+import {
+  FIRST_CLIP_TOUR_CLOSE_MOBILE_MENU_EVENT,
+  FIRST_CLIP_TOUR_OPEN_MOBILE_MENU_EVENT,
+} from "@/lib/first-clip-tour";
 import {
   CREATOR_BOTTOM_NAV_ITEMS,
   CREATOR_NAV_ITEMS,
@@ -32,9 +35,12 @@ export function MobileCreatorChrome({
 
   useEffect(() => {
     const openMenu = () => setOpen(true);
+    const closeMenu = () => setOpen(false);
     window.addEventListener(FIRST_CLIP_TOUR_OPEN_MOBILE_MENU_EVENT, openMenu);
+    window.addEventListener(FIRST_CLIP_TOUR_CLOSE_MOBILE_MENU_EVENT, closeMenu);
     return () => {
       window.removeEventListener(FIRST_CLIP_TOUR_OPEN_MOBILE_MENU_EVENT, openMenu);
+      window.removeEventListener(FIRST_CLIP_TOUR_CLOSE_MOBILE_MENU_EVENT, closeMenu);
     };
   }, []);
 
